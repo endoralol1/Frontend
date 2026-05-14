@@ -1,3 +1,8 @@
+> [!WARNING]
+> This project is no longer maintained.
+> Due to legal pressure, I have to stop the project.
+> Thanks to everyone who contributed and supported the project!
+
 # P-Stream
 
 [![P-Stream Image](.github/P-Stream.png)](https://p-stream.github.io/docs/)
