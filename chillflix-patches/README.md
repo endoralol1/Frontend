@@ -42,3 +42,17 @@ Playwright clean Chromium on `127.0.0.1:3000`, `www.chillflix.lol`, `chillflix.l
 - `[Intervention] Images loaded lazily…` — browser intervention
 - `No listener: tabs.outgoing.message.ready` — browser/extension
 - `ERR_BLOCKED_BY_CLIENT` / AdBlock tab — ad blocker
+
+## SEO hardening — 2026-07-19
+
+### Fixes deployed
+1. Homepage SSR `<h1>` + `WebSite` / `Organization` JSON-LD (SearchAction)
+2. Hero movie title demoted to `<h2>` so only one H1
+3. List pages use `buildListPageMetadata` → page-specific canonical + Open Graph URL
+4. `/sitemap.xml` is now a **sitemap index** → static / movies / tv child sitemaps
+5. Movie/TV meta descriptions capped at ~160 chars
+
+### Verified live
+- Home H1 + JSON-LD present in HTML
+- `/movie/discover` and `/tv/popular` canonical/og:url match page
+- Sitemap index returns child sitemap locs
