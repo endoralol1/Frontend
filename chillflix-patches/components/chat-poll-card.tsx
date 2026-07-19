@@ -1,8 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { BarChart3, Check } from "lucide-react"
 
-import type { ChatPoll } from "@/lib/chat-types"
+import type { ChatPoll, ChatPollVoter } from "@/lib/chat-types"
 import { useTranslations } from "@/lib/i18n/client"
 import { cn } from "@/lib/utils"
 
@@ -11,6 +12,88 @@ type ChatPollCardProps = {
     canVote: boolean
     voting: boolean
     onVote: (optionIds: string[]) => void
+}
+
+const MAX_VISIBLE_VOTERS = 7
+
+function initials(label: string) {
+    const parts = label.trim().split(/\s+/).filter(Boolean)
+    if (parts.length === 0) return "?"
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+    return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase()
+}
+
+function VoterAvatar({ voter, className }: { voter: ChatPollVoter; className?: string }) {
+    const [failed, setFailed] = useState(false)
+    const label = voter.name || voter.username
+
+    if (voter.avatarUrl && !failed) {
+        return (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+                src={voter.avatarUrl}
+                alt={label}
+                title={label}
+                className={cn(
+                    "size-5 rounded-full object-cover ring-2 ring-background",
+                    className
+                )}
+                onError={() => setFailed(true)}
+            />
+        )
+    }
+
+    return (
+        <span
+            title={label}
+            className={cn(
+                "flex size-5 items-center justify-center rounded-full bg-primary/20 text-[9px] font-semibold text-primary ring-2 ring-background",
+                className
+            )}
+        >
+            {initials(label)}
+        </span>
+    )
+}
+
+function OptionVoters({ voters, voteCount }: { voters: ChatPollVoter[]; voteCount: number }) {
+    if (voteCount <= 0) return null
+
+    const list = Array.isArray(voters) ? voters : []
+    const visible = list.slice(0, MAX_VISIBLE_VOTERS)
+    const remaining = Math.max(voteCount - visible.length, 0)
+    const namePreview = list
+        .slice(0, 4)
+        .map((voter) => voter.name || voter.username)
+        .filter(Boolean)
+    const namesTitle = [
+        ...list.map((voter) => voter.name || voter.username),
+        remaining > 0 && list.length >= MAX_VISIBLE_VOTERS ? `+${remaining} more` : null,
+    ]
+        .filter(Boolean)
+        .join(", ")
+
+    return (
+        <div className="relative mt-1.5 flex min-w-0 items-center gap-2" title={namesTitle}>
+            {visible.length > 0 ? (
+                <div className="flex shrink-0 -space-x-1.5">
+                    {visible.map((voter) => (
+                        <VoterAvatar key={voter.id} voter={voter} />
+                    ))}
+                </div>
+            ) : null}
+            <p className="min-w-0 truncate text-[10px] leading-tight text-muted-foreground">
+                {namePreview.length > 0 ? (
+                    <>
+                        {namePreview.join(", ")}
+                        {voteCount > namePreview.length ? ` +${voteCount - namePreview.length}` : ""}
+                    </>
+                ) : (
+                    <>{voteCount} vote{voteCount === 1 ? "" : "s"}</>
+                )}
+            </p>
+        </div>
+    )
 }
 
 export function ChatPollCard({ poll, canVote, voting, onVote }: ChatPollCardProps) {
@@ -54,6 +137,7 @@ export function ChatPollCard({ poll, canVote, voting, onVote }: ChatPollCardProp
                         (poll?.totalVotes ?? 0) > 0
                             ? Math.round((option.voteCount / poll.totalVotes) * 100)
                             : 0
+                    const voters = Array.isArray(option.voters) ? option.voters : []
 
                     return (
                         <button
@@ -101,9 +185,12 @@ export function ChatPollCard({ poll, canVote, voting, onVote }: ChatPollCardProp
                             </div>
 
                             {showResults ? (
-                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-semibold tabular-nums text-foreground/85">
-                                    {percentage}%
-                                </span>
+                                <>
+                                    <span className="absolute right-2 top-2 text-[11px] font-semibold tabular-nums text-foreground/85">
+                                        {percentage}%
+                                    </span>
+                                    <OptionVoters voters={voters} voteCount={option.voteCount} />
+                                </>
                             ) : null}
                         </button>
                     )
