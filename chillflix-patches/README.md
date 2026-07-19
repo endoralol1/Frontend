@@ -15,3 +15,30 @@ Deployed to `/var/www/chillflix.lol` on 2026-07-18.
 - `lib/providers/4khdhub-client-resolver.ts` — same-origin relative fetch, better errors
 - `lib/playback-guard.ts` — allow `Sec-Fetch-Site: same-origin|same-site`
 - `lib/source-probe-constants.ts` — provider fetch timeout 45s
+
+## Hydration React #418 / #423 (nav nested anchors) — 2026-07-19
+
+### Root cause (100%)
+SSR emitted invalid nested anchors in desktop `SiteNav` for list routes:
+
+```html
+<a href="/movie/discover"><a class="...radix...">Movies</a></a>
+```
+
+Same for `/tv/discover`, `/people/popular`, `/trending` (exactly 4× #418 + recovery #423).
+
+`SiteNavItemSingle` wrapped Radix `NavigationMenuLink` (always an `<a>`) inside `ListPageLink`. For full-page list paths, `ListPageLink` also renders a raw `<a>`, so HTML was `<a><a>…</a></a>`. Browsers “fix” that DOM; React hydration rejects it → minified #418/#423.
+
+Home / 4K / Music / Games / IPTV used Next `Link` + leftover `legacyBehavior`/`passHref` props and did not double-wrap in SSR.
+
+### Fix
+- `components/site-nav.tsx` — `NavigationMenuLink asChild` + single `ListPageLink` (same pattern as dropdown items)
+- `components/list-page-link.tsx` — `forwardRef` for Radix `asChild`
+
+### Verified after deploy
+Playwright clean Chromium on `127.0.0.1:3000`, `www.chillflix.lol`, `chillflix.lol`: `reactErrorCount: 0`, `nestedAnchors: 0`, all nav items have correct `href`.
+
+### Not app bugs (still may appear in a real PC console)
+- `[Intervention] Images loaded lazily…` — browser intervention
+- `No listener: tabs.outgoing.message.ready` — browser/extension
+- `ERR_BLOCKED_BY_CLIENT` / AdBlock tab — ad blocker
