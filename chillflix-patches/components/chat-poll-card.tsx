@@ -28,12 +28,16 @@ export function ChatPollCard({ poll, canVote, voting, onVote }: ChatPollCardProp
     }
 
     return (
-        <div className="mt-1 rounded-xl border border-border/60 bg-muted/20 p-3">
-            <div className="mb-3 flex items-start gap-2">
-                <BarChart3 className="mt-0.5 size-4 shrink-0 text-primary" />
+        <div className="mt-1.5 w-full min-w-0 rounded-xl border border-border/60 bg-gradient-to-b from-muted/35 to-muted/10 p-2.5 shadow-sm shadow-black/10">
+            <div className="mb-2.5 flex items-start gap-2">
+                <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                    <BarChart3 className="size-3.5" />
+                </div>
                 <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-foreground">{poll?.question || ""}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
+                    <p className="text-[13px] font-semibold leading-snug text-foreground">
+                        {poll?.question || ""}
+                    </p>
+                    <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
                         {poll?.allowMultiple ? t("chat.poll.multipleChoice") : t("chat.poll.singleChoice")}
                         {poll?.isClosed ? ` · ${t("chat.poll.closed")}` : ""}
                         {(poll?.totalVotes ?? 0) > 0
@@ -43,7 +47,7 @@ export function ChatPollCard({ poll, canVote, voting, onVote }: ChatPollCardProp
                 </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
                 {options.map((option) => {
                     const selected = userOptionIds.includes(option.id)
                     const percentage =
@@ -55,41 +59,52 @@ export function ChatPollCard({ poll, canVote, voting, onVote }: ChatPollCardProp
                         <button
                             key={option.id}
                             type="button"
+                            title={
+                                showResults
+                                    ? `${option.label} — ${percentage}% (${option.voteCount})`
+                                    : option.label
+                            }
                             disabled={!canVote || voting || Boolean(poll?.isClosed)}
                             onClick={() => toggleOption(option.id)}
                             className={cn(
-                                "relative w-full overflow-hidden rounded-lg border px-3 py-2 text-left transition-colors",
+                                "relative w-full overflow-hidden rounded-lg border text-left transition-all duration-200",
+                                "px-2.5 py-2",
                                 selected
-                                    ? "border-primary/60 bg-primary/10"
-                                    : "border-border/50 bg-background/60",
+                                    ? "border-primary/55 bg-primary/10 ring-1 ring-primary/25"
+                                    : "border-border/45 bg-background/70",
                                 canVote && !poll?.isClosed
-                                    ? "hover:border-border hover:bg-muted/40"
+                                    ? "hover:border-primary/35 hover:bg-muted/45"
                                     : "cursor-default"
                             )}
                         >
                             {showResults ? (
                                 <div
-                                    className="absolute inset-y-0 left-0 bg-primary/10"
+                                    className="absolute inset-y-0 left-0 bg-primary/15 transition-[width] duration-300"
                                     style={{ width: `${percentage}%` }}
                                 />
                             ) : null}
-                            <div className="relative flex items-start justify-between gap-3">
-                                <div className="flex min-w-0 flex-1 items-start gap-2">
-                                    {selected ? (
-                                        <Check className="mt-0.5 size-3.5 shrink-0 text-primary" />
-                                    ) : (
-                                        <span className="mt-0.5 size-3.5 shrink-0 rounded-full border border-border/80" />
-                                    )}
-                                    <span className="whitespace-normal break-words text-sm leading-snug">
-                                        {option.label}
-                                    </span>
-                                </div>
-                                {showResults ? (
-                                    <span className="shrink-0 pt-0.5 text-xs tabular-nums text-muted-foreground">
-                                        {percentage}% ({option.voteCount})
-                                    </span>
-                                ) : null}
+
+                            <div
+                                className={cn(
+                                    "relative flex items-center gap-2",
+                                    showResults ? "pr-11" : "pr-0"
+                                )}
+                            >
+                                {selected ? (
+                                    <Check className="size-3.5 shrink-0 text-primary" />
+                                ) : (
+                                    <span className="size-3.5 shrink-0 rounded-full border border-border/80 bg-background/40" />
+                                )}
+                                <span className="min-w-0 flex-1 text-[13px] font-medium leading-snug text-foreground">
+                                    {option.label}
+                                </span>
                             </div>
+
+                            {showResults ? (
+                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] font-semibold tabular-nums text-foreground/85">
+                                    {percentage}%
+                                </span>
+                            ) : null}
                         </button>
                     )
                 })}
