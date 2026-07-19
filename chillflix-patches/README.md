@@ -1,5 +1,17 @@
 # Chillflix patches (deployed on VPS)
 
+## VAPlayer “invalid JSON” / No sources — 2026-07-19
+
+**Verdict: mostly VAPlayer catalog, plus our misleading error + long empty cache.**
+
+Upstream `streamdata.vaplayer.ru` returns valid JSON `{"status_code":404}` when a
+title/episode is missing (e.g. HotD S3E5, RnM S9E9) while earlier episodes work.
+We labeled that “API unavailable (invalid or empty JSON)”. Admin checker is
+movie-only, so it can look fine while a TV episode 404s.
+
+Fixes in `cinepro/`: accurate failure reasons, IMDb→TMDB fallback, empty
+single-provider cache TTL 60s (success still 1h).
+
 ## Always-visible player settings (no Retry covering chrome) — 2026-07-19
 
 During reconnect / source scan the UI showed “Buffering… reconnecting” + Retry and
