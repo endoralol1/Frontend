@@ -31,8 +31,17 @@ export const CINEPRO_BULK_FETCH_TIMEOUT_MS = 25_000
 /** Cinemacity-only config — signed CDN URLs need a longer scrape window. */
 export const CINEMACITY_CINEPRO_FETCH_TIMEOUT_MS = 90_000
 
-/** #1 provider (Alpha) gets this window before other providers are scanned for playback. */
-export const PRIMARY_PROVIDER_HEAD_START_MS = 2_500
+/**
+ * #1 provider gets this short exclusive window before secondaries are scanned.
+ * Keep low: resolve URLs ≠ playable streams; waiting 2.5s+ made startup feel broken.
+ */
+export const PRIMARY_PROVIDER_HEAD_START_MS = 800
 
 /** Re-test #1 provider while lower-ranked streams play if it had not returned yet. */
-export const PRIMARY_PROVIDER_RETRY_MS = 15_000
+export const PRIMARY_PROVIDER_RETRY_MS = 6_000
+
+/**
+ * Cold start: if the selected source never advances past metadata / keeps waiting
+ * with almost no progress, fail it so auto-fallback can try the next provider.
+ */
+export const STARTUP_PLAYBACK_FAIL_MS = 4_500

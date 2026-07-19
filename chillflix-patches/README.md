@@ -1,3 +1,18 @@
+# Chillflix patches (deployed on VPS)
+
+## Faster / reliable stream startup — 2026-07-19
+
+VAPlayer API resolve was often fine (~0.2–0.4s); perceived slowness was player-side:
+
+1. Primary head-start 2.5s + 15s primary retry
+2. Scan gate treated “primary returned a URL” as a hard lock on other providers
+3. Cold-start stall recovery disabled under 0.5s played; metadata-only probe cleared while first segment hung
+4. Auto-upgrade yanked users back to a probe-“ready” primary during cold start
+
+Fixes: head-start 800ms, primary retry 6s, unlock secondaries after head-start, cold-start fail → auto-fallback (~4.5s), no primary upgrade until ~1.5s real playback.
+
+---
+
 # Chillflix 4K prefer4k fix (deployed on VPS)
 
 Deployed to `/var/www/chillflix.lol` on 2026-07-18.
