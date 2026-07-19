@@ -62,6 +62,10 @@ import {
   SOURCE_PROBE_TIMEOUT_MS,
   STARTUP_PLAYBACK_FAIL_MS,
 } from "@/lib/source-probe-constants"
+import {
+  isTransientPlaybackStatusMessage,
+  shouldShowPlaybackRetryButton,
+} from "@/lib/playback-user-messages"
 import type { TvEpisodeRef } from "@/lib/tv-auto-next"
 import type { WatchProgressMeta } from "@/lib/watch-progress"
 import { useAuth } from "@/hooks/use-auth"
@@ -2247,8 +2251,16 @@ export function MediaPlayer({
     }
   }
 
+  // Keep chrome (esp. settings) reachable during reconnect / cold load — do not
+  // auto-hide controls while a status message is up or startup is still pending.
+  const keepChromeVisible =
+    Boolean(sourceStatusMessage) ||
+    settingsOpen ||
+    episodesOpen ||
+    (isLoading && !hasPlayedOnce)
+
   const controlsOverlayVisible =
-    showControls || !isPlaying || settingsOpen || episodesOpen
+    showControls || !isPlaying || keepChromeVisible
 
   useEffect(() => {
     needsPlaybackTimeUiRef.current = controlsOverlayVisible
@@ -2768,17 +2780,33 @@ export function MediaPlayer({
         />
       ) : null}
 
-      {sourceStatusMessage && onRefetchSources && !sourcesLoadingMore ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-24 z-30 flex justify-center px-4">
-          <div className="pointer-events-auto max-w-lg rounded-lg border border-amber-500/25 bg-black/80 px-3 py-2.5 shadow-lg backdrop-blur-sm">
-            <PlaybackSourceRetryPanel
-              message={sourceStatusMessage}
-              onRetry={onRefetchSources}
-              align="start"
-              messageClassName="text-amber-100/90"
-            />
+      {sourceStatusMessage && !sourcesLoadingMore ? (
+        isTransientPlaybackStatusMessage(sourceStatusMessage) ||
+        !shouldShowPlaybackRetryButton(sourceStatusMessage) ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-24 z-30 flex justify-center px-4">
+            <span className="rounded-full bg-black/70 px-4 py-2 text-xs text-white/90">
+              {sourceStatusMessage}
+            </span>
           </div>
-        </div>
+        ) : onRefetchSources ? (
+          <div className="pointer-events-none absolute inset-x-0 bottom-24 z-30 flex justify-center px-4">
+            <div className="pointer-events-auto max-w-lg rounded-lg border border-amber-500/25 bg-black/80 px-3 py-2.5 shadow-lg backdrop-blur-sm">
+              <PlaybackSourceRetryPanel
+                message={sourceStatusMessage}
+                onRetry={onRefetchSources}
+                align="start"
+                messageClassName="text-amber-100/90"
+                showRetryButton={shouldShowPlaybackRetryButton(sourceStatusMessage)}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="pointer-events-none absolute inset-x-0 bottom-24 z-30 flex justify-center px-4">
+            <span className="rounded-full bg-black/70 px-4 py-2 text-xs text-white/90">
+              {sourceStatusMessage}
+            </span>
+          </div>
+        )
       ) : null}
 
       <PlayerControls

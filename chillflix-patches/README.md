@@ -1,5 +1,12 @@
 # Chillflix patches (deployed on VPS)
 
+## Always-visible player settings (no Retry covering chrome) — 2026-07-19
+
+During reconnect / source scan the UI showed “Buffering… reconnecting” + Retry and
+hid/covered the settings gear. Transient statuses are quiet chips now; Retry only
+for hard failures; settings stay on loading/unavailable screens; episode-transition
+overlay no longer blocks player chrome.
+
 ## Faster / reliable stream startup — 2026-07-19
 
 VAPlayer API resolve was often fine (~0.2–0.4s); perceived slowness was player-side:

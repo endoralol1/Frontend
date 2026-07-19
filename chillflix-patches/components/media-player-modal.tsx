@@ -39,6 +39,7 @@ import {
 import {
   getTitleUnavailableMessage,
   pickUserFacingPlaybackWarning,
+  shouldShowPlaybackRetryButton,
 } from "@/lib/playback-user-messages"
 import { unlockScreenOrientation } from "@/lib/player-orientation"
 import { resolveProviderUserLabel } from "@/lib/provider-display"
@@ -93,6 +94,7 @@ import { PlayerEngineDropdown } from "@/components/player-engine-dropdown"
 import { MediaPlayer } from "@/components/player/MediaPlayer"
 import { MobilePlayerLandscapeShell } from "@/components/player/MobilePlayerLandscapeShell"
 import { PlaybackSourceRetryPanel } from "@/components/player/PlaybackSourceRetryPanel"
+import { PlayerSettings } from "@/components/player/PlayerSettings"
 import { SourceLoadingOverlay } from "@/components/player/SourceLoadingOverlay"
 import { FullscreenPortalContext } from "@/components/player/fullscreen-portal-context"
 import {
@@ -2171,38 +2173,85 @@ const quietStallAttemptRef = useRef(0)
                 playbackStarted={Boolean(playerSource)}
                 onRefetchSources={refetchSources}
                 sourceStatusMessage={sourceStatusMessage}
+                currentSourceId={selectedSourceId || resolvedSourceId}
+                onSelectSource={handleSelectSource}
+                onRequestProvider={handleRequestProvider}
+                unavailableProviders={unavailableProviders}
+                hiddenProviderIds={hiddenProviderIds}
+                showRealProviderNames={showRealProviderNames}
               />
             ) : (
-              <div className="flex h-full flex-col items-center justify-center gap-3 rounded-md border border-white/10 bg-black/70 px-6 py-8 text-center text-sm text-white/70">
+              <div className="relative flex h-full flex-col items-center justify-center gap-3 rounded-md border border-white/10 bg-black/70 px-6 py-8 text-center text-sm text-white/70">
+                <div className="absolute right-3 top-3 z-30">
+                  <PlayerSettings
+                    playbackRate={1}
+                    onPlaybackRateChange={() => undefined}
+                    qualities={[]}
+                    currentQuality={-1}
+                    onQualityChange={() => undefined}
+                    sources={playbackOptions.map((option) => ({
+                      id: option.id,
+                      label: option.label,
+                      provider: option.provider,
+                      providerId: option.providerId,
+                      quality: option.quality,
+                    }))}
+                    currentSourceId={selectedSourceId || resolvedSourceId}
+                    onSelectSource={handleSelectSource}
+                    onRequestProvider={handleRequestProvider}
+                    sourcesLoadingMore={sourcesLoadingMore}
+                    sourceStatusMessage={
+                      warningMessage ?? sourceStatusMessage
+                    }
+                    onRefetchSources={refetchSources}
+                    unavailableProviders={unavailableProviders}
+                    sourceHealth={sourceHealth}
+                    activeTestingProviderId={activeTestingProviderId}
+                    showRealProviderNames={showRealProviderNames}
+                    hiddenProviderIds={hiddenProviderIds}
+                  />
+                </div>
                 <p>{getTitleUnavailableMessage(t)}</p>
                 <PlaybackSourceRetryPanel
                   message={warningMessage ?? sourceStatusMessage}
                   onRetry={refetchSources}
                   messageClassName="text-white/50"
+                  showRetryButton={shouldShowPlaybackRetryButton(
+                    warningMessage ?? sourceStatusMessage
+                  )}
                 />
+                <p className="text-[11px] text-white/45">
+                  {t("player.status.couldNotLoad")}
+                </p>
               </div>
             )}
+            {/* Episode/source transitions: never cover the player chrome — settings
+                must stay tappable. MediaPlayer already shows its own loading UI. */}
             {showSourceLoading && playerSource && isOpen ? (
-              <div className="absolute inset-0 z-20">
-                <SourceLoadingOverlay
-                  active={showSourceLoading}
-                  sources={sources}
-                  diagnostics={diagnostics}
-                  cineproOnly={isVidLinkOnlySources(sources)}
-                  activeTestingProviderId={activeTestingProviderId}
-                  sourceHealth={sourceHealth}
-                  playbackOptions={playbackOptions}
-                  sourcesLoadingMore={sourcesLoadingMore}
-                  sourcesFetching={
-                    sourceLoading ||
-                    (isScanningProviders && sources.length === 0)
-                  }
-                  scanFailedProviderIds={scanFailedProviderIds}
-                  playbackStarted
-                  onRefetchSources={refetchSources}
-                  sourceStatusMessage={sourceStatusMessage}
-                />
-              </div>
+              <SourceLoadingOverlay
+                active={showSourceLoading}
+                sources={sources}
+                diagnostics={diagnostics}
+                cineproOnly={isVidLinkOnlySources(sources)}
+                activeTestingProviderId={activeTestingProviderId}
+                sourceHealth={sourceHealth}
+                playbackOptions={playbackOptions}
+                sourcesLoadingMore={sourcesLoadingMore}
+                sourcesFetching={
+                  sourceLoading ||
+                  (isScanningProviders && sources.length === 0)
+                }
+                scanFailedProviderIds={scanFailedProviderIds}
+                playbackStarted
+                onRefetchSources={refetchSources}
+                sourceStatusMessage={sourceStatusMessage}
+                currentSourceId={selectedSourceId || resolvedSourceId}
+                onSelectSource={handleSelectSource}
+                onRequestProvider={handleRequestProvider}
+                unavailableProviders={unavailableProviders}
+                hiddenProviderIds={hiddenProviderIds}
+                showRealProviderNames={showRealProviderNames}
+              />
             ) : null}
           </div>
         }
