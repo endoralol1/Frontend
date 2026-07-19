@@ -149,7 +149,7 @@ async function getUserVotesForPolls(pollIds: string[], userId?: string) {
 }
 
 
-const POLL_VOTERS_PREVIEW_LIMIT = 40
+const POLL_VOTERS_PREVIEW_LIMIT = 12
 
 async function getVotersForPolls(pollIds: string[]) {
     const votersByOption = new Map<string, ChatPollVoter[]>()

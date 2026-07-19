@@ -14,7 +14,7 @@ type ChatPollCardProps = {
     onVote: (optionIds: string[]) => void
 }
 
-const MAX_VISIBLE_VOTERS = 7
+const MAX_VISIBLE_VOTERS = 3
 
 function initials(label: string) {
     const parts = label.trim().split(/\s+/).filter(Boolean)
@@ -62,19 +62,13 @@ function OptionVoters({ voters, voteCount }: { voters: ChatPollVoter[]; voteCoun
     const list = Array.isArray(voters) ? voters : []
     const visible = list.slice(0, MAX_VISIBLE_VOTERS)
     const remaining = Math.max(voteCount - visible.length, 0)
-    const namePreview = list
-        .slice(0, 4)
+    const namesTitle = list
         .map((voter) => voter.name || voter.username)
-        .filter(Boolean)
-    const namesTitle = [
-        ...list.map((voter) => voter.name || voter.username),
-        remaining > 0 && list.length >= MAX_VISIBLE_VOTERS ? `+${remaining} more` : null,
-    ]
         .filter(Boolean)
         .join(", ")
 
     return (
-        <div className="relative mt-1.5 flex min-w-0 items-center gap-2" title={namesTitle}>
+        <div className="relative mt-1.5 flex min-w-0 items-center gap-1.5" title={namesTitle || undefined}>
             {visible.length > 0 ? (
                 <div className="flex shrink-0 -space-x-1.5">
                     {visible.map((voter) => (
@@ -82,16 +76,11 @@ function OptionVoters({ voters, voteCount }: { voters: ChatPollVoter[]; voteCoun
                     ))}
                 </div>
             ) : null}
-            <p className="min-w-0 truncate text-[10px] leading-tight text-muted-foreground">
-                {namePreview.length > 0 ? (
-                    <>
-                        {namePreview.join(", ")}
-                        {voteCount > namePreview.length ? ` +${voteCount - namePreview.length}` : ""}
-                    </>
-                ) : (
-                    <>{voteCount} vote{voteCount === 1 ? "" : "s"}</>
-                )}
-            </p>
+            {remaining > 0 ? (
+                <span className="shrink-0 rounded-full bg-muted/80 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground ring-1 ring-border/50">
+                    +{remaining}
+                </span>
+            ) : null}
         </div>
     )
 }
