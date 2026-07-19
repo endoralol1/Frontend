@@ -1280,16 +1280,40 @@ export function useMediaSources({
             forceFresh: true,
           })
 
+          // Track primary early so an empty/404 (common for VAPlayer) unlocks
+          // other providers immediately instead of burning the full head-start.
+          let primaryEarlyResult: boolean | undefined
+          void primaryPromise
+            .then((found) => {
+              const ok =
+                found ||
+                sourcesIncludeProvider(sourcesRef.current, primaryProviderId)
+              primaryEarlyResult = ok
+              if (ok) {
+                clearProviderFailed(primaryProviderId)
+              } else {
+                markProviderFailed(primaryProviderId)
+              }
+            })
+            .catch(() => {
+              primaryEarlyResult = false
+              markProviderFailed(primaryProviderId)
+            })
+
           const headStartDeadline = Date.now() + PRIMARY_PROVIDER_HEAD_START_MS
           while (Date.now() < headStartDeadline) {
             if (cancelled) return
+            // Primary miss → test others now (do not wait out the head-start).
+            if (primaryEarlyResult === false) {
+              break
+            }
             if (
-              sourcesIncludeProvider(sourcesRef.current, primaryProviderId) &&
+              primaryEarlyResult === true &&
               hasSecondaryProviderSource()
             ) {
               break
             }
-            await sleep(150)
+            await sleep(100)
           }
 
           if (cancelled) return

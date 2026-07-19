@@ -1,5 +1,10 @@
 # Chillflix patches (deployed on VPS)
 
+## Empty primary → test others immediately — 2026-07-19
+
+When #1 (VAPlayer) returns no streams / 404, mark it failed right away and start
+scanning the rest of the enabled list instead of waiting out the full head-start.
+
 ## VAPlayer “invalid JSON” / No sources — 2026-07-19
 
 **Verdict: mostly VAPlayer catalog, plus our misleading error + long empty cache.**
