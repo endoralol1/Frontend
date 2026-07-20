@@ -863,37 +863,42 @@
     );
   }
 
-  /* Soft poster corners — radius + clip-path + grow on SAME node so hover
-     can’t flatten corners. origin-bottom grows UP, not into titles below. */
+  /* Outer root scales (grows UP). Inner shell only clips to a round rect —
+     never transform the shell or Chrome flattens corners. */
+  .media-card-root {
+    transform-origin: bottom center;
+    transform: translateZ(0);
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+
+  .group:hover .media-card-root {
+    transform: translate3d(0, 0, 0) scale(1.07);
+  }
+
   .media-card-shell {
     width: 100%;
     height: 100%;
     overflow: hidden;
     border-radius: 1.25rem;
-    clip-path: inset(0 round 1.25rem);
-    -webkit-clip-path: inset(0 round 1.25rem);
     background: #000;
-    transform-origin: bottom center;
-    transform: translateZ(0);
-    transition:
-      transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
-      box-shadow 280ms ease;
-    will-change: transform;
+    /* Keep rounding under parent transforms (WebKit/Blink) */
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
+    mask-image: radial-gradient(white, black);
     box-shadow:
       0 0 0 1px rgba(255, 255, 255, 0.08),
       0 8px 22px rgba(0, 0, 0, 0.28);
+    transition: box-shadow 280ms ease;
   }
 
   .group:hover .media-card-shell {
-    /* Grow upward / outward — bottom edge stays put so text below isn’t covered */
-    transform: translate3d(0, 0, 0) scale(1.07);
     box-shadow:
       0 0 0 1px hsl(var(--primary) / 0.2),
       0 18px 40px rgba(0, 0, 0, 0.45);
   }
 
   .media-card-shell img {
-    border-radius: inherit;
+    border-radius: 1.25rem;
   }
 
   .media-card-title {
@@ -943,6 +948,8 @@
     flex-shrink: 0;
     position: relative;
     z-index: 1;
+    content-visibility: visible;
+    contain: none;
   }
 
   .home-carousel-item:hover {
@@ -1153,16 +1160,12 @@
   background: rgba(255, 255, 255, 0.5);
 }
 
-/* Low-power and TV rendering safeguards. */
+/* Do NOT use content-visibility on carousel cards — it contain:paint-clips
+   hover scale into a sharp rectangle. */
 @supports (content-visibility: auto) {
   .home-page .scroll-reveal {
     content-visibility: auto;
     contain-intrinsic-size: auto 360px;
-  }
-
-  .home-carousel-item {
-    content-visibility: auto;
-    contain-intrinsic-size: 220px 330px;
   }
 }
 
@@ -1191,18 +1194,19 @@ html[data-low-end-device="true"] .home-page .scroll-reveal {
 }
 
 /* Keep a cheap hover grow on cards even in low-end mode (phones / desktop-site). */
-html[data-low-end-device="true"] .home-page .media-card-shell {
-  transition:
-    transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 280ms ease !important;
+html[data-low-end-device="true"] .home-page .media-card-root {
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1) !important;
   will-change: transform !important;
+}
+
+html[data-low-end-device="true"] .home-page .group:hover .media-card-root {
+  transform: translate3d(0, 0, 0) scale(1.07) !important;
+}
+
+html[data-low-end-device="true"] .home-page .media-card-shell {
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.08),
     0 8px 22px rgba(0, 0, 0, 0.28) !important;
-}
-
-html[data-low-end-device="true"] .home-page .group:hover .media-card-shell {
-  transform: translate3d(0, 0, 0) scale(1.07) !important;
 }
 
 html[data-low-end-device="true"] .home-page :focus-visible {

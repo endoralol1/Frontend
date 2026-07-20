@@ -3,8 +3,9 @@ import { ComponentProps } from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Hover grows UP from the bottom so titles under the poster aren’t covered,
- * and scale + radius live on the same shell (clip-path) so corners stay round.
+ * Scale the outer root; keep radius/overflow on the inner shell (no transform)
+ * so corners stay round. Carousel items must NOT use content-visibility or
+ * the grown card gets clipped into a sharp rectangle.
  */
 const Root: React.FC<ComponentProps<"div">> = ({
   className,
