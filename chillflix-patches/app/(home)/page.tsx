@@ -66,7 +66,7 @@ export default async function Home() {
   const heroMovies = await fetchHeroMovies(trendingMovies, locale)
 
   return (
-    <section className="home-page space-y-8 pt-0">
+    <section className="home-page pt-0">
       <JsonLd data={buildWebsiteJsonLd()} />
       <JsonLd data={buildOrganizationJsonLd()} />
       <h1 className="sr-only">
@@ -81,7 +81,7 @@ export default async function Home() {
         />
       </div>
 
-      <div className="space-y-8">
+      <div className="mt-8 space-y-8">
         {continueWatchingEnabled ? (
           <ScrollReveal>
             <DeferredContinueWatching />
