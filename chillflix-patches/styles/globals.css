@@ -298,71 +298,86 @@
 
   .ambient-band {
     position: absolute;
-    inset: -20%;
-    width: 140%;
-    height: 140%;
-    filter: blur(56px);
+    inset: -15% -25%;
+    width: 150%;
+    height: 130%;
+    /* Less blur so shallow cloud sheets actually read as clouds. */
+    filter: blur(28px);
     will-change: transform;
     transform: translateZ(0);
   }
 
   .ambient-band-a {
-    opacity: 0.5;
+    opacity: 0.85;
     background:
       radial-gradient(
-        ellipse 52% 22% at 22% 24%,
-        rgba(120, 138, 168, 0.28),
-        transparent 72%
-      ),
-      radial-gradient(
-        ellipse 46% 18% at 74% 16%,
-        rgba(98, 116, 146, 0.24),
+        ellipse 58% 16% at 20% 22%,
+        rgba(168, 184, 210, 0.55),
         transparent 70%
       ),
       radial-gradient(
-        ellipse 64% 24% at 48% 78%,
-        rgba(70, 86, 112, 0.22),
-        transparent 74%
+        ellipse 50% 14% at 72% 18%,
+        rgba(140, 158, 188, 0.48),
+        transparent 68%
+      ),
+      radial-gradient(
+        ellipse 70% 18% at 48% 72%,
+        rgba(110, 128, 158, 0.42),
+        transparent 72%
+      ),
+      radial-gradient(
+        ellipse 40% 12% at 88% 48%,
+        rgba(150, 166, 192, 0.35),
+        transparent 68%
       );
     animation: ambient-drift-a 22s ease-in-out infinite alternate;
   }
 
   .ambient-band-b {
-    opacity: 0.42;
+    opacity: 0.7;
     background:
       radial-gradient(
-        ellipse 48% 18% at 68% 40%,
-        rgba(140, 156, 184, 0.2),
-        transparent 72%
-      ),
-      radial-gradient(
-        ellipse 56% 20% at 28% 58%,
-        rgba(88, 104, 132, 0.18),
+        ellipse 54% 13% at 64% 38%,
+        rgba(186, 198, 220, 0.42),
         transparent 70%
       ),
       radial-gradient(
-        ellipse 40% 16% at 52% 8%,
-        rgba(160, 174, 198, 0.14),
+        ellipse 62% 15% at 26% 55%,
+        rgba(130, 148, 176, 0.38),
+        transparent 68%
+      ),
+      radial-gradient(
+        ellipse 44% 11% at 50% 10%,
+        rgba(200, 210, 228, 0.32),
+        transparent 66%
+      ),
+      radial-gradient(
+        ellipse 36% 10% at 12% 80%,
+        rgba(120, 138, 168, 0.3),
         transparent 68%
       );
     animation: ambient-drift-b 28s ease-in-out infinite alternate;
   }
 
   .ambient-band-c {
-    opacity: 0.32;
+    opacity: 0.55;
     background:
       radial-gradient(
-        ellipse 36% 14% at 40% 32%,
-        rgba(180, 192, 210, 0.12),
-        transparent 70%
+        ellipse 42% 10% at 38% 30%,
+        rgba(210, 220, 235, 0.28),
+        transparent 68%
       ),
       radial-gradient(
-        ellipse 30% 12% at 82% 62%,
-        rgba(150, 164, 186, 0.1),
-        transparent 68%
+        ellipse 34% 9% at 80% 60%,
+        rgba(180, 194, 216, 0.24),
+        transparent 66%
+      ),
+      radial-gradient(
+        ellipse 48% 11% at 58% 88%,
+        rgba(150, 168, 194, 0.22),
+        transparent 70%
       );
     animation: ambient-drift-c 18s ease-in-out infinite alternate;
-    mix-blend-mode: soft-light;
   }
 
   .ambient-grain {
@@ -1377,7 +1392,7 @@ html[data-low-end-device="true"] .hero-carousel-progress {
 }
 
 html[data-low-end-device="true"] .ambient-band {
-  filter: blur(28px) !important;
+  filter: blur(18px) !important;
 }
 
 html[data-low-end-device="true"] .home-page *,

@@ -258,6 +258,9 @@ export const StarfieldBackground = () => {
       <div
         className={["ambient-wash", staticClass].filter(Boolean).join(" ")}
       />
+      <div className="ambient-grain" />
+      <div className="ambient-vignette" />
+      {/* Clouds above vignette so they stay visible. */}
       <div
         className={["ambient-band ambient-band-a", staticClass]
           .filter(Boolean)
@@ -273,9 +276,7 @@ export const StarfieldBackground = () => {
           .filter(Boolean)
           .join(" ")}
       />
-      <div className="ambient-grain" />
-      <div className="ambient-vignette" />
-      {/* Canvas on top so lightning isn't crushed by the vignette. */}
+      {/* Canvas on top so lightning/rain stay sharp. */}
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
     </div>
   )
