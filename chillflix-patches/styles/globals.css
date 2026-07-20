@@ -929,13 +929,21 @@
 
   .home-carousel-content {
     @apply !ml-0 gap-2;
+    overflow: visible !important;
   }
 
-  /* Room so hover scale isn’t clipped on left/right (sharp “cut” corners). */
-  .overflow-hidden:has(> .home-carousel-content) {
-    padding-inline: 1.75rem;
-    margin-inline: -1.75rem;
-    padding-top: 1.75rem;
+  /*
+   * Allow hover scale to paint outside the track on LEFT/RIGHT/TOP.
+   * overflow:hidden cannot do this; overflow:clip + overflow-clip-margin can.
+   */
+  .home-carousel-viewport,
+  .overflow-hidden:has(> .home-carousel-content),
+  .overflow-clip:has(> .home-carousel-content) {
+    overflow: clip !important;
+    overflow-clip-margin: 3rem;
+    padding-inline: 2.25rem;
+    margin-inline: -2.25rem;
+    padding-top: 2rem;
     padding-bottom: 0.85rem;
     margin-top: -1rem;
   }
@@ -948,12 +956,13 @@
     flex-shrink: 0;
     position: relative;
     z-index: 1;
+    overflow: visible !important;
     content-visibility: visible;
     contain: none;
   }
 
   .home-carousel-item:hover {
-    z-index: 30;
+    z-index: 40;
   }
 
   @media (min-width: 768px) {
