@@ -640,7 +640,7 @@
   .home-hero-bleed {
     width: 100%;
     max-width: 100%;
-    margin-top: 0;
+    margin-top: 0 !important;
   }
 
   .home-hero-bleed > div,
