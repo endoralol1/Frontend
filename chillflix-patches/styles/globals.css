@@ -262,9 +262,120 @@
     animation: stars-drift-3 250s linear infinite, twinkle-3 4.5s ease-in-out infinite;
   }
 
+  /* Night-storm ambience over the black sky (CSS-only, paused on playback). */
+  .site-ambient-sky .stars-layer-1 {
+    opacity: 0.55;
+  }
+
+  .site-ambient-sky .stars-layer-2 {
+    opacity: 0.45;
+  }
+
+  .site-ambient-sky .stars-layer-3 {
+    opacity: 0.4;
+  }
+
+  .storm-base {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 90% 70% at 50% -10%, rgba(42, 56, 74, 0.45), transparent 58%),
+      radial-gradient(ellipse 70% 55% at 15% 85%, rgba(18, 28, 40, 0.55), transparent 60%),
+      radial-gradient(ellipse 65% 50% at 90% 70%, rgba(22, 32, 46, 0.4), transparent 55%),
+      linear-gradient(180deg, #07090d 0%, #050608 42%, #040507 100%);
+  }
+
+  .storm-clouds {
+    position: absolute;
+    inset: -35%;
+    width: 170%;
+    height: 170%;
+    will-change: transform, opacity;
+  }
+
+  .storm-clouds-a {
+    opacity: 0.7;
+    background:
+      radial-gradient(ellipse 55% 38% at 18% 28%, rgba(36, 48, 64, 0.75), transparent 70%),
+      radial-gradient(ellipse 48% 34% at 72% 18%, rgba(24, 34, 48, 0.8), transparent 68%),
+      radial-gradient(ellipse 62% 42% at 48% 78%, rgba(28, 40, 56, 0.65), transparent 72%);
+    animation: storm-drift-a 52s ease-in-out infinite alternate;
+  }
+
+  .storm-clouds-b {
+    opacity: 0.55;
+    background:
+      radial-gradient(ellipse 50% 36% at 82% 42%, rgba(20, 30, 44, 0.7), transparent 70%),
+      radial-gradient(ellipse 58% 40% at 28% 62%, rgba(30, 42, 58, 0.55), transparent 68%),
+      radial-gradient(ellipse 44% 30% at 55% 12%, rgba(16, 24, 36, 0.75), transparent 65%);
+    animation: storm-drift-b 68s ease-in-out infinite alternate;
+  }
+
+  .storm-mist {
+    position: absolute;
+    inset: -20%;
+    opacity: 0.28;
+    background:
+      linear-gradient(
+        115deg,
+        transparent 0%,
+        rgba(150, 170, 195, 0.06) 28%,
+        transparent 48%,
+        rgba(120, 145, 170, 0.05) 72%,
+        transparent 100%
+      );
+    background-size: 220% 220%;
+    animation: storm-mist-drift 36s ease-in-out infinite alternate;
+    mix-blend-mode: soft-light;
+  }
+
+  .storm-rain {
+    position: absolute;
+    inset: -15%;
+    opacity: 0.16;
+    background-image: repeating-linear-gradient(
+      108deg,
+      transparent 0,
+      transparent 2px,
+      rgba(186, 204, 224, 0.07) 2px,
+      rgba(186, 204, 224, 0.07) 3px
+    );
+    background-size: 18px 36px;
+    animation: storm-rain-fall 0.85s linear infinite;
+    mix-blend-mode: screen;
+  }
+
+  .storm-flash {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background:
+      radial-gradient(ellipse 70% 55% at 62% 18%, rgba(210, 225, 245, 0.28), transparent 60%),
+      radial-gradient(ellipse 50% 40% at 30% 35%, rgba(180, 200, 230, 0.12), transparent 55%);
+    animation: storm-flash 16s ease-in-out infinite;
+    mix-blend-mode: screen;
+  }
+
+  .storm-vignette {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 75% 70% at 50% 40%, transparent 35%, rgba(0, 0, 0, 0.55) 100%),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, transparent 18%, transparent 72%, rgba(0, 0, 0, 0.45) 100%);
+  }
+
+  .storm-layer-static {
+    animation: none !important;
+  }
+
   html.playback-active .stars-layer-1,
   html.playback-active .stars-layer-2,
-  html.playback-active .stars-layer-3 {
+  html.playback-active .stars-layer-3,
+  html.playback-active .storm-clouds-a,
+  html.playback-active .storm-clouds-b,
+  html.playback-active .storm-mist,
+  html.playback-active .storm-rain,
+  html.playback-active .storm-flash {
     animation-play-state: paused !important;
   }
 
@@ -275,8 +386,77 @@
   @media (prefers-reduced-motion: reduce) {
     .stars-layer-1,
     .stars-layer-2,
-    .stars-layer-3 {
+    .stars-layer-3,
+    .storm-clouds-a,
+    .storm-clouds-b,
+    .storm-mist,
+    .storm-rain,
+    .storm-flash {
       animation: none !important;
+    }
+  }
+
+  @keyframes storm-drift-a {
+    from {
+      transform: translate3d(-2%, 0, 0) scale(1);
+    }
+
+    to {
+      transform: translate3d(3%, 2%, 0) scale(1.04);
+    }
+  }
+
+  @keyframes storm-drift-b {
+    from {
+      transform: translate3d(2%, 1%, 0) scale(1.02);
+    }
+
+    to {
+      transform: translate3d(-3%, -1%, 0) scale(1);
+    }
+  }
+
+  @keyframes storm-mist-drift {
+    from {
+      background-position: 0% 40%;
+    }
+
+    to {
+      background-position: 100% 55%;
+    }
+  }
+
+  @keyframes storm-rain-fall {
+    from {
+      transform: translate3d(0, -36px, 0);
+    }
+
+    to {
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  @keyframes storm-flash {
+    0%,
+    88%,
+    100% {
+      opacity: 0;
+    }
+
+    89% {
+      opacity: 0.1;
+    }
+
+    90% {
+      opacity: 0.02;
+    }
+
+    91.5% {
+      opacity: 0.22;
+    }
+
+    93% {
+      opacity: 0;
     }
   }
 
@@ -1191,7 +1371,11 @@
 }
 
 html[data-low-end-device="true"] .site-grid-background,
-html[data-low-end-device="true"] .hero-carousel-progress {
+html[data-low-end-device="true"] .hero-carousel-progress,
+html[data-low-end-device="true"] .storm-clouds,
+html[data-low-end-device="true"] .storm-mist,
+html[data-low-end-device="true"] .storm-rain,
+html[data-low-end-device="true"] .storm-flash {
   display: none !important;
 }
 
