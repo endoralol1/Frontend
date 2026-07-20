@@ -262,106 +262,70 @@
     animation: stars-drift-3 250s linear infinite, twinkle-3 4.5s ease-in-out infinite;
   }
 
-  /* Night-storm ambience over the black sky (CSS-only, paused on playback). */
+  /* Night-storm ambience — clearly moving clouds + canvas rain/lightning. */
   .site-ambient-sky .stars-layer-1 {
-    opacity: 0.55;
+    opacity: 0.35;
   }
 
   .site-ambient-sky .stars-layer-2 {
-    opacity: 0.45;
+    opacity: 0.28;
   }
 
   .site-ambient-sky .stars-layer-3 {
-    opacity: 0.4;
+    opacity: 0.22;
   }
 
   .storm-base {
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(ellipse 90% 70% at 50% -10%, rgba(42, 56, 74, 0.45), transparent 58%),
-      radial-gradient(ellipse 70% 55% at 15% 85%, rgba(18, 28, 40, 0.55), transparent 60%),
-      radial-gradient(ellipse 65% 50% at 90% 70%, rgba(22, 32, 46, 0.4), transparent 55%),
-      linear-gradient(180deg, #07090d 0%, #050608 42%, #040507 100%);
+      radial-gradient(ellipse 100% 75% at 50% -15%, rgba(58, 78, 104, 0.55), transparent 55%),
+      radial-gradient(ellipse 80% 60% at 10% 90%, rgba(24, 38, 56, 0.7), transparent 58%),
+      radial-gradient(ellipse 70% 55% at 95% 65%, rgba(30, 44, 64, 0.55), transparent 52%),
+      linear-gradient(180deg, #0a1018 0%, #06090e 45%, #04060a 100%);
   }
 
   .storm-clouds {
     position: absolute;
-    inset: -35%;
-    width: 170%;
-    height: 170%;
+    inset: -40%;
+    width: 180%;
+    height: 180%;
     will-change: transform, opacity;
   }
 
   .storm-clouds-a {
-    opacity: 0.7;
+    opacity: 0.9;
     background:
-      radial-gradient(ellipse 55% 38% at 18% 28%, rgba(36, 48, 64, 0.75), transparent 70%),
-      radial-gradient(ellipse 48% 34% at 72% 18%, rgba(24, 34, 48, 0.8), transparent 68%),
-      radial-gradient(ellipse 62% 42% at 48% 78%, rgba(28, 40, 56, 0.65), transparent 72%);
-    animation: storm-drift-a 52s ease-in-out infinite alternate;
+      radial-gradient(ellipse 58% 40% at 20% 26%, rgba(48, 64, 86, 0.95), transparent 68%),
+      radial-gradient(ellipse 52% 36% at 70% 16%, rgba(32, 46, 66, 0.92), transparent 66%),
+      radial-gradient(ellipse 70% 48% at 45% 82%, rgba(40, 56, 76, 0.85), transparent 70%);
+    animation: storm-drift-a 22s ease-in-out infinite alternate;
   }
 
   .storm-clouds-b {
+    opacity: 0.78;
+    background:
+      radial-gradient(ellipse 54% 38% at 84% 40%, rgba(26, 40, 58, 0.95), transparent 68%),
+      radial-gradient(ellipse 62% 44% at 26% 60%, rgba(44, 60, 82, 0.8), transparent 66%),
+      radial-gradient(ellipse 46% 32% at 58% 10%, rgba(20, 32, 48, 0.9), transparent 64%);
+    animation: storm-drift-b 28s ease-in-out infinite alternate;
+  }
+
+  .storm-clouds-c {
     opacity: 0.55;
     background:
-      radial-gradient(ellipse 50% 36% at 82% 42%, rgba(20, 30, 44, 0.7), transparent 70%),
-      radial-gradient(ellipse 58% 40% at 28% 62%, rgba(30, 42, 58, 0.55), transparent 68%),
-      radial-gradient(ellipse 44% 30% at 55% 12%, rgba(16, 24, 36, 0.75), transparent 65%);
-    animation: storm-drift-b 68s ease-in-out infinite alternate;
-  }
-
-  .storm-mist {
-    position: absolute;
-    inset: -20%;
-    opacity: 0.28;
-    background:
-      linear-gradient(
-        115deg,
-        transparent 0%,
-        rgba(150, 170, 195, 0.06) 28%,
-        transparent 48%,
-        rgba(120, 145, 170, 0.05) 72%,
-        transparent 100%
-      );
-    background-size: 220% 220%;
-    animation: storm-mist-drift 36s ease-in-out infinite alternate;
+      radial-gradient(ellipse 48% 30% at 40% 35%, rgba(70, 88, 112, 0.45), transparent 70%),
+      radial-gradient(ellipse 40% 28% at 75% 70%, rgba(55, 72, 96, 0.4), transparent 68%);
+    animation: storm-drift-c 18s ease-in-out infinite alternate;
     mix-blend-mode: soft-light;
-  }
-
-  .storm-rain {
-    position: absolute;
-    inset: -15%;
-    opacity: 0.16;
-    background-image: repeating-linear-gradient(
-      108deg,
-      transparent 0,
-      transparent 2px,
-      rgba(186, 204, 224, 0.07) 2px,
-      rgba(186, 204, 224, 0.07) 3px
-    );
-    background-size: 18px 36px;
-    animation: storm-rain-fall 0.85s linear infinite;
-    mix-blend-mode: screen;
-  }
-
-  .storm-flash {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    background:
-      radial-gradient(ellipse 70% 55% at 62% 18%, rgba(210, 225, 245, 0.28), transparent 60%),
-      radial-gradient(ellipse 50% 40% at 30% 35%, rgba(180, 200, 230, 0.12), transparent 55%);
-    animation: storm-flash 16s ease-in-out infinite;
-    mix-blend-mode: screen;
   }
 
   .storm-vignette {
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(ellipse 75% 70% at 50% 40%, transparent 35%, rgba(0, 0, 0, 0.55) 100%),
-      linear-gradient(180deg, rgba(0, 0, 0, 0.2) 0%, transparent 18%, transparent 72%, rgba(0, 0, 0, 0.45) 100%);
+      radial-gradient(ellipse 78% 72% at 50% 42%, transparent 30%, rgba(0, 0, 0, 0.5) 100%),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.25) 0%, transparent 16%, transparent 70%, rgba(0, 0, 0, 0.55) 100%);
   }
 
   .storm-layer-static {
@@ -373,9 +337,7 @@
   html.playback-active .stars-layer-3,
   html.playback-active .storm-clouds-a,
   html.playback-active .storm-clouds-b,
-  html.playback-active .storm-mist,
-  html.playback-active .storm-rain,
-  html.playback-active .storm-flash {
+  html.playback-active .storm-clouds-c {
     animation-play-state: paused !important;
   }
 
@@ -389,74 +351,40 @@
     .stars-layer-3,
     .storm-clouds-a,
     .storm-clouds-b,
-    .storm-mist,
-    .storm-rain,
-    .storm-flash {
+    .storm-clouds-c {
       animation: none !important;
     }
   }
 
   @keyframes storm-drift-a {
     from {
-      transform: translate3d(-2%, 0, 0) scale(1);
+      transform: translate3d(-6%, -2%, 0) scale(1);
     }
 
     to {
-      transform: translate3d(3%, 2%, 0) scale(1.04);
+      transform: translate3d(7%, 4%, 0) scale(1.08);
     }
   }
 
   @keyframes storm-drift-b {
     from {
-      transform: translate3d(2%, 1%, 0) scale(1.02);
+      transform: translate3d(5%, 2%, 0) scale(1.05);
     }
 
     to {
-      transform: translate3d(-3%, -1%, 0) scale(1);
+      transform: translate3d(-8%, -3%, 0) scale(1);
     }
   }
 
-  @keyframes storm-mist-drift {
+  @keyframes storm-drift-c {
     from {
-      background-position: 0% 40%;
+      transform: translate3d(-4%, 3%, 0);
+      opacity: 0.4;
     }
 
     to {
-      background-position: 100% 55%;
-    }
-  }
-
-  @keyframes storm-rain-fall {
-    from {
-      transform: translate3d(0, -36px, 0);
-    }
-
-    to {
-      transform: translate3d(0, 0, 0);
-    }
-  }
-
-  @keyframes storm-flash {
-    0%,
-    88%,
-    100% {
-      opacity: 0;
-    }
-
-    89% {
-      opacity: 0.1;
-    }
-
-    90% {
-      opacity: 0.02;
-    }
-
-    91.5% {
-      opacity: 0.22;
-    }
-
-    93% {
-      opacity: 0;
+      transform: translate3d(5%, -2%, 0);
+      opacity: 0.65;
     }
   }
 
@@ -1371,11 +1299,7 @@
 }
 
 html[data-low-end-device="true"] .site-grid-background,
-html[data-low-end-device="true"] .hero-carousel-progress,
-html[data-low-end-device="true"] .storm-clouds,
-html[data-low-end-device="true"] .storm-mist,
-html[data-low-end-device="true"] .storm-rain,
-html[data-low-end-device="true"] .storm-flash {
+html[data-low-end-device="true"] .hero-carousel-progress {
   display: none !important;
 }
 
