@@ -872,7 +872,7 @@
   }
 
   .group:has(.media-card-shell):hover {
-    transform: translate3d(0, 0, 0) scale(1.025);
+    transform: translate3d(0, 0, 0) scale(1.015);
     z-index: 40;
   }
 
@@ -1221,7 +1221,7 @@ html[data-low-end-device="true"] .home-page .group:has(.media-card-shell) {
 }
 
 html[data-low-end-device="true"] .home-page .group:has(.media-card-shell):hover {
-  transform: translate3d(0, 0, 0) scale(1.025) !important;
+  transform: translate3d(0, 0, 0) scale(1.015) !important;
 }
 
 html[data-low-end-device="true"] .home-page .media-card-shell {
