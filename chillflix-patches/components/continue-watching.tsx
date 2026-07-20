@@ -282,10 +282,10 @@ export function ContinueWatching({
                                             <Button
                                                 size="icon"
                                                 variant="ghost"
-                                                className="absolute right-2 top-2 z-10 size-7 rounded-full bg-black/60 text-white hover:bg-black/80"
+                                                className="absolute right-2 top-2 z-10 h-6 w-6 rounded-full bg-black/60 p-0 text-white hover:bg-black/80 hover:text-white"
                                                 onClick={(e) => removeItem(item, e)}
                                             >
-                                                <X className="size-3.5" />
+                                                <X className="size-3" />
                                             </Button>
                                           </div>
                                         </div>
