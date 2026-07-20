@@ -269,15 +269,14 @@ export function ContinueWatching({
                                             "media-card-root absolute inset-0 origin-center " +
                                             "transform-gpu will-change-transform " +
                                             "transition-transform duration-300 ease-out " +
-                                            "group-hover:z-10 group-hover:scale-[1.06]"
+                                            "group-hover:z-10 group-hover:scale-[1.08]"
                                           }
                                         >
-                                          <div className="size-full overflow-hidden rounded-2xl bg-black shadow-[0_2px_8px_rgba(0,0,0,0.25)] ring-1 ring-white/[0.08]">
+                                          <div className="media-card-shell relative">
                                             <MediaPoster
                                               image={item.poster}
                                               alt={item.title}
                                               priority={index < 4}
-                                              className="rounded-2xl"
                                             />
 
                                             <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/20">

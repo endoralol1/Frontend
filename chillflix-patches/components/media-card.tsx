@@ -3,12 +3,9 @@ import { ComponentProps } from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Hover: same poster shape, just a little bigger.
- * Scale is on an outer wrapper; rounded corners + overflow stay on an
- * inner shell so transforms don’t flatten the radius into sharp edges.
- *
- * Uses group-hover at all breakpoints (not md-only) so phone “Desktop site”
- * mode still grows on hover/tap when the viewport is < 768px.
+ * Same poster shape, softer corners, slight grow on hover.
+ * Scale wrapper is separate from the rounded overflow shell so corners
+ * stay curved while the card gets bigger.
  */
 const Root: React.FC<ComponentProps<"div">> = ({
   className,
@@ -22,21 +19,10 @@ const Root: React.FC<ComponentProps<"div">> = ({
           "media-card-root absolute inset-0 origin-center",
           "transform-gpu will-change-transform",
           "transition-transform duration-300 ease-out",
-          "group-hover:z-10 group-hover:scale-[1.06]"
+          "group-hover:z-10 group-hover:scale-[1.08]"
         )}
       >
-        <div
-          className={cn(
-            "size-full overflow-hidden rounded-2xl",
-            "ring-1 ring-white/[0.08]",
-            "shadow-[0_8px_22px_rgba(0,0,0,0.28)]",
-            "transition-[box-shadow,ring-color] duration-300 ease-out",
-            "group-hover:shadow-[0_16px_36px_rgba(0,0,0,0.42)]",
-            "group-hover:ring-primary/20"
-          )}
-        >
-          {children}
-        </div>
+        <div className="media-card-shell">{children}</div>
       </div>
     </div>
   )
@@ -55,7 +41,7 @@ const Content: React.FC<ComponentProps<"div">> = ({
       )}
       {...props}
     >
-      <div className="pointer-events-auto w-full rounded-b-2xl border-t border-white/[0.07] bg-[rgb(23_23_27/28%)] px-2.5 py-2 md:px-3 md:py-2.5">
+      <div className="pointer-events-auto w-full rounded-b-[1.25rem] border-t border-white/[0.07] bg-[rgb(23_23_27/28%)] px-2.5 py-2 md:px-3 md:py-2.5">
         {children}
       </div>
     </div>
