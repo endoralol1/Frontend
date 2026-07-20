@@ -734,7 +734,7 @@
   }
 
   .home-hero-play-btn {
-    @apply inline-flex h-11 w-full items-center justify-center gap-2 rounded-[5px] border-0 text-[0.86rem] font-bold leading-none shadow-none;
+    @apply inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-[5px] border-0 text-[0.8rem] font-bold leading-none shadow-none md:h-11 md:gap-2 md:text-[0.86rem];
     background: #ece6d8;
     color: #0a0a0a !important;
     transition: background-color 0.2s ease, transform 0.2s ease;
@@ -752,10 +752,19 @@
   .home-hero-play-btn svg {
     color: #0a0a0a !important;
     fill: #0a0a0a !important;
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+
+  @media (min-width: 768px) {
+    .home-hero-play-btn svg {
+      width: 1rem;
+      height: 1rem;
+    }
   }
 
   .home-hero-details-btn {
-    @apply inline-flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-md border px-4 text-[0.86rem] font-semibold leading-none text-[#ece6d8];
+    @apply inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-md border px-3.5 text-[0.8rem] font-semibold leading-none text-[#ece6d8] md:h-11 md:px-4 md:text-[0.86rem];
     border-color: rgba(236, 230, 216, 0.09);
     background: rgba(236, 230, 216, 0.08);
     transition: background-color 0.2s ease;
