@@ -658,7 +658,7 @@
       max-width: 100vw;
       margin-left: calc(50% - 50vw);
       margin-right: calc(50% - 50vw);
-      margin-top: 0;
+      margin-top: 0 !important;
     }
 
     .home-hero-bleed > div,
@@ -673,6 +673,8 @@
 
   @media (min-width: 768px) {
     .home-hero-bleed {
+      /* Restore desktop offset against shell padding */
+      margin-top: -0.875rem !important;
       /* A hair wider than the card track, still inside the page shell */
       width: calc(100% + 0.75rem);
       max-width: none;
