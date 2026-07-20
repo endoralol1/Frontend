@@ -930,19 +930,21 @@
   .home-carousel-content {
     @apply !ml-0 gap-2;
     overflow: visible !important;
+    /* Keep first/last cards inset so hover isn’t flush against the clip edge */
+    padding-inline: 0.35rem;
   }
 
   /*
-   * Allow hover scale to paint outside the track on LEFT/RIGHT/TOP.
-   * overflow:hidden cannot do this; overflow:clip + overflow-clip-margin can.
+   * Allow hover scale to paint outside the track.
+   * overflow:hidden cannot; overflow:clip + overflow-clip-margin can.
    */
   .home-carousel-viewport,
   .overflow-hidden:has(> .home-carousel-content),
   .overflow-clip:has(> .home-carousel-content) {
     overflow: clip !important;
-    overflow-clip-margin: 3rem;
-    padding-inline: 2.25rem;
-    margin-inline: -2.25rem;
+    overflow-clip-margin: 4rem;
+    padding-inline: 2.5rem;
+    margin-inline: -2.5rem;
     padding-top: 2rem;
     padding-bottom: 0.85rem;
     margin-top: -1rem;
@@ -963,6 +965,16 @@
 
   .home-carousel-item:hover {
     z-index: 40;
+  }
+
+  /* First card: grow right/up only — left edge stays put (no left cut) */
+  .home-carousel-item:first-child .group:has(.media-card-shell) {
+    transform-origin: bottom left;
+  }
+
+  /* Last card: grow left/up only — right edge stays put */
+  .home-carousel-item:last-child .group:has(.media-card-shell) {
+    transform-origin: bottom right;
   }
 
   @media (min-width: 768px) {
