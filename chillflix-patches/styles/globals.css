@@ -262,9 +262,9 @@
     animation: stars-drift-3 250s linear infinite, twinkle-3 4.5s ease-in-out infinite;
   }
 
-  /* Cinematic night sky — no starfield wallpaper, no grid. */
+  /* Cinematic night sky — deep charcoal, barely cool, matches dark theme. */
   .site-ambient-sky {
-    --ambient-ink: #05070b;
+    --ambient-ink: #030405;
   }
 
   .ambient-void {
@@ -279,20 +279,20 @@
     background:
       radial-gradient(
         ellipse 120% 70% at 50% -18%,
-        rgba(72, 92, 122, 0.28),
+        rgba(28, 32, 38, 0.45),
         transparent 58%
       ),
       radial-gradient(
         ellipse 80% 50% at 0% 100%,
-        rgba(36, 50, 70, 0.4),
+        rgba(14, 16, 20, 0.55),
         transparent 55%
       ),
       radial-gradient(
         ellipse 70% 45% at 100% 78%,
-        rgba(28, 40, 58, 0.38),
+        rgba(12, 14, 18, 0.5),
         transparent 52%
       ),
-      linear-gradient(180deg, #0a0f16 0%, #06090e 48%, #05070b 100%);
+      linear-gradient(180deg, #08090c 0%, #040506 48%, #030405 100%);
     animation: ambient-breathe 16s ease-in-out infinite alternate;
   }
 
@@ -307,21 +307,21 @@
   }
 
   .ambient-band-a {
-    opacity: 0.7;
+    opacity: 0.75;
     background:
       radial-gradient(
         ellipse 48% 30% at 24% 22%,
-        rgba(58, 76, 104, 0.85),
+        rgba(32, 36, 42, 0.9),
         transparent 70%
       ),
       radial-gradient(
         ellipse 42% 26% at 78% 18%,
-        rgba(40, 56, 78, 0.8),
+        rgba(22, 24, 28, 0.88),
         transparent 68%
       ),
       radial-gradient(
         ellipse 60% 34% at 50% 86%,
-        rgba(24, 34, 50, 0.9),
+        rgba(10, 11, 14, 0.95),
         transparent 72%
       );
     animation: ambient-drift-a 18s ease-in-out infinite alternate;
@@ -332,12 +332,12 @@
     background:
       radial-gradient(
         ellipse 44% 28% at 72% 42%,
-        rgba(66, 86, 114, 0.55),
+        rgba(38, 42, 48, 0.45),
         transparent 70%
       ),
       radial-gradient(
         ellipse 52% 32% at 22% 62%,
-        rgba(34, 48, 68, 0.65),
+        rgba(18, 20, 24, 0.6),
         transparent 68%
       );
     animation: ambient-drift-b 24s ease-in-out infinite alternate;

@@ -166,7 +166,7 @@ export const StarfieldBackground = () => {
           }
           if (drop.x > width + 20) drop.x = -10
 
-          ctx.strokeStyle = `rgba(186, 204, 226, ${drop.opacity})`
+          ctx.strokeStyle = `rgba(160, 168, 178, ${drop.opacity * 0.75})`
           ctx.lineWidth = 1.1
           ctx.beginPath()
           ctx.moveTo(drop.x, drop.y)
@@ -190,14 +190,14 @@ export const StarfieldBackground = () => {
           height * 0.45,
           Math.max(width, height) * 0.7
         )
-        bloom.addColorStop(0, `rgba(210, 225, 245, ${flash * 0.75})`)
-        bloom.addColorStop(0.45, `rgba(150, 175, 210, ${flash * 0.28})`)
-        bloom.addColorStop(1, "rgba(150, 175, 210, 0)")
+        bloom.addColorStop(0, `rgba(220, 224, 230, ${flash * 0.55})`)
+        bloom.addColorStop(0.45, `rgba(120, 126, 136, ${flash * 0.2})`)
+        bloom.addColorStop(1, "rgba(120, 126, 136, 0)")
         ctx.fillStyle = bloom
         ctx.fillRect(0, 0, width, height)
 
         // Full-frame lift so the whole page reads the strike.
-        ctx.fillStyle = `rgba(200, 215, 235, ${flash * 0.18})`
+        ctx.fillStyle = `rgba(200, 204, 210, ${flash * 0.12})`
         ctx.fillRect(0, 0, width, height)
       }
 
@@ -208,21 +208,21 @@ export const StarfieldBackground = () => {
         strokePath(
           ctx,
           bolt.points,
-          `rgba(170, 195, 230, ${alpha * 0.35})`,
+          `rgba(170, 176, 186, ${alpha * 0.3})`,
           10
         )
         strokePath(
           ctx,
           bolt.points,
-          `rgba(210, 225, 245, ${alpha * 0.7})`,
+          `rgba(220, 224, 230, ${alpha * 0.65})`,
           3.5
         )
-        strokePath(ctx, bolt.points, `rgba(255, 255, 255, ${alpha})`, 1.4)
+        strokePath(ctx, bolt.points, `rgba(245, 246, 248, ${alpha})`, 1.4)
         for (const branch of bolt.branches) {
           strokePath(
             ctx,
             branch,
-            `rgba(200, 220, 245, ${alpha * 0.55})`,
+            `rgba(200, 206, 214, ${alpha * 0.5})`,
             1.2
           )
         }
