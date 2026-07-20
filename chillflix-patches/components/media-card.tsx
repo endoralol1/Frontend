@@ -3,9 +3,8 @@ import { ComponentProps } from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Scale the outer root; keep radius/overflow on the inner shell (no transform)
- * so corners stay round. Carousel items must NOT use content-visibility or
- * the grown card gets clipped into a sharp rectangle.
+ * Rounded poster shell. Hover scale is applied on the parent `.group`
+ * (see globals.css) so Watch/Resume and library icons move with the card.
  */
 const Root: React.FC<ComponentProps<"div">> = ({
   className,
@@ -14,7 +13,7 @@ const Root: React.FC<ComponentProps<"div">> = ({
 }) => {
   return (
     <div className={cn("relative aspect-poster", className)} {...props}>
-      <div className="media-card-root absolute inset-0 z-0 group-hover:z-20">
+      <div className="media-card-root absolute inset-0">
         <div className="media-card-shell">{children}</div>
       </div>
     </div>
