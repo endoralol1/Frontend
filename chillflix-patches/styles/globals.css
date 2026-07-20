@@ -893,11 +893,11 @@
     @apply !ml-0 gap-2;
   }
 
-  /* Room for card hover scale + shadow inside overflow-hidden track */
+  /* Horizontal room for hover scale; vertical padding comes from carousel py-*
+     (do not set padding-block here — it was clipping rounded corners on hover). */
   .overflow-hidden:has(> .home-carousel-content) {
     padding-inline: 0.85rem;
     margin-inline: -0.85rem;
-    padding-block: 0.35rem;
   }
 
   .home-carousel-item {
@@ -908,8 +908,6 @@
     flex-shrink: 0;
     position: relative;
     z-index: 1;
-    /* Keep scaled hover card above neighbors without layout shift */
-    isolation: isolate;
   }
 
   .home-carousel-item:hover {

@@ -3,9 +3,9 @@ import { ComponentProps } from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Layout slot keeps a stable 2:3 footprint in the grid/carousel.
- * The inner shell scales on hover so the poster grows without changing
- * aspect ratio or getting cropped by the card’s own overflow box.
+ * Hover: same poster shape, just a little bigger.
+ * Scale lives on an outer wrapper; rounded corners + overflow stay on an
+ * inner shell so GPU transforms don’t flatten the radius into sharp edges.
  */
 const Root: React.FC<ComponentProps<"div">> = ({
   className,
@@ -13,23 +13,27 @@ const Root: React.FC<ComponentProps<"div">> = ({
   ...props
 }) => {
   return (
-    <div
-      className={cn("relative aspect-poster", className)}
-      {...props}
-    >
+    <div className={cn("relative aspect-poster", className)} {...props}>
       <div
         className={cn(
-          "media-card-root absolute inset-0 overflow-hidden rounded-2xl",
-          "origin-center transform-gpu will-change-transform",
-          "ring-1 ring-white/[0.08]",
-          "shadow-[0_8px_22px_rgba(0,0,0,0.28)]",
-          "transition-[transform,box-shadow,ring-color] duration-300 ease-out",
-          "md:group-hover:z-10 md:group-hover:scale-[1.04]",
-          "md:group-hover:shadow-[0_16px_36px_rgba(0,0,0,0.42)]",
-          "md:group-hover:ring-primary/20"
+          "media-card-root absolute inset-0 origin-center",
+          "transform-gpu will-change-transform",
+          "transition-transform duration-300 ease-out",
+          "md:group-hover:z-10 md:group-hover:scale-[1.05]"
         )}
       >
-        {children}
+        <div
+          className={cn(
+            "size-full overflow-hidden rounded-2xl",
+            "ring-1 ring-white/[0.08]",
+            "shadow-[0_8px_22px_rgba(0,0,0,0.28)]",
+            "transition-[box-shadow,ring-color] duration-300 ease-out",
+            "md:group-hover:shadow-[0_16px_36px_rgba(0,0,0,0.42)]",
+            "md:group-hover:ring-primary/20"
+          )}
+        >
+          {children}
+        </div>
       </div>
     </div>
   )
