@@ -1123,7 +1123,7 @@
   }
 
   .browse-panel {
-    @apply rounded-xl border border-border/50 bg-card/35;
+    @apply rounded-xl border border-border/50 bg-card/90 shadow-sm backdrop-blur-md;
   }
 
   .home-carousel-content {
