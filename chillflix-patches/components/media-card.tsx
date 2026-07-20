@@ -3,9 +3,8 @@ import { ComponentProps } from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Same poster shape, softer corners, slight grow on hover.
- * Scale wrapper is separate from the rounded overflow shell so corners
- * stay curved while the card gets bigger.
+ * Hover grows UP from the bottom so titles under the poster aren’t covered,
+ * and scale + radius live on the same shell (clip-path) so corners stay round.
  */
 const Root: React.FC<ComponentProps<"div">> = ({
   className,
@@ -14,14 +13,7 @@ const Root: React.FC<ComponentProps<"div">> = ({
 }) => {
   return (
     <div className={cn("relative aspect-poster", className)} {...props}>
-      <div
-        className={cn(
-          "media-card-root absolute inset-0 origin-center",
-          "transform-gpu will-change-transform",
-          "transition-transform duration-300 ease-out",
-          "group-hover:z-10 group-hover:scale-[1.08]"
-        )}
-      >
+      <div className="media-card-root absolute inset-0 z-0 group-hover:z-20">
         <div className="media-card-shell">{children}</div>
       </div>
     </div>

@@ -264,14 +264,7 @@ export function ContinueWatching({
                                     }
                                 >
                                     <div className="relative aspect-poster">
-                                        <div
-                                          className={
-                                            "media-card-root absolute inset-0 origin-center " +
-                                            "transform-gpu will-change-transform " +
-                                            "transition-transform duration-300 ease-out " +
-                                            "group-hover:z-10 group-hover:scale-[1.08]"
-                                          }
-                                        >
+                                        <div className="media-card-root absolute inset-0 z-0 group-hover:z-20">
                                           <div className="media-card-shell relative">
                                             <MediaPoster
                                               image={item.poster}
@@ -298,7 +291,7 @@ export function ContinueWatching({
                                         </div>
                                     </div>
 
-                                    <div className="mt-2 px-0.5">
+                                    <div className="relative z-0 mt-3 px-0.5">
                                         <p className="home-cinrift-card-title line-clamp-2">
                                             {item.title}
                                         </p>

@@ -863,22 +863,33 @@
     );
   }
 
-  /* Soft poster corners — explicit so nothing flattens them to sharp. */
+  /* Soft poster corners — radius + clip-path + grow on SAME node so hover
+     can’t flatten corners. origin-bottom grows UP, not into titles below. */
   .media-card-shell {
     width: 100%;
     height: 100%;
     overflow: hidden;
     border-radius: 1.25rem;
+    clip-path: inset(0 round 1.25rem);
+    -webkit-clip-path: inset(0 round 1.25rem);
     background: #000;
+    transform-origin: bottom center;
+    transform: translateZ(0);
+    transition:
+      transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 280ms ease;
+    will-change: transform;
     box-shadow:
       0 0 0 1px rgba(255, 255, 255, 0.08),
       0 8px 22px rgba(0, 0, 0, 0.28);
   }
 
   .group:hover .media-card-shell {
+    /* Grow upward / outward — bottom edge stays put so text below isn’t covered */
+    transform: translate3d(0, 0, 0) scale(1.07);
     box-shadow:
       0 0 0 1px hsl(var(--primary) / 0.2),
-      0 16px 36px rgba(0, 0, 0, 0.42);
+      0 18px 40px rgba(0, 0, 0, 0.45);
   }
 
   .media-card-shell img {
@@ -915,11 +926,13 @@
     @apply !ml-0 gap-2;
   }
 
-  /* Horizontal room for hover scale; vertical padding comes from carousel py-*
-     (do not set padding-block here — it was clipping rounded corners on hover). */
+  /* Extra TOP room so hover can expand upward without being clipped square */
   .overflow-hidden:has(> .home-carousel-content) {
-    padding-inline: 0.85rem;
-    margin-inline: -0.85rem;
+    padding-inline: 1rem;
+    margin-inline: -1rem;
+    padding-top: 1.75rem;
+    padding-bottom: 0.75rem;
+    margin-top: -1rem;
   }
 
   .home-carousel-item {
@@ -933,7 +946,7 @@
   }
 
   .home-carousel-item:hover {
-    z-index: 2;
+    z-index: 30;
   }
 
   @media (min-width: 768px) {
@@ -1178,15 +1191,18 @@ html[data-low-end-device="true"] .home-page .scroll-reveal {
 }
 
 /* Keep a cheap hover grow on cards even in low-end mode (phones / desktop-site). */
-html[data-low-end-device="true"] .home-page .media-card-root {
-  transition: transform 300ms ease-out !important;
-  will-change: transform !important;
-}
-
 html[data-low-end-device="true"] .home-page .media-card-shell {
+  transition:
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 280ms ease !important;
+  will-change: transform !important;
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.08),
     0 8px 22px rgba(0, 0, 0, 0.28) !important;
+}
+
+html[data-low-end-device="true"] .home-page .group:hover .media-card-shell {
+  transform: translate3d(0, 0, 0) scale(1.07) !important;
 }
 
 html[data-low-end-device="true"] .home-page :focus-visible {
