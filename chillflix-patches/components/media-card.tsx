@@ -4,8 +4,11 @@ import { cn } from "@/lib/utils"
 
 /**
  * Hover: same poster shape, just a little bigger.
- * Scale lives on an outer wrapper; rounded corners + overflow stay on an
- * inner shell so GPU transforms don’t flatten the radius into sharp edges.
+ * Scale is on an outer wrapper; rounded corners + overflow stay on an
+ * inner shell so transforms don’t flatten the radius into sharp edges.
+ *
+ * Uses group-hover at all breakpoints (not md-only) so phone “Desktop site”
+ * mode still grows on hover/tap when the viewport is < 768px.
  */
 const Root: React.FC<ComponentProps<"div">> = ({
   className,
@@ -19,7 +22,7 @@ const Root: React.FC<ComponentProps<"div">> = ({
           "media-card-root absolute inset-0 origin-center",
           "transform-gpu will-change-transform",
           "transition-transform duration-300 ease-out",
-          "md:group-hover:z-10 md:group-hover:scale-[1.05]"
+          "group-hover:z-10 group-hover:scale-[1.06]"
         )}
       >
         <div
@@ -28,8 +31,8 @@ const Root: React.FC<ComponentProps<"div">> = ({
             "ring-1 ring-white/[0.08]",
             "shadow-[0_8px_22px_rgba(0,0,0,0.28)]",
             "transition-[box-shadow,ring-color] duration-300 ease-out",
-            "md:group-hover:shadow-[0_16px_36px_rgba(0,0,0,0.42)]",
-            "md:group-hover:ring-primary/20"
+            "group-hover:shadow-[0_16px_36px_rgba(0,0,0,0.42)]",
+            "group-hover:ring-primary/20"
           )}
         >
           {children}

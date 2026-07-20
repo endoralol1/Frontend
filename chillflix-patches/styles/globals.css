@@ -1155,9 +1155,10 @@ html[data-low-end-device="true"] .home-page .scroll-reveal {
   will-change: auto !important;
 }
 
+/* Keep a cheap hover grow on cards even in low-end mode (phones / desktop-site). */
 html[data-low-end-device="true"] .home-page .media-card-root {
-  transform: none !important;
-  will-change: auto !important;
+  transition: transform 300ms ease-out !important;
+  will-change: transform !important;
 }
 
 html[data-low-end-device="true"] .home-page :focus-visible {
