@@ -166,7 +166,7 @@ export const StarfieldBackground = () => {
           }
           if (drop.x > width + 20) drop.x = -10
 
-          ctx.strokeStyle = `rgba(160, 168, 178, ${drop.opacity * 0.75})`
+          ctx.strokeStyle = `rgba(176, 188, 208, ${drop.opacity * 0.85})`
           ctx.lineWidth = 1.1
           ctx.beginPath()
           ctx.moveTo(drop.x, drop.y)
@@ -190,14 +190,14 @@ export const StarfieldBackground = () => {
           height * 0.45,
           Math.max(width, height) * 0.7
         )
-        bloom.addColorStop(0, `rgba(220, 224, 230, ${flash * 0.55})`)
-        bloom.addColorStop(0.45, `rgba(120, 126, 136, ${flash * 0.2})`)
-        bloom.addColorStop(1, "rgba(120, 126, 136, 0)")
+        bloom.addColorStop(0, `rgba(210, 222, 240, ${flash * 0.5})`)
+        bloom.addColorStop(0.45, `rgba(130, 150, 180, ${flash * 0.18})`)
+        bloom.addColorStop(1, "rgba(130, 150, 180, 0)")
         ctx.fillStyle = bloom
         ctx.fillRect(0, 0, width, height)
 
         // Full-frame lift so the whole page reads the strike.
-        ctx.fillStyle = `rgba(200, 204, 210, ${flash * 0.12})`
+        ctx.fillStyle = `rgba(190, 205, 225, ${flash * 0.1})`
         ctx.fillRect(0, 0, width, height)
       }
 
@@ -208,21 +208,21 @@ export const StarfieldBackground = () => {
         strokePath(
           ctx,
           bolt.points,
-          `rgba(170, 176, 186, ${alpha * 0.3})`,
+          `rgba(170, 190, 220, ${alpha * 0.28})`,
           10
         )
         strokePath(
           ctx,
           bolt.points,
-          `rgba(220, 224, 230, ${alpha * 0.65})`,
+          `rgba(220, 230, 245, ${alpha * 0.65})`,
           3.5
         )
-        strokePath(ctx, bolt.points, `rgba(245, 246, 248, ${alpha})`, 1.4)
+        strokePath(ctx, bolt.points, `rgba(255, 255, 255, ${alpha})`, 1.4)
         for (const branch of bolt.branches) {
           strokePath(
             ctx,
             branch,
-            `rgba(200, 206, 214, ${alpha * 0.5})`,
+            `rgba(200, 214, 235, ${alpha * 0.5})`,
             1.2
           )
         }
@@ -265,6 +265,11 @@ export const StarfieldBackground = () => {
       />
       <div
         className={["ambient-band ambient-band-b", staticClass]
+          .filter(Boolean)
+          .join(" ")}
+      />
+      <div
+        className={["ambient-band ambient-band-c", staticClass]
           .filter(Boolean)
           .join(" ")}
       />

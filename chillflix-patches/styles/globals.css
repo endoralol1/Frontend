@@ -262,9 +262,9 @@
     animation: stars-drift-3 250s linear infinite, twinkle-3 4.5s ease-in-out infinite;
   }
 
-  /* Cinematic night sky — deep charcoal, barely cool, matches dark theme. */
+  /* Night sky with shallow clouds — less crushed black, soft cloud sheets. */
   .site-ambient-sky {
-    --ambient-ink: #030405;
+    --ambient-ink: #0b1018;
   }
 
   .ambient-void {
@@ -279,20 +279,20 @@
     background:
       radial-gradient(
         ellipse 120% 70% at 50% -18%,
-        rgba(28, 32, 38, 0.45),
+        rgba(52, 68, 92, 0.35),
         transparent 58%
       ),
       radial-gradient(
         ellipse 80% 50% at 0% 100%,
-        rgba(14, 16, 20, 0.55),
+        rgba(28, 38, 54, 0.32),
         transparent 55%
       ),
       radial-gradient(
         ellipse 70% 45% at 100% 78%,
-        rgba(12, 14, 18, 0.5),
+        rgba(24, 34, 48, 0.28),
         transparent 52%
       ),
-      linear-gradient(180deg, #08090c 0%, #040506 48%, #030405 100%);
+      linear-gradient(180deg, #121826 0%, #0d131d 45%, #0b1018 100%);
     animation: ambient-breathe 16s ease-in-out infinite alternate;
   }
 
@@ -301,46 +301,68 @@
     inset: -20%;
     width: 140%;
     height: 140%;
-    filter: blur(48px);
+    filter: blur(56px);
     will-change: transform;
     transform: translateZ(0);
   }
 
   .ambient-band-a {
-    opacity: 0.75;
+    opacity: 0.5;
     background:
       radial-gradient(
-        ellipse 48% 30% at 24% 22%,
-        rgba(32, 36, 42, 0.9),
+        ellipse 52% 22% at 22% 24%,
+        rgba(120, 138, 168, 0.28),
+        transparent 72%
+      ),
+      radial-gradient(
+        ellipse 46% 18% at 74% 16%,
+        rgba(98, 116, 146, 0.24),
         transparent 70%
       ),
       radial-gradient(
-        ellipse 42% 26% at 78% 18%,
-        rgba(22, 24, 28, 0.88),
-        transparent 68%
-      ),
-      radial-gradient(
-        ellipse 60% 34% at 50% 86%,
-        rgba(10, 11, 14, 0.95),
-        transparent 72%
+        ellipse 64% 24% at 48% 78%,
+        rgba(70, 86, 112, 0.22),
+        transparent 74%
       );
-    animation: ambient-drift-a 18s ease-in-out infinite alternate;
+    animation: ambient-drift-a 22s ease-in-out infinite alternate;
   }
 
   .ambient-band-b {
-    opacity: 0.55;
+    opacity: 0.42;
     background:
       radial-gradient(
-        ellipse 44% 28% at 72% 42%,
-        rgba(38, 42, 48, 0.45),
+        ellipse 48% 18% at 68% 40%,
+        rgba(140, 156, 184, 0.2),
+        transparent 72%
+      ),
+      radial-gradient(
+        ellipse 56% 20% at 28% 58%,
+        rgba(88, 104, 132, 0.18),
         transparent 70%
       ),
       radial-gradient(
-        ellipse 52% 32% at 22% 62%,
-        rgba(18, 20, 24, 0.6),
+        ellipse 40% 16% at 52% 8%,
+        rgba(160, 174, 198, 0.14),
         transparent 68%
       );
-    animation: ambient-drift-b 24s ease-in-out infinite alternate;
+    animation: ambient-drift-b 28s ease-in-out infinite alternate;
+  }
+
+  .ambient-band-c {
+    opacity: 0.32;
+    background:
+      radial-gradient(
+        ellipse 36% 14% at 40% 32%,
+        rgba(180, 192, 210, 0.12),
+        transparent 70%
+      ),
+      radial-gradient(
+        ellipse 30% 12% at 82% 62%,
+        rgba(150, 164, 186, 0.1),
+        transparent 68%
+      );
+    animation: ambient-drift-c 18s ease-in-out infinite alternate;
+    mix-blend-mode: soft-light;
   }
 
   .ambient-grain {
@@ -358,15 +380,15 @@
     background:
       radial-gradient(
         ellipse 85% 75% at 50% 40%,
-        transparent 35%,
-        rgba(0, 0, 0, 0.42) 100%
+        transparent 40%,
+        rgba(0, 0, 0, 0.28) 100%
       ),
       linear-gradient(
         180deg,
-        rgba(0, 0, 0, 0.2) 0%,
-        transparent 18%,
-        transparent 72%,
-        rgba(0, 0, 0, 0.5) 100%
+        rgba(0, 0, 0, 0.12) 0%,
+        transparent 20%,
+        transparent 75%,
+        rgba(0, 0, 0, 0.35) 100%
       );
   }
 
@@ -376,7 +398,8 @@
 
   html.playback-active .ambient-wash,
   html.playback-active .ambient-band-a,
-  html.playback-active .ambient-band-b {
+  html.playback-active .ambient-band-b,
+  html.playback-active .ambient-band-c {
     animation-play-state: paused !important;
   }
 
@@ -390,14 +413,15 @@
     .stars-layer-3,
     .ambient-wash,
     .ambient-band-a,
-    .ambient-band-b {
+    .ambient-band-b,
+    .ambient-band-c {
       animation: none !important;
     }
   }
 
   @keyframes ambient-breathe {
     from {
-      opacity: 0.85;
+      opacity: 0.88;
     }
 
     to {
@@ -422,6 +446,18 @@
 
     to {
       transform: translate3d(-4%, -2%, 0) scale(1);
+    }
+  }
+
+  @keyframes ambient-drift-c {
+    from {
+      transform: translate3d(-2.5%, 1%, 0);
+      opacity: 0.24;
+    }
+
+    to {
+      transform: translate3d(3%, -1.5%, 0);
+      opacity: 0.38;
     }
   }
 
