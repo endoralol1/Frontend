@@ -142,7 +142,7 @@ export const MovieHero: React.FC<MovieHeroProps> = ({
   if (!item) {
     return (
       <div
-        className="home-hero-skeleton h-[clamp(640px,88svh,820px)] w-full md:h-[750px]"
+        className="home-hero-skeleton h-[clamp(600px,78svh,720px)] w-full md:h-[750px]"
         aria-busy="true"
         aria-label="Loading"
       />

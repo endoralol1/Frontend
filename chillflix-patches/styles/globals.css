@@ -669,14 +669,6 @@
     .home-hero-bleed > div [class*="rounded-xl"] {
       border-radius: 0 !important;
     }
-
-    /* Taller hero — fills most of the first screen. */
-    .home-hero-bleed > div.group,
-    .home-hero-bleed > .home-hero-skeleton {
-      height: min(92svh, 860px) !important;
-      min-height: min(92svh, 860px) !important;
-      max-height: none !important;
-    }
   }
 
   @media (min-width: 768px) {
