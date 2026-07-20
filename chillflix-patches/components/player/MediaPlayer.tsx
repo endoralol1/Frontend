@@ -2720,9 +2720,19 @@ export function MediaPlayer({
         ) : null}
       </div>
 
-      {isLoading && (hasPlayedOnce || !isPlaying) && !(sources && sources.length > 0) ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+      {/*
+        Blank <video> looks like a grey screen while we resolve/switch providers.
+        Old condition hid this spinner whenever any sources existed — exactly when
+        failover / “finding a server” happens. Always show chrome until first frames.
+      */}
+      {isLoading && !isPlaying && currentTime < 0.25 ? (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/60 px-4">
           <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white" />
+          <p className="text-center text-xs text-white/85 sm:text-sm">
+            {sourcesLoadingMore || activeTestingProviderId
+              ? t("player.status.findingStream")
+              : t("player.loading.startingPlayback")}
+          </p>
         </div>
       ) : null}
 
