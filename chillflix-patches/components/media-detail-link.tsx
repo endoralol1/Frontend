@@ -1,42 +1,51 @@
 "use client"
 
 import Link from "next/link"
-import type { ComponentProps } from "react"
+import type { ComponentProps, ReactNode } from "react"
 
-import { clearDetailModalSession } from "@/lib/detail-modal-session"
+import { markDetailModalOpen } from "@/lib/detail-modal-session"
+import { requiresFullPageNavigation } from "@/lib/list-page-paths"
+import { cn } from "@/lib/utils"
 
 type MediaDetailLinkProps = ComponentProps<typeof Link>
 
-function isMovieTvDetailHref(href: MediaDetailLinkProps["href"]) {
-  if (typeof href !== "string") return false
-  return /^\/(?:movie|tv)\/\d+/.test(href.split("?")[0] ?? href)
-}
-
-/** Full-page navigation for movie/TV details (avoids stale parallel-route soft nav). */
+/**
+ * Soft-navigates into the Netflix-style detail modal intercept when possible.
+ * List browse slugs still use a full document navigation.
+ */
 export function MediaDetailLink({
   href,
   onClick,
   prefetch = false,
-  scroll,
+  scroll = false,
+  className,
+  children,
   ...props
 }: MediaDetailLinkProps) {
+  const hrefStr = typeof href === "string" ? href : ""
+
+  if (hrefStr && requiresFullPageNavigation(hrefStr)) {
+    return (
+      <a href={hrefStr} className={cn(className)} onClick={onClick as never}>
+        {children as ReactNode}
+      </a>
+    )
+  }
+
   return (
     <Link
       href={href}
       prefetch={prefetch}
       scroll={scroll}
+      className={className}
       {...props}
       onClick={(event) => {
         onClick?.(event)
         if (event.defaultPrevented) return
-
-        clearDetailModalSession()
-
-        if (isMovieTvDetailHref(href)) {
-          event.preventDefault()
-          window.location.assign(href as string)
-        }
+        markDetailModalOpen()
       }}
-    />
+    >
+      {children}
+    </Link>
   )
 }
