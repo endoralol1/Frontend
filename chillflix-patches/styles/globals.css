@@ -307,49 +307,40 @@
   }
 
   .ambient-band-a {
-    opacity: 0.55;
+    opacity: 0.7;
     background:
       radial-gradient(
         ellipse 48% 30% at 24% 22%,
-        rgba(58, 76, 104, 0.7),
+        rgba(58, 76, 104, 0.85),
         transparent 70%
       ),
       radial-gradient(
         ellipse 42% 26% at 78% 18%,
-        rgba(40, 56, 78, 0.65),
+        rgba(40, 56, 78, 0.8),
         transparent 68%
       ),
       radial-gradient(
         ellipse 60% 34% at 50% 86%,
-        rgba(24, 34, 50, 0.8),
+        rgba(24, 34, 50, 0.9),
         transparent 72%
       );
-    animation: ambient-drift-a 28s ease-in-out infinite alternate;
+    animation: ambient-drift-a 18s ease-in-out infinite alternate;
   }
 
   .ambient-band-b {
-    opacity: 0.4;
+    opacity: 0.55;
     background:
       radial-gradient(
         ellipse 44% 28% at 72% 42%,
-        rgba(66, 86, 114, 0.45),
+        rgba(66, 86, 114, 0.55),
         transparent 70%
       ),
       radial-gradient(
         ellipse 52% 32% at 22% 62%,
-        rgba(34, 48, 68, 0.55),
+        rgba(34, 48, 68, 0.65),
         transparent 68%
       );
-    animation: ambient-drift-b 36s ease-in-out infinite alternate;
-  }
-
-  .ambient-grain {
-    position: absolute;
-    inset: 0;
-    opacity: 0.05;
-    mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
-    background-size: 180px 180px;
+    animation: ambient-drift-b 24s ease-in-out infinite alternate;
   }
 
   .ambient-vignette {
@@ -358,15 +349,15 @@
     background:
       radial-gradient(
         ellipse 85% 75% at 50% 40%,
-        transparent 30%,
-        rgba(0, 0, 0, 0.58) 100%
+        transparent 35%,
+        rgba(0, 0, 0, 0.42) 100%
       ),
       linear-gradient(
         180deg,
-        rgba(0, 0, 0, 0.32) 0%,
+        rgba(0, 0, 0, 0.2) 0%,
         transparent 18%,
-        transparent 68%,
-        rgba(0, 0, 0, 0.65) 100%
+        transparent 72%,
+        rgba(0, 0, 0, 0.5) 100%
       );
   }
 

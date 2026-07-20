@@ -4,13 +4,79 @@ import { useEffect, useRef, useState } from "react"
 
 import { prefersReducedMotion } from "@/lib/device-profile"
 
-type Wisp = {
+type Drop = {
   x: number
   y: number
-  r: number
-  vx: number
-  vy: number
-  a: number
+  len: number
+  speed: number
+  opacity: number
+}
+
+type Bolt = {
+  points: { x: number; y: number }[]
+  life: number
+  peak: number
+  branches: { x: number; y: number }[][]
+}
+
+function buildBolt(width: number, height: number): Bolt {
+  const startX = width * (0.15 + Math.random() * 0.7)
+  const endX = startX + (Math.random() - 0.5) * width * 0.25
+  const startY = -20
+  const endY = height * (0.35 + Math.random() * 0.35)
+  const segments = 10 + Math.floor(Math.random() * 6)
+  const points: { x: number; y: number }[] = []
+  const branches: { x: number; y: number }[][] = []
+
+  for (let i = 0; i <= segments; i += 1) {
+    const t = i / segments
+    const x =
+      startX +
+      (endX - startX) * t +
+      (Math.random() - 0.5) * (28 + t * 40)
+    const y = startY + (endY - startY) * t
+    points.push({ x, y })
+
+    if (i > 2 && i < segments - 1 && Math.random() < 0.35) {
+      const branch: { x: number; y: number }[] = [{ x, y }]
+      const dir = Math.random() < 0.5 ? -1 : 1
+      let bx = x
+      let by = y
+      const steps = 3 + Math.floor(Math.random() * 3)
+      for (let s = 0; s < steps; s += 1) {
+        bx += dir * (12 + Math.random() * 22)
+        by += 18 + Math.random() * 28
+        branch.push({ x: bx, y: by })
+      }
+      branches.push(branch)
+    }
+  }
+
+  return {
+    points,
+    branches,
+    life: 1,
+    peak: 0.85 + Math.random() * 0.15,
+  }
+}
+
+function strokePath(
+  ctx: CanvasRenderingContext2D,
+  points: { x: number; y: number }[],
+  color: string,
+  width: number
+) {
+  if (points.length < 2) return
+  ctx.strokeStyle = color
+  ctx.lineWidth = width
+  ctx.lineCap = "round"
+  ctx.lineJoin = "round"
+  ctx.beginPath()
+  ctx.moveTo(points[0].x, points[0].y)
+  for (let i = 1; i < points.length; i += 1) {
+    ctx.lineTo(points[i].x, points[i].y)
+  }
+  ctx.stroke()
 }
 
 export const StarfieldBackground = () => {
@@ -18,7 +84,6 @@ export const StarfieldBackground = () => {
   const [motion, setMotion] = useState(true)
 
   useEffect(() => {
-    // Keep the low-end flag for other UI, but do not gate the sky on it.
     const memory = (navigator as Navigator & { deviceMemory?: number })
       .deviceMemory
     const cores = navigator.hardwareConcurrency
@@ -40,8 +105,10 @@ export const StarfieldBackground = () => {
     let width = 0
     let height = 0
     let flash = 0
-    let nextFlash = performance.now() + 6000 + Math.random() * 5000
-    const wisps: Wisp[] = []
+    let bolt: Bolt | null = null
+    // First strike soon so it's obvious on load.
+    let nextFlash = performance.now() + 1200 + Math.random() * 1200
+    const drops: Drop[] = []
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -53,18 +120,33 @@ export const StarfieldBackground = () => {
       canvas.style.height = `${height}px`
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-      wisps.length = 0
-      const count = Math.min(10, Math.max(6, Math.floor(width / 220)))
+      const count = Math.min(
+        140,
+        Math.max(70, Math.floor((width * height) / 11000))
+      )
+      drops.length = 0
       for (let i = 0; i < count; i += 1) {
-        wisps.push({
+        drops.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          r: Math.min(width, height) * (0.22 + Math.random() * 0.28),
-          vx: (Math.random() - 0.5) * 0.12,
-          vy: (Math.random() - 0.5) * 0.07,
-          a: 0.045 + Math.random() * 0.05,
+          len: 10 + Math.random() * 16,
+          speed: 7 + Math.random() * 11,
+          opacity: 0.12 + Math.random() * 0.22,
         })
       }
+    }
+
+    const triggerStrike = () => {
+      bolt = buildBolt(width, height)
+      flash = 0.55 + Math.random() * 0.25
+      // Classic double-flash: schedule a second pop shortly after.
+      window.setTimeout(() => {
+        if (document.documentElement.classList.contains("playback-active")) {
+          return
+        }
+        flash = Math.max(flash, 0.7 + Math.random() * 0.2)
+        if (bolt) bolt.life = 1
+      }, 70 + Math.random() * 90)
     }
 
     const draw = (now: number) => {
@@ -72,47 +154,85 @@ export const StarfieldBackground = () => {
         document.documentElement.classList.contains("playback-active")
       ctx.clearRect(0, 0, width, height)
 
-      // Soft storm wisps — large blurred glows, not particle rain.
-      for (const w of wisps) {
-        if (!paused) {
-          w.x += w.vx
-          w.y += w.vy
-          if (w.x < -w.r) w.x = width + w.r
-          if (w.x > width + w.r) w.x = -w.r
-          if (w.y < -w.r) w.y = height + w.r
-          if (w.y > height + w.r) w.y = -w.r
+      if (!paused) {
+        // Gentle rain — thin and soft, not chunky.
+        ctx.lineCap = "round"
+        for (const drop of drops) {
+          drop.y += drop.speed
+          drop.x += drop.speed * 0.14
+          if (drop.y > height + 20) {
+            drop.y = -20
+            drop.x = Math.random() * width
+          }
+          if (drop.x > width + 20) drop.x = -10
+
+          ctx.strokeStyle = `rgba(186, 204, 226, ${drop.opacity})`
+          ctx.lineWidth = 1.1
+          ctx.beginPath()
+          ctx.moveTo(drop.x, drop.y)
+          ctx.lineTo(drop.x - drop.len * 0.16, drop.y + drop.len)
+          ctx.stroke()
         }
 
-        const g = ctx.createRadialGradient(w.x, w.y, 0, w.x, w.y, w.r)
-        g.addColorStop(0, `rgba(78, 98, 128, ${w.a})`)
-        g.addColorStop(0.45, `rgba(42, 56, 78, ${w.a * 0.55})`)
-        g.addColorStop(1, "rgba(42, 56, 78, 0)")
-        ctx.fillStyle = g
-        ctx.beginPath()
-        ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2)
-        ctx.fill()
+        if (now >= nextFlash) {
+          triggerStrike()
+          nextFlash = now + 3500 + Math.random() * 4500
+        }
       }
 
-      if (!paused && now >= nextFlash) {
-        flash = 0.16 + Math.random() * 0.1
-        nextFlash = now + 9000 + Math.random() * 8000
-      }
-
-      if (flash > 0.008) {
-        const lg = ctx.createRadialGradient(
-          width * 0.58,
-          height * -0.05,
+      // Sky bloom from lightning.
+      if (flash > 0.01) {
+        const bloom = ctx.createRadialGradient(
+          width * 0.5,
+          height * 0.05,
           0,
           width * 0.5,
-          height * 0.25,
-          height * 0.55
+          height * 0.45,
+          Math.max(width, height) * 0.7
         )
-        lg.addColorStop(0, `rgba(176, 196, 224, ${flash})`)
-        lg.addColorStop(1, "rgba(176, 196, 224, 0)")
-        ctx.fillStyle = lg
+        bloom.addColorStop(0, `rgba(210, 225, 245, ${flash * 0.75})`)
+        bloom.addColorStop(0.45, `rgba(150, 175, 210, ${flash * 0.28})`)
+        bloom.addColorStop(1, "rgba(150, 175, 210, 0)")
+        ctx.fillStyle = bloom
         ctx.fillRect(0, 0, width, height)
-        flash = paused ? 0 : flash * 0.9
+
+        // Full-frame lift so the whole page reads the strike.
+        ctx.fillStyle = `rgba(200, 215, 235, ${flash * 0.18})`
+        ctx.fillRect(0, 0, width, height)
       }
+
+      if (bolt && bolt.life > 0.02) {
+        const alpha = bolt.life * bolt.peak
+        ctx.save()
+        ctx.globalCompositeOperation = "lighter"
+        strokePath(
+          ctx,
+          bolt.points,
+          `rgba(170, 195, 230, ${alpha * 0.35})`,
+          10
+        )
+        strokePath(
+          ctx,
+          bolt.points,
+          `rgba(210, 225, 245, ${alpha * 0.7})`,
+          3.5
+        )
+        strokePath(ctx, bolt.points, `rgba(255, 255, 255, ${alpha})`, 1.4)
+        for (const branch of bolt.branches) {
+          strokePath(
+            ctx,
+            branch,
+            `rgba(200, 220, 245, ${alpha * 0.55})`,
+            1.2
+          )
+        }
+        ctx.restore()
+        bolt.life = paused ? 0 : bolt.life * 0.86
+      } else {
+        bolt = null
+      }
+
+      flash = paused ? 0 : flash * 0.88
 
       raf = requestAnimationFrame(draw)
     }
@@ -148,9 +268,10 @@ export const StarfieldBackground = () => {
           .filter(Boolean)
           .join(" ")}
       />
-      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
       <div className="ambient-grain" />
       <div className="ambient-vignette" />
+      {/* Canvas on top so lightning isn't crushed by the vignette. */}
+      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
     </div>
   )
 }
