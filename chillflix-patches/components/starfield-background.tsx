@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 
-import { prefersReducedMotion } from "@/lib/device-profile"
+import { isLowEndDevice, prefersReducedMotion } from "@/lib/device-profile"
 
 type Drop = {
   x: number
@@ -79,39 +79,48 @@ function strokePath(
   ctx.stroke()
 }
 
+function isPlaybackActive() {
+  return document.documentElement.classList.contains("playback-active")
+}
+
+/**
+ * Storm/rain canvas is a known GPU tax on phones.
+ * Root cause of choppy player frames: rAF + full-viewport clearRect kept
+ * running under the player even when "paused", plus blurred cloud layers.
+ */
 export const StarfieldBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [motion, setMotion] = useState(true)
+  const [motion, setMotion] = useState(false)
 
   useEffect(() => {
-    const memory = (navigator as Navigator & { deviceMemory?: number })
-      .deviceMemory
-    const cores = navigator.hardwareConcurrency
-    const lowEnd =
-      (typeof memory === "number" && memory > 0 && memory <= 4) ||
-      (typeof cores === "number" && cores > 0 && cores <= 4)
+    const lowEnd = isLowEndDevice()
     document.documentElement.dataset.lowEndDevice = lowEnd ? "true" : "false"
-    setMotion(!prefersReducedMotion())
+    // Low-end / reduced-motion: static sky only — no canvas loop.
+    setMotion(!lowEnd && !prefersReducedMotion())
   }, [])
 
   useEffect(() => {
     if (!motion) return
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext("2d", { alpha: true })
+    const ctx = canvas.getContext("2d", {
+      alpha: true,
+      desynchronized: true,
+    })
     if (!ctx) return
 
     let raf = 0
+    let running = false
     let width = 0
     let height = 0
     let flash = 0
     let bolt: Bolt | null = null
-    // First strike soon so it's obvious on load.
-    let nextFlash = performance.now() + 1200 + Math.random() * 1200
+    let nextFlash = performance.now() + 1800 + Math.random() * 1800
     const drops: Drop[] = []
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      // Cap DPR — 3x phone screens were painting huge canvases every frame.
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.25)
       width = window.innerWidth
       height = window.innerHeight
       canvas.width = Math.floor(width * dpr)
@@ -121,8 +130,8 @@ export const StarfieldBackground = () => {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
       const count = Math.min(
-        140,
-        Math.max(70, Math.floor((width * height) / 11000))
+        90,
+        Math.max(40, Math.floor((width * height) / 16000))
       )
       drops.length = 0
       for (let i = 0; i < count; i += 1) {
@@ -136,51 +145,65 @@ export const StarfieldBackground = () => {
       }
     }
 
+    const clearCanvas = () => {
+      ctx.clearRect(0, 0, width, height)
+      flash = 0
+      bolt = null
+    }
+
+    const stopLoop = () => {
+      running = false
+      if (raf) {
+        cancelAnimationFrame(raf)
+        raf = 0
+      }
+      clearCanvas()
+    }
+
     const triggerStrike = () => {
+      if (isPlaybackActive()) return
       bolt = buildBolt(width, height)
       flash = 0.55 + Math.random() * 0.25
-      // Classic double-flash: schedule a second pop shortly after.
       window.setTimeout(() => {
-        if (document.documentElement.classList.contains("playback-active")) {
-          return
-        }
+        if (isPlaybackActive() || !running) return
         flash = Math.max(flash, 0.7 + Math.random() * 0.2)
         if (bolt) bolt.life = 1
       }, 70 + Math.random() * 90)
     }
 
     const draw = (now: number) => {
-      const paused =
-        document.documentElement.classList.contains("playback-active")
-      ctx.clearRect(0, 0, width, height)
-
-      if (!paused) {
-        // Gentle rain — thin and soft, not chunky.
-        ctx.lineCap = "round"
-        for (const drop of drops) {
-          drop.y += drop.speed
-          drop.x += drop.speed * 0.14
-          if (drop.y > height + 20) {
-            drop.y = -20
-            drop.x = Math.random() * width
-          }
-          if (drop.x > width + 20) drop.x = -10
-
-          ctx.strokeStyle = `rgba(176, 188, 208, ${drop.opacity * 0.85})`
-          ctx.lineWidth = 1.1
-          ctx.beginPath()
-          ctx.moveTo(drop.x, drop.y)
-          ctx.lineTo(drop.x - drop.len * 0.16, drop.y + drop.len)
-          ctx.stroke()
-        }
-
-        if (now >= nextFlash) {
-          triggerStrike()
-          nextFlash = now + 3500 + Math.random() * 4500
-        }
+      if (!running) return
+      // Hard stop — do not clear/paint while watching video.
+      if (isPlaybackActive()) {
+        stopLoop()
+        return
       }
 
-      // Sky bloom from lightning.
+      ctx.clearRect(0, 0, width, height)
+
+      ctx.lineCap = "round"
+      for (const drop of drops) {
+        drop.y += drop.speed
+        drop.x += drop.speed * 0.14
+        if (drop.y > height + 20) {
+          drop.y = -20
+          drop.x = Math.random() * width
+        }
+        if (drop.x > width + 20) drop.x = -10
+
+        ctx.strokeStyle = `rgba(176, 188, 208, ${drop.opacity * 0.85})`
+        ctx.lineWidth = 1.1
+        ctx.beginPath()
+        ctx.moveTo(drop.x, drop.y)
+        ctx.lineTo(drop.x - drop.len * 0.16, drop.y + drop.len)
+        ctx.stroke()
+      }
+
+      if (now >= nextFlash) {
+        triggerStrike()
+        nextFlash = now + 3500 + Math.random() * 4500
+      }
+
       if (flash > 0.01) {
         const bloom = ctx.createRadialGradient(
           width * 0.5,
@@ -195,8 +218,6 @@ export const StarfieldBackground = () => {
         bloom.addColorStop(1, "rgba(130, 150, 180, 0)")
         ctx.fillStyle = bloom
         ctx.fillRect(0, 0, width, height)
-
-        // Full-frame lift so the whole page reads the strike.
         ctx.fillStyle = `rgba(190, 205, 225, ${flash * 0.1})`
         ctx.fillRect(0, 0, width, height)
       }
@@ -227,22 +248,57 @@ export const StarfieldBackground = () => {
           )
         }
         ctx.restore()
-        bolt.life = paused ? 0 : bolt.life * 0.86
+        bolt.life *= 0.86
       } else {
         bolt = null
       }
 
-      flash = paused ? 0 : flash * 0.88
+      flash *= 0.88
+      raf = requestAnimationFrame(draw)
+    }
 
+    const startLoop = () => {
+      if (running || isPlaybackActive()) return
+      running = true
       raf = requestAnimationFrame(draw)
     }
 
     resize()
-    window.addEventListener("resize", resize)
-    raf = requestAnimationFrame(draw)
+    startLoop()
+
+    const onResize = () => {
+      resize()
+    }
+    window.addEventListener("resize", onResize)
+
+    // Resume/stop when player opens or closes (class toggled by hook).
+    const observer = new MutationObserver(() => {
+      if (isPlaybackActive()) {
+        stopLoop()
+      } else {
+        startLoop()
+      }
+    })
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    })
+
+    // Page hidden (tab/background) — free the GPU.
+    const onVisibility = () => {
+      if (document.hidden) {
+        stopLoop()
+      } else if (!isPlaybackActive()) {
+        startLoop()
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibility)
+
     return () => {
-      cancelAnimationFrame(raf)
-      window.removeEventListener("resize", resize)
+      stopLoop()
+      observer.disconnect()
+      window.removeEventListener("resize", onResize)
+      document.removeEventListener("visibilitychange", onVisibility)
     }
   }, [motion])
 
@@ -260,7 +316,6 @@ export const StarfieldBackground = () => {
       />
       <div className="ambient-grain" />
       <div className="ambient-vignette" />
-      {/* Clouds above vignette so they stay visible. */}
       <div
         className={["ambient-band ambient-band-a", staticClass]
           .filter(Boolean)
@@ -276,8 +331,9 @@ export const StarfieldBackground = () => {
           .filter(Boolean)
           .join(" ")}
       />
-      {/* Canvas on top so lightning/rain stay sharp. */}
-      <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
+      {motion ? (
+        <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
+      ) : null}
     </div>
   )
 }

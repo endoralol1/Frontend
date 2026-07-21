@@ -418,6 +418,19 @@
     animation-play-state: paused !important;
   }
 
+  /*
+   * While watching: strip every expensive ambient layer.
+   * Keep only the solid void so the compositor is not blending blur/grain/canvas
+   * under the video decoder (main cause of choppy frames on phones).
+   */
+  html.playback-active .site-ambient-sky canvas,
+  html.playback-active .ambient-grain,
+  html.playback-active .ambient-band,
+  html.playback-active .ambient-wash,
+  html.playback-active .ambient-vignette {
+    display: none !important;
+  }
+
   .stars-layer-static {
     animation: none !important;
   }
@@ -1399,8 +1412,16 @@ html[data-low-end-device="true"] .hero-carousel-progress {
   display: none !important;
 }
 
+/* Low-end: no rain canvas, no SVG grain, no huge blurred cloud sheets. */
+html[data-low-end-device="true"] .site-ambient-sky canvas,
+html[data-low-end-device="true"] .ambient-grain,
 html[data-low-end-device="true"] .ambient-band {
-  filter: blur(18px) !important;
+  display: none !important;
+}
+
+html[data-low-end-device="true"] .ambient-wash {
+  animation: none !important;
+  filter: none !important;
 }
 
 html[data-low-end-device="true"] .home-page *,
