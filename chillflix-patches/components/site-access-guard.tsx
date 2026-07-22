@@ -94,9 +94,12 @@ export async function SiteAccessGuard({ children }: { children: React.ReactNode 
 <ApkDownloadPrompt />
                 <ShareSitePrompt />
                 <StarfieldBackground />
-                <div className="relative flex min-h-screen flex-col pb-[5.5rem]" vaul-drawer-wrapper="">
+                <div
+                    className="relative flex min-h-screen flex-col pb-[5.5rem] lg:pb-0 lg:pt-[5.25rem]"
+                    vaul-drawer-wrapper=""
+                >
                     <GridBg />
-                    <div className="relative z-10 flex-1 pt-2 pb-4 md:py-4">{children}</div>
+                    <div className="relative z-10 flex-1 pt-2 pb-4 md:py-4 lg:pt-2">{children}</div>
                     <SiteFooter />
                 </div>
                 <SiteHeader />
