@@ -17,4 +17,4 @@
 - Client probe timeout outlasts nested server probes; one retry on 429/502/503.
 - `/api/cinepro/proxy` retries transient upstream 429/502/503 with short backoff before failing the player.
 
-Deploy: build with `NEXT_DIST_DIR=.next.candidate`, swap `.next` ↔ `.next.candidate`, `pm2 restart`, never leave PM2 stopped.
+Deploy: prefer `NEXT_DIST_DIR=.next.candidate` full build when the VPS has enough RAM. If `next build` OOMs (~11GB box), hot-patch the live `.next` bundles (timeouts + proxy retry) and restart `chillflix` only — do not leave PM2 stopped.
