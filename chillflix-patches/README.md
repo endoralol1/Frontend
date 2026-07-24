@@ -23,4 +23,12 @@ Cold browser visits felt slow because ~1.5MB of JS + chat/tickets/storm all boot
 - Defer chat status, ticket polling, turnstile config, and storm canvas until after first paint/idle.
 - Nginx anonymous HTML microcache (30s, skips `chillflix_session`) — see `scripts/nginx-chillflix-html-cache.conf` + site conf.
 
+## Total Blocking Time (TBT)
+
+PageSpeed TBT is main-thread JS during hydration. FCP/LCP can be green while TBT stays high.
+- `DeferredCommunityShell` — chat/ticket providers load after idle; only wrap the header so page content never remounts.
+- `community-providers.tsx` + dynamic chat/ticket nav buttons gated on `useCommunityReady()`.
+- `DeferredGoogleAnalytics` — GA boots after first paint/idle (~1.8s+) instead of competing with hydration.
+- Needs a real `next build` (or careful `.next` hot-patch) to leave the critical layout chunk; in-source delays alone are not enough if `ChatProvider` is still statically bundled.
+
 Deploy: prefer `NEXT_DIST_DIR=.next.candidate` full build when the VPS has enough RAM. If `next build` OOMs (~11GB box), hot-patch the live `.next` bundles and restart `chillflix` only — do not leave PM2 stopped.
