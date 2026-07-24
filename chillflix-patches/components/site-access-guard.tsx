@@ -10,7 +10,7 @@ import { GridBg } from "@/components/grid-bg"
 import { ScrollTop } from "@/components/scroll-top"
 import { SiteFooter } from "@/components/site-footer"
 import { SiteHeader } from "@/components/site-header"
-import { StarfieldBackground } from "@/components/starfield-background"
+import { DeferredStarfield } from "@/components/deferred-starfield"
 import { TailwindIndicator } from "@/components/tailwind-indicator"
 import {
     isMaintenanceExemptPath,
@@ -93,7 +93,7 @@ export async function SiteAccessGuard({ children }: { children: React.ReactNode 
             <WatchPartyProvider>
 <ApkDownloadPrompt />
                 <ShareSitePrompt />
-                <StarfieldBackground />
+                <DeferredStarfield />
                 <div
                     className="relative flex min-h-screen flex-col pb-[5.5rem] lg:pb-0 lg:pt-[5.25rem]"
                     vaul-drawer-wrapper=""

@@ -38,6 +38,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { isTurnstileConfigured, TurnstileWidget } from "@/components/turnstile-widget"
 import { useAuth } from "@/hooks/use-auth"
+import { scheduleAfterLoad } from "@/lib/schedule-after-load"
 import { canAccessAdmin } from "@/lib/permissions"
 import {
     TICKET_CATEGORIES,
@@ -217,14 +218,17 @@ export function TicketProvider({ children }: { children: ReactNode }) {
     }, [])
 
     useEffect(() => {
-        void fetch("/api/turnstile/config")
-            .then((response) => response.json())
-            .then((data) => {
-                if (data.siteKey) {
-                    setTurnstileSiteKey(String(data.siteKey))
-                }
-            })
-            .catch(() => undefined)
+        // Turnstile config is only needed when creating a ticket — don't race first paint.
+        return scheduleAfterLoad(() => {
+            void fetch("/api/turnstile/config")
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.siteKey) {
+                        setTurnstileSiteKey(String(data.siteKey))
+                    }
+                })
+                .catch(() => undefined)
+        }, { timeoutMs: 4_000, delayMs: 1_500 })
     }, [])
 
     useEffect(() => {
@@ -233,6 +237,7 @@ export function TicketProvider({ children }: { children: ReactNode }) {
             return
         }
 
+        let interval: number | undefined
         const refreshAttention = () => {
             void fetch("/api/tickets")
                 .then((res) => res.json())
@@ -244,9 +249,15 @@ export function TicketProvider({ children }: { children: ReactNode }) {
                 .catch(() => undefined)
         }
 
-        refreshAttention()
-        const interval = window.setInterval(refreshAttention, 60_000)
-        return () => window.clearInterval(interval)
+        const cancelIdle = scheduleAfterLoad(() => {
+            refreshAttention()
+            interval = window.setInterval(refreshAttention, 60_000)
+        }, { timeoutMs: 4_000, delayMs: 1_800 })
+
+        return () => {
+            cancelIdle()
+            if (interval) window.clearInterval(interval)
+        }
     }, [user])
 
     useEffect(() => {

@@ -17,4 +17,10 @@
 - Client probe timeout outlasts nested server probes; one retry on 429/502/503.
 - `/api/cinepro/proxy` retries transient upstream 429/502/503 with short backoff before failing the player.
 
-Deploy: prefer `NEXT_DIST_DIR=.next.candidate` full build when the VPS has enough RAM. If `next build` OOMs (~11GB box), hot-patch the live `.next` bundles (timeouts + proxy retry) and restart `chillflix` only — do not leave PM2 stopped.
+## First-visit speed
+
+Cold browser visits felt slow because ~1.5MB of JS + chat/tickets/storm all booted immediately, while return visits used disk cache.
+- Defer chat status, ticket polling, turnstile config, and storm canvas until after first paint/idle.
+- Nginx anonymous HTML microcache (30s, skips `chillflix_session`) — see `scripts/nginx-chillflix-html-cache.conf` + site conf.
+
+Deploy: prefer `NEXT_DIST_DIR=.next.candidate` full build when the VPS has enough RAM. If `next build` OOMs (~11GB box), hot-patch the live `.next` bundles and restart `chillflix` only — do not leave PM2 stopped.

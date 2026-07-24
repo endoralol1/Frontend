@@ -33,6 +33,7 @@ import { ChatPollCard } from "@/components/chat-poll-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/hooks/use-auth"
+import { scheduleAfterLoad } from "@/lib/schedule-after-load"
 import { CHAT_MAX_BODY_LENGTH, type ChatMessage, type ChatMessagePreview } from "@/lib/chat-types"
 import type { ChatSseEvent } from "@/lib/chat-sse-events"
 import {
@@ -633,17 +634,22 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         setMounted(true)
-        void fetch("/api/chat/status")
-            .then((res) => res.json())
-            .then((data) => setChatEnabled(Boolean(data.enabled)))
-            .catch(() => setChatEnabled(true))
+        // Defer chat network boot — competing with first-paint JS/images on cold visits.
+        return scheduleAfterLoad(() => {
+            void fetch("/api/chat/status")
+                .then((res) => res.json())
+                .then((data) => setChatEnabled(Boolean(data.enabled)))
+                .catch(() => setChatEnabled(true))
+        }, { timeoutMs: 3_000, delayMs: 800 })
     }, [])
 
     useEffect(() => {
         if (!chatEnabled || !mounted) return
-        // Restore last-read, then always paint the unread badge on load.
+        // Restore last-read, then paint the unread badge after the shell is idle.
         lastReadAtRef.current = readLastReadAt()
-        void refreshUnreadCount({ force: true }).catch(() => undefined)
+        return scheduleAfterLoad(() => {
+            void refreshUnreadCount({ force: true }).catch(() => undefined)
+        }, { timeoutMs: 3_500, delayMs: 1_200 })
     }, [chatEnabled, mounted, refreshUnreadCount])
 
     useEffect(() => {

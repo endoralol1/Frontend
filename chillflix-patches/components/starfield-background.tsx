@@ -2,7 +2,10 @@
 
 import { useEffect, useRef, useState } from "react"
 
-import { isLowEndDevice, prefersReducedMotion } from "@/lib/device-profile"
+import {
+  prefersReducedMotion,
+  shouldReduceAmbientEffects,
+} from "@/lib/device-profile"
 
 type Drop = {
   x: number
@@ -19,12 +22,15 @@ type Bolt = {
   branches: { x: number; y: number }[][]
 }
 
+/** Cap storm paint rate — 60fps full-viewport clear is pure GPU waste on scroll. */
+const TARGET_FRAME_MS = 1000 / 20
+
 function buildBolt(width: number, height: number): Bolt {
   const startX = width * (0.15 + Math.random() * 0.7)
   const endX = startX + (Math.random() - 0.5) * width * 0.25
   const startY = -20
   const endY = height * (0.35 + Math.random() * 0.35)
-  const segments = 10 + Math.floor(Math.random() * 6)
+  const segments = 8 + Math.floor(Math.random() * 4)
   const points: { x: number; y: number }[] = []
   const branches: { x: number; y: number }[][] = []
 
@@ -37,12 +43,12 @@ function buildBolt(width: number, height: number): Bolt {
     const y = startY + (endY - startY) * t
     points.push({ x, y })
 
-    if (i > 2 && i < segments - 1 && Math.random() < 0.35) {
+    if (i > 2 && i < segments - 1 && Math.random() < 0.22) {
       const branch: { x: number; y: number }[] = [{ x, y }]
       const dir = Math.random() < 0.5 ? -1 : 1
       let bx = x
       let by = y
-      const steps = 3 + Math.floor(Math.random() * 3)
+      const steps = 2 + Math.floor(Math.random() * 2)
       for (let s = 0; s < steps; s += 1) {
         bx += dir * (12 + Math.random() * 22)
         by += 18 + Math.random() * 28
@@ -84,19 +90,26 @@ function isPlaybackActive() {
 }
 
 /**
- * Storm/rain canvas is a known GPU tax on phones.
- * Root cause of choppy player frames: rAF + full-viewport clearRect kept
- * running under the player even when "paused", plus blurred cloud layers.
+ * Storm/rain canvas is a known GPU tax — especially on APUs / iGPUs
+ * (e.g. Ryzen 5700G) that pass RAM/core checks but choke on full-viewport
+ * blur + continuous rAF while the homepage scrolls.
  */
 export const StarfieldBackground = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [motion, setMotion] = useState(false)
 
   useEffect(() => {
-    const lowEnd = isLowEndDevice()
-    document.documentElement.dataset.lowEndDevice = lowEnd ? "true" : "false"
-    // Low-end / reduced-motion: static sky only — no canvas loop.
-    setMotion(!lowEnd && !prefersReducedMotion())
+    const reduced = shouldReduceAmbientEffects()
+    document.documentElement.dataset.lowEndDevice = reduced ? "true" : "false"
+    document.documentElement.dataset.reducedAmbient = reduced ? "true" : "false"
+    // Reduced / reduced-motion: static sky only — no canvas loop.
+    // Delay storm rAF so cold first paint isn't competing with hydration/images.
+    if (reduced || prefersReducedMotion()) {
+      setMotion(false)
+      return
+    }
+    const timer = window.setTimeout(() => setMotion(true), 600)
+    return () => window.clearTimeout(timer)
   }, [])
 
   useEffect(() => {
@@ -115,12 +128,15 @@ export const StarfieldBackground = () => {
     let height = 0
     let flash = 0
     let bolt: Bolt | null = null
-    let nextFlash = performance.now() + 1800 + Math.random() * 1800
+    let nextFlash = performance.now() + 2200 + Math.random() * 2200
+    let lastPaint = 0
+    let scrollIdleTimer = 0
+    let pausedForScroll = false
     const drops: Drop[] = []
 
     const resize = () => {
-      // Cap DPR — 3x phone screens were painting huge canvases every frame.
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.25)
+      // Cap DPR hard — retina phones were painting huge canvases every frame.
+      const dpr = Math.min(window.devicePixelRatio || 1, 1)
       width = window.innerWidth
       height = window.innerHeight
       canvas.width = Math.floor(width * dpr)
@@ -130,17 +146,17 @@ export const StarfieldBackground = () => {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
       const count = Math.min(
-        90,
-        Math.max(40, Math.floor((width * height) / 16000))
+        48,
+        Math.max(24, Math.floor((width * height) / 28000))
       )
       drops.length = 0
       for (let i = 0; i < count; i += 1) {
         drops.push({
           x: Math.random() * width,
           y: Math.random() * height,
-          len: 10 + Math.random() * 16,
-          speed: 7 + Math.random() * 11,
-          opacity: 0.12 + Math.random() * 0.22,
+          len: 10 + Math.random() * 14,
+          speed: 7 + Math.random() * 10,
+          opacity: 0.1 + Math.random() * 0.18,
         })
       }
     }
@@ -161,12 +177,12 @@ export const StarfieldBackground = () => {
     }
 
     const triggerStrike = () => {
-      if (isPlaybackActive()) return
+      if (isPlaybackActive() || pausedForScroll) return
       bolt = buildBolt(width, height)
-      flash = 0.55 + Math.random() * 0.25
+      flash = 0.45 + Math.random() * 0.2
       window.setTimeout(() => {
-        if (isPlaybackActive() || !running) return
-        flash = Math.max(flash, 0.7 + Math.random() * 0.2)
+        if (isPlaybackActive() || !running || pausedForScroll) return
+        flash = Math.max(flash, 0.55 + Math.random() * 0.18)
         if (bolt) bolt.life = 1
       }, 70 + Math.random() * 90)
     }
@@ -179,11 +195,19 @@ export const StarfieldBackground = () => {
         return
       }
 
+      raf = requestAnimationFrame(draw)
+
+      // Free the compositor while the user is actively scrolling.
+      if (pausedForScroll) return
+
+      if (now - lastPaint < TARGET_FRAME_MS) return
+      lastPaint = now
+
       ctx.clearRect(0, 0, width, height)
 
       ctx.lineCap = "round"
       for (const drop of drops) {
-        drop.y += drop.speed
+        drop.y += drop.speed * 1.4
         drop.x += drop.speed * 0.14
         if (drop.y > height + 20) {
           drop.y = -20
@@ -192,7 +216,7 @@ export const StarfieldBackground = () => {
         if (drop.x > width + 20) drop.x = -10
 
         ctx.strokeStyle = `rgba(176, 188, 208, ${drop.opacity * 0.85})`
-        ctx.lineWidth = 1.1
+        ctx.lineWidth = 1
         ctx.beginPath()
         ctx.moveTo(drop.x, drop.y)
         ctx.lineTo(drop.x - drop.len * 0.16, drop.y + drop.len)
@@ -201,7 +225,7 @@ export const StarfieldBackground = () => {
 
       if (now >= nextFlash) {
         triggerStrike()
-        nextFlash = now + 3500 + Math.random() * 4500
+        nextFlash = now + 4500 + Math.random() * 5500
       }
 
       if (flash > 0.01) {
@@ -213,12 +237,10 @@ export const StarfieldBackground = () => {
           height * 0.45,
           Math.max(width, height) * 0.7
         )
-        bloom.addColorStop(0, `rgba(210, 222, 240, ${flash * 0.5})`)
-        bloom.addColorStop(0.45, `rgba(130, 150, 180, ${flash * 0.18})`)
+        bloom.addColorStop(0, `rgba(210, 222, 240, ${flash * 0.42})`)
+        bloom.addColorStop(0.45, `rgba(130, 150, 180, ${flash * 0.14})`)
         bloom.addColorStop(1, "rgba(130, 150, 180, 0)")
         ctx.fillStyle = bloom
-        ctx.fillRect(0, 0, width, height)
-        ctx.fillStyle = `rgba(190, 205, 225, ${flash * 0.1})`
         ctx.fillRect(0, 0, width, height)
       }
 
@@ -229,38 +251,41 @@ export const StarfieldBackground = () => {
         strokePath(
           ctx,
           bolt.points,
-          `rgba(170, 190, 220, ${alpha * 0.28})`,
-          10
+          `rgba(220, 230, 245, ${alpha * 0.55})`,
+          2.8
         )
-        strokePath(
-          ctx,
-          bolt.points,
-          `rgba(220, 230, 245, ${alpha * 0.65})`,
-          3.5
-        )
-        strokePath(ctx, bolt.points, `rgba(255, 255, 255, ${alpha})`, 1.4)
+        strokePath(ctx, bolt.points, `rgba(255, 255, 255, ${alpha})`, 1.2)
         for (const branch of bolt.branches) {
           strokePath(
             ctx,
             branch,
-            `rgba(200, 214, 235, ${alpha * 0.5})`,
-            1.2
+            `rgba(200, 214, 235, ${alpha * 0.45})`,
+            1
           )
         }
         ctx.restore()
-        bolt.life *= 0.86
+        bolt.life *= 0.84
       } else {
         bolt = null
       }
 
-      flash *= 0.88
-      raf = requestAnimationFrame(draw)
+      flash *= 0.86
     }
 
     const startLoop = () => {
       if (running || isPlaybackActive()) return
       running = true
+      lastPaint = 0
       raf = requestAnimationFrame(draw)
+    }
+
+    const pauseForScroll = () => {
+      pausedForScroll = true
+      clearCanvas()
+      if (scrollIdleTimer) window.clearTimeout(scrollIdleTimer)
+      scrollIdleTimer = window.setTimeout(() => {
+        pausedForScroll = false
+      }, 180)
     }
 
     resize()
@@ -270,6 +295,10 @@ export const StarfieldBackground = () => {
       resize()
     }
     window.addEventListener("resize", onResize)
+    window.addEventListener("scroll", pauseForScroll, {
+      passive: true,
+      capture: true,
+    })
 
     // Resume/stop when player opens or closes (class toggled by hook).
     const observer = new MutationObserver(() => {
@@ -298,7 +327,9 @@ export const StarfieldBackground = () => {
       stopLoop()
       observer.disconnect()
       window.removeEventListener("resize", onResize)
+      window.removeEventListener("scroll", pauseForScroll, true)
       document.removeEventListener("visibilitychange", onVisibility)
+      if (scrollIdleTimer) window.clearTimeout(scrollIdleTimer)
     }
   }, [motion])
 
