@@ -2,15 +2,14 @@ import dynamic from "next/dynamic"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
-import { ChatProvider } from "@/components/chat-widget"
+import { DeferredCommunityShell } from "@/components/deferred-community-shell"
+import { DeferredStarfield } from "@/components/deferred-starfield"
 import { SiteFeaturesProvider } from "@/components/site-features"
-import { TicketProvider } from "@/components/support-ticket-widget"
 import { WatchPartyProvider } from "@/components/watch-party-context"
 import { GridBg } from "@/components/grid-bg"
 import { ScrollTop } from "@/components/scroll-top"
 import { SiteFooter } from "@/components/site-footer"
 import { SiteHeader } from "@/components/site-header"
-import { DeferredStarfield } from "@/components/deferred-starfield"
 import { TailwindIndicator } from "@/components/tailwind-indicator"
 import {
     isMaintenanceExemptPath,
@@ -87,11 +86,9 @@ export async function SiteAccessGuard({ children }: { children: React.ReactNode 
     }
 
     return (
-            <SiteFeaturesProvider initialFeatures={pickSiteClientFlags(settings)}>
-        <ChatProvider>
-            <TicketProvider>
+        <SiteFeaturesProvider initialFeatures={pickSiteClientFlags(settings)}>
             <WatchPartyProvider>
-<ApkDownloadPrompt />
+                <ApkDownloadPrompt />
                 <ShareSitePrompt />
                 <DeferredStarfield />
                 <div
@@ -99,15 +96,18 @@ export async function SiteAccessGuard({ children }: { children: React.ReactNode 
                     vaul-drawer-wrapper=""
                 >
                     <GridBg />
-                    <div className="relative z-10 flex-1 pt-2 pb-4 md:py-4 lg:pt-2">{children}</div>
+                    <div className="relative z-10 flex-1 pt-2 pb-4 md:py-4 lg:pt-2">
+                        {children}
+                    </div>
                     <SiteFooter />
                 </div>
-                <SiteHeader />
+                {/* Chat/tickets only wrap the header — keeps their JS off page hydration. */}
+                <DeferredCommunityShell>
+                    <SiteHeader />
+                </DeferredCommunityShell>
                 <TailwindIndicator />
                 <ScrollTop />
             </WatchPartyProvider>
-            </TicketProvider>
-        </ChatProvider>
         </SiteFeaturesProvider>
     )
 }
