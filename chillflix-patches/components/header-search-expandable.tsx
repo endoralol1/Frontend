@@ -37,7 +37,7 @@ export function HeaderSearchExpandable() {
   const [expanded, setExpanded] = useState(false)
   const [opening, setOpening] = useState(false)
   const communityReady = useCommunityReady()
-  const { watchPartyEnabled, ticketsEnabled } = useSiteFeatures()
+  const { watchPartyEnabled, ticketsEnabled, chatEnabled } = useSiteFeatures()
   const clusterRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -153,7 +153,7 @@ export function HeaderSearchExpandable() {
             <TicketNavButton />
           </SiteShellErrorBoundary>
         ) : null}
-        {communityReady ? (
+        {communityReady && chatEnabled ? (
           <SiteShellErrorBoundary name="chat-nav" fallback={null}>
             <ChatNavButton />
           </SiteShellErrorBoundary>

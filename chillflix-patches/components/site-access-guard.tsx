@@ -11,6 +11,7 @@ import { ScrollTop } from "@/components/scroll-top"
 import { SiteFooter } from "@/components/site-footer"
 import { SiteHeader } from "@/components/site-header"
 import { TailwindIndicator } from "@/components/tailwind-indicator"
+import { getChatSettings } from "@/lib/chat-settings"
 import {
     isMaintenanceExemptPath,
     isStaffFromCookies,
@@ -31,7 +32,14 @@ const ShareSitePrompt = dynamic(
 
 export async function SiteAccessGuard({ children }: { children: React.ReactNode }) {
     const pathname = headers().get("x-pathname") || "/"
-    const settings = await getSiteSettings()
+    const [settings, chatSettings] = await Promise.all([
+        getSiteSettings(),
+        getChatSettings(),
+    ])
+    const clientFeatures = {
+        ...pickSiteClientFlags(settings),
+        chatEnabled: chatSettings.enabled,
+    }
     const isStaff = await isStaffFromCookies()
     const maintenanceBlocksPublic = settings.maintenanceMode && !isStaff
 
@@ -63,7 +71,7 @@ export async function SiteAccessGuard({ children }: { children: React.ReactNode 
 
     if (isEmbedPath) {
         return (
-            <SiteFeaturesProvider initialFeatures={pickSiteClientFlags(settings)}>
+            <SiteFeaturesProvider initialFeatures={clientFeatures}>
                 <WatchPartyProvider>{children}</WatchPartyProvider>
             </SiteFeaturesProvider>
         )
@@ -71,7 +79,7 @@ export async function SiteAccessGuard({ children }: { children: React.ReactNode 
 
     if (isAdminPath) {
         return (
-            <SiteFeaturesProvider initialFeatures={pickSiteClientFlags(settings)}>
+            <SiteFeaturesProvider initialFeatures={clientFeatures}>
                 {children}
             </SiteFeaturesProvider>
         )
@@ -86,7 +94,7 @@ export async function SiteAccessGuard({ children }: { children: React.ReactNode 
     }
 
     return (
-        <SiteFeaturesProvider initialFeatures={pickSiteClientFlags(settings)}>
+        <SiteFeaturesProvider initialFeatures={clientFeatures}>
             <WatchPartyProvider>
                 <ApkDownloadPrompt />
                 <ShareSitePrompt />
@@ -101,7 +109,7 @@ export async function SiteAccessGuard({ children }: { children: React.ReactNode 
                     </div>
                     <SiteFooter />
                 </div>
-                {/* Chat/tickets only wrap the header — keeps their JS off page hydration. */}
+                {/* Chat/tickets only wrap the header — skips chunks when admin-disabled. */}
                 <DeferredCommunityShell>
                     <SiteHeader />
                 </DeferredCommunityShell>
