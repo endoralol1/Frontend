@@ -5,6 +5,7 @@ import dynamic from "next/dynamic"
 import { Search } from "lucide-react"
 
 import { useCommunityReady } from "@/components/deferred-community-shell"
+import { DiscordNavButton } from "@/components/discord-nav-button"
 import { useSiteFeatures } from "@/components/site-features"
 import { SearchInput } from "@/components/search-input"
 import { SiteShellErrorBoundary } from "@/components/site-shell-error-boundary"
@@ -140,7 +141,7 @@ export function HeaderSearchExpandable() {
           "transition-[max-width,opacity,transform,margin] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
           expanded
             ? "pointer-events-none ml-0 max-w-0 overflow-hidden opacity-0 -translate-x-3 scale-95 gap-0"
-            : "ml-0 max-w-[12rem] overflow-visible opacity-100 translate-x-0 scale-100"
+            : "ml-0 max-w-[16rem] overflow-visible opacity-100 translate-x-0 scale-100"
         )}
       >
         {watchPartyEnabled ? (
@@ -153,6 +154,9 @@ export function HeaderSearchExpandable() {
             <TicketNavButton />
           </SiteShellErrorBoundary>
         ) : null}
+        <SiteShellErrorBoundary name="discord-nav" fallback={null}>
+          <DiscordNavButton />
+        </SiteShellErrorBoundary>
         {communityReady && chatEnabled ? (
           <SiteShellErrorBoundary name="chat-nav" fallback={null}>
             <ChatNavButton />
