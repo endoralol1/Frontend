@@ -6,12 +6,15 @@ import { getSiteSettings } from "@/lib/site-settings"
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-    const [settings, chat] = await Promise.all([getSiteSettings(), getChatSettings()])
+    const settings = await getSiteSettings()
+    const chatEnabled = await getChatSettings()
+        .then((chat) => chat.enabled)
+        .catch(() => false)
 
     return NextResponse.json(
         {
             ...settings,
-            chatEnabled: chat.enabled,
+            chatEnabled,
         },
         {
             headers: {

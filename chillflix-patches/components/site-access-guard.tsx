@@ -32,13 +32,16 @@ const ShareSitePrompt = dynamic(
 
 export async function SiteAccessGuard({ children }: { children: React.ReactNode }) {
     const pathname = headers().get("x-pathname") || "/"
-    const [settings, chatSettings] = await Promise.all([
+    // Soft-fail chat settings so a DB blip cannot take down every page (global-error).
+    const [settings, chatEnabled] = await Promise.all([
         getSiteSettings(),
-        getChatSettings(),
+        getChatSettings()
+            .then((chat) => chat.enabled)
+            .catch(() => false),
     ])
     const clientFeatures = {
         ...pickSiteClientFlags(settings),
-        chatEnabled: chatSettings.enabled,
+        chatEnabled,
     }
     const isStaff = await isStaffFromCookies()
     const maintenanceBlocksPublic = settings.maintenanceMode && !isStaff
