@@ -2753,9 +2753,18 @@ export function MediaPlayer({
         failover / “finding a server” happens. Always show chrome until first frames.
       */}
       {isLoading && !isPlaying && currentTime < 0.25 ? (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/60 px-4">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white" />
-          <p className="text-center text-xs text-white/85 sm:text-sm">
+        <div className="pointer-events-none absolute inset-0 z-10 bg-black/60">
+          {/*
+            Keep the ring at true geometric center so it lines up with the play
+            control. Status text sits below — do not center spinner+text as a column
+            or the ring floats above the play icon.
+          */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative flex size-11 items-center justify-center">
+              <div className="absolute inset-0 animate-spin rounded-full border-2 border-white/25 border-t-white" />
+            </div>
+          </div>
+          <p className="absolute inset-x-0 top-[calc(50%+2.75rem)] px-4 text-center text-xs text-white/85 sm:text-sm">
             {sourcesLoadingMore || activeTestingProviderId
               ? t("player.status.findingStream")
               : t("player.loading.startingPlayback")}
@@ -2850,6 +2859,7 @@ export function MediaPlayer({
         isPlaying={
           watchPartyGuest ? Boolean(syncPlayback?.isPlaying) : isPlaying
         }
+        isLoading={isLoading}
         watchPartyGuest={watchPartyGuest}
         onDoubleClick={toggleFullscreen}
         onWheel={(e: React.WheelEvent<HTMLDivElement>) => {
