@@ -32,4 +32,11 @@ PageSpeed TBT is main-thread JS during hydration. FCP/LCP can be green while TBT
 - Dynamic chat/ticket nav buttons gated on `useCommunityReady()` + feature flags.
 - `DeferredGoogleAnalytics` — GA boots after first paint/idle (~1.8s+) instead of competing with hydration.
 
+## Community invite prompt (Discord + Telegram)
+
+- `CommunityInvitePrompt` dialog (like the daily share prompt) with Discord + Telegram buttons.
+- Once per browser session (`sessionStorage`), delayed ~8s so it does not clash with the share prompt.
+- Admin → Site settings: toggle + editable Discord/Telegram URLs (`community_prompt_enabled`, `discord_invite_url`, `telegram_invite_url`).
+- Header Discord button uses the admin Discord URL when set.
+
 Deploy: prefer `NEXT_DIST_DIR=.next.candidate` full build when the VPS has enough RAM. If `next build` OOMs (~11GB box), hot-patch the live `.next` bundles and restart `chillflix` only — do not leave PM2 stopped.
