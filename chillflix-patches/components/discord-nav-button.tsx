@@ -1,5 +1,7 @@
 "use client"
 
+import { useEffect, useState } from "react"
+
 import { siteConfig } from "@/config"
 import { useTranslations } from "@/lib/i18n/client"
 import { cn } from "@/lib/utils"
@@ -17,15 +19,76 @@ function DiscordIcon({ className }: { className?: string }) {
   )
 }
 
+const FIRST_SHOW_MS = 6_000
+const SHOW_FOR_MS = 5_500
+const REPEAT_EVERY_MS = 55_000
+
 /** Header shortcut to the same Discord invite used in community chat. */
 export function DiscordNavButton({ className }: { className?: string }) {
   const { t } = useTranslations()
   const href = siteConfig.links.discord
+  const [showBubble, setShowBubble] = useState(false)
+
+  useEffect(() => {
+    if (!href) return
+
+    let showTimer: number | undefined
+    let hideTimer: number | undefined
+    let intervalId: number | undefined
+    let cancelled = false
+
+    const hide = () => {
+      if (!cancelled) setShowBubble(false)
+    }
+
+    const show = () => {
+      if (cancelled) return
+      setShowBubble(true)
+      window.clearTimeout(hideTimer)
+      hideTimer = window.setTimeout(hide, SHOW_FOR_MS)
+    }
+
+    showTimer = window.setTimeout(() => {
+      show()
+      intervalId = window.setInterval(show, REPEAT_EVERY_MS)
+    }, FIRST_SHOW_MS)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(showTimer)
+      window.clearTimeout(hideTimer)
+      window.clearInterval(intervalId)
+    }
+  }, [href])
 
   if (!href) return null
 
   return (
-    <div className={cn("relative inline-flex shrink-0 shadow-md shadow-black/25", className)}>
+    <div
+      className={cn(
+        "relative inline-flex shrink-0 overflow-visible shadow-md shadow-black/25",
+        className
+      )}
+    >
+      {showBubble ? (
+        <div
+          className={cn(
+            "pointer-events-none absolute right-0 z-30 w-[min(200px,calc(100vw-2rem))]",
+            "bottom-full mb-2 animate-in fade-in slide-in-from-bottom-2 duration-300",
+            "lg:bottom-auto lg:top-full lg:mb-0 lg:mt-2 lg:slide-in-from-top-2"
+          )}
+        >
+          <div className="rounded-2xl rounded-br-md bg-[#5865F2] px-3 py-2 text-white shadow-lg ring-1 ring-[#5865F2]/40">
+            <p className="text-[11px] font-semibold leading-snug">
+              {t("chat.joinDiscord")}
+            </p>
+            <p className="mt-0.5 text-[10px] leading-snug text-white/85">
+              {t("chat.joinDiscordHint")}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <a
         href={href}
         target="_blank"
