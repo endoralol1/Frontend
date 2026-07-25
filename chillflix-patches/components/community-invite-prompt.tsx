@@ -12,13 +12,11 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { useSiteFeatures } from "@/components/site-features"
-import { isAndroidBrowser } from "@/components/apk-download-prompt"
 import { useTranslations } from "@/lib/i18n/client"
-import { isLikelyTvBrowser } from "@/lib/device-profile"
-import { isBrowseListPath } from "@/lib/list-page-paths"
 
 const COMMUNITY_PROMPT_STORAGE_KEY = "chillflix:community-prompt-session"
-const COMMUNITY_PROMPT_DELAY_MS = 8000
+const COMMUNITY_PROMPT_DELAY_MS = 5000
+const SHARE_PROMPT_OPEN_SELECTOR = '[data-chillflix-share-prompt="1"]'
 
 const EXCLUDED_PREFIXES = [
     "/admin",
@@ -45,19 +43,15 @@ function TelegramIcon({ className }: { className?: string }) {
     )
 }
 
-function shouldShowCommunityPrompt(pathname: string) {
-    if (EXCLUDED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-        return false
-    }
+function isExcludedPath(pathname: string) {
+    return EXCLUDED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+}
 
-    if (isBrowseListPath(pathname)) {
-        return false
-    }
-
+function wasShownThisSession() {
     try {
-        return sessionStorage.getItem(COMMUNITY_PROMPT_STORAGE_KEY) !== "1"
+        return sessionStorage.getItem(COMMUNITY_PROMPT_STORAGE_KEY) === "1"
     } catch {
-        return false
+        return true
     }
 }
 
@@ -69,15 +63,17 @@ function markCommunityPromptShown() {
     }
 }
 
+function isSharePromptOpen() {
+    try {
+        return Boolean(document.querySelector(SHARE_PROMPT_OPEN_SELECTOR))
+    } catch {
+        return false
+    }
+}
+
 export function CommunityInvitePrompt() {
     const { t } = useTranslations()
-    const {
-        communityPromptEnabled,
-        discordInviteUrl,
-        telegramInviteUrl,
-        apkDownloadEnabled,
-        apkDownloadUrl,
-    } = useSiteFeatures()
+    const { communityPromptEnabled, discordInviteUrl, telegramInviteUrl } = useSiteFeatures()
     const [open, setOpen] = useState(false)
 
     const hasDiscord = Boolean(discordInviteUrl)
@@ -85,20 +81,31 @@ export function CommunityInvitePrompt() {
     const canShow = communityPromptEnabled && (hasDiscord || hasTelegram)
 
     useEffect(() => {
-        if (!canShow || isLikelyTvBrowser()) return
-        if (isAndroidBrowser() && apkDownloadEnabled && apkDownloadUrl) return
+        if (!canShow) return
 
-        const pathname = window.location.pathname
-        if (!shouldShowCommunityPrompt(pathname)) return
+        let cancelled = false
+        let retryTimer: number | undefined
 
-        const timer = window.setTimeout(() => {
-            if (shouldShowCommunityPrompt(window.location.pathname)) {
-                setOpen(true)
+        const tryOpen = () => {
+            if (cancelled) return
+            if (isExcludedPath(window.location.pathname)) return
+            if (wasShownThisSession()) return
+            // Wait until the daily share dialog is gone so this one is visible.
+            if (isSharePromptOpen()) {
+                retryTimer = window.setTimeout(tryOpen, 1000)
+                return
             }
-        }, COMMUNITY_PROMPT_DELAY_MS)
+            setOpen(true)
+        }
 
-        return () => window.clearTimeout(timer)
-    }, [canShow, apkDownloadEnabled, apkDownloadUrl])
+        const timer = window.setTimeout(tryOpen, COMMUNITY_PROMPT_DELAY_MS)
+
+        return () => {
+            cancelled = true
+            window.clearTimeout(timer)
+            window.clearTimeout(retryTimer)
+        }
+    }, [canShow])
 
     const closePrompt = useCallback(() => {
         markCommunityPromptShown()
@@ -111,11 +118,13 @@ export function CommunityInvitePrompt() {
         <Dialog
             open={open}
             onOpenChange={(next) => {
-                if (!next) closePrompt()
-                else setOpen(true)
+                if (!next && open) closePrompt()
             }}
         >
-            <DialogContent className="max-w-md rounded-2xl border-border/50 bg-card/95 sm:max-w-md">
+            <DialogContent
+                className="max-w-md rounded-2xl border-border/50 bg-card/95 sm:max-w-md"
+                data-chillflix-community-prompt="1"
+            >
                 <DialogHeader>
                     <DialogTitle>{t("communityPrompt.title")}</DialogTitle>
                     <DialogDescription>{t("communityPrompt.description")}</DialogDescription>
