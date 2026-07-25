@@ -1,0 +1,1397 @@
+{
+  "site": {
+    "description": "Watch movies and TV shows online on Chillflix. Discover trending films, series, music, games, and IPTV.",
+    "shareTitle": "Chillflix.lol – Online Movies & TV Shows",
+    "shareDescription": "Stream movies and TV shows free on Chillflix.lol. Watch trending films, binge-worthy series, music, games, and live IPTV."
+  },
+  "nav": {
+    "home": "Home",
+    "movies": "Movies",
+    "tvShows": "TV Shows",
+    "music": "Music",
+    "games": "Games",
+    "iptv": "IPTV",
+    "fourK": "4K",
+    "people": "People",
+    "trending": "Trending",
+    "discover": "Discover",
+    "popular": "Popular",
+    "nowPlaying": "Now Playing",
+    "upcoming": "Upcoming",
+    "topRated": "Top Rated",
+    "anime": "Anime",
+    "airingToday": "Airing Today",
+    "onTheAir": "On The Air",
+    "browse": "Browse",
+    "content": "Content",
+    "features": "Features",
+    "menu": "Menu",
+    "new": "NEW"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Account, language, region, theme & updates",
+    "account": "Account",
+    "language": "Language",
+    "languageTooltip": "Translates the site interface and movie/TV info from TMDB.",
+    "region": "Region",
+    "regionTooltip": "Used to show available watch providers in your region.",
+    "theme": "Theme",
+    "updates": "Updates",
+    "changelog": "Changelog",
+    "androidApp": "Android app",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "languageChanged": "Language changed",
+    "languageChangedDesc": "Interface is now in {language}.",
+    "regionChanged": "Region changed successfully",
+    "regionChangedDesc": "You have successfully changed your region to {region}.",
+    "themeChanged": "Theme changed successfully",
+    "themeChangedDesc": "You have successfully changed the theme to {theme}."
+  },
+  "common": {
+    "search": "Search",
+    "searchPlaceholder": "Search movies, TV shows…",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "refresh": "Refresh",
+    "back": "Back",
+    "backToSite": "Back to site",
+    "close": "Close",
+    "yes": "Yes",
+    "no": "No",
+    "user": "User",
+    "moderator": "Moderator",
+    "owner": "Owner",
+    "active": "Active",
+    "suspended": "Suspended",
+    "browse": "Browse {title}",
+    "developers": "Developers",
+    "playerApi": "Player API",
+    "allRightsReserved": "All rights reserved.",
+    "tmdbDisclaimer": "This product uses the TMDB API but is not endorsed or certified by TMDB.",
+    "dataProvidedBy": "Data provided by",
+    "previous": "Previous",
+    "next": "Next",
+    "morePages": "More pages",
+    "goToPreviousPage": "Go to previous page",
+    "goToNextPage": "Go to next page",
+    "searchShort": "Search...",
+    "goHome": "Go home",
+    "yourCountry": "your country",
+    "exploreMore": "Explore more",
+    "noResults": "No results found",
+    "movie": "Movie",
+    "tv": "TV",
+    "notAvailable": "N/A"
+  },
+  "hero": {
+    "details": "Details"
+  },
+  "providersCarousel": {
+    "sectionTitle": "Streaming Providers",
+    "subtitle": "Browse content from your favorite streaming services",
+    "netflix": "Original series, blockbuster movies, and documentaries with a constantly updated library.",
+    "disneyPlus": "Disney, Pixar, Marvel, Star Wars, and National Geographic — classics and new releases.",
+    "appleTv": "Award-winning Apple Originals — premium dramas and documentaries.",
+    "primeVideo": "Thousands of movies and TV shows, Amazon Originals, and blockbuster films.",
+    "max": "HBO series, blockbuster movies, and exclusive Max Originals in one place.",
+    "hulu": "Current-season episodes, exclusive series, and thousands of movies.",
+    "crunchyroll": "The world's largest anime library — classics to latest simulcasts.",
+    "history": "Award-winning documentaries and series covering historical events and figures."
+  },
+  "home": {
+    "continueWatching": "Continue Watching",
+    "continueWatchingDesc": "Pick up where you left off. Resume your movies and shows instantly.",
+    "continue": "Continue",
+    "recommendedForYou": "Recommended for You",
+    "recommendedForYouDesc": "Based on what you've watched. Personalized picks just for you.",
+    "trending": "Trending",
+    "noContinueWatching": "Nothing to continue yet. Start watching something!",
+    "trendingNow": "Trending Now",
+    "top10MoviesIn": "Top 10 Movies in {country} Today",
+    "top10MoviesDesc": "Discover what's trending right now. These are the most popular movies being watched today in your region.",
+    "popularOnChillflix": "Popular on Chillflix",
+    "popularOnChillflixDesc": "Fan favorites and critically acclaimed films. Explore the movies that audiences can't stop talking about.",
+    "top10TvIn": "Top 10 TV Shows in {country} Today",
+    "top10TvDesc": "The hottest TV shows everyone's talking about. See what series are capturing viewers' attention today.",
+    "sections": {
+      "now-playing": {
+        "title": "Now Playing in {country}",
+        "description": "Currently showing in theaters near you. Catch these films on the big screen while they're still playing."
+      },
+      "popular-tv": {
+        "title": "Popular TV Shows",
+        "description": "Binge-worthy series that are capturing hearts worldwide. From drama to comedy, find your next obsession."
+      },
+      "upcoming": {
+        "title": "Coming Soon to {country}",
+        "description": "Mark your calendars! Get a sneak peek at the most anticipated films hitting theaters soon."
+      },
+      "top-rated-movies": {
+        "title": "Top Rated Movies",
+        "description": "Critically acclaimed masterpieces that stand the test of time. Experience cinema at its finest."
+      },
+      "top-rated-tv": {
+        "title": "Top Rated TV Shows",
+        "description": "The highest-rated series according to critics and viewers. Quality storytelling you won't want to miss."
+      },
+      "action": {
+        "title": "Action & Adventure",
+        "description": "High-octane thrills and epic adventures. Get your adrenaline pumping with explosive action sequences."
+      },
+      "comedy": {
+        "title": "Comedy Movies",
+        "description": "Laugh out loud with hilarious comedies. From witty rom-coms to side-splitting parodies."
+      },
+      "horror": {
+        "title": "Horror Movies",
+        "description": "Spine-chilling terrors that will keep you up at night. Enter if you dare."
+      },
+      "trending-week-movies": {
+        "title": "Trending This Week",
+        "description": "What's hot right now. The most watched and talked-about movies this week across the globe."
+      },
+      "trending-week-tv": {
+        "title": "Trending TV This Week",
+        "description": "The week's hottest series. See which shows are dominating conversations and watch lists."
+      },
+      "award-winning": {
+        "title": "Award-Winning Films",
+        "description": "Critically acclaimed masterpieces recognized by audiences and critics alike. Cinema's finest achievements."
+      },
+      "binge-worthy": {
+        "title": "Binge-Worthy Series",
+        "description": "Perfect for marathon viewing. Dive into series with plenty of episodes to keep you hooked for days."
+      },
+      "drama": {
+        "title": "Drama Movies",
+        "description": "Powerful storytelling and emotional depth. Experience compelling narratives that move and inspire."
+      },
+      "romance": {
+        "title": "Romance Movies",
+        "description": "Love stories that warm the heart. From passionate romances to heartfelt rom-coms."
+      },
+      "thriller": {
+        "title": "Thriller Movies",
+        "description": "Edge-of-your-seat suspense. Heart-pounding mysteries and psychological tension that keep you guessing."
+      },
+      "scifi": {
+        "title": "Sci-Fi Movies",
+        "description": "Journey beyond imagination. Explore futuristic worlds, advanced technology, and alien encounters."
+      },
+      "fantasy": {
+        "title": "Fantasy Movies",
+        "description": "Magical adventures in extraordinary worlds. Epic quests, mythical creatures, and supernatural wonders."
+      },
+      "animation": {
+        "title": "Animation Movies",
+        "description": "Animated masterpieces for all ages. From family favorites to stunning visual storytelling."
+      },
+      "crime": {
+        "title": "Crime Movies",
+        "description": "Gritty tales from the underworld. Heists, detectives, and the criminal mind explored."
+      },
+      "mystery": {
+        "title": "Mystery Movies",
+        "description": "Unravel the clues. Intriguing puzzles and whodunits that challenge your detective skills."
+      },
+      "documentaries": {
+        "title": "Documentaries",
+        "description": "Real stories, real impact. Explore fascinating true stories and uncover hidden truths about our world."
+      }
+    }
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signInTitle": "Welcome back",
+    "signInSubtitle": "Sign in to sync watchlists, favorites, and continue watching.",
+    "signingIn": "Signing in…",
+    "signUp": "Sign up",
+    "register": "Create account",
+    "registerTitle": "Join Chillflix",
+    "registerSubtitle": "Create an account to save your progress and personalize your experience.",
+    "email": "Email",
+    "password": "Password",
+    "username": "Username",
+    "name": "Display name",
+    "forgotPassword": "Forgot password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "captchaRequired": "Complete the captcha verification.",
+    "maintenanceTitle": "Site under maintenance",
+    "maintenanceSubtitle": "Chillflix is temporarily unavailable. Only staff can sign in right now.",
+    "maintenanceBanner": "The site is currently under maintenance. Regular accounts cannot sign in until maintenance ends.",
+    "registrationClosed": "New registrations are currently closed.",
+    "registrationClosedFooter": "New account registration is closed."
+  },
+  "player": {
+    "play": "Play",
+    "pause": "Pause",
+    "watch": "Watch",
+    "resume": "Resume",
+    "settings": "Settings",
+    "quality": "Quality",
+    "subtitles": "Subtitles",
+    "audio": "Audio",
+    "speed": "Speed",
+    "episodes": "Episodes",
+    "autoNext": "Auto next",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen",
+    "watchParty": "Watch party",
+    "communityChat": "Community chat",
+    "sources": "Sources",
+    "connecting": "Connecting · {name} · {quality}",
+    "sourceScan": "Source scan",
+    "ready": "{count} ready",
+    "loaded": "{count} loaded",
+    "picked": "picked",
+    "testing": "Testing {name}…",
+    "stream": "Stream",
+    "auto": "Auto",
+    "defaultAudio": "Default (Embedded)",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "back10s": "Back 10s",
+    "forward10s": "Forward 10s",
+    "skipIntro": "Skip intro",
+    "skipRecap": "Skip recap",
+    "skipCredits": "Skip credits",
+    "skipPreview": "Skip preview",
+    "pictureInPicture": "Picture in Picture",
+    "exitPictureInPicture": "Exit Picture in Picture",
+    "playerSettings": "Player settings",
+    "playerSettingsDesc": "Source, subtitles, audio & playback",
+    "source": "Source",
+    "subs": "Subs",
+    "off": "Off",
+    "autoplay": "Autoplay",
+    "tapToPlay": "Tap to play",
+    "tapForSound": "Tap for sound",
+    "providersReady": "Providers ({count} ready)",
+    "scanning": "Scanning",
+    "retry": "Retry",
+    "tapToCheck": "Tap to check",
+    "testingLabel": "Testing",
+    "queued": "Queued",
+    "playing": "Playing",
+    "noSubtitles": "No subtitles available",
+    "loadingExternalSubs": "Loading external subtitles…",
+    "noAudioTracks": "No audio tracks",
+    "noAlternateQualities": "No alternate qualities",
+    "streamN": "Stream {n}",
+    "season": "Season",
+    "seasons": "Seasons",
+    "episodesCount": "{n} ep",
+    "noSeasons": "No seasons",
+    "noEpisodes": "No episodes",
+    "loadingSeasons": "Loading seasons...",
+    "noSeasonsAvailable": "No seasons available",
+    "loadingEpisodes": "Loading episodes...",
+    "noEpisodesFound": "No episodes found",
+    "episodeShort": "E{n}",
+    "loading": {
+      "startingPlayback": "Starting playback…",
+      "streamReady": "Your stream is ready.",
+      "pleaseWait": "Please wait, loading…",
+      "findingFastest": "Looking for the fastest source"
+    },
+    "probe": {
+      "resolving": "Resolving…",
+      "startingScan": "Starting scan…",
+      "checking": "Checking {name}",
+      "preparingPlayback": "Preparing playback",
+      "stillSearching": "Still searching…",
+      "findingStream": "Finding your stream"
+    },
+    "unavailable": {
+      "default": "This title isn't available on Chillflix right now. None of our sources returned a stream — try again later or choose another title.",
+      "providerNoTitle": "{label} doesn't have this title.",
+      "providerBlocked": "{label} is blocked from our server IP. Use another provider or configure an outbound proxy."
+    },
+    "status": {
+      "findingStream": "Finding a stream…",
+      "checkingOther": "Checking other streams…",
+      "couldNotLoad": "Couldn't load a stream. Try another source in player settings."
+    },
+    "errors": {
+      "sourceTimedOut": "Playback source timed out",
+      "sourceFailed": "Playback source failed",
+      "hlsNetwork": "HLS network error while loading stream",
+      "hlsMedia": "HLS media error while decoding stream",
+      "pipFailed": "Picture in picture failed",
+      "fullscreenFailed": "Fullscreen is not available",
+      "fourKTranscodeTimedOut": "4K transcode timed out — try 1080p or retry in a minute"
+    },
+    "fourKStarting": "Starting 4K…",
+    "fourKTranscodeStarting": "Starting 4K transcode — first play can take 1–2 minutes",
+    "streamsBackgroundHint": "Streams are tested in the background so they are ready when you click.",
+    "soapyNoStream": "SoaPy has no custom stream for this title",
+    "resolvingProviders": "Resolving providers from CinePro",
+    "trackN": "Track {n}"
+  },
+  "admin": {
+    "admin": "Admin",
+    "moderatorPanel": "Moderator panel",
+    "adminPanel": "Admin panel",
+    "dashboard": "Dashboard",
+    "analytics": "Analytics",
+    "users": "Users",
+    "tickets": "Tickets",
+    "chat": "Chat",
+    "games": "Games",
+    "health": "Health",
+    "security": "Security",
+    "sources": "Sources",
+    "embedAds": "Embed ads",
+    "settings": "Settings",
+    "openTickets": "Open tickets",
+    "liveVisitors": "Live visitors",
+    "viewsToday": "Views today",
+    "signupsToday": "Signups today",
+    "chatToday": "Chat today",
+    "totalUsers": "Total users",
+    "maintenanceMode": "Maintenance mode",
+    "home": "Home",
+    "searchUsers": "Search name, email, username…",
+    "createUser": "Create user",
+    "editUser": "Edit user",
+    "editUserDesc": "Update account details, role, and status.",
+    "displayName": "Display name",
+    "role": "Role",
+    "status": "Status",
+    "newPassword": "New password (optional)",
+    "newPasswordPlaceholder": "Leave blank to keep current",
+    "saveChanges": "Save changes",
+    "saving": "Saving…",
+    "creating": "Creating…",
+    "library": "Library",
+    "actions": "Actions",
+    "loadingUsers": "Loading users…",
+    "noUsersFound": "No users found",
+    "userUpdated": "User updated",
+    "userDeleted": "User deleted",
+    "userCreated": "User created",
+    "logs": "Logs",
+    "logsDesc": "Inspect disk logs, PM2 output, nginx, and MySQL storage. Search, download, or clear old data.",
+    "logsTotalStorage": "Total tracked",
+    "logsFileStorage": "Log files",
+    "logsDatabaseStorage": "MySQL data",
+    "logsDatabaseRows": "Approx. DB rows",
+    "logsSources": "Sources",
+    "logsSelectSource": "Select a source to inspect its contents.",
+    "logsSearchPlaceholder": "Search lines or JSON…",
+    "logsDownload": "Download",
+    "logsRetentionDays": "Retention days",
+    "logsPruneOld": "Prune older",
+    "logsClearAllRows": "Clear all rows",
+    "logsClearFile": "Clear file",
+    "logsNoContent": "No readable content for this source.",
+    "tmdb": "TMDB posters",
+    "tmdbDesc": "Server-side poster cache — disk usage, free space, and manual clear.",
+    "tmdbHowItWorks": "First request fetches the image from TMDB, resizes it to WebP, and saves it on this server. Poster cards, hero backdrops, and title logos all use this cache. Later requests are served from disk for 24 hours. A daily cron deletes files older than 1 day. If the cache fails, browsers fall back to image.tmdb.org.",
+    "tmdbPostersCached": "Posters cached",
+    "tmdbCacheSize": "Cache size",
+    "tmdbDiskFree": "Disk free",
+    "tmdbDiskUsed": "Disk used",
+    "tmdbClearCache": "Clear cache",
+    "tmdbCacheCleared": "Poster cache cleared",
+    "tmdbPruneSchedule": "Auto-delete schedule",
+    "tmdbPruneScheduleDesc": "Choose how often old poster files are deleted (older than 24 hours). Time uses server local timezone.",
+    "tmdbPruneFrequency": "Frequency",
+    "tmdbFreqDisabled": "Disabled",
+    "tmdbFreqDaily": "Daily",
+    "tmdbFreqWeekly": "Weekly",
+    "tmdbFreqMonthly": "Monthly",
+    "tmdbPruneWeekday": "Day of week",
+    "tmdbPruneMonthDay": "Day of month",
+    "tmdbPruneDisabledShort": "Auto-delete disabled",
+    "tmdbPruneTime": "Delete at",
+    "tmdbSaveSchedule": "Save schedule",
+    "tmdbScheduleSaved": "Prune schedule saved and cron updated",
+    "tmdbRunPruneNow": "Run prune now",
+    "tmdbPruning": "Pruning…",
+    "tmdbPruneRan": "Old poster files pruned",
+    "tmdbServerTime": "Server timezone",
+    "tmdbCronStatus": "Cron status",
+    "tmdbCronInSync": "Installed and matches saved schedule",
+    "tmdbCronOutOfSync": "Differs from saved schedule — click Save schedule",
+    "tmdbCronMissing": "Not installed — click Save schedule",
+    "tmdbCronDisabled": "Disabled — no cron job installed"
+  },
+  "footer": {
+    "action": "Action",
+    "adventure": "Adventure",
+    "multiplayer": "Multiplayer",
+    "horror": "Horror",
+    "simulation": "Simulation",
+    "sports": "Sports"
+  },
+  "profile": {
+    "profile": "Profile",
+    "favorites": "Favorites",
+    "watchlist": "Watchlist",
+    "history": "History",
+    "settings": "Settings",
+    "loading": "Loading profile…",
+    "signOut": "Sign out",
+    "statistics": "Statistics",
+    "statsDesc": "Your watching activity and library at a glance.",
+    "tabs": {
+      "continue": "Continue",
+      "favorites": "Favorites",
+      "watchlist": "Watchlist",
+      "history": "History",
+      "stats": "Stats",
+      "settings": "Settings"
+    },
+    "empty": {
+      "continue": "Nothing in progress yet.",
+      "favorites": "No favorites yet. Heart a title to save it here.",
+      "watchlist": "Your watchlist is empty. Add titles you want to watch later.",
+      "history": "Watch history will appear here."
+    },
+    "stats": {
+      "watchTime": "Watch time",
+      "moviesWatched": "Movies watched",
+      "tvEpisodes": "TV episodes",
+      "historyEntries": "History entries"
+    },
+    "library": {
+      "selectItems": "Select items",
+      "clearAll": "Clear all",
+      "removeSelected": "Remove selected",
+      "removeFailed": "Remove failed",
+      "removedFrom": "Removed from {kind}",
+      "clearFailed": "Clear failed",
+      "cleared": "Cleared {label}"
+    }
+  },
+  "tickets": {
+    "support": "Support",
+    "newTicket": "New ticket",
+    "subject": "Subject",
+    "message": "Message",
+    "send": "Send",
+    "supportTickets": "Support tickets",
+    "subtitle": "Get help from the Chillflix team",
+    "signInPrompt": "Sign in to open and manage support tickets.",
+    "signInSuffix": "to open and manage support tickets.",
+    "empty": "No tickets yet. Create one if you need help.",
+    "count": "{count} ticket(s)",
+    "category": "Category",
+    "priority": "Priority",
+    "description": "Description",
+    "submitTicket": "Submit ticket",
+    "subjectPlaceholder": "Brief summary of your issue",
+    "messagePlaceholder": "Describe the issue with as much detail as possible.",
+    "replyPlaceholder": "Write a reply…",
+    "reopen": "Reopen",
+    "close": "Close",
+    "staff": "Staff",
+    "openChat": "Open support",
+    "categoryLabels": {
+      "general": "General",
+      "bug": "Bug report",
+      "playback": "Playback / streaming",
+      "account": "Account",
+      "feature": "Feature request",
+      "other": "Other"
+    },
+    "priorityLabels": {
+      "low": "Low",
+      "normal": "Normal",
+      "high": "High",
+      "urgent": "Urgent"
+    },
+    "statusLabels": {
+      "open": "Open",
+      "in_progress": "In progress",
+      "waiting_user": "Awaiting you",
+      "waiting_staff": "Awaiting staff",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "errors": {
+      "captcha": "Complete the captcha verification.",
+      "createFailed": "Failed to create ticket",
+      "loadFailed": "Failed to load tickets",
+      "loadTicketFailed": "Failed to load ticket",
+      "replyFailed": "Failed to send reply",
+      "closeFailed": "Failed to close ticket",
+      "reopenFailed": "Failed to reopen ticket"
+    },
+    "newTicketButton": "New ticket",
+    "ticketCount": "{count} ticket(s)",
+    "ticketCountOne": "{count} ticket",
+    "submitTicketLabel": "Submit ticket"
+  },
+  "chat": {
+    "communityChat": "Community chat",
+    "loggedInAs": "Logged in as {name}",
+    "anyoneCanRead": "Anyone can read",
+    "loadingChat": "Loading chat…",
+    "noMessages": "No messages yet. Say hello!",
+    "closeChat": "Close community chat",
+    "openChat": "Open community chat",
+    "reply": "Reply",
+    "edit": "Edit",
+    "delete": "Delete",
+    "remove": "Remove",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edited": " · edited",
+    "replyingTo": "Replying to {name}",
+    "placeholder": "Type a message… (@ to mention)",
+    "signInToChat": "Sign in to join the chat.",
+    "signInSuffix": "to join the chat.",
+    "errors": {
+      "loadFailed": "Failed to load chat",
+      "sendFailed": "Failed to send message",
+      "editFailed": "Failed to edit message",
+      "deleteFailed": "Failed to delete message",
+      "reactionFailed": "Failed to update reaction"
+    },
+    "openChatUnread": "Open community chat, {count} unread messages",
+    "cancelReply": "Cancel reply",
+    "loading": "Loading…",
+    "signInLink": "Sign in",
+    "joinDiscord": "Join our Discord",
+    "joinDiscordHint": "Chat with the community and get updates.",
+    "poll": {
+      "singleChoice": "Pick one answer",
+      "multipleChoice": "Pick one or more answers",
+      "tapToVote": "Tap options to vote. Tap again to remove your vote.",
+      "closed": "Closed",
+      "closedHint": "Voting has ended for this poll.",
+      "totalVotes": "{count} vote(s)",
+      "voteFailed": "Failed to vote on poll"
+    }
+  },
+  "embed": {
+    "title": "Embed Player"
+  },
+  "externalPlayer": {
+    "loading": "Loading {name}…",
+    "buildEmbedFailed": "Failed to build embed URL",
+    "loadFailed": "Failed to load external player",
+    "couldNotLoad": "Could not load {name}.",
+    "otherPlayers": "Other players"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System"
+  },
+  "pages": {
+    "discoverMovies": "Discover Movies",
+    "discoverTv": "Discover TV Shows",
+    "popularMovies": "Popular Movies",
+    "popularTv": "Popular TV Shows",
+    "topRatedMovies": "Top Rated Movies",
+    "topRatedTv": "Top Rated TV Shows",
+    "nowPlayingMovies": "Now Playing Movies",
+    "upcomingMovies": "Upcoming Movies",
+    "airingToday": "Airing Today",
+    "onTheAir": "On The Air",
+    "animeMovies": "Anime Movies",
+    "animeSeries": "Anime Series",
+    "popularPeople": "Popular People",
+    "trendingMovies": "Trending Movies",
+    "trendingTv": "Trending TV Shows"
+  },
+  "pagesConfig": {
+    "home": {
+      "title": "Home",
+      "description": "Welcome to your ultimate entertainment hub. Explore a world where movies and TV shows come alive. Start your journey into endless viewing pleasure here."
+    },
+    "movie": {
+      "root": {
+        "title": "Movies",
+        "description": "Embark on a cinematic adventure with our vast collection of movies. From timeless classics to the latest blockbusters, find your next favorite film today."
+      },
+      "discover": {
+        "title": "Discover Movies",
+        "description": "Filter by genre, year, and where to watch — then sort until something clicks."
+      },
+      "popular": {
+        "title": "Popular Movies",
+        "description": "Dive into the world of popular movies that have captured the hearts of audiences worldwide. From blockbuster hits to critically acclaimed films, discover what's trending in the cinematic universe."
+      },
+      "topRated": {
+        "title": "Top Rated Movies",
+        "description": "Explore the pinnacle of cinematic excellence with our collection of top-rated movies. These films have been recognized for their outstanding storytelling, direction, and performances."
+      },
+      "upcoming": {
+        "title": "Upcoming Movies",
+        "description": "Be the first to watch the latest movies before they hit the big screen. Discover the upcoming movies that everyone is talking about."
+      },
+      "nowPlaying": {
+        "title": "Now Playing Movies",
+        "description": "Catch the latest movies now playing in theaters near you. Experience the magic of cinema with current hits."
+      },
+      "anime": {
+        "title": "Anime Movies",
+        "description": "Explore the vibrant world of anime movies. From Studio Ghibli masterpieces to modern anime classics, discover captivating stories and stunning animation."
+      }
+    },
+    "tv": {
+      "root": {
+        "title": "TV Shows",
+        "description": "Embark on a journey through the world of TV shows. From the latest hits to timeless classics, discover new stories and revisit your favorites."
+      },
+      "discover": {
+        "title": "Discover TV Shows",
+        "description": "Filter by genre, year, and where to watch — then sort until something clicks."
+      },
+      "popular": {
+        "title": "Popular TV Shows",
+        "description": "Dive into the world of popular TV shows that have captured the hearts of audiences worldwide. From binge-worthy series to critically acclaimed dramas, discover what's trending in the TV universe."
+      },
+      "topRated": {
+        "title": "Top Rated TV Shows",
+        "description": "Explore the pinnacle of television excellence with our collection of top-rated TV shows. These series have been recognized for their outstanding storytelling, acting, and production values."
+      },
+      "airingToday": {
+        "title": "Airing Today",
+        "description": "Don't miss out on the latest episodes of your favorite TV shows airing today. Stay up-to-date with the newest content from networks and streaming platforms."
+      },
+      "onTheAir": {
+        "title": "On The Air",
+        "description": "Tune in to the latest buzz with shows currently on the air. From gripping dramas to laugh-out-loud comedies, watch what's captivating audiences right now."
+      },
+      "anime": {
+        "title": "Anime Series",
+        "description": "Dive into the world of anime series. From shonen adventures to slice-of-life stories, explore the best anime shows with compelling characters and immersive narratives."
+      }
+    },
+    "people": {
+      "root": {
+        "title": "People",
+        "description": "Discover the talented individuals who bring movies and TV shows to life. From actors to directors, explore the world of entertainment through the people who make it all happen."
+      },
+      "popular": {
+        "title": "Popular People",
+        "description": "Explore the most popular people in the entertainment industry. From award-winning actors to visionary directors, discover the faces behind your favorite movies and TV shows."
+      }
+    },
+    "trending": {
+      "root": {
+        "title": "Trending",
+        "description": "Stay in the know with the latest trends in movies and TV shows. Discover what's popular and what's on the rise."
+      },
+      "movie": {
+        "title": "Trending Movies",
+        "description": "Stay on the pulse of what's hot in the movie scene. See what films are making waves and capturing audiences around the globe."
+      },
+      "tv": {
+        "title": "Trending TV Shows",
+        "description": "Catch up with the world and see what TV shows are currently trending. From viral sensations to critically acclaimed series, find out what's capturing viewers' attention."
+      },
+      "people": {
+        "title": "Trending People",
+        "description": "Follow the latest trends in the world of entertainment. Discover the people who are making headlines and shaping the industry."
+      }
+    },
+    "collection": {
+      "root": {
+        "title": "Collections",
+        "description": "Explore curated collections of movies and TV shows. From genres to themes, find the perfect collection for your next binge-watch session."
+      }
+    },
+    "search": {
+      "title": "Search",
+      "description": "Find your favorite movies, TV shows, and people in the entertainment industry. Use our powerful search to discover new content and revisit old favorites."
+    },
+    "music": {
+      "title": "Music",
+      "description": "Discover new tracks and artists with Spotify-powered search and a custom player."
+    },
+    "games": {
+      "title": "Games",
+      "description": "Browse and download from our library of 2,263+ games. From AAA titles to indie gems."
+    },
+    "iptv": {
+      "title": "IPTV",
+      "description": "Browse and watch live TV channels."
+    },
+    "fourK": {
+      "title": "4K",
+      "description": "Browse movies and TV shows available in 4K from our 4KHDHub catalog."
+    },
+    "profile": {
+      "title": "Profile",
+      "description": "Your favorites, watchlist, history, and account settings."
+    },
+    "changelog": {
+      "title": "Changelog",
+      "description": "Recent updates and improvements to Chillflix playback, providers, and the watch experience."
+    },
+    "iptvWatch": {
+      "title": "Watch IPTV"
+    },
+    "playerApi": {
+      "title": "Player API",
+      "description": "Embed the Chillflix player on your site with autoplay, continue watching, watch party, and auto next episode."
+    }
+  },
+  "navDesc": {
+    "/": "Welcome to your ultimate entertainment hub. Explore a world where movies and TV shows come alive. Start your journey into endless viewing pleasure here.",
+    "/music": "Discover new tracks and artists with Spotify-powered search and a custom player.",
+    "/games": "Browse and download from our library of 2,263+ games. From AAA titles to indie gems.",
+    "/iptv": "Browse and watch live TV channels.",
+    "/4k": "Browse movies and TV shows available in 4K from our 4KHDHub catalog.",
+    "/movie": "Embark on a cinematic adventure with our vast collection of movies. From timeless classics to the latest blockbusters, find your next favorite film today.",
+    "/movie/discover": "Uncover hidden gems and new releases in the world of cinema. Dive into a sea of movies waiting to be discovered by you.",
+    "/movie/popular": "Dive into the world of popular movies that have captured the hearts of audiences worldwide. From blockbuster hits to critically acclaimed films, discover what's trending in the cinematic universe.",
+    "/movie/now-playing": "Catch the latest movies now playing in theaters near you. Experience the magic of cinema with current hits.",
+    "/movie/upcoming": "Be the first to watch the latest movies before they hit the big screen. Discover the upcoming movies that everyone is talking about.",
+    "/movie/top-rated": "Explore the pinnacle of cinematic excellence with our collection of top-rated movies. These films have been recognized for their outstanding storytelling, direction, and performances.",
+    "/movie/anime": "Explore the vibrant world of anime movies. From Studio Ghibli masterpieces to modern anime classics, discover captivating stories and stunning animation.",
+    "/tv": "Embark on a journey through the world of TV shows. From the latest hits to timeless classics, discover new stories and revisit your favorites.",
+    "/tv/discover": "Unearth new TV shows and hidden gems in the vast landscape of television. Whether you're into dramas, comedies, or thrillers, there's always something new to discover.",
+    "/tv/popular": "Dive into the world of popular TV shows that have captured the hearts of audiences worldwide. From binge-worthy series to critically acclaimed dramas, discover what's trending in the TV universe.",
+    "/tv/airing-today": "Don't miss out on the latest episodes of your favorite TV shows airing today. Stay up-to-date with the newest content from networks and streaming platforms.",
+    "/tv/on-the-air": "Tune in to the latest buzz with shows currently on the air. From gripping dramas to laugh-out-loud comedies, watch what's captivating audiences right now.",
+    "/tv/top-rated": "Explore the pinnacle of television excellence with our collection of top-rated TV shows. These series have been recognized for their outstanding storytelling, acting, and production values.",
+    "/tv/anime": "Dive into the world of anime series. From shonen adventures to slice-of-life stories, explore the best anime shows with compelling characters and immersive narratives.",
+    "/people": "Discover the talented individuals who bring movies and TV shows to life. From actors to directors, explore the world of entertainment through the people who make it all happen.",
+    "/people/popular": "Explore the most popular people in the entertainment industry. From award-winning actors to visionary directors, discover the faces behind your favorite movies and TV shows.",
+    "/trending": "Stay in the know with the latest trends in movies and TV shows. Discover what's popular and what's on the rise.",
+    "/trending/movie": "Stay on the pulse of what's hot in the movie scene. See what films are making waves and capturing audiences around the globe.",
+    "/trending/tv": "Catch up with the world and see what TV shows are currently trending. From viral sensations to critically acclaimed series, find out what's capturing viewers' attention.",
+    "/trending/people": "Follow the latest trends in the world of entertainment. Discover the people who are making headlines and shaping the industry."
+  },
+  "detail": {
+    "tabs": {
+      "overview": "Overview",
+      "credits": "Credits",
+      "watch": "Watch",
+      "reviews": "Reviews",
+      "images": "Images",
+      "videos": "Videos",
+      "recommendations": "Recommendations",
+      "similar": "Similar",
+      "seasons": "Seasons"
+    },
+    "trailer": "Trailer",
+    "download": "Download",
+    "share": {
+      "label": "Share",
+      "title": "Share this title",
+      "description": "Send friends a link to \"{title}\" on Chillflix.",
+      "message": "Check out \"{title}\" on Chillflix!"
+    },
+    "movieFallbackTitle": "Movie",
+    "tvFallbackTitle": "TV Show",
+    "facts": {
+      "details": "Details",
+      "releaseDate": "Release Date",
+      "status": "Status",
+      "runtime": "Runtime",
+      "budget": "Budget",
+      "revenue": "Revenue",
+      "originalLanguage": "Original Language",
+      "productionCompanies": "Production Companies",
+      "networks": "Networks",
+      "firstAirDate": "First Air Date",
+      "lastAirDate": "Last Air Date",
+      "numberOfSeasons": "Number of Seasons",
+      "numberOfEpisodes": "Number of Episodes",
+      "episodeRuntime": "Episode Runtime",
+      "type": "Type",
+      "createdBy": "Created By"
+    },
+    "credits": {
+      "guestStars": "Guest Stars",
+      "crew": "Crew",
+      "noCast": "No cast information available"
+    },
+    "downloadDialog": {
+      "noDownloads": "No downloads are available for this title.",
+      "noLinks": "No download links found.",
+      "loadError": "Could not load download links. Please try again later.",
+      "loading": "Loading download options…",
+      "loadErrorShort": "Could not load download links right now.",
+      "noDownloadsYet": "No downloads are available for this title yet.",
+      "noLinksForTitle": "No download links found for this title.",
+      "downloadStarted": "Download started — check your browser downloads."
+    },
+    "favorite": {
+      "label": "Favorite",
+      "signInRequired": "Sign in required",
+      "logIn": "Log in",
+      "toSaveFavorites": "to save favorites.",
+      "failed": "Favorite failed",
+      "added": "Added to favorites",
+      "removed": "Removed from favorites",
+      "add": "Add to favorites",
+      "remove": "Remove from favorites"
+    },
+    "watchlist": {
+      "label": "Watchlist",
+      "signInRequired": "Sign in required",
+      "logIn": "Log in",
+      "toUseWatchlist": "to use your watchlist.",
+      "failed": "Watchlist failed",
+      "added": "Added to watchlist",
+      "removed": "Removed from watchlist",
+      "add": "Add to watchlist",
+      "remove": "Remove from watchlist"
+    },
+    "viewEpisode": "View Episode",
+    "factsExtra": {
+      "language": "Language",
+      "productionCountries": "Production Countries",
+      "originalTitle": "Original Title",
+      "originalName": "Original Name",
+      "seasons": "Seasons",
+      "episodes": "Episodes"
+    },
+    "watchProviders": {
+      "whereToWatch": "Where to Watch",
+      "regionTooltip": "Currently showing providers for {country}. You can change your preferred region in the settings.",
+      "subtitleMovie": "Stream, buy or rent this movie from the providers below.",
+      "subtitleTv": "Stream, buy or rent this tv show from the providers below.",
+      "stream": "Stream",
+      "buy": "Buy",
+      "rent": "Rent"
+    },
+    "person": {
+      "knownFor": "Known for",
+      "knownForBlurb": "Popular and highly rated titles from their filmography.",
+      "credits": "Credits",
+      "images": "Images",
+      "music": "Music",
+      "noCredits": "No credits",
+      "biography": "Biography",
+      "alsoKnownAs": "Also known as",
+      "died": "Died",
+      "ageYears": "{age} years old",
+      "ageAtDeath": "{age} at death",
+      "statsMovies": "Movies",
+      "statsTv": "TV shows",
+      "statsCredits": "Credits",
+      "imageBadge": "An image from {title}, one of the productions that also features {name}."
+    },
+    "reviews": {
+      "readMore": "Read More",
+      "showLess": "Show Less",
+      "noReviews": "No reviews"
+    },
+    "personCredits": {
+      "searchPlaceholder": "Search...",
+      "filter": "Filter",
+      "all": "All ({count})",
+      "movie": "Movie ({count})",
+      "tv": "TV Shows ({count})",
+      "year": "Year",
+      "details": "Details",
+      "noResults": "No result for search criteria",
+      "as": "as {role}",
+      "episode": "{count} episode",
+      "episodes": "{count} episodes"
+    }
+  },
+  "discover": {
+    "noMoviesFound": "No movies found for the selected filters.",
+    "noTvFound": "No TV shows found for the selected filters.",
+    "tryRemovingFilters": "Try removing some of the filters to get more results.",
+    "explore": "Explore",
+    "spotlight": "Spotlight",
+    "spotlightDescription": "Standout picks from your current browse",
+    "activeFilters": "Active filters",
+    "resultsCount": "{count} titles found",
+    "pageOf": "Page {current} of {total}",
+    "featuredPick": "Featured pick",
+    "viewDetails": "View details",
+    "activeFiltersShort": "active",
+    "browseByGenre": "Browse by genre",
+    "quickSort": "Sort",
+    "clearGenres": "Clear genres",
+    "noActiveFilters": "No active filters — adjust sort or genres above, or open Filters.",
+    "goToPage": "Go to page {page}",
+    "pagination": "Pagination",
+    "allResults": "All results",
+    "resultsOnPage": "{count} titles on this page",
+    "insights": {
+      "avgRating": "Avg. rating",
+      "onPage": "This page",
+      "catalog": "In catalog",
+      "yearRange": "Year span"
+    },
+    "filters": "Filters",
+    "sort": "Sort",
+    "sortBy": "Sort by",
+    "popularity": "Popularity",
+    "rating": "Rating",
+    "releaseDate": "Release Date",
+    "title": "Title",
+    "genres": "Genres",
+    "genresHint": "Tap once to include, again to exclude, and once more to clear. Double-tap goes straight to exclude.",
+    "excludedGenres": "Exclude",
+    "genreIncludedAria": "{name}, included",
+    "genreExcludedAria": "{name}, excluded",
+    "providers": "Providers",
+    "clearAll": "Clear all",
+    "apply": "Apply",
+    "sheetDescription": "Narrow down your search results with the following filters.",
+    "from": "From",
+    "to": "To",
+    "selectDate": "Select date…",
+    "language": "Language",
+    "selectLanguage": "Select language…",
+    "searchLanguage": "Search…",
+    "all": "All",
+    "whereToWatch": "Where to watch",
+    "providerTooltip": "Currently showing providers are available in your region. You can change your region in the settings.",
+    "selectProviders": "Select providers…",
+    "searchProviders": "Search providers…",
+    "noProviderFound": "No provider found.",
+    "clearSelection": "Clear selection",
+    "voteAverage": "Minimum rating",
+    "minRating": "Minimum rating",
+    "voteAverageHint": "Shows rated at least this high",
+    "minimumVotes": "Minimum Votes",
+    "sortOptions": {
+      "highestPopularity": "Highest Popularity",
+      "lowestPopularity": "Lowest Popularity",
+      "recentlyReleased": "Recently Released",
+      "leastRecent": "Least Recent",
+      "highestRating": "Highest Rating",
+      "lowestRating": "Lowest Rating",
+      "mostVoted": "Most Voted",
+      "leastVoted": "Least Voted"
+    }
+  },
+  "search": {
+    "resultsFor": "Search results for",
+    "noResults": "No results found",
+    "noResultsFor": "No results found for \"{query}\".",
+    "tryDifferent": "Please try a different search term.",
+    "metaTitle": "Search results for: {query}",
+    "typeAll": "All",
+    "typeTv": "TV Shows",
+    "filtersDescription": "Narrow results by genre, year, and minimum rating.",
+    "year": "Year",
+    "yearPlaceholder": "e.g. 2024",
+    "sortOptions": {
+      "relevance": "Relevance",
+      "titleAZ": "Title (A–Z)"
+    }
+  },
+  "errors": {
+    "generic": {
+      "title": "Something went wrong",
+      "description": "Something went wrong while trying to load the page.",
+      "goHomeHint": "Please go back to the homepage.",
+      "goHome": "Go home"
+    },
+    "notFound": {
+      "title": "404",
+      "description": "The page you are looking for does not exist.",
+      "goHomeHint": "Please go back to the homepage.",
+      "goHome": "Go Home"
+    }
+  },
+  "media": {
+    "type": {
+      "movie": "Movie",
+      "tv": "TV"
+    },
+    "rating": {
+      "notAvailable": "N/A"
+    }
+  },
+  "music": {
+    "title": "Music",
+    "home": "Home",
+    "yourLibrary": "Your library",
+    "discover": "Discover",
+    "library": "Library",
+    "searchPlaceholder": "Search songs, albums, artists, podcasts",
+    "listenAgain": "Listen again",
+    "quickPicks": "Quick picks",
+    "charts": "Charts",
+    "officialMusic": "Official Music",
+    "mostPopular": "Most Popular",
+    "downloadStarted": "Download started",
+    "unknownArtist": "Unknown Artist",
+    "play": "Play",
+    "pause": "Pause",
+    "download": "Download",
+    "open": "Open",
+    "listenAgainSubtitle": "Pick up where you left off",
+    "quickPicksSubtitle": "Official music videos picked for you",
+    "mixedForYou": "Mixed for you",
+    "mixedForYouSubtitle": "Blends based on what you play",
+    "featuredPlaylists": "Featured playlists for you",
+    "featuredPlaylistsSubtitle": "From your library",
+    "newReleases": "New releases",
+    "newReleasesSubtitle": "Fresh albums and singles",
+    "chartsSubtitle": "Top tracks right now",
+    "musicVideos": "Music videos for you",
+    "musicVideosSubtitle": "Official videos from top artists",
+    "backToSearch": "← Back to Search",
+    "songsSortedByPopularity": "{count} songs (sorted by popularity)",
+    "songsLoaded": "{count} songs loaded",
+    "songsLoadedOf": "{loaded} songs loaded of {total} total",
+    "loadingArtist": "Loading {name}…",
+    "noOfficialSongs": "No official songs found for this artist.",
+    "officialSongs": "Official Songs ({shown}{total})",
+    "newestFirst": "Newest First",
+    "oldestFirst": "Oldest First",
+    "matchingVideos": "Matching official YouTube videos for {count} tracks…",
+    "loadingMoreSongs": "Loading more songs...",
+    "scrollForMore": "Scroll for more • {loaded}/{total}",
+    "searchResults": "Search Results",
+    "showingResultsFor": "Showing results for:",
+    "clearSearch": "Clear Search",
+    "searching": "Searching...",
+    "noTracksFound": "No tracks found. Try another search.",
+    "cinevoFetchFailed": "Failed to fetch track from Cinevo.",
+    "searchFailed": "Search failed. Please try again.",
+    "musicSearchFailed": "Music search failed. Please try again.",
+    "downloadStartedDesc": "{title} — your browser will save the file as it streams.",
+    "playlistSongCount": "{count} songs"
+  },
+  "musicLibrary": {
+    "playlists": "Playlists",
+    "history": "History",
+    "yourPlaylists": "Your playlists",
+    "yourPlaylistsDesc": "Group songs to play anytime",
+    "newPlaylist": "New playlist",
+    "createPlaylist": "Create playlist",
+    "playlistName": "Playlist name",
+    "emptyPlaylists": "No playlists yet. Favorite a song or create a playlist to get started.",
+    "rename": "Rename",
+    "songCount": "{count} song",
+    "songsCount": "{count} songs",
+    "emptyPlaylist": "Empty playlist — use the heart icon on any song to add it here.",
+    "recentlyPlayed": "Recently played",
+    "clearHistory": "Clear history",
+    "emptyHistory": "Your listening history will show up here."
+  },
+  "musicPlayer": {
+    "dragPlayer": "Drag player",
+    "previousTrack": "Previous track",
+    "nextTrack": "Next track",
+    "spotifyPlayer": "Spotify player",
+    "openPlaylist": "Open playlist",
+    "queue": "Queue",
+    "upNext": "Up next",
+    "tracksInQueue": "{count} tracks in queue",
+    "trackInQueue": "{count} track in queue",
+    "queueEmpty": "Queue is empty",
+    "removeFromQueue": "Remove from queue",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "volume": "Volume",
+    "closePlayer": "Close player"
+  },
+  "games": {
+    "title": "Games Library",
+    "description": "Browse and download from our library of 2,263+ games. From AAA titles to indie gems.",
+    "searchPlaceholder": "Search games...",
+    "downloadCooldown": "Download cooldown active",
+    "preparingDownload": "Preparing download",
+    "downloadStarted": "Download started",
+    "downloadFailed": "Download failed",
+    "goTo": "Go to:",
+    "viewGame": "View Game",
+    "categories": {
+      "action": "Action",
+      "adventure": "Adventure",
+      "rpg": "RPG",
+      "strategy": "Strategy",
+      "simulation": "Simulation",
+      "sports": "Sports",
+      "racing": "Racing",
+      "horror": "Horror",
+      "indie": "Indie",
+      "multiplayer": "Multiplayer"
+    }
+  },
+  "iptv": {
+    "title": "IPTV",
+    "liveTv": "Live TV",
+    "freeTv": "Free-TV",
+    "liveDescription": "Browse live TV channels. Click a channel to watch in the player.",
+    "freeTvDescription": "Browse free legal TV channels from the Free-TV playlist. Click a channel to watch.",
+    "searchPlaceholder": "Search channels...",
+    "allCountries": "All countries",
+    "loadingChannels": "Loading channels...",
+    "showingChannels": "Showing {count} channels"
+  },
+  "a11y": {
+    "pagination": "pagination",
+    "seek": "Seek",
+    "volume": "Volume",
+    "mediaPlayer": "Media player",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "changelog": {
+    "whatsNew": "What's new",
+    "title": "Changelog",
+    "intro": "See what's changed in Chillflix — new features, improvements, and fixes.",
+    "releaseDate": "Release date",
+    "releaseDatesAria": "Release dates",
+    "latest": "Latest",
+    "releaseVersion": "Release v{version}"
+  },
+  "watchParty": {
+    "title": "Watch Party",
+    "navAria": "Watch party",
+    "closeMenu": "Close watch party menu",
+    "freeAccountRequired": "Free account required",
+    "live": "Live",
+    "accountRequired": "Account required",
+    "signInPrompt": "Sign in or create a free account to host or join watch parties.",
+    "signIn": "Sign in",
+    "createAccount": "Create account",
+    "roomCode": "Room code",
+    "copy": "Copy",
+    "copied": "Copied",
+    "leave": "Leave",
+    "watching": "Watching:",
+    "inRoom": "{count} in room",
+    "youAreHost": "You are the host",
+    "syncedToHost": "Synced to host playback",
+    "openPlayer": "Open player",
+    "emptyChat": "Party chat is empty. Say hi!",
+    "messagePlaceholder": "Message the party…",
+    "host": "Host",
+    "join": "Join",
+    "startWatchParty": "Start watch party",
+    "startParty": "Start party",
+    "enterPartyCode": "Enter party code",
+    "joinParty": "Join party",
+    "joinAndOpen": "Join & open player",
+    "movie": "Movie",
+    "tvShow": "TV Show",
+    "tvStartsAt": "TV parties start at S1 E1.",
+    "pickTitleFirst": "Pick a title to watch first.",
+    "loadingAccount": "Loading account…",
+    "requiresPlayer": "Watch Party requires the Chillflix player for sync.",
+    "joining": "Joining watch party…",
+    "createRoomFor": "Create a room for {title}. Friends join with your code and watch together.",
+    "searchPickStart": "Search for a title, pick one, then start the party.",
+    "searchPlaceholder": "What do you want to watch?",
+    "typeAtLeast2": "Type at least 2 characters to search.",
+    "noSearchResults": "No movies or shows found.",
+    "searchPickStartFull": "Search for a movie or show, pick one, then start the party as host. You'll open the player automatically.",
+    "tvStartsAtFull": "TV parties start at Season 1 Episode 1. Change episode in the player after opening.",
+    "enterCodeFromHost": "Enter the party code from your host.",
+    "enterCodeJoinOpen": "Enter the code from your host. You'll join the party and open the player.",
+    "failedCreateParty": "Failed to create party",
+    "failedJoinParty": "Failed to join party",
+    "failedSendMessage": "Failed to send message"
+  },
+  "tvEpisodePlaylist": {
+    "selectEpisode": "Select Episode",
+    "episodeShort": "Episode",
+    "selectSeason": "Select season",
+    "selectEpisodePlaceholder": "Select episode",
+    "episodeNumber": "Episode {number}",
+    "episodeWithName": "Episode {number}: {name}",
+    "showDetails": "Show Details",
+    "totalSeasons": "Total Seasons:",
+    "episodesInSeason": "Episodes in this season:",
+    "firstAired": "First Aired:",
+    "episodes": "Episodes:",
+    "episodeLength": "Episode Length:",
+    "minutes": "{count} min",
+    "minutesUnknown": "— min",
+    "language": "Language:",
+    "status": "Status:",
+    "type": "Type:",
+    "episodesTitle": "Episodes",
+    "searchPlaceholder": "Search episodes...",
+    "playing": "Playing",
+    "epBadge": "EP {number}"
+  },
+  "profileSettings": {
+    "profilePhoto": "Profile photo",
+    "photoDesc": "Upload a photo from your device — JPG, PNG, WebP, or GIF up to 2 MB",
+    "uploading": "Uploading…",
+    "clickOrDrag": "Click or drag a photo here",
+    "photoHint": "Your photo appears on your profile and in the header",
+    "chooseFile": "Choose file",
+    "removePhoto": "Remove photo",
+    "useUrlInstead": "Use image URL instead",
+    "imageUrl": "Image URL",
+    "imageUrlPlaceholder": "https://example.com/photo.jpg",
+    "accountTitle": "Account",
+    "accountDesc": "Your display name and email",
+    "displayName": "Display name",
+    "displayNamePlaceholder": "Your name",
+    "username": "Username",
+    "email": "Email",
+    "saveProfile": "Save profile",
+    "savingProfile": "Saving…",
+    "passwordTitle": "Password",
+    "passwordDesc": "Update your account password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "changePassword": "Change password",
+    "updatingPassword": "Updating…",
+    "playbackTitle": "Playback",
+    "playbackDesc": "Changes save automatically",
+    "autoplayTitle": "Autoplay",
+    "autoplayDesc": "Start playback automatically when you open a video",
+    "autoNextTitle": "Auto next episode",
+    "autoNextDesc": "Play the next episode when one finishes",
+    "subtitlesTitle": "Subtitles",
+    "subtitlesDesc": "Changes save automatically",
+    "preferredLanguage": "Preferred language",
+    "showSubtitlesTitle": "Show subtitles by default",
+    "showSubtitlesDesc": "Turn subtitles on automatically in the player",
+    "subtitleLang": {
+      "en": "English",
+      "es": "Spanish",
+      "fr": "French",
+      "de": "German",
+      "it": "Italian",
+      "pt": "Portuguese",
+      "off": "Off"
+    },
+    "toast": {
+      "couldNotSaveSetting": "Could not save setting",
+      "couldNotSaveProfile": "Could not save profile",
+      "profileSaved": "Profile saved",
+      "missingFields": "Missing fields",
+      "missingFieldsDesc": "Fill in all password fields.",
+      "passwordsDoNotMatch": "Passwords do not match",
+      "passwordsDoNotMatchDesc": "New password and confirmation must match.",
+      "passwordTooShort": "Password too short",
+      "passwordTooShortDesc": "Use at least 6 characters.",
+      "couldNotChangePassword": "Could not change password",
+      "passwordUpdated": "Password updated",
+      "uploadFailed": "Upload failed",
+      "tryAgain": "Try again",
+      "profilePhotoUpdated": "Profile photo updated",
+      "chooseImageFile": "Please choose an image file",
+      "removeFailed": "Remove failed",
+      "profilePhotoRemoved": "Profile photo removed",
+      "couldNotRemovePhoto": "Could not remove photo"
+    }
+  },
+  "iptvExtra": {
+    "backToChannels": "Back to channels",
+    "channelFallback": "IPTV channel",
+    "liveChannel": "Live channel",
+    "loadFailed": "This channel could not be loaded right now. Try another channel or switch to Free-TV.",
+    "proxyFailed": "IPTV proxy could not start. Hard refresh chillflix.lol/iptv and try again.",
+    "playbackFailed": "Failed to start IPTV playback",
+    "channelNotFound": "Channel not found.",
+    "freeTvLoadFailed": "Could not load this Free-TV stream.",
+    "loadingStream": "Loading stream...",
+    "loadChannelsFailed": "Failed to load channels",
+    "inCountry": "in {country}",
+    "matching": "matching \"{query}\""
+  },
+  "playerModal": {
+    "back": "Back",
+    "seriesPlayback": "Series Playback",
+    "moviePlayback": "Movie Playback",
+    "summary": "Summary",
+    "noDescription": "No description available."
+  },
+  "playerEngine": {
+    "player": "Player",
+    "externalPlayer": "External player",
+    "choosePlayer": "Choose player",
+    "chillflixPlayer": "Chillflix Player",
+    "switchTo": "Switch to {name}?",
+    "switchDescription": "External players open in a new tab. You can switch back anytime.",
+    "keepChillflix": "Keep Chillflix Player",
+    "confirmSwitch": "Switch to {name}",
+    "features": {
+      "continueWatching": "Continue watching — resume where you left off",
+      "nextEpisode": "Next episode support for TV shows",
+      "multiSource": "Multi-source fallback with health checks",
+      "subtitles": "Subtitles, audio tracks, quality & speed",
+      "watchParty": "Watch Party sync when you're the host"
+    },
+    "externalFeatures": {
+      "vidlinkpro": {
+        "embed": "Third-party VidLink.pro embed",
+        "autoplay": "Autoplay in the embed player",
+        "nextEpisode": "Built-in next-episode button for TV",
+        "noContinue": "No continue watching or source settings",
+        "noWatchParty": "Watch Party sync not available in embed"
+      },
+      "default": {
+        "embed": "External embed player",
+        "thirdParty": "Streams from a third-party source",
+        "limited": "Limited Chillflix player features"
+      }
+    }
+  },
+  "gamesExtra": {
+    "all": "All",
+    "puzzle": "Puzzle",
+    "search": "Search",
+    "checkingNew": "Checking for new games…",
+    "showingGames": "Showing {count} games",
+    "preparing": "Preparing...",
+    "download": "Download",
+    "previous": "Previous",
+    "pageOf": "Page {page} of {total}",
+    "next": "Next",
+    "pagePlaceholder": "Page",
+    "go": "Go",
+    "libraryUpdated": "Library updated",
+    "addedGames": "Added {count} new game(s) from PlayZip.",
+    "cooldownTitle": "Download cooldown",
+    "cooldownDesc": "Next download available in {time}",
+    "preparingDesc": "{title} — contacting provider…",
+    "downloadFailedDesc": "Could not start the download. Try again.",
+    "openProvider": "Open provider download page",
+    "openProviderShort": "Open provider",
+    "cooldownLimit": "(2 minute provider limit)",
+    "searching": "Searching…"
+  },
+  "apk": {
+    "download": "Download Android app",
+    "downloadWithVersion": "Download app (v{version})",
+    "installHint": "Install Chillflix on Android for quick access to movies, TV, and more."
+  },
+  "apkPrompt": {
+    "title": "Get the Chillflix app",
+    "description": "Install our Android app for a faster, app-like experience — movies, TV, music, games, and IPTV in one tap.",
+    "notNow": "Not now"
+  },
+  "sharePrompt": {
+    "title": "Spread the word",
+    "description": "Help friends discover free movies, TV, music, games, and IPTV on Chillflix.",
+    "facebook": "Facebook",
+    "whatsapp": "WhatsApp",
+    "twitter": "X",
+    "telegram": "Telegram",
+    "reddit": "Reddit",
+    "linkedin": "LinkedIn",
+    "email": "Email",
+    "copyLink": "Copy link",
+    "copied": "Link copied!",
+    "copyFailed": "Could not copy link",
+    "notNow": "Not now",
+    "shareNative": "Share"
+  },
+  "communityPrompt": {
+    "title": "Join the Chillflix community",
+    "description": "Hang out on Discord and Telegram for updates, tips, and chat.",
+    "discord": "Discord",
+    "discordHint": "Join the server",
+    "telegram": "Telegram",
+    "telegramHint": "Follow the channel",
+    "notNow": "Not now"
+  }
+}

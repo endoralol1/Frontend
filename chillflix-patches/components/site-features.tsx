@@ -10,6 +10,9 @@ export type SiteFeatures = SiteFeatureFlags & {
     apkDownloadUrl: string | null
     apkVersionLabel: string | null
     sharePromptEnabled: boolean
+    communityPromptEnabled: boolean
+    discordInviteUrl: string | null
+    telegramInviteUrl: string | null
 }
 
 const DEFAULTS: SiteFeatures = {
@@ -25,6 +28,9 @@ const DEFAULTS: SiteFeatures = {
     apkDownloadUrl: null,
     apkVersionLabel: null,
     sharePromptEnabled: true,
+    communityPromptEnabled: true,
+    discordInviteUrl: "https://discord.gg/6r5KTZgqXV",
+    telegramInviteUrl: "https://t.me/chillflixlol",
 }
 
 const SiteFeaturesContext = createContext<SiteFeatures>(DEFAULTS)
@@ -49,6 +55,15 @@ function mapFeatures(data: Partial<SiteFeatures>): SiteFeatures {
         apkDownloadUrl: data.apkDownloadUrl ?? null,
         apkVersionLabel: data.apkVersionLabel ?? null,
         sharePromptEnabled: data.sharePromptEnabled !== false,
+        communityPromptEnabled: data.communityPromptEnabled !== false,
+        discordInviteUrl:
+            typeof data.discordInviteUrl === "string" && data.discordInviteUrl.trim()
+                ? data.discordInviteUrl.trim()
+                : "https://discord.gg/6r5KTZgqXV",
+        telegramInviteUrl:
+            typeof data.telegramInviteUrl === "string" && data.telegramInviteUrl.trim()
+                ? data.telegramInviteUrl.trim()
+                : "https://t.me/chillflixlol",
     }
 }
 

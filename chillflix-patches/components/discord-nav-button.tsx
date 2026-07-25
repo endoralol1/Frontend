@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 
 import { siteConfig } from "@/config"
+import { useSiteFeatures } from "@/components/site-features"
 import { useTranslations } from "@/lib/i18n/client"
 import { cn } from "@/lib/utils"
 
@@ -26,7 +27,8 @@ const REPEAT_EVERY_MS = 55_000
 /** Header shortcut to the same Discord invite used in community chat. */
 export function DiscordNavButton({ className }: { className?: string }) {
   const { t } = useTranslations()
-  const href = siteConfig.links.discord
+  const { discordInviteUrl } = useSiteFeatures()
+  const href = discordInviteUrl || siteConfig.links.discord
   const [showBubble, setShowBubble] = useState(false)
 
   useEffect(() => {

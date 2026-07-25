@@ -29,6 +29,13 @@ const ShareSitePrompt = dynamic(
         import("@/components/share-site-prompt").then((module) => module.ShareSitePrompt),
     { ssr: false }
 )
+const CommunityInvitePrompt = dynamic(
+    () =>
+        import("@/components/community-invite-prompt").then(
+            (module) => module.CommunityInvitePrompt
+        ),
+    { ssr: false }
+)
 
 export async function SiteAccessGuard({ children }: { children: React.ReactNode }) {
     const pathname = headers().get("x-pathname") || "/"
@@ -101,6 +108,7 @@ export async function SiteAccessGuard({ children }: { children: React.ReactNode 
             <WatchPartyProvider>
                 <ApkDownloadPrompt />
                 <ShareSitePrompt />
+                <CommunityInvitePrompt />
                 <DeferredStarfield />
                 <div
                     className="relative flex min-h-screen flex-col pb-[5.5rem] lg:pb-0 lg:pt-[5.25rem]"
