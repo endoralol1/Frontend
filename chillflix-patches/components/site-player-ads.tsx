@@ -12,22 +12,16 @@ import {
 export function SitePlayerAds() {
     useEffect(() => {
         let cancelled = false
-        let guardInstalled = false
+
+        installSitePlayerAdGuard()
 
         void fetch("/api/embed/ads?surface=site-player", { cache: "no-store" })
             .then((response) => response.json())
             .then((data) => {
                 if (cancelled) return
-                if (!data?.showAds || !data.scripts) return
-
-                // Ad guard patches window.open and can break Monetag antiblock pops.
-                // Only use it for the legacy llvpn tag path.
-                if (data.scripts.integration !== "aclib-firstparty") {
-                    installSitePlayerAdGuard()
-                    guardInstalled = true
+                if (data?.showAds && data.scripts) {
+                    injectEmbedAdScripts(data.scripts)
                 }
-
-                injectEmbedAdScripts(data.scripts)
             })
             .catch(() => {
                 // fail closed — no ads if config cannot be loaded
@@ -35,9 +29,7 @@ export function SitePlayerAds() {
 
         return () => {
             cancelled = true
-            if (guardInstalled) {
-                uninstallSitePlayerAdGuard()
-            }
+            uninstallSitePlayerAdGuard()
         }
     }, [])
 
