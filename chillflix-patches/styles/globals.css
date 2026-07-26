@@ -301,9 +301,8 @@
     inset: -15% -25%;
     width: 150%;
     height: 130%;
-    /* Less blur so shallow cloud sheets actually read as clouds. */
-    filter: blur(28px);
-    will-change: transform;
+    /* Soft gradients only — CSS filter:blur under scrolling content is a GPU killer on APUs. */
+    filter: none;
     transform: translateZ(0);
   }
 
@@ -383,10 +382,10 @@
   .ambient-grain {
     position: absolute;
     inset: 0;
-    opacity: 0.045;
-    mix-blend-mode: overlay;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
-    background-size: 180px 180px;
+    opacity: 0.028;
+    mix-blend-mode: soft-light;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+    background-size: 220px 220px;
   }
 
   .ambient-vignette {
@@ -408,6 +407,15 @@
   }
 
   .ambient-static {
+    animation: none !important;
+  }
+
+  /* Site-wide: keep ambient sky fully static (no breathe/drift). */
+  .site-ambient-sky .ambient-wash,
+  .site-ambient-sky .ambient-band,
+  .site-ambient-sky .ambient-band-a,
+  .site-ambient-sky .ambient-band-b,
+  .site-ambient-sky .ambient-band-c {
     animation: none !important;
   }
 
