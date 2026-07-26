@@ -329,11 +329,10 @@ export function buildEmbedAdScripts(
         options?.surface === "site-player" || isChillflixLolHost(options?.host ?? null)
 
     if (isSitePlayer) {
-        // Mapple-style: first-party aclib proxy + runPop (bypasses EasyList on llvpn/acscdn).
         return {
-            integration: "aclib-firstparty",
+            integration: "llvpn",
             zone: resolveEmbedAdZone(config, options),
-            aclibSrc: EMBED_ADS_ACLIB_FIRSTPARTY_PATH,
+            llvpnTag: EMBED_ADS_LLVPN_TAG_SCRIPT_SRC,
         }
     }
 
