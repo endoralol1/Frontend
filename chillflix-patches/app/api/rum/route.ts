@@ -1,48 +1,58 @@
 import { NextResponse } from "next/server"
+import { readFile } from "fs/promises"
+import path from "path"
 
-/** Monetag/Adcash aclib — proxied first-party so EasyList cannot kill acscdn.com / aclib.js. */
-const ACLIB_UPSTREAM = "https://acscdn.com/script/aclib.js"
+/**
+ * Mapple-style first-party Monetag anti-adblock library.
+ * Prefer locally refreshed file (cron from adbpage.com). Browser never hits adbpage.com
+ * because EasyList blocks it — server/cron fetches, we serve from /api/rum.
+ */
+const LOCAL_LIB = path.join(process.cwd(), "public/cdn/rum.js")
+const UPSTREAM = "https://adbpage.com/adblock?v=3&format=js&lnxv=2"
 
 export const dynamic = "force-dynamic"
 
 export async function GET() {
     try {
-        const upstream = await fetch(ACLIB_UPSTREAM, {
-            headers: {
-                Accept: "*/*",
-                "User-Agent":
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-            },
-            cache: "no-store",
-        })
-
-        if (!upstream.ok) {
-            return new NextResponse("/* upstream unavailable */", {
-                status: 502,
-                headers: {
-                    "Content-Type": "application/javascript; charset=utf-8",
-                    "Cache-Control": "no-store",
-                },
-            })
+        try {
+            const body = await readFile(LOCAL_LIB, "utf8")
+            if (body && body.length > 1000) {
+                return new NextResponse(body, {
+                    status: 200,
+                    headers: {
+                        "Content-Type": "application/javascript; charset=utf-8",
+                        "Cache-Control": "public, max-age=300, s-maxage=300",
+                        "X-Content-Type-Options": "nosniff",
+                    },
+                })
+            }
+        } catch {
+            // fall through
         }
 
+        const upstream = await fetch(UPSTREAM, {
+            headers: { Accept: "*/*", "User-Agent": "Mozilla/5.0" },
+            cache: "no-store",
+        })
+        if (!upstream.ok) {
+            return new NextResponse("/* unavailable */", {
+                status: 502,
+                headers: { "Content-Type": "application/javascript; charset=utf-8" },
+            })
+        }
         const body = await upstream.text()
-
         return new NextResponse(body, {
             status: 200,
             headers: {
                 "Content-Type": "application/javascript; charset=utf-8",
-                "Cache-Control": "public, max-age=600, s-maxage=1800",
+                "Cache-Control": "public, max-age=300, s-maxage=300",
                 "X-Content-Type-Options": "nosniff",
             },
         })
     } catch {
-        return new NextResponse("/* fetch error */", {
+        return new NextResponse("/* error */", {
             status: 502,
-            headers: {
-                "Content-Type": "application/javascript; charset=utf-8",
-                "Cache-Control": "no-store",
-            },
+            headers: { "Content-Type": "application/javascript; charset=utf-8" },
         })
     }
 }
