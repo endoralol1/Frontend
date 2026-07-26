@@ -45,17 +45,32 @@ function injectLlvpnTag(scripts: EmbedAdScriptBundle) {
     appendScript(tag)
 }
 
-/** Mapple-style: load Monetag aclib from first-party /api/rum, then runPop(zone). */
+/** Mapple-style: first-party anti-adblock lib (/api/rum) + runPop(zone 11200416). */
 function injectAclibFirstParty(scripts: EmbedAdScriptBundle) {
     if (document.getElementById("chillflix-aclib-rum")) return
 
-    const run = () => {
+    const zoneId = String(scripts.zone)
+
+    const tryRunPop = () => {
         const aclib = (window as AclibWindow).aclib
+        if (typeof aclib?.runPop !== "function") return false
         try {
-            aclib?.runPop?.({ zoneId: String(scripts.zone) })
+            aclib.runPop({ zoneId })
+            return true
         } catch {
-            // fail closed
+            return false
         }
+    }
+
+    const runWithRetry = () => {
+        if (tryRunPop()) return
+        let attempts = 0
+        const timer = window.setInterval(() => {
+            attempts += 1
+            if (tryRunPop() || attempts >= 24) {
+                window.clearInterval(timer)
+            }
+        }, 250)
     }
 
     const tag = document.createElement("script")
@@ -63,8 +78,11 @@ function injectAclibFirstParty(scripts: EmbedAdScriptBundle) {
     tag.src = scripts.aclibSrc ?? EMBED_ADS_ACLIB_FIRSTPARTY_PATH
     tag.async = true
     tag.setAttribute("data-cfasync", "false")
-    tag.dataset.zone = scripts.zone
-    tag.onload = run
+    tag.dataset.zone = zoneId
+    tag.onload = runWithRetry
+    tag.onerror = () => {
+        // fail closed — keep old revenue path unused here on purpose
+    }
     appendScript(tag)
 }
 

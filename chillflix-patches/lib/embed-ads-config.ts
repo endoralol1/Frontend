@@ -329,10 +329,11 @@ export function buildEmbedAdScripts(
         options?.surface === "site-player" || isChillflixLolHost(options?.host ?? null)
 
     if (isSitePlayer) {
+        // Zone 11200416 — Mapple-style first-party anti-adblock lib + runPop.
         return {
-            integration: "llvpn",
+            integration: "aclib-firstparty",
             zone: resolveEmbedAdZone(config, options),
-            llvpnTag: EMBED_ADS_LLVPN_TAG_SCRIPT_SRC,
+            aclibSrc: EMBED_ADS_ACLIB_FIRSTPARTY_PATH,
         }
     }
 
