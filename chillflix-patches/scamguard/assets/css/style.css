@@ -1,8 +1,8 @@
 :root {
-    --bg: #090c11;
-    --bg-2: #0f141c;
-    --card: #141a24;
-    --line: #243041;
+    --bg: #000000;
+    --bg-2: #050505;
+    --card: #0a0a0a;
+    --line: #1a1a1a;
     --text: #eef3f9;
     --muted: #9aa8ba;
     --faint: #6b7a8d;
@@ -55,7 +55,7 @@ button, input, select, textarea { font: inherit; }
 /* ---------------- Classic nav (PC) + phone dropdown ---------------- */
 .nav {
     border-bottom: 1px solid var(--line);
-    background: rgba(9, 12, 17, 0.94);
+    background: rgba(0, 0, 0, 0.96);
     backdrop-filter: blur(12px);
     position: sticky;
     top: 0;
@@ -521,11 +521,13 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
     background: #000;
     border-radius: 16px;
     overflow: hidden;
+    box-shadow: none;
 }
 .result-page-main-container.pb-40 { padding-bottom: 40px; }
 .headers-inner {
     text-align: center;
     padding: 1.4em 0 0;
+    background: #000;
 }
 @media (min-width: 960px) {
     .headers-inner { padding: 2.5em 0 0; }
