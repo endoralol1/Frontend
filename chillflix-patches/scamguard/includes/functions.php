@@ -121,7 +121,7 @@ function rating_score_theme(int $score): array
         return [
             'heroBg' => 'container-result-page-hero-bg-image-green',
             'progressBar' => 'progress-bar-green',
-            'bgFile' => 'result_page_hero_bg_green.png',
+            'bgFile' => 'result_page_hero_bg_green-dark.png',
             'label' => 'Very Likely Safe',
             'why' => 'an average to good',
             'hint' => 'No strong scam signals found for this result.',
@@ -131,7 +131,7 @@ function rating_score_theme(int $score): array
         return [
             'heroBg' => 'container-result-page-hero-bg-image-light-green',
             'progressBar' => 'progress-bar-light-green',
-            'bgFile' => 'result_page_hero_bg_light_green.png',
+            'bgFile' => 'result_page_hero_bg_light_green-dark.png',
             'label' => 'Likely Safe',
             'why' => 'a decent',
             'hint' => 'Mostly positive signals, but stay alert.',
@@ -141,7 +141,7 @@ function rating_score_theme(int $score): array
         return [
             'heroBg' => 'container-result-page-hero-bg-image-orange',
             'progressBar' => 'progress-bar-orange',
-            'bgFile' => 'result_page_hero_bg_orange.png',
+            'bgFile' => 'result_page_hero_bg_orange-dark.png',
             'label' => 'Suspicious',
             'why' => 'a mixed',
             'hint' => 'Some risk signals are present — verify before you trust it.',
@@ -151,7 +151,7 @@ function rating_score_theme(int $score): array
         return [
             'heroBg' => 'container-result-page-hero-bg-image-dark-orange',
             'progressBar' => 'progress-bar-dark-orange',
-            'bgFile' => 'result_page_hero_bg_dark_orange.png',
+            'bgFile' => 'result_page_hero_bg_dark_orange-dark.png',
             'label' => 'Likely Unsafe',
             'why' => 'a low',
             'hint' => 'Elevated risk patterns were detected.',
@@ -161,7 +161,7 @@ function rating_score_theme(int $score): array
         return [
             'heroBg' => 'container-result-page-hero-bg-image-red',
             'progressBar' => 'progress-bar-red',
-            'bgFile' => 'result_page_hero_bg_red.png',
+            'bgFile' => 'result_page_hero_bg_red-dark.png',
             'label' => 'Very Likely Unsafe',
             'why' => 'a very low',
             'hint' => 'Strong scam / abuse signals — do not trust this.',
@@ -171,7 +171,7 @@ function rating_score_theme(int $score): array
     return [
         'heroBg' => 'container-result-page-hero-bg-image-gray',
         'progressBar' => 'progress-bar-bg-none',
-        'bgFile' => 'result_page_hero_bg_gray.png',
+        'bgFile' => 'result_page_hero_bg_gray-dark.png',
         'label' => 'Unknown',
         'why' => 'an unclear',
         'hint' => 'Not enough data for a confident verdict yet.',
@@ -228,7 +228,8 @@ function render_status_banner(string $status, int $score, string $subject, array
     }
 
     $base = defined('BASE_PATH') ? rtrim(BASE_PATH, '/') : '';
-    $bgUrl = $base . '/assets/img/hero/' . $t['bgFile'];
+    $assetVer = '20260727sa11';
+    $bgUrl = $base . '/assets/img/hero/' . $t['bgFile'] . '?v=' . $assetVer;
     $brand = get_setting('site_name', 'ScamGuard');
     $lastUpdate = $meta['last_update'] ?? '';
 
