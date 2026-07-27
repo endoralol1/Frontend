@@ -4,7 +4,9 @@ require_once __DIR__ . '/ThreatFeeds.php';
 require_once __DIR__ . '/ExternalReputation.php';
 
 /**
- * DomainChecker — multi-source trust signals (no headless browser).
+ * DomainChecker — multi-source trust signals (curl only; no headless browser).
+ * When Cloudflare blocks the live homepage, we fall back to Wayback / optional
+ * remote fetch API — never local Chrome (too much RAM on the VPS).
  */
 class DomainChecker
 {
@@ -14,6 +16,9 @@ class DomainChecker
     private ?int $lastRedirectCount = null;
     private ?string $lastFinalUrl = null;
     private ?int $lastHttpStatus = null;
+
+    /** Real Chrome UA for homepage fetches — ScamGuardBot UA triggers CF harder. */
+    private const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
     public function __construct(string $domain, private bool $fast = false)
     {
@@ -30,6 +35,7 @@ class DomainChecker
         $this->data['verdict_reasons'] = null;
 
         $this->data['content_incomplete'] = 0;
+        $this->data['content_source'] = null;
         $this->data['registrar_risk'] = 0;
         $this->data['spam_hit'] = 0;
         $this->data['tranco_rank'] = null;
@@ -651,24 +657,56 @@ class DomainChecker
         $this->data['security_headers'] = null;
 
         $headersOut = [];
-        $html = $this->httpGet('https://' . $this->domain . '/', 12, true, $headersOut);
+        $liveUrl = 'https://' . $this->domain . '/';
+        $html = $this->httpGet($liveUrl, 12, true, $headersOut, true);
         if ($html === null) {
-            $html = $this->httpGet('http://' . $this->domain . '/', 12, true, $headersOut);
+            $liveUrl = 'http://' . $this->domain . '/';
+            $html = $this->httpGet($liveUrl, 12, true, $headersOut, true);
         }
 
         $this->data['http_status'] = $this->lastHttpStatus;
         $this->data['final_url'] = $this->lastFinalUrl;
         $this->data['redirect_count'] = $this->lastRedirectCount ?? 0;
+        $this->data['content_source'] = 'live';
 
         if ($html === null) {
             $this->addSignal('content', 'Homepage fetch', 'Failed', 'Could not download HTML over HTTP/HTTPS', 'bad');
             return;
         }
 
-        $lower = strtolower($html);
         if (preg_match('/<title[^>]*>(.*?)<\/title>/is', $html, $m)) {
             $this->data['page_title'] = trim(html_entity_decode(strip_tags($m[1])));
         }
+
+        // Bot walls / challenge pages — try low-RAM fallbacks (Wayback, optional API). No Chrome.
+        $challenge = $this->isChallengeHtml($html, (string) ($this->data['page_title'] ?? ''), (int) ($this->data['http_status'] ?? 0));
+        $contentNote = 'Homepage HTML fetched for analysis';
+        $contentLabel = 'Readable';
+        $contentTone = 'good';
+
+        if ($challenge) {
+            $fallback = $this->fetchContentFallback($liveUrl);
+            if ($fallback !== null) {
+                $html = $fallback['html'];
+                $this->data['content_source'] = $fallback['source'];
+                $headersOut = $fallback['headers'] ?? [];
+                if (preg_match('/<title[^>]*>(.*?)<\/title>/is', $html, $m2)) {
+                    $this->data['page_title'] = trim(html_entity_decode(strip_tags($m2[1])));
+                }
+                $challenge = $this->isChallengeHtml(
+                    $html,
+                    (string) ($this->data['page_title'] ?? ''),
+                    200
+                );
+                if (!$challenge) {
+                    $contentLabel = 'Readable via ' . $fallback['source'];
+                    $contentNote = $fallback['note'];
+                    $contentTone = 'neutral';
+                }
+            }
+        }
+
+        $lower = strtolower($html);
 
         $this->data['has_contact_info'] = (
             preg_match('/\b(contact|support@|mailto:|help center|customer service)\b/i', $html)
@@ -745,18 +783,6 @@ class DomainChecker
         }
         $this->data['suspicious_keyword_hits'] = $hits;
 
-        // Bot walls / challenge pages mean we did not actually see the site.
-        $title = strtolower((string) ($this->data['page_title'] ?? ''));
-        $challenge = (
-            str_contains($title, 'just a moment')
-            || str_contains($title, 'attention required')
-            || str_contains($title, 'checking your browser')
-            || str_contains($lower, 'cf-browser-verification')
-            || str_contains($lower, 'challenge-platform')
-            || str_contains($lower, '_cf_chl')
-            || str_contains($lower, 'cdn-cgi/challenge')
-            || ((int) ($this->data['http_status'] ?? 0) === 403 && strlen($html) < 8000)
-        );
         $this->data['content_incomplete'] = $challenge ? 1 : 0;
         if ($challenge) {
             // Do not treat challenge-page headers / empty legal pages as positive proof.
@@ -770,11 +796,11 @@ class DomainChecker
                 'content',
                 'Content visibility',
                 'Blocked / challenge page',
-                'Bot protection hid the real page, so content signals are incomplete — score is capped.',
+                'Bot protection hid the real page (and no archive/API fallback worked), so content signals are incomplete — score is capped.',
                 'warn'
             );
         } else {
-            $this->addSignal('content', 'Content visibility', 'Readable', 'Homepage HTML fetched for analysis', 'good');
+            $this->addSignal('content', 'Content visibility', $contentLabel, $contentNote, $contentTone);
         }
 
         $sec = $this->scoreSecurityHeaders($headersOut);
@@ -1688,9 +1714,155 @@ class DomainChecker
     // -------------------------------------------------------------
     // HTTP helpers
     // -------------------------------------------------------------
-    private function httpGet(string $url, int $timeout = 6, bool $trackRedirects = false, ?array &$responseHeaders = null): ?string
+
+    /**
+     * Detect Cloudflare / bot-challenge interstitial pages.
+     */
+    private function isChallengeHtml(string $html, string $title = '', int $httpStatus = 0): bool
+    {
+        $lower = strtolower($html);
+        $title = strtolower($title);
+        if ($title === '' && preg_match('/<title[^>]*>(.*?)<\/title>/is', $html, $m)) {
+            $title = strtolower(trim(html_entity_decode(strip_tags($m[1]))));
+        }
+
+        return (
+            str_contains($title, 'just a moment')
+            || str_contains($title, 'attention required')
+            || str_contains($title, 'checking your browser')
+            || str_contains($lower, 'cf-browser-verification')
+            || str_contains($lower, 'challenge-platform')
+            || str_contains($lower, '_cf_chl')
+            || str_contains($lower, 'cdn-cgi/challenge')
+            || str_contains($lower, 'performing security verification')
+            || ($httpStatus === 403 && strlen($html) < 8000)
+        );
+    }
+
+    /**
+     * Low-RAM content fallbacks when live fetch hits a bot wall.
+     * Order: optional remote fetch API → Internet Archive Wayback.
+     * Never uses local Chrome/Playwright.
+     *
+     * @return array{html:string,source:string,note:string,headers?:array}|null
+     */
+    private function fetchContentFallback(string $liveUrl): ?array
+    {
+        $api = $this->fetchViaUnblockApi($liveUrl);
+        if ($api !== null) {
+            return $api;
+        }
+
+        return $this->fetchWaybackHtml($liveUrl);
+    }
+
+    /**
+     * Optional paid/remote unblocker. Set CONTENT_FETCH_API_URL in config with `{url}` placeholder.
+     * Example (ScrapingBee): https://app.scrapingbee.com/api/v1/?api_key=KEY&url={url}&render_js=false
+     * Runs on their servers — zero Chrome RAM on the VPS.
+     *
+     * @return array{html:string,source:string,note:string,headers?:array}|null
+     */
+    private function fetchViaUnblockApi(string $liveUrl): ?array
+    {
+        $tpl = defined('CONTENT_FETCH_API_URL') ? (string) CONTENT_FETCH_API_URL : '';
+        if ($tpl === '' || !str_contains($tpl, '{url}')) {
+            return null;
+        }
+
+        $apiUrl = str_replace('{url}', rawurlencode($liveUrl), $tpl);
+        $headers = [];
+        $html = $this->httpGet($apiUrl, 25, false, $headers, true);
+        if ($html === null || strlen($html) < 400) {
+            return null;
+        }
+        if ($this->isChallengeHtml($html, '', 200)) {
+            return null;
+        }
+
+        return [
+            'html' => $html,
+            'source' => 'fetch API',
+            'note' => 'Live page was bot-blocked; HTML retrieved via configured CONTENT_FETCH_API_URL (not local browser).',
+            'headers' => $headers,
+        ];
+    }
+
+    /**
+     * Internet Archive Wayback Machine — free, curl-only, works when CF blocks live.
+     *
+     * @return array{html:string,source:string,note:string,headers?:array}|null
+     */
+    private function fetchWaybackHtml(string $liveUrl): ?array
+    {
+        $discardHeaders = [];
+        $availJson = $this->httpGet(
+            'https://archive.org/wayback/available?url=' . rawurlencode($liveUrl),
+            12,
+            false,
+            $discardHeaders,
+            true
+        );
+        if ($availJson === null) {
+            return null;
+        }
+
+        $avail = json_decode($availJson, true);
+        $snap = $avail['archived_snapshots']['closest'] ?? null;
+        if (!is_array($snap) || empty($snap['available']) || empty($snap['url'])) {
+            return null;
+        }
+
+        $archiveUrl = (string) $snap['url'];
+        // Prefer raw original bytes (id_) so we don't analyze Wayback chrome/toolbar HTML.
+        if (!str_contains($archiveUrl, 'id_/')) {
+            $archiveUrl = preg_replace('#(/web/\d+)(/https?://)#', '$1id_$2', $archiveUrl, 1) ?: $archiveUrl;
+        }
+
+        $headers = [];
+        $html = $this->httpGet($archiveUrl, 22, false, $headers, true);
+        if ($html === null || strlen($html) < 500) {
+            return null;
+        }
+        if ($this->isChallengeHtml($html, '', 200)) {
+            return null;
+        }
+
+        $ts = (string) ($snap['timestamp'] ?? '');
+        $when = $ts !== '' && strlen($ts) >= 8
+            ? substr($ts, 0, 4) . '-' . substr($ts, 4, 2) . '-' . substr($ts, 6, 2)
+            : 'unknown date';
+
+        return [
+            'html' => $html,
+            'source' => 'Wayback',
+            'note' => 'Live page blocked by bot protection; analyzed Wayback snapshot from ' . $when . ' (may be outdated).',
+            'headers' => $headers,
+        ];
+    }
+
+    private function httpGet(string $url, int $timeout = 6, bool $trackRedirects = false, ?array &$responseHeaders = null, bool $browserLike = false): ?string
     {
         $headers = [];
+        $ua = $browserLike
+            ? self::BROWSER_UA
+            : ('ScamGuardBot/1.1 (+' . (defined('SITE_URL') ? SITE_URL : 'https://www.chillflix.lol/scamguard') . ')');
+        $reqHeaders = $browserLike
+            ? [
+                'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Language: en-US,en;q=0.9',
+                'Cache-Control: no-cache',
+                'Upgrade-Insecure-Requests: 1',
+                'Sec-Fetch-Dest: document',
+                'Sec-Fetch-Mode: navigate',
+                'Sec-Fetch-Site: none',
+                'Sec-Fetch-User: ?1',
+            ]
+            : [
+                'Accept: text/html,application/json,*/*;q=0.8',
+                'Accept-Language: en-US,en;q=0.9',
+            ];
+
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
@@ -1699,11 +1871,9 @@ class DomainChecker
             CURLOPT_TIMEOUT => $timeout,
             CURLOPT_CONNECTTIMEOUT => min(6, $timeout),
             CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_USERAGENT => 'ScamGuardBot/1.1 (+' . SITE_URL . ')',
-            CURLOPT_HTTPHEADER => [
-                'Accept: text/html,application/json,*/*;q=0.8',
-                'Accept-Language: en-US,en;q=0.9',
-            ],
+            CURLOPT_ENCODING => '', // accept gzip/deflate (Wayback often serves gzip)
+            CURLOPT_USERAGENT => $ua,
+            CURLOPT_HTTPHEADER => $reqHeaders,
             CURLOPT_HEADERFUNCTION => static function ($ch, $headerLine) use (&$headers) {
                 $len = strlen($headerLine);
                 $parts = explode(':', $headerLine, 2);
