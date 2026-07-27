@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin/
+Disallow: /config/
+Disallow: /includes/
+Disallow: /storage/
+Disallow: /cron/
+Disallow: /database/
+
+Sitemap: https://www.chillflix.lol/scamguard/sitemap.xml
