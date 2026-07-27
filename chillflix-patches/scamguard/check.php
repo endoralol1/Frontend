@@ -184,29 +184,44 @@ function tone_class(string $tone): string
         </div>
     </div>
 
-    <div class="grid grid-2" style="margin-top:16px;">
-        <div class="card">
-            <h3 style="margin-top:0;">Positive signals</h3>
+    <div class="highlights-grid">
+        <section class="highlight-panel highlight-positive">
+            <h3>Positive highlights</h3>
             <?php if (!$positives): ?>
-                <p style="color:var(--text-faint); font-size:14px;">No strong positive signals recorded.</p>
+                <p class="highlight-empty">No strong positive signals recorded.</p>
+            <?php else: ?>
+                <ul class="highlight-list">
+                    <?php foreach (array_slice($positives, 0, 8) as $p): ?>
+                        <li class="highlight-item">
+                            <span class="highlight-icon" aria-hidden="true">✓</span>
+                            <div class="highlight-body">
+                                <div class="highlight-title"><?= h((string) $p['label']) ?></div>
+                                <div class="highlight-text"><?= h((string) $p['value']) ?><?php if (!empty($p['note'])): ?> — <?= h((string) $p['note']) ?><?php endif; ?></div>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
             <?php endif; ?>
-            <ul class="verdict-reasons">
-                <?php foreach (array_slice($positives, 0, 8) as $p): ?>
-                    <li><strong><?= h((string) $p['label']) ?>:</strong> <?= h((string) $p['value']) ?><?php if (!empty($p['note'])): ?> — <?= h((string) $p['note']) ?><?php endif; ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
-        <div class="card">
-            <h3 style="margin-top:0;">Risk / caution signals</h3>
+        </section>
+
+        <section class="highlight-panel highlight-negative">
+            <h3>Negative highlights</h3>
             <?php if (!$negatives): ?>
-                <p style="color:var(--text-faint); font-size:14px;">No elevated risk signals recorded.</p>
+                <p class="highlight-empty">No elevated risk signals recorded.</p>
+            <?php else: ?>
+                <ul class="highlight-list">
+                    <?php foreach (array_slice($negatives, 0, 8) as $n): ?>
+                        <li class="highlight-item">
+                            <span class="highlight-icon" aria-hidden="true">✕</span>
+                            <div class="highlight-body">
+                                <div class="highlight-title"><?= h((string) $n['label']) ?></div>
+                                <div class="highlight-text"><?= h((string) $n['value']) ?><?php if (!empty($n['note'])): ?> — <?= h((string) $n['note']) ?><?php endif; ?></div>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
             <?php endif; ?>
-            <ul class="verdict-reasons">
-                <?php foreach (array_slice($negatives, 0, 8) as $n): ?>
-                    <li><strong><?= h((string) $n['label']) ?>:</strong> <?= h((string) $n['value']) ?><?php if (!empty($n['note'])): ?> — <?= h((string) $n['note']) ?><?php endif; ?></li>
-                <?php endforeach; ?>
-            </ul>
-        </div>
+        </section>
     </div>
 
     <?php if ($unchecked): ?>
