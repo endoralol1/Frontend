@@ -52,7 +52,7 @@ class DomainRepository
         return $noWhois || ($noHost && $noSignals);
     }
 
-    public function getOrCheck(string $domain, string $discoveredVia = 'search', bool $force = false): array
+    public function getOrCheck(string $domain, string $discoveredVia = 'search', bool $force = false, bool $fast = false): array
     {
         $existing = $this->find($domain);
 
@@ -61,12 +61,19 @@ class DomainRepository
             return $existing;
         }
 
+        // Fast discovery should only create NEW rows — never overwrite a full check.
+        if ($fast && $existing && !$force) {
+            return $existing;
+        }
+
         if ($existing && !$force && !$this->isStale($existing)) {
             $this->incrementSearchCount($existing['id']);
             return $existing;
         }
 
-        $checker = new DomainChecker($domain);
+        // User-facing / refresh always full; discovery can request fast.
+        $useFast = $fast && (!$existing || $force);
+        $checker = new DomainChecker($domain, $useFast);
         $result = $checker->run();
 
         $id = $this->upsert($result, $existing['id'] ?? null, $discoveredVia);

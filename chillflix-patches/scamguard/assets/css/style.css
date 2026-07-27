@@ -227,54 +227,58 @@ body.nav-open { overflow: hidden; }
 .search-box {
     width: 100%;
     margin: 0 auto;
-    display: grid;
-    grid-template-columns: 1fr auto;
+    display: flex;
+    align-items: center;
     gap: 8px;
-    padding: 8px;
-    border-radius: 16px;
+    padding: 6px 6px 6px 10px;
+    border-radius: 14px;
     background: var(--card);
     border: 1px solid var(--line);
     box-shadow: var(--shadow);
 }
-.search-box-phone {
-    grid-template-columns: 1fr auto;
-    align-items: center;
-}
 .search-box-phone.has-phone-cc {
-    grid-template-columns: auto 1fr auto;
+    padding-left: 6px;
 }
-.phone-cc {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 8px 10px;
-    border-radius: 10px;
-    background: rgba(255,255,255,.04);
-    border: 1px solid var(--line);
-    color: var(--muted);
-    font-size: .92rem;
-    white-space: nowrap;
-}
-.phone-cc[hidden] { display: none !important; }
 .search-box input {
+    flex: 1 1 auto;
     width: 100%;
     min-width: 0;
     border: 0;
     outline: 0;
     background: transparent;
     color: var(--text);
-    padding: 14px 12px;
+    padding: 12px 8px;
     font-size: 1rem;
+    box-shadow: none;
 }
-.search-box button {
+.search-box input:focus {
+    outline: 0;
+    box-shadow: none;
+}
+.search-box > button[type="submit"] {
+    flex: 0 0 auto;
     border: 0;
-    border-radius: 12px;
+    border-radius: 10px;
     background: var(--brand);
     color: #fff;
     font-weight: 700;
-    padding: 0 18px;
+    font-size: .95rem;
+    padding: 12px 18px;
+    min-height: 44px;
+    line-height: 1;
     cursor: pointer;
     white-space: nowrap;
+    box-shadow: none;
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+}
+.search-box > button[type="submit"]:hover {
+    background: var(--brand-2);
+}
+.search-box > button[type="submit"]:focus-visible {
+    outline: 2px solid var(--brand-2);
+    outline-offset: 2px;
 }
 .type-row {
     display: flex;
@@ -415,8 +419,14 @@ body.nav-open { overflow: hidden; }
 }
 .signal-note { color: var(--faint); font-size: .85rem; margin-top: 4px; }
 @media (max-width: 520px) {
-    .search-box, .search-box-phone { grid-template-columns: 1fr; }
-    .search-box button { min-height: 48px; }
+    .search-box {
+        flex-wrap: wrap;
+        padding: 8px;
+    }
+    .search-box > button[type="submit"] {
+        width: 100%;
+        min-height: 48px;
+    }
     .report-cta-card { flex-direction: column; align-items: stretch; }
 }
 

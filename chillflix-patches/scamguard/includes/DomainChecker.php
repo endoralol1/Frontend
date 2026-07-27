@@ -15,7 +15,7 @@ class DomainChecker
     private ?string $lastFinalUrl = null;
     private ?int $lastHttpStatus = null;
 
-    public function __construct(string $domain)
+    public function __construct(string $domain, private bool $fast = false)
     {
         $this->domain = $domain;
     }
@@ -35,16 +35,35 @@ class DomainChecker
         $this->data['tranco_rank'] = null;
         $this->data['tranco_bonus'] = 0;
         $this->data['review_penalty'] = 0;
+        $this->data['check_mode'] = $this->fast ? 'fast' : 'full';
 
         $this->checkWhois();
         $this->checkSsl();
         $this->checkDns();
-        $this->checkContent();
-        $this->checkSpamReputation();
+        // Fast discovery skips slow HTML + external reputation (Trustpilot/RBL/URLVoid).
+        if (!$this->fast) {
+            $this->checkContent();
+            $this->checkSpamReputation();
+        } else {
+            $this->data['has_contact_info'] = 0;
+            $this->data['has_privacy_policy'] = 0;
+            $this->data['has_phone'] = 0;
+            $this->data['free_email_contact'] = 0;
+            $this->data['noindex'] = 0;
+            $this->data['crypto_only_payment'] = 0;
+            $this->data['suspicious_keyword_hits'] = 0;
+            $this->data['redirect_count'] = 0;
+            $this->addSignal('content', 'Check mode', 'Fast discovery', 'Full page + review engines run when someone opens the report', 'neutral');
+        }
         $this->checkThreatFeeds();
         $this->checkHeuristics();
         $this->scoreRegistrarReputation();
-        $this->checkReputationExtras();
+        if (!$this->fast) {
+            $this->checkReputationExtras();
+        } else {
+            $this->data['external_score_delta'] = 0;
+            $this->data['local_review_penalty'] = 0;
+        }
 
         $score = $this->calculateScore();
         $this->data['trust_score'] = $score;
