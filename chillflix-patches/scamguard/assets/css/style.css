@@ -842,6 +842,28 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
 .verdict-card.likely_scam { border-color: rgba(239,77,98,.45); }
 .verdict-card.suspicious { border-color: rgba(240,138,75,.45); }
 .verdict-card.likely_safe { border-color: rgba(47,191,113,.4); }
+.analyst-card {
+    margin-top: 14px;
+    padding: 16px;
+    border-radius: 16px;
+    border: 1px solid var(--line);
+    background: linear-gradient(135deg, rgba(90,140,255,.06), transparent 55%);
+}
+.analyst-card.tone-good { border-color: rgba(47,191,113,.4); }
+.analyst-card.tone-warn { border-color: rgba(240,138,75,.4); }
+.analyst-card.tone-bad { border-color: rgba(239,77,98,.45); }
+.analyst-title {
+    font-family: var(--display);
+    font-size: 1.05rem;
+    font-weight: 750;
+    margin-bottom: 6px;
+}
+.analyst-summary {
+    margin: 0;
+    color: var(--muted);
+    line-height: 1.45;
+    font-size: .92rem;
+}
 .verdict-kicker {
     font-size: .75rem;
     letter-spacing: .08em;

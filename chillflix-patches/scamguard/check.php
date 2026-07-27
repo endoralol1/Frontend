@@ -39,6 +39,8 @@ if (!is_array($signals)) {
 
 $groups = [
     'verdict' => 'Verdict',
+    'analysis' => 'Analyst brief',
+    'ai' => 'AI opinion',
     'reputation' => 'Reputation & traffic',
     'threat' => 'Malware, phishing & spam',
     'heuristics' => 'Scam heuristics',
@@ -153,6 +155,28 @@ function tone_class(string $tone): string
             <span class="pill">Score <?= (int) $record['trust_score'] ?>/100</span>
         </div>
     </div>
+
+    <?php
+    $analystSignals = array_values(array_filter($signals, static fn($s) => in_array(($s['group'] ?? ''), ['analysis', 'ai'], true)));
+    if ($analystSignals):
+        $primaryAnalyst = $analystSignals[0];
+        $analystTone = tone_class((string) ($primaryAnalyst['tone'] ?? 'neutral'));
+    ?>
+    <div class="analyst-card <?= h($analystTone) ?>" style="margin-top:16px;">
+        <div class="verdict-kicker">Positive / negative lean</div>
+        <div class="analyst-title"><?= h((string) ($primaryAnalyst['value'] ?? 'Analyst')) ?></div>
+        <?php if (!empty($primaryAnalyst['note'])): ?>
+            <p class="analyst-summary"><?= h((string) $primaryAnalyst['note']) ?></p>
+        <?php endif; ?>
+        <?php if (count($analystSignals) > 1): ?>
+            <ul class="verdict-reasons" style="margin-top:10px;">
+                <?php foreach (array_slice($analystSignals, 1, 3) as $as): ?>
+                    <li><strong><?= h((string) ($as['value'] ?? '')) ?></strong><?php if (!empty($as['note'])): ?> — <?= h((string) $as['note']) ?><?php endif; ?></li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
 
     <?php if (!empty($record['uses_cdn'])): ?>
         <div class="alert alert-info" style="margin-top:16px;">

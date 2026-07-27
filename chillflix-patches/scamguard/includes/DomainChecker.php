@@ -2,6 +2,7 @@
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/ThreatFeeds.php';
 require_once __DIR__ . '/ExternalReputation.php';
+require_once __DIR__ . '/AiAnalyst.php';
 
 /**
  * DomainChecker — multi-source trust signals (curl only; no headless browser).
@@ -36,6 +37,9 @@ class DomainChecker
 
         $this->data['content_incomplete'] = 0;
         $this->data['content_source'] = null;
+        $this->data['ai_score_delta'] = 0;
+        $this->data['analyst_lean'] = null;
+        $this->data['analyst_summary'] = null;
         $this->data['registrar_risk'] = 0;
         $this->data['spam_hit'] = 0;
         $this->data['tranco_rank'] = null;
@@ -66,9 +70,13 @@ class DomainChecker
         $this->scoreRegistrarReputation();
         if (!$this->fast) {
             $this->checkReputationExtras();
+            $this->applyAnalystOpinion();
         } else {
             $this->data['external_score_delta'] = 0;
             $this->data['local_review_penalty'] = 0;
+            $this->data['ai_score_delta'] = 0;
+            $this->data['analyst_lean'] = null;
+            $this->data['analyst_summary'] = null;
         }
 
         $score = $this->calculateScore();
@@ -1457,6 +1465,9 @@ class DomainChecker
         if (!empty($this->data['threat_feed_sources'])) {
             $reasons[] = 'Feeds: ' . $this->data['threat_feed_sources'];
         }
+        if (!empty($this->data['analyst_summary'])) {
+            array_unshift($reasons, 'Analyst: ' . $this->data['analyst_summary']);
+        }
         $reasons[] = 'Note: Review coverage includes Trustpilot + Sitejabber when available, plus ScamGuard community reports — not Google Reviews, BBB, Reddit, or ScamAdviser\'s private report network.';
 
 
@@ -1480,6 +1491,61 @@ class DomainChecker
             'caution' => 'caution',
             default => score_to_status($score),
         };
+    }
+
+    /**
+     * Rule-based analyst brief (always) + optional LLM second opinion (AI_API_KEY).
+     */
+    private function applyAnalystOpinion(): void
+    {
+        $brief = AiAnalyst::ruleBrief($this->domain, $this->data, $this->signals);
+        $this->data['analyst_lean'] = $brief['lean'];
+        $this->data['analyst_summary'] = $brief['summary'];
+        $this->data['ai_score_delta'] = (int) ($brief['score_hint'] ?? 0);
+
+        $this->addSignal(
+            'analysis',
+            'Analyst lean',
+            $brief['label'],
+            $brief['summary'],
+            $brief['tone']
+        );
+
+        $ai = AiAnalyst::llmOpinion($this->domain, $this->data, $this->signals, $brief);
+        if ($ai === null) {
+            $configured = defined('AI_API_KEY') && trim((string) AI_API_KEY) !== '';
+            $this->addSignal(
+                'ai',
+                'AI opinion',
+                $configured ? 'Unavailable' : 'Not configured',
+                $configured
+                    ? 'AI API key is set but the model call failed or timed out.'
+                    : 'Set AI_API_KEY (OpenAI-compatible) in config for a model second opinion. Rule-based analyst above still runs.',
+                'neutral'
+            );
+            return;
+        }
+
+        // Blend: keep rule hint, add AI soft delta (still capped later in calculateScore).
+        $this->data['ai_score_delta'] = max(
+            -8,
+            min(8, (int) ($brief['score_hint'] ?? 0) + (int) ($ai['score_delta'] ?? 0))
+        );
+        if (!empty($ai['summary'])) {
+            $this->data['analyst_summary'] = $brief['summary'] . ' AI: ' . $ai['summary'];
+        }
+        if (!empty($ai['lean']) && $ai['lean'] !== 'mixed') {
+            $this->data['analyst_lean'] = $ai['lean'];
+        }
+
+        $factorNote = !empty($ai['factors']) ? implode('; ', $ai['factors']) : '';
+        $this->addSignal(
+            'ai',
+            'AI opinion',
+            $ai['label'],
+            trim($ai['summary'] . ($factorNote !== '' ? ' — ' . $factorNote : '')),
+            $ai['tone']
+        );
     }
 
     private function matchCachedFeed(string $localPath, string $remoteUrl): bool
@@ -1690,6 +1756,11 @@ class DomainChecker
 
         if (!empty($this->data['local_review_penalty'])) {
             $score -= (int) $this->data['local_review_penalty'];
+        }
+
+        if (!empty($this->data['ai_score_delta'])) {
+            // Soft AI nudge only — capped; never overrides list hits (those already crush the score).
+            $score += max(-8, min(8, (int) $this->data['ai_score_delta']));
         }
 
         $flags = json_decode((string) ($this->data['heuristic_flags'] ?? '[]'), true) ?: [];
