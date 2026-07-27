@@ -515,7 +515,7 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
 
 .result-page { padding-top: 8px; padding-bottom: 48px; }
 
-/* ---- ScamAdviser result hero (their markup/classes) on black ---- */
+/* ---- ScamAdviser result hero: original icon art, black theme around it ---- */
 .result-page-main-container {
     margin: 0 0 22px;
     background: #000;
@@ -531,7 +531,8 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
     .headers-inner { padding: 2.5em 0 0; }
 }
 .result-page-main-container .result-page-container {
-    background-color: #000;
+    /* light fill matches SA artwork canvas — icon colors stay original */
+    background-color: #f7f7f7;
     background-position: center top;
     background-repeat: no-repeat;
     background-size: min(1200px, 160vw) auto;
@@ -541,6 +542,7 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
     padding-right: 24px;
     width: 100%;
     box-sizing: border-box;
+    border-radius: 12px 12px 0 0;
 }
 @media (max-width: 559px) {
     .result-page-main-container .result-page-container {
@@ -573,7 +575,7 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
     font-size: 40px;
     font-weight: 500;
     line-height: 46px;
-    color: #fff;
+    color: #111;
 }
 @media (max-width: 767px) {
     .result-page-hero-title { font-size: 24px; line-height: 28px; }
@@ -583,7 +585,7 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
     font-size: 32px;
     font-weight: 500;
     line-height: 38px;
-    color: rgba(255, 255, 255, .55);
+    color: rgba(0, 0, 0, .5);
     overflow-wrap: anywhere;
     word-break: break-word;
 }
@@ -616,12 +618,12 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
 }
 .btn-grey-responsive-xs-result-page-hero {
     background: none !important;
-    border: 2px solid rgba(255, 255, 255, .45);
-    color: rgba(255, 255, 255, .75);
+    border: 2px solid rgba(0, 0, 0, .5);
+    color: rgba(0, 0, 0, .55);
 }
 .btn-grey-responsive-xs-result-page-hero:hover {
-    border-color: #fff;
-    color: #fff;
+    border-color: #111;
+    color: #111;
 }
 .btn-primary-responsive-xs-result-page-hero {
     background-color: #ee3e41;
@@ -652,7 +654,7 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
     background: #0a0a0a;
     color: #f2f2f2;
     border: 1px solid rgba(255, 255, 255, .08);
-    border-radius: .75rem;
+    border-radius: 0 0 .75rem .75rem;
     padding: 24px !important;
     box-shadow: 0 2px 4px rgba(0, 0, 0, .35);
 }
@@ -759,10 +761,6 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
     margin: 18px 0 0;
     color: rgba(255, 255, 255, .4);
     font-size: 14px;
-}
-/* Hero title/domain sit on the light SA artwork — keep dark text there */
-.result-page-main-container .headers-inner {
-    background: transparent;
 }
 
 .score-hero {
