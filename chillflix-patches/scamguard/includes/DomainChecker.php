@@ -1243,14 +1243,14 @@ class DomainChecker
             'threat',
             'Malware lists',
             $this->data['malware_hit'] ? 'HIT' : 'Clean',
-            'URLhaus local cache (+ Google Safe Browsing if configured)',
+            'URLhaus malware URL lists',
             $this->data['malware_hit'] ? 'bad' : 'good'
         );
         $this->addSignal(
             'threat',
             'Phishing lists',
             $this->data['phishing_hit'] ? 'HIT' : 'Clean',
-            'OpenPhish / Phishing.Database (+ GSB if configured)',
+            'OpenPhish / Phishing.Database lists',
             $this->data['phishing_hit'] ? 'bad' : 'good'
         );
         $this->addSignal(

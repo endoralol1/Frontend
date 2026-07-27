@@ -65,8 +65,8 @@ $aiModel = get_setting('ai_model', 'gpt-4o-mini');
             Works with OpenAI, Groq, OpenRouter, etc.
         </p>
         <div class="field">
-            <label>AI API key <?= $aiKeySet ? '<span style="color:var(--safe,#2fbf71);">(saved)</span>' : '<span style="color:var(--text-faint);">(not set — analyst still works)</span>' ?></label>
-            <input type="password" name="ai_api_key" autocomplete="new-password" placeholder="<?= $aiKeySet ? '••••••••  (leave blank to keep)' : 'sk-… or Groq/OpenRouter key' ?>">
+            <label>AI API key <?= $aiKeySet ? '<span style="color:var(--safe,#2fbf71);">(saved)</span>' : '<span style="color:var(--text-faint);">(optional)</span>' ?></label>
+            <input type="password" name="ai_api_key" autocomplete="new-password" placeholder="<?= $aiKeySet ? '••••••••  (leave blank to keep)' : 'Optional — only for Groq/OpenAI model opinion' ?>">
         </div>
         <div class="field">
             <label><input type="checkbox" name="ai_api_key_clear" value="1" style="width:auto; display:inline;"> Clear saved AI key</label>
