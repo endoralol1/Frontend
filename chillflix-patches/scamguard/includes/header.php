@@ -2,7 +2,7 @@
 $siteName = get_setting('site_name', 'ScamGuard');
 $announcementEnabled = get_setting('announcement_enabled', '0') === '1';
 $announcement = get_setting('announcement_banner', '');
-$assetVer = '20260727n8';
+$assetVer = '20260727phone1';
 
 $pageTitle = $pageTitle ?? $siteName;
 $pageDescription = $pageDescription ?? 'Check websites for scam, phishing, and malware risk signals before you click.';
@@ -49,11 +49,12 @@ $ogType = $ogType ?? 'website';
         </a>
 
         <div class="nav-links">
-            <a href="<?= BASE_PATH ?>/">Check a Site</a>
-            <a href="<?= BASE_PATH ?>/browse.php">Browse checks</a>
-            <a href="<?= BASE_PATH ?>/how-it-works.php">How It Works</a>
-            <a href="<?= BASE_PATH ?>/report.php">Report a Scam</a>
-            <a href="<?= BASE_PATH ?>/faq.php">FAQ</a>
+            <a href="<?= BASE_PATH ?>/">Quick check</a>
+            <a href="<?= BASE_PATH ?>/?type=phone">Phone</a>
+            <a href="<?= BASE_PATH ?>/?type=crypto">Crypto</a>
+            <a href="<?= BASE_PATH ?>/?type=iban">IBAN</a>
+            <a href="<?= BASE_PATH ?>/browse.php">Browse</a>
+            <a href="<?= BASE_PATH ?>/report.php">Report</a>
             <a href="<?= BASE_PATH ?>/report.php" class="nav-cta">Report Now</a>
         </div>
 
@@ -64,11 +65,12 @@ $ogType = $ogType ?? 'website';
 
     <div id="nav-dropdown" class="nav-dropdown" aria-hidden="true">
         <div class="nav-dropdown-inner">
-            <a href="<?= BASE_PATH ?>/">Check a Site</a>
-            <a href="<?= BASE_PATH ?>/browse.php">Browse checks</a>
-            <a href="<?= BASE_PATH ?>/how-it-works.php">How It Works</a>
-            <a href="<?= BASE_PATH ?>/report.php">Report a Scam</a>
-            <a href="<?= BASE_PATH ?>/faq.php">FAQ</a>
+            <a href="<?= BASE_PATH ?>/">Quick check</a>
+            <a href="<?= BASE_PATH ?>/?type=phone">Phone</a>
+            <a href="<?= BASE_PATH ?>/?type=crypto">Crypto</a>
+            <a href="<?= BASE_PATH ?>/?type=iban">IBAN</a>
+            <a href="<?= BASE_PATH ?>/browse.php">Browse</a>
+            <a href="<?= BASE_PATH ?>/report.php">Report</a>
             <a href="<?= BASE_PATH ?>/report.php" class="nav-cta">Report Now</a>
         </div>
     </div>
