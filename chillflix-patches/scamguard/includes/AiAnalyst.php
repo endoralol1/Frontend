@@ -1,6 +1,6 @@
 <?php
 /**
- * Site risk analyst — rule-based brief always; optional LLM when AI_API_KEY is set.
+ * Site risk analyst — rule-based brief always; optional LLM when AI key is set.
  * OpenAI-compatible chat completions (OpenAI, Groq, OpenRouter, etc.).
  * Never runs a local model (RAM). Never overrides malware/phishing list hits.
  */
@@ -111,9 +111,9 @@ class AiAnalyst
     }
 
     /**
-     * Optional LLM second opinion. Returns null if disabled / failed.
+     * LLM investigates what the site is about + risk judgment that affects score.
      *
-     * @return array{lean:string,label:string,summary:string,tone:string,confidence:int,score_delta:int,factors:array}|null
+     * @return array{lean:string,label:string,summary:string,tone:string,confidence:int,score_delta:int,factors:array,site_about:string}|null
      */
     public static function llmOpinion(string $domain, array $data, array $signals, array $ruleBrief): ?array
     {
@@ -132,6 +132,7 @@ class AiAnalyst
                 'confidence' => 100,
                 'score_delta' => 0,
                 'factors' => ['Threat intelligence list hit'],
+                'site_about' => 'Listed on threat intelligence — treat as malicious.',
             ];
         }
 
@@ -139,7 +140,7 @@ class AiAnalyst
         $model = self::resolveModel();
 
         $compactSignals = [];
-        foreach (array_slice($signals, 0, 40) as $s) {
+        foreach (array_slice($signals, 0, 35) as $s) {
             $compactSignals[] = [
                 'g' => $s['group'] ?? '',
                 'l' => $s['label'] ?? '',
@@ -148,46 +149,58 @@ class AiAnalyst
             ];
         }
 
+        $excerpt = (string) ($data['page_excerpt'] ?? '');
+        $meta = (string) ($data['page_meta_description'] ?? '');
+        $incomplete = !empty($data['content_incomplete']);
+
         $payloadFacts = [
             'domain' => $domain,
             'page_title' => $data['page_title'] ?? null,
-            'http_status' => $data['http_status'] ?? null,
+            'meta_description' => $meta !== '' ? mb_substr($meta, 0, 400) : null,
+            'page_text_excerpt' => $excerpt !== '' ? mb_substr($excerpt, 0, 2400) : null,
+            'content_incomplete' => $incomplete,
             'content_source' => $data['content_source'] ?? 'live',
+            'http_status' => $data['http_status'] ?? null,
             'domain_age_days' => $data['domain_age_days'] ?? null,
             'ssl_valid' => !empty($data['ssl_valid']),
             'cdn' => $data['cdn_provider'] ?? null,
-            'malware_hit' => !empty($data['malware_hit']),
-            'phishing_hit' => !empty($data['phishing_hit']),
             'spam_hit' => !empty($data['spam_hit']),
             'review_penalty' => (int) ($data['review_penalty'] ?? 0),
+            'suspicious_keyword_hits' => (int) ($data['suspicious_keyword_hits'] ?? 0),
+            'crypto_only_payment' => !empty($data['crypto_only_payment']),
             'rule_brief_lean' => $ruleBrief['lean'] ?? 'mixed',
             'signals' => $compactSignals,
+            'task' => 'Investigate what this website/domain is about from title, meta, and page text. '
+                . 'Decide if that purpose is trustworthy or risky/scammy for average users (money, logins, downloads). '
+                . 'Then set lean + score_delta that should move the trust score.',
         ];
 
-        $system = 'You are a cautious website trust analyst for ScamGuard. '
-            . 'Given structured scan facts, judge whether the site leans positive (likely legit), negative (likely scam/risky), or mixed. '
-            . 'Be skeptical of new domains, crypto-only payments, urgency language, missing contact, and weak reviews. '
-            . 'CDN/Cloudflare is NOT a negative. Do not invent facts not in the input. '
-            . 'Respond with ONLY compact JSON: '
-            . '{"lean":"positive|negative|mixed","confidence":0-100,"summary":"1-2 sentences","factors":["..."],"score_delta":-8..8} '
-            . 'score_delta is a soft adjustment only.';
+        $system = 'You are ScamGuard’s website investigator. '
+            . 'First figure out WHAT the site is (forum, shop, bank phishing, warez/nulled downloads, casino, SaaS, etc.) from page_title, meta_description, and page_text_excerpt. '
+            . 'Then judge risk for a normal user: positive = reasonably legit for its category; negative = scam, phishing, piracy/nulled/cracked goods, fake shop, investment fraud, or high chance of harm; mixed = unclear or dual-use. '
+            . 'Piracy, nulled/cracked software, credential markets, fake support, and “too good to be true” finance are NEGATIVE even if the domain is old. '
+            . 'CDN/Cloudflare is NOT a negative. Do not invent page facts — if content_incomplete or excerpt is empty, say you could not fully read the site and lean mixed unless other signals are strong. '
+            . 'score_delta MUST influence the trust score: strongly negative site purpose → -12 to -25; mildly risky → -5 to -11; mixed → -4 to +4; clearly legit → +5 to +18. '
+            . 'Scale by confidence. Respond with ONLY JSON: '
+            . '{"site_about":"short what the site is","lean":"positive|negative|mixed","confidence":0-100,'
+            . '"summary":"2 sentences: what it is + why good/bad","factors":["..."],"score_delta":-25..18}';
 
         $body = json_encode([
             'model' => $model,
-            'temperature' => 0.2,
-            'max_tokens' => 280,
+            'temperature' => 0.15,
+            'max_tokens' => 420,
             'messages' => [
                 ['role' => 'system', 'content' => $system],
-                ['role' => 'user', 'content' => json_encode($payloadFacts, JSON_UNESCAPED_SLASHES)],
+                ['role' => 'user', 'content' => json_encode($payloadFacts, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)],
             ],
-        ], JSON_UNESCAPED_SLASHES);
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
             CURLOPT_POSTFIELDS => $body,
-            CURLOPT_TIMEOUT => 14,
+            CURLOPT_TIMEOUT => 18,
             CURLOPT_CONNECTTIMEOUT => 5,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_HTTPHEADER => [
@@ -210,14 +223,10 @@ class AiAnalyst
             return null;
         }
 
-        // Strip markdown fences if the model adds them.
         $text = trim(preg_replace('/^```(?:json)?\s*|\s*```$/u', '', trim($text)));
         $parsed = json_decode($text, true);
-        if (!is_array($parsed)) {
-            // Try to extract first JSON object.
-            if (preg_match('/\{.*\}/s', $text, $m)) {
-                $parsed = json_decode($m[0], true);
-            }
+        if (!is_array($parsed) && preg_match('/\{.*\}/s', $text, $m)) {
+            $parsed = json_decode($m[0], true);
         }
         if (!is_array($parsed)) {
             return null;
@@ -232,7 +241,10 @@ class AiAnalyst
         if ($summary === '') {
             $summary = 'AI returned no summary.';
         }
-        $summary = mb_substr($summary, 0, 420);
+        $summary = mb_substr($summary, 0, 520);
+        $siteAbout = trim((string) ($parsed['site_about'] ?? ''));
+        $siteAbout = mb_substr($siteAbout !== '' ? $siteAbout : 'Purpose unclear from available text.', 0, 220);
+
         $factors = $parsed['factors'] ?? [];
         if (!is_array($factors)) {
             $factors = [];
@@ -241,13 +253,27 @@ class AiAnalyst
             static fn($f) => mb_substr(trim((string) $f), 0, 120),
             $factors
         )));
-        $delta = max(-8, min(8, (int) ($parsed['score_delta'] ?? 0)));
+
+        $delta = (int) ($parsed['score_delta'] ?? 0);
+        // Enforce sane range; boost from lean if model under-penalizes clear negatives.
+        $delta = max(-25, min(18, $delta));
+        if ($lean === 'negative' && $confidence >= 60 && $delta > -8) {
+            $delta = min($delta, -10);
+        }
+        if ($lean === 'positive' && $confidence >= 60 && $delta < 4) {
+            $delta = max($delta, 5);
+        }
+        if ($incomplete && $lean === 'positive') {
+            // Don't crown a site "safe" when we couldn't read live content.
+            $delta = min($delta, 4);
+            $lean = 'mixed';
+        }
 
         $tone = $lean === 'positive' ? 'good' : ($lean === 'negative' ? 'bad' : 'warn');
         $label = match ($lean) {
-            'positive' => 'AI: positive lean',
-            'negative' => 'AI: negative lean',
-            default => 'AI: mixed',
+            'positive' => 'AI: positive / safer purpose',
+            'negative' => 'AI: negative / risky purpose',
+            default => 'AI: mixed / unclear purpose',
         };
 
         return [
@@ -258,6 +284,7 @@ class AiAnalyst
             'confidence' => $confidence,
             'score_delta' => $delta,
             'factors' => array_slice($factors, 0, 6),
+            'site_about' => $siteAbout,
         ];
     }
 

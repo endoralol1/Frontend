@@ -791,6 +791,10 @@ class DomainChecker
         }
         $this->data['suspicious_keyword_hits'] = $hits;
 
+        // Plain-text excerpt for AI "what is this site about" review (not stored forever in DB columns).
+        $this->data['page_excerpt'] = $challenge ? '' : $this->extractPageExcerpt($html);
+        $this->data['page_meta_description'] = $challenge ? '' : $this->extractMetaDescription($html);
+
         $this->data['content_incomplete'] = $challenge ? 1 : 0;
         if ($challenge) {
             // Do not treat challenge-page headers / empty legal pages as positive proof.
@@ -1494,7 +1498,7 @@ class DomainChecker
     }
 
     /**
-     * Rule-based analyst brief (always) + optional LLM second opinion (AI_API_KEY).
+     * Rule-based analyst brief (always) + optional LLM site investigation (AI key).
      */
     private function applyAnalystOpinion(): void
     {
@@ -1502,6 +1506,7 @@ class DomainChecker
         $this->data['analyst_lean'] = $brief['lean'];
         $this->data['analyst_summary'] = $brief['summary'];
         $this->data['ai_score_delta'] = (int) ($brief['score_hint'] ?? 0);
+        $this->data['ai_site_about'] = null;
 
         $this->addSignal(
             'analysis',
@@ -1513,30 +1518,79 @@ class DomainChecker
 
         $ai = AiAnalyst::llmOpinion($this->domain, $this->data, $this->signals, $brief);
         if ($ai === null) {
-            // No public “not configured” noise — rule-based analyst is enough without a key.
             return;
         }
 
-        // Blend: keep rule hint, add AI soft delta (still capped later in calculateScore).
-        $this->data['ai_score_delta'] = max(
-            -8,
-            min(8, (int) ($brief['score_hint'] ?? 0) + (int) ($ai['score_delta'] ?? 0))
-        );
-        if (!empty($ai['summary'])) {
-            $this->data['analyst_summary'] = $brief['summary'] . ' AI: ' . $ai['summary'];
+        // AI site judgment drives score (larger range); rule hint only fills in when AI is mixed/low confidence.
+        $aiDelta = (int) ($ai['score_delta'] ?? 0);
+        $conf = (int) ($ai['confidence'] ?? 50);
+        if (($ai['lean'] ?? '') === 'mixed' || $conf < 45) {
+            $this->data['ai_score_delta'] = max(-25, min(18, $aiDelta + (int) round(($brief['score_hint'] ?? 0) * 0.35)));
+        } else {
+            $this->data['ai_score_delta'] = max(-25, min(18, $aiDelta));
         }
-        if (!empty($ai['lean']) && $ai['lean'] !== 'mixed') {
+
+        if (!empty($ai['site_about'])) {
+            $this->data['ai_site_about'] = $ai['site_about'];
+            $this->addSignal(
+                'ai',
+                'What this site appears to be',
+                mb_substr((string) $ai['site_about'], 0, 160),
+                'AI read page text + scan facts to describe the site’s purpose.',
+                'neutral'
+            );
+        }
+
+        if (!empty($ai['summary'])) {
+            $this->data['analyst_summary'] = $ai['summary'];
+        }
+        if (!empty($ai['lean'])) {
             $this->data['analyst_lean'] = $ai['lean'];
         }
 
         $factorNote = !empty($ai['factors']) ? implode('; ', $ai['factors']) : '';
+        $scoreNote = 'Score impact: ' . (($aiDelta >= 0) ? '+' : '') . $aiDelta . ' (confidence ' . $conf . '%)';
         $this->addSignal(
             'ai',
-            'AI opinion',
+            'AI risk judgment',
             $ai['label'],
-            trim($ai['summary'] . ($factorNote !== '' ? ' — ' . $factorNote : '')),
+            trim($ai['summary'] . ' ' . $scoreNote . ($factorNote !== '' ? ' — ' . $factorNote : '')),
             $ai['tone']
         );
+    }
+
+    /** Meta description / OG description from HTML. */
+    private function extractMetaDescription(string $html): string
+    {
+        $patterns = [
+            '/<meta[^>]+name=["\']description["\'][^>]+content=["\']([^"\']+)/i',
+            '/<meta[^>]+content=["\']([^"\']+)["\'][^>]+name=["\']description["\']/i',
+            '/<meta[^>]+property=["\']og:description["\'][^>]+content=["\']([^"\']+)/i',
+            '/<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:description["\']/i',
+        ];
+        foreach ($patterns as $re) {
+            if (preg_match($re, $html, $m)) {
+                return trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            }
+        }
+        return '';
+    }
+
+    /** Visible-ish homepage text for AI (scripts/styles stripped). */
+    private function extractPageExcerpt(string $html): string
+    {
+        $text = preg_replace('/<script\b[^>]*>.*?<\/script>/is', ' ', $html) ?? $html;
+        $text = preg_replace('/<style\b[^>]*>.*?<\/style>/is', ' ', $text) ?? $text;
+        $text = preg_replace('/<noscript\b[^>]*>.*?<\/noscript>/is', ' ', $text) ?? $text;
+        $text = preg_replace('/<!--.*?-->/s', ' ', $text) ?? $text;
+        $text = preg_replace('/<[^>]+>/', ' ', $text) ?? $text;
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
+        $text = trim($text);
+        if (function_exists('mb_substr')) {
+            return mb_substr($text, 0, 2800);
+        }
+        return substr($text, 0, 2800);
     }
 
     private function matchCachedFeed(string $localPath, string $remoteUrl): bool
@@ -1750,8 +1804,8 @@ class DomainChecker
         }
 
         if (!empty($this->data['ai_score_delta'])) {
-            // Soft AI nudge only — capped; never overrides list hits (those already crush the score).
-            $score += max(-8, min(8, (int) $this->data['ai_score_delta']));
+            // AI investigated site purpose + risk — meaningful score impact (still cannot beat list hits alone).
+            $score += max(-25, min(18, (int) $this->data['ai_score_delta']));
         }
 
         $flags = json_decode((string) ($this->data['heuristic_flags'] ?? '[]'), true) ?: [];

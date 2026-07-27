@@ -181,8 +181,8 @@ function tone_class(string $tone): string
         <?php endif; ?>
         <?php if (count($analystSignals) > 1): ?>
             <ul class="verdict-reasons" style="margin-top:10px;">
-                <?php foreach (array_slice($analystSignals, 1, 3) as $as): ?>
-                    <li><strong><?= h((string) ($as['value'] ?? '')) ?></strong><?php if (!empty($as['note'])): ?> — <?= h((string) $as['note']) ?><?php endif; ?></li>
+                <?php foreach (array_slice($analystSignals, 1, 4) as $as): ?>
+                    <li><strong><?= h((string) (($as['label'] ?? '') !== '' ? $as['label'] . ': ' : '') . (string) ($as['value'] ?? '')) ?></strong><?php if (!empty($as['note'])): ?> — <?= h((string) $as['note']) ?><?php endif; ?></li>
                 <?php endforeach; ?>
             </ul>
         <?php endif; ?>
