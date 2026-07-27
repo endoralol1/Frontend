@@ -152,6 +152,16 @@ class ExternalReputation
                 $penalty = min(16, 6 + (int) floor($count / 8));
                 $tone = 'warn';
                 $note = 'Low Trustpilot score — treat with caution (can also happen on large brands).';
+            } elseif ($score < 3.0) {
+                // e.g. 2.6/5 with a few reviews — mediocre, not neutral
+                $penalty = min(12, 4 + (int) floor($count / 6));
+                $tone = 'warn';
+                $note = 'Below-average Trustpilot score'
+                    . ($count < 10 ? ' (small review sample).' : '.');
+            } elseif ($score < 3.5 && $count >= 5) {
+                $penalty = 3;
+                $tone = 'warn';
+                $note = 'Mediocre Trustpilot score — mixed customer feedback.';
             } elseif ($score >= 4.0 && $count >= 10) {
                 $bonus = 6;
                 $tone = 'good';
@@ -159,9 +169,10 @@ class ExternalReputation
             } else {
                 $tone = 'neutral';
             }
-        } elseif ($score !== null && $score <= 2.0) {
-            $penalty = 8;
+        } elseif ($score !== null && $score <= 2.5) {
+            $penalty = $score <= 2.0 ? 8 : 5;
             $tone = 'warn';
+            $note = 'Low Trustpilot score (few or unknown review count).';
         }
 
         return [
