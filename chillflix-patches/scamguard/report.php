@@ -5,11 +5,12 @@ require_once __DIR__ . '/includes/EntityRepository.php';
 require_once __DIR__ . '/includes/PhoneChecker.php';
 require_once __DIR__ . '/includes/CryptoChecker.php';
 require_once __DIR__ . '/includes/IbanChecker.php';
+require_once __DIR__ . '/includes/CardChecker.php';
 
 $success = false;
 $error = null;
 $type = strtolower(trim($_GET['type'] ?? $_POST['type'] ?? 'website'));
-if (!in_array($type, ['website', 'phone', 'crypto', 'iban'], true)) {
+if (!in_array($type, ['website', 'phone', 'crypto', 'iban', 'card'], true)) {
     $type = 'website';
 }
 $prefill = trim($_GET['q'] ?? $_GET['d'] ?? '');
@@ -22,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($_POST['email'] ?? '');
     $validCategories = ['phishing','fake_shop','crypto_scam','tech_support_scam','identity_theft','phone_spam','other'];
 
-    if (!in_array($type, ['website', 'phone', 'crypto', 'iban'], true)) {
+    if (!in_array($type, ['website', 'phone', 'crypto', 'iban', 'card'], true)) {
         $error = 'Please choose what you are reporting.';
     } elseif (!in_array($category, $validCategories, true)) {
         $error = 'Please choose a valid category.';
@@ -51,8 +52,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'phone' => PhoneChecker::normalize($input),
                 'crypto' => CryptoChecker::normalize($input),
                 'iban' => IbanChecker::normalize($input),
+                'card' => CardChecker::normalize($input),
                 default => null,
             };
+            if ($type === 'card' && $normalized) {
+                $normalized = 'card:' . hash('sha256', $normalized);
+            }
             if (!$normalized) {
                 $error = 'Please enter a valid ' . $type . '.';
             } else {
@@ -80,7 +85,7 @@ require __DIR__ . '/includes/header.php';
 
 <section class="section container" style="max-width:640px;">
     <h2 class="section-title">Report a scam</h2>
-    <p style="color:var(--muted); margin-top:-6px;">Website, phone number, crypto address, or IBAN.</p>
+    <p style="color:var(--muted); margin-top:-6px;">Website, phone, bank card, crypto address, or IBAN.</p>
 
     <?php if ($success): ?>
         <div class="alert alert-success">Thanks — your report has been submitted and will be reviewed by our team.</div>
@@ -94,6 +99,7 @@ require __DIR__ . '/includes/header.php';
                 <select name="type" id="report-type">
                     <option value="website" <?= $type === 'website' ? 'selected' : '' ?>>Website</option>
                     <option value="phone" <?= $type === 'phone' ? 'selected' : '' ?>>Phone number</option>
+                    <option value="card" <?= $type === 'card' ? 'selected' : '' ?>>Bank card</option>
                     <option value="crypto" <?= $type === 'crypto' ? 'selected' : '' ?>>Crypto address</option>
                     <option value="iban" <?= $type === 'iban' ? 'selected' : '' ?>>IBAN</option>
                 </select>
@@ -136,6 +142,7 @@ require __DIR__ . '/includes/header.php';
   const map = {
     website: ['Website domain', 'example.com'],
     phone: ['Phone number', '+491721094066'],
+    card: ['Card number', '4111 1111 1111 1111'],
     crypto: ['Crypto address', '0x… or bc1…'],
     iban: ['IBAN', 'DE89 3704 0044 0532 0130 00'],
   };

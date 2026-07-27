@@ -79,7 +79,7 @@ require __DIR__ . '/includes/header.php';
 <section class="hero">
     <div class="container">
         <h1>Quick check for scams</h1>
-        <p>Paste a website, phone, crypto address, or IBAN — we detect it while you type.</p>
+        <p>Paste a website, phone, card, crypto address, or IBAN — we detect it while you type.</p>
 
         <?php if ($error): ?>
             <div class="alert alert-error" style="max-width:640px;margin:0 auto 14px;">That input didn’t look valid. Try again.</div>
@@ -101,7 +101,7 @@ require __DIR__ . '/includes/header.php';
                     </div>
                 </div>
                 <input type="text" name="q" id="search-q"
-                       placeholder="Enter website, phone, crypto address…"
+                       placeholder="Enter website, phone, card, crypto, or IBAN…"
                        value="<?= h($prefill) ?>"
                        autofocus required
                        autocomplete="off"
@@ -115,6 +115,7 @@ require __DIR__ . '/includes/header.php';
                 $types = [
                     'website' => 'Website',
                     'phone' => 'Phone',
+                    'card' => 'Card',
                     'crypto' => 'Crypto',
                     'iban' => 'IBAN',
                 ];
@@ -209,11 +210,16 @@ require __DIR__ . '/includes/header.php';
     const v = (raw || '').trim();
     if (!v) return 'website';
 
-    const compact = v.replace(/\s+/g, '');
-    const upper = compact.toUpperCase();
+    const compact = v.replace(/[\s\-]+/g, '');
+    const digits = v.replace(/\D+/g, '');
+    const hasLetters = /[A-Za-z]/.test(v);
 
-    // IBAN: 2 letters + 2 digits + alphanumeric
+    // Full IBAN
     if (/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/i.test(compact) && compact.length >= 15) {
+      return 'iban';
+    }
+    // Incomplete IBAN while typing (e.g. DE66051092) — never call this a phone
+    if (/^[A-Z]{2}\d{2}[A-Z0-9]{2,}$/i.test(compact) && hasLetters) {
       return 'iban';
     }
 
@@ -223,17 +229,21 @@ require __DIR__ . '/includes/header.php';
     if (/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(compact)) return 'crypto';
     if (/^[LM3][a-km-zA-HJ-NP-Z1-9]{26,33}$/.test(compact) && compact.length >= 26) return 'crypto';
 
-    // Phone: mostly digits / + / spaces / dashes / parens
-    const digits = v.replace(/\D+/g, '');
-    const phoneLike = /^[\s()+.\-]*\d[\d\s()+.\-]*$/.test(v) && digits.length >= 6 && digits.length <= 15;
-    if (phoneLike) return 'phone';
+    // Bank card: 13–19 digits, no letters, not starting with + / 00
+    if (!hasLetters && digits.length >= 13 && digits.length <= 19 && /^[\d\s\-]+$/.test(v)
+        && !v.startsWith('+') && !v.startsWith('00')) {
+      return 'card';
+    }
+
+    // Phone: digits / + / spaces only — NO letters
+    if (!hasLetters) {
+      const phoneLike = /^[\s()+.\-]*\d[\d\s()+.\-]*$/.test(v) && digits.length >= 6 && digits.length <= 15;
+      if (phoneLike) return 'phone';
+    }
 
     // Website / domain
     if (/^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}([\/?#].*)?$/i.test(v)) return 'website';
     if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(v)) return 'website';
-
-    // Digits-heavy fallback → phone
-    if (digits.length >= 8 && digits.length / Math.max(v.length, 1) > 0.6) return 'phone';
 
     return 'website';
   }
@@ -269,7 +279,9 @@ require __DIR__ . '/includes/header.php';
         ? 'Crypto address'
         : t === 'iban'
           ? 'IBAN'
-          : 'Website, phone, crypto, or IBAN';
+          : t === 'card'
+            ? 'Card number'
+            : 'Website, phone, card, crypto, or IBAN';
     chips.forEach((c) => c.classList.toggle('is-active', c.dataset.type === t));
   }
 

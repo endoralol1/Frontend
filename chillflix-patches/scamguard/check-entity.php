@@ -10,7 +10,7 @@ $type = strtolower(trim($_GET['type'] ?? 'auto'));
 $q = trim($_GET['q'] ?? ($_GET['d'] ?? ''));
 $force = isset($_GET['refresh']) && $_GET['refresh'] === '1';
 
-$allowed = ['website', 'phone', 'crypto', 'iban', 'auto'];
+$allowed = ['website', 'phone', 'crypto', 'iban', 'card', 'auto'];
 if (!in_array($type, $allowed, true)) {
     $type = 'auto';
 }
@@ -43,11 +43,12 @@ $pretty = match ($type) {
     'phone' => base_path('phone/' . rawurlencode(ltrim((string) ($record['entity_value'] ?: $q), '+'))),
     'crypto' => base_path('crypto/' . rawurlencode((string) ($record['entity_value'] ?: $q))),
     'iban' => base_path('iban/' . rawurlencode((string) ($record['entity_value'] ?: $q))),
+    'card' => base_path('card/' . rawurlencode((string) ($record['entity_value'] ?: 'check'))),
     default => base_path('/'),
 };
 
 $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
-$isPretty = (bool) preg_match('#/scamguard/(phone|crypto|iban)/#', $requestPath);
+$isPretty = (bool) preg_match('#/scamguard/(phone|crypto|iban|card)/#', $requestPath);
 if (!$force && !$isPretty && empty($record['_invalid'])) {
     header('Location: ' . $pretty, true, 301);
     exit;
@@ -69,24 +70,19 @@ $titleType = match ($type) {
     'phone' => 'phone number',
     'crypto' => 'crypto address',
     'iban' => 'IBAN',
+    'card' => 'bank card',
     default => 'item',
 };
 
 $pageTitle = 'Facts about ' . $display . ' — ' . get_setting('site_name', 'ScamGuard');
 $pageDescription = "ScamGuard {$titleType} check for {$display}. Trust score {$score}/100 — {$badge['label']}.";
-$canonicalUrl = absolute_url(ltrim($pretty, '/'));
-if (str_starts_with($pretty, 'http')) {
-    $canonicalUrl = $pretty;
-} else {
-    $canonicalUrl = (defined('SITE_URL') ? rtrim(SITE_URL, '/') : '') . '/' . ltrim(str_replace(BASE_PATH, '', $pretty), '/');
-    // Simpler: rebuild
-    $canonicalUrl = match ($type) {
-        'phone' => absolute_url('phone/' . rawurlencode(ltrim((string) ($record['entity_value'] ?: $q), '+'))),
-        'crypto' => absolute_url('crypto/' . rawurlencode((string) ($record['entity_value'] ?: $q))),
-        'iban' => absolute_url('iban/' . rawurlencode((string) ($record['entity_value'] ?: $q))),
-        default => absolute_url('/'),
-    };
-}
+$canonicalUrl = match ($type) {
+    'phone' => absolute_url('phone/' . rawurlencode(ltrim((string) ($record['entity_value'] ?: $q), '+'))),
+    'crypto' => absolute_url('crypto/' . rawurlencode((string) ($record['entity_value'] ?: $q))),
+    'iban' => absolute_url('iban/' . rawurlencode((string) ($record['entity_value'] ?: $q))),
+    'card' => absolute_url('card/' . rawurlencode((string) ($record['entity_value'] ?: 'check'))),
+    default => absolute_url('/'),
+};
 
 $groups = [
     'facts' => 'Key facts',

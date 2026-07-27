@@ -3,6 +3,7 @@ require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/PhoneChecker.php';
 require_once __DIR__ . '/CryptoChecker.php';
 require_once __DIR__ . '/IbanChecker.php';
+require_once __DIR__ . '/CardChecker.php';
 
 class EntityRepository
 {
@@ -23,13 +24,50 @@ class EntityRepository
 
     public function getOrCheck(string $type, string $raw, bool $force = false): array
     {
+        // Card pretty-URL loads by stored hash key
+        if ($type === 'card' && str_starts_with($raw, 'card:')) {
+            $existing = $this->find('card', $raw);
+            if ($existing) {
+                $this->bumpSearch((int) $existing['id']);
+                return $existing;
+            }
+            return [
+                'entity_type' => 'card',
+                'entity_value' => $raw,
+                'display_value' => 'Unknown card',
+                'trust_score' => 1,
+                'status' => 'unknown',
+                'verdict' => 'invalid',
+                'facts_json' => json_encode(['error' => 'Card check not found']),
+                'signals_json' => '[]',
+                '_invalid' => true,
+            ];
+        }
+
         $normalized = match ($type) {
             'phone' => PhoneChecker::normalize($raw),
             'crypto' => CryptoChecker::normalize($raw),
             'iban' => IbanChecker::normalize($raw),
+            'card' => CardChecker::normalize($raw),
             default => null,
         };
+        if ($type === 'card' && $normalized !== null) {
+            // Store lookups by hash key, but checker needs raw digits once.
+            $result = (new CardChecker($normalized))->run();
+            $existing = $this->find('card', (string) $result['entity_value']);
+            if ($existing && !$force && !$this->isStale($existing)) {
+                $this->bumpSearch((int) $existing['id']);
+                return $existing;
+            }
+            $id = $this->upsert($result, $existing['id'] ?? null);
+            return $this->findById($id) ?? $result;
+        }
         if ($normalized === null || $normalized === '') {
+            // Incomplete IBAN still gets a helpful check page
+            if ($type === 'iban' && preg_match('/^[A-Za-z]{2}\d{2}[A-Za-z0-9]*$/', preg_replace('/\s+/', '', $raw) ?? '')) {
+                $result = (new IbanChecker($raw))->run();
+                return $result + ['_invalid' => ($result['verdict'] ?? '') === 'invalid'];
+            }
             return [
                 'entity_type' => $type,
                 'entity_value' => '',
@@ -53,6 +91,7 @@ class EntityRepository
             'phone' => (new PhoneChecker($normalized))->run(),
             'crypto' => (new CryptoChecker($normalized))->run(),
             'iban' => (new IbanChecker($normalized))->run(),
+            'card' => (new CardChecker($normalized))->run(),
             default => throw new InvalidArgumentException('Unknown type'),
         };
 
@@ -133,7 +172,12 @@ class EntityRepository
 
         $compact = preg_replace('/\s+/', '', $input) ?? $input;
 
+        // Full IBAN
         if (IbanChecker::normalize($input)) {
+            return 'iban';
+        }
+        // Incomplete / in-progress IBAN (e.g. DE66051092) — never treat as phone
+        if (preg_match('/^[A-Z]{2}\d{2}[A-Z0-9]{2,}$/i', $compact) && preg_match('/[A-Za-z]/', $compact)) {
             return 'iban';
         }
 
@@ -146,9 +190,17 @@ class EntityRepository
             return 'crypto';
         }
 
+        // Bank card BEFORE phone (13–19 digits)
+        if (CardChecker::looksLike($input)) {
+            return 'card';
+        }
+
         $digits = preg_replace('/\D+/', '', $input) ?? '';
+
+        // Phone only if the raw input has no letters
         if (
-            preg_match('/^[\s()+.\-]*\d[\d\s()+.\-]*$/', $input)
+            !preg_match('/[A-Za-z]/', $input)
+            && preg_match('/^[\s()+.\-]*\d[\d\s()+.\-]*$/', $input)
             && strlen($digits) >= 6
             && strlen($digits) <= 15
             && PhoneChecker::normalize($input)
@@ -158,10 +210,6 @@ class EntityRepository
 
         if (normalize_domain($input) || preg_match('#^https?://#i', $input)) {
             return 'website';
-        }
-
-        if (strlen($digits) >= 8 && (strlen($digits) / max(strlen($input), 1)) > 0.6 && PhoneChecker::normalize($input)) {
-            return 'phone';
         }
 
         return 'website';
