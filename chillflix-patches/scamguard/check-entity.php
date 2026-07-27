@@ -102,37 +102,40 @@ $negatives = array_values(array_filter($signals, static fn($s) => in_array(($s['
 require __DIR__ . '/includes/header.php';
 ?>
 
-<section class="section container entity-check">
+<section class="section container entity-check result-page">
     <p class="entity-kicker"><?= h(ucfirst($type)) ?> check</p>
-    <h1 class="entity-title">Facts about <span class="entity-value"><?= h($display) ?></span></h1>
 
-    <div class="score-hero" style="margin-top:18px;">
-        <div>
-            <div class="score-ring <?= h($badge['class']) ?>">
-                <div class="score-num"><?= $score ?></div>
-                <div class="score-den">/100</div>
-            </div>
-        </div>
-        <div>
-            <span class="badge <?= h($badge['class']) ?>"><?= h($badge['label']) ?></span>
-            <p style="color:var(--muted); margin:10px 0 0; max-width:36rem;">
-                <?php if (($record['verdict'] ?? '') === 'invalid'): ?>
-                    This <?= h($titleType) ?> could not be validated. Double-check the input and try again.
-                <?php elseif (($record['status'] ?? '') === 'scam'): ?>
-                    Multiple risk signals — treat this <?= h($titleType) ?> as high risk.
-                <?php elseif (($record['status'] ?? '') === 'risky'): ?>
-                    Caution advised — abuse reports or risk patterns were found.
-                <?php else: ?>
-                    No strong scam signals in ScamGuard yet. Still verify independently before sending money.
-                <?php endif; ?>
-            </p>
-            <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
-                <a class="btn btn-sm" href="<?= h($pretty) ?>?refresh=1">↻ Rescan now</a>
-                <a class="btn btn-sm btn-danger" href="<?= BASE_PATH ?>/report.php?type=<?= h(urlencode($type)) ?>&q=<?= h(urlencode($display)) ?>">Report</a>
-                <a class="btn btn-sm" href="<?= BASE_PATH ?>/?type=<?= h(urlencode($type)) ?>">New check</a>
-            </div>
-        </div>
-    </div>
+    <?php
+    render_status_banner((string) ($record['status'] ?? 'unknown'), $score, $display, [
+        [
+            'label' => '↻ Rescan',
+            'href' => $pretty . '?refresh=1',
+            'class' => 'btn btn-sm',
+        ],
+        [
+            'label' => 'Report',
+            'href' => BASE_PATH . '/report.php?type=' . urlencode($type) . '&q=' . urlencode($display),
+            'class' => 'btn btn-sm btn-danger',
+        ],
+        [
+            'label' => 'New check',
+            'href' => BASE_PATH . '/?type=' . urlencode($type),
+            'class' => 'btn btn-sm',
+        ],
+    ]);
+    ?>
+
+    <p style="color:var(--muted); margin:0 0 18px; max-width:36rem;">
+        <?php if (($record['verdict'] ?? '') === 'invalid'): ?>
+            This <?= h($titleType) ?> could not be validated. Double-check the input and try again.
+        <?php elseif (($record['status'] ?? '') === 'scam'): ?>
+            Multiple risk signals — treat this <?= h($titleType) ?> as high risk.
+        <?php elseif (($record['status'] ?? '') === 'risky'): ?>
+            Caution advised — abuse reports or risk patterns were found.
+        <?php else: ?>
+            Still verify independently before sending money or personal data.
+        <?php endif; ?>
+    </p>
 
     <div class="highlights-grid" style="margin-top:22px;">
         <section class="highlight-panel highlight-positive">

@@ -104,27 +104,36 @@ function tone_class(string $tone): string
 
 <section class="section container result-page">
 
-    <div class="card score-hero">
-        <div class="score-ring <?= h($record['status']) ?>"><?= (int) $record['trust_score'] ?></div>
-        <div class="score-meta">
-            <div class="score-domain"><?= h($record['domain']) ?></div>
-            <span class="badge <?= $badge['class'] ?>"><?= $badge['label'] ?></span>
-            <?php if (!empty($record['page_title'])): ?>
-                <div class="score-subtitle"><?= h($record['page_title']) ?></div>
-            <?php endif; ?>
-            <div class="score-meta-line">
-                Last checked: <?= h($record['last_checked'] ?? 'just now') ?>
-                &middot; <?= (int) $record['check_count'] ?> scan<?= $record['check_count'] == 1 ? '' : 's' ?>
-                <?php if (!empty($record['uses_cdn'])): ?>
-                    &middot; Behind <?= h($record['cdn_provider'] ?: 'CDN') ?>
-                <?php endif; ?>
-            </div>
-            <div class="score-actions">
-                <a class="btn btn-sm" href="<?= h(domain_page_path($record['domain'])) ?>?refresh=1">↻ Rescan now</a>
-                <a class="btn btn-sm btn-danger" href="<?= BASE_PATH ?>/report.php?d=<?= urlencode($record['domain']) ?>">🚩 Report</a>
-                <a class="btn btn-sm" href="<?= BASE_PATH ?>/">Check another</a>
-            </div>
-        </div>
+    <?php
+    render_status_banner((string) $record['status'], (int) $record['trust_score'], (string) $record['domain'], [
+        [
+            'label' => 'Visit',
+            'href' => 'https://' . $record['domain'],
+            'class' => 'btn btn-sm btn-primary',
+            'external' => true,
+        ],
+        [
+            'label' => '↻ Rescan',
+            'href' => domain_page_path($record['domain']) . '?refresh=1',
+            'class' => 'btn btn-sm',
+        ],
+        [
+            'label' => 'Report',
+            'href' => BASE_PATH . '/report.php?d=' . urlencode($record['domain']),
+            'class' => 'btn btn-sm btn-danger',
+        ],
+    ]);
+    ?>
+
+    <div class="score-meta-line" style="margin:-6px 0 14px;">
+        Last checked: <?= h($record['last_checked'] ?? 'just now') ?>
+        &middot; <?= (int) $record['check_count'] ?> scan<?= $record['check_count'] == 1 ? '' : 's' ?>
+        <?php if (!empty($record['uses_cdn'])): ?>
+            &middot; Behind <?= h($record['cdn_provider'] ?: 'CDN') ?>
+        <?php endif; ?>
+        <?php if (!empty($record['page_title'])): ?>
+            &middot; <?= h($record['page_title']) ?>
+        <?php endif; ?>
     </div>
 
     <div class="verdict-card <?= h($verdict) ?>" style="margin-top:16px;">

@@ -107,6 +107,89 @@ function status_badge(string $status): array
     };
 }
 
+/**
+ * Big top-of-page verdict banner (ScamAdviser-style check / X).
+ * @return array{tone:string,icon:string,label:string,hint:string}
+ */
+function status_banner(string $status): array
+{
+    return match ($status) {
+        'safe', 'whitelisted' => [
+            'tone' => 'good',
+            'icon' => 'check',
+            'label' => $status === 'whitelisted' ? 'Verified Safe' : 'Likely Safe',
+            'hint' => 'No strong scam signals found for this result.',
+        ],
+        'caution' => [
+            'tone' => 'caution',
+            'icon' => 'alert',
+            'label' => 'Use Caution',
+            'hint' => 'Some risk signals are present — verify before you trust it.',
+        ],
+        'risky' => [
+            'tone' => 'risky',
+            'icon' => 'alert',
+            'label' => 'Risky',
+            'hint' => 'Elevated risk patterns were detected.',
+        ],
+        'scam', 'blacklisted' => [
+            'tone' => 'bad',
+            'icon' => 'cross',
+            'label' => $status === 'blacklisted' ? 'Confirmed Scam' : 'Likely Scam',
+            'hint' => 'Strong scam / abuse signals — do not trust this.',
+        ],
+        default => [
+            'tone' => 'unknown',
+            'icon' => 'quest',
+            'label' => 'Unknown',
+            'hint' => 'Not enough data for a confident verdict yet.',
+        ],
+    };
+}
+
+/**
+ * Render the top verdict banner HTML.
+ */
+function render_status_banner(string $status, int $score, string $subject, array $actions = []): void
+{
+    $b = status_banner($status);
+    $icon = match ($b['icon']) {
+        'check' => '✓',
+        'cross' => '✕',
+        'alert' => '!',
+        default => '?',
+    };
+    $score = max(0, min(100, $score));
+    ?>
+    <div class="status-banner status-<?= h($b['tone']) ?>">
+        <div class="status-banner-main">
+            <div class="status-mark" aria-hidden="true"><span><?= $icon ?></span></div>
+            <div class="status-copy">
+                <div class="status-label"><?= h($b['label']) ?></div>
+                <div class="status-subject"><?= h($subject) ?></div>
+                <p class="status-hint"><?= h($b['hint']) ?></p>
+                <?php if ($actions): ?>
+                    <div class="status-actions">
+                        <?php foreach ($actions as $a): ?>
+                            <a class="<?= h($a['class'] ?? 'btn btn-sm') ?>" href="<?= h($a['href']) ?>"<?= !empty($a['external']) ? ' target="_blank" rel="noopener noreferrer"' : '' ?>><?= h($a['label']) ?></a>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+        <div class="status-scorebox">
+            <div class="status-score-top">
+                <span>Trust Score</span>
+                <strong><?= $score ?></strong>
+            </div>
+            <div class="status-bar" role="meter" aria-valuenow="<?= $score ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Trust score <?= $score ?> out of 100">
+                <span style="width:<?= $score ?>%"></span>
+            </div>
+        </div>
+    </div>
+    <?php
+}
+
 /** Simple activity logger for admin audit trail */
 function log_admin_activity(?int $adminId, string $action, ?string $target = null, ?string $details = null): void
 {
