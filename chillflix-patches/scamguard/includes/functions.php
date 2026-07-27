@@ -108,10 +108,9 @@ function status_badge(string $status): array
 }
 
 /**
- * ScamAdviser RatingScore mapping: hero BG + progress bar by trust score.
- * Source: scamadviser.com/build/assets/RatingScore-BbWfQDpQ.js
+ * Trust-band theme for modern ScamGuard result hero.
  *
- * @return array{heroBg:string,progressBar:string,bgFile:string,label:string,why:string,hint:string}
+ * @return array{tone:string,accent:string,bar:string,label:string,why:string,hint:string,icon:string}
  */
 function rating_score_theme(int $score): array
 {
@@ -119,67 +118,73 @@ function rating_score_theme(int $score): array
 
     if ($score > 80) {
         return [
-            'heroBg' => 'container-result-page-hero-bg-image-green',
-            'progressBar' => 'progress-bar-green',
-            'bgFile' => 'result_page_hero_bg_green-dark.png',
+            'tone' => 'safe',
+            'accent' => '#2fbf71',
+            'bar' => 'progress-bar-green',
             'label' => 'Very Likely Safe',
             'why' => 'an average to good',
             'hint' => 'No strong scam signals found for this result.',
+            'icon' => 'check',
         ];
     }
     if ($score > 60) {
         return [
-            'heroBg' => 'container-result-page-hero-bg-image-light-green',
-            'progressBar' => 'progress-bar-light-green',
-            'bgFile' => 'result_page_hero_bg_light_green-dark.png',
+            'tone' => 'safe',
+            'accent' => '#63b100',
+            'bar' => 'progress-bar-light-green',
             'label' => 'Likely Safe',
             'why' => 'a decent',
             'hint' => 'Mostly positive signals, but stay alert.',
+            'icon' => 'check',
         ];
     }
     if ($score > 40) {
         return [
-            'heroBg' => 'container-result-page-hero-bg-image-orange',
-            'progressBar' => 'progress-bar-orange',
-            'bgFile' => 'result_page_hero_bg_orange-dark.png',
+            'tone' => 'caution',
+            'accent' => '#ff8a00',
+            'bar' => 'progress-bar-orange',
             'label' => 'Suspicious',
             'why' => 'a mixed',
             'hint' => 'Some risk signals are present — verify before you trust it.',
+            'icon' => 'warn',
         ];
     }
     if ($score > 20) {
         return [
-            'heroBg' => 'container-result-page-hero-bg-image-dark-orange',
-            'progressBar' => 'progress-bar-dark-orange',
-            'bgFile' => 'result_page_hero_bg_dark_orange-dark.png',
+            'tone' => 'risky',
+            'accent' => '#ff6712',
+            'bar' => 'progress-bar-dark-orange',
             'label' => 'Likely Unsafe',
             'why' => 'a low',
             'hint' => 'Elevated risk patterns were detected.',
+            'icon' => 'warn',
         ];
     }
     if ($score > 0) {
         return [
-            'heroBg' => 'container-result-page-hero-bg-image-red',
-            'progressBar' => 'progress-bar-red',
-            'bgFile' => 'result_page_hero_bg_red-dark.png',
+            'tone' => 'danger',
+            'accent' => '#ee3e41',
+            'bar' => 'progress-bar-red',
             'label' => 'Very Likely Unsafe',
             'why' => 'a very low',
             'hint' => 'Strong scam / abuse signals — do not trust this.',
+            'icon' => 'x',
         ];
     }
 
     return [
-        'heroBg' => 'container-result-page-hero-bg-image-gray',
-        'progressBar' => 'progress-bar-bg-none',
-        'bgFile' => 'result_page_hero_bg_gray-dark.png',
+        'tone' => 'unknown',
+        'accent' => '#6b7a8d',
+        'bar' => 'progress-bar-bg-none',
         'label' => 'Unknown',
         'why' => 'an unclear',
         'hint' => 'Not enough data for a confident verdict yet.',
+        'icon' => 'unknown',
     ];
 }
 
 /**
- * @deprecated Prefer rating_score_theme(); kept for callers that only have a status.
+ * @deprecated Prefer rating_score_theme()
  * @return array{tone:string,bg:string,bar:string,label:string,hint:string,why:string}
  */
 function status_banner(string $status): array
@@ -199,17 +204,56 @@ function status_banner(string $status): array
     }
 
     return [
-        'tone' => $t['heroBg'],
-        'bg' => $t['bgFile'],
-        'bar' => $t['progressBar'],
+        'tone' => $t['tone'],
+        'bg' => '',
+        'bar' => $t['bar'],
         'label' => $t['label'],
         'hint' => $t['hint'],
         'why' => $t['why'],
     ];
 }
 
+function render_verdict_icon(string $icon): void
+{
+    if ($icon === 'check') {
+        ?>
+        <svg class="sg-verdict-svg" viewBox="0 0 96 96" aria-hidden="true">
+            <circle cx="48" cy="48" r="40" fill="currentColor"/>
+            <path d="M30 49.5 42.5 62 66 35" fill="none" stroke="#0b1018" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <?php
+        return;
+    }
+    if ($icon === 'warn') {
+        ?>
+        <svg class="sg-verdict-svg" viewBox="0 0 96 96" aria-hidden="true">
+            <path d="M48 10 88 80H8Z" fill="currentColor" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+            <path d="M48 34v24" fill="none" stroke="#0b1018" stroke-width="7" stroke-linecap="round"/>
+            <circle cx="48" cy="70" r="4.5" fill="#0b1018"/>
+        </svg>
+        <?php
+        return;
+    }
+    if ($icon === 'x') {
+        ?>
+        <svg class="sg-verdict-svg" viewBox="0 0 96 96" aria-hidden="true">
+            <circle cx="48" cy="48" r="40" fill="currentColor"/>
+            <path d="M34 34 62 62M62 34 34 62" fill="none" stroke="#0b1018" stroke-width="7" stroke-linecap="round"/>
+        </svg>
+        <?php
+        return;
+    }
+    ?>
+    <svg class="sg-verdict-svg" viewBox="0 0 96 96" aria-hidden="true">
+        <circle cx="48" cy="48" r="40" fill="currentColor"/>
+        <path d="M48 30v28" fill="none" stroke="#0b1018" stroke-width="7" stroke-linecap="round"/>
+        <circle cx="48" cy="68" r="4.5" fill="#0b1018"/>
+    </svg>
+    <?php
+}
+
 /**
- * Render ScamAdviser result hero (Detail-_xxkMTOR.js) + TrustScore panel.
+ * Modern ScamGuard result hero + trust score panel.
  *
  * @param array<int,array{label:string,href:string,class?:string,external?:bool}> $actions
  * @param array{last_update?:string} $meta
@@ -219,17 +263,18 @@ function render_status_banner(string $status, int $score, string $subject, array
     $score = max(0, min(100, $score));
     $t = rating_score_theme($score);
 
-    // Status overrides for explicit list hits
     if ($status === 'whitelisted' && $score >= 80) {
         $t['label'] = 'Verified Safe';
+        $t['icon'] = 'check';
+        $t['tone'] = 'safe';
+        $t['accent'] = '#2fbf71';
     } elseif ($status === 'blacklisted') {
         $t = rating_score_theme(10);
         $t['label'] = 'Confirmed Scam';
+        $t['icon'] = 'x';
+        $t['tone'] = 'danger';
     }
 
-    $base = defined('BASE_PATH') ? rtrim(BASE_PATH, '/') : '';
-    $assetVer = '20260727sa11';
-    $bgUrl = $base . '/assets/img/hero/' . $t['bgFile'] . '?v=' . $assetVer;
     $brand = get_setting('site_name', 'ScamGuard');
     $lastUpdate = $meta['last_update'] ?? '';
 
@@ -247,56 +292,53 @@ function render_status_banner(string $status, int $score, string $subject, array
         }
     }
     ?>
-    <div class="result-page-main-container pb-40">
-        <div class="headers-inner text-center">
-            <div class="result-page-container <?= h($t['heroBg']) ?>" style="background-image:url('<?= h($bgUrl) ?>')">
-                <div class="container-result-page-hero">
-                    <div class="pb-15">
-                        <div class="result-page-hero-title-outer">
-                            <h1 class="result-page-hero-title"><?= h($t['label']) ?></h1>
-                        </div>
-                    </div>
-                    <h5 class="result-page-hero-domain"><?= h($subject) ?></h5>
-                    <div class="mt-30 sa-hero-btns">
-                        <?php if ($visit): ?>
-                            <a class="btn-grey-responsive-xs-result-page-hero __link domain-link" href="<?= h($visit['href']) ?>"<?= !empty($visit['external']) ? ' target="_blank" rel="noopener noreferrer"' : '' ?>><?= h(strtoupper($visit['label'])) ?></a>
-                        <?php endif; ?>
-                        <?php if ($report): ?>
-                            <a class="btn-primary-responsive-xs-result-page-hero __link" href="<?= h($report['href']) ?>"><?= h(strtoupper($report['label'])) ?></a>
-                        <?php endif; ?>
-                        <?php foreach ($extra as $a): ?>
-                            <a class="btn-grey-responsive-xs-result-page-hero __link sa-hero-extra" href="<?= h($a['href']) ?>"><?= h($a['label']) ?></a>
-                        <?php endforeach; ?>
-                    </div>
+    <div class="sg-result sg-result--<?= h($t['tone']) ?>" style="--sg-accent: <?= h($t['accent']) ?>">
+        <div class="sg-result-hero">
+            <div class="sg-result-atmosphere" aria-hidden="true"></div>
+            <div class="sg-result-grid" aria-hidden="true"></div>
+            <div class="sg-result-arc" aria-hidden="true"></div>
+
+            <div class="sg-verdict">
+                <div class="sg-verdict-mark">
+                    <span class="sg-verdict-ring" aria-hidden="true"></span>
+                    <span class="sg-verdict-glow" aria-hidden="true"></span>
+                    <?php render_verdict_icon($t['icon']); ?>
+                </div>
+                <h1 class="sg-verdict-title"><?= h($t['label']) ?></h1>
+                <p class="sg-verdict-subject"><?= h($subject) ?></p>
+                <div class="sg-verdict-actions">
+                    <?php if ($visit): ?>
+                        <a class="sg-btn sg-btn-ghost" href="<?= h($visit['href']) ?>"<?= !empty($visit['external']) ? ' target="_blank" rel="noopener noreferrer"' : '' ?>><?= h(strtoupper($visit['label'])) ?></a>
+                    <?php endif; ?>
+                    <?php if ($report): ?>
+                        <a class="sg-btn sg-btn-danger" href="<?= h($report['href']) ?>"><?= h(strtoupper($report['label'])) ?></a>
+                    <?php endif; ?>
+                    <?php foreach ($extra as $a): ?>
+                        <a class="sg-btn sg-btn-ghost" href="<?= h($a['href']) ?>"><?= h($a['label']) ?></a>
+                    <?php endforeach; ?>
                 </div>
             </div>
         </div>
 
-        <section>
-            <div class="sa-result-score-wrap">
-                <div class="result-score">
-                    <div class="text-heading-section">
-                        <p><?= h($subject) ?> has <?= h($t['why']) ?> trust score. Why?</p>
-                    </div>
-                    <div class="trust-score">
-                        <div class="row text-base-line">
-                            <div class="col-5 result-page-text-heading-block"><?= h($brand) ?></div>
-                            <div class="col-7 text-right">
-                                <span class="result-page-text-tile-title-regular">Trust Score</span>
-                                <span class="text-heading-section-700" data-sa-score="<?= $score ?>"><?= $score ?></span>
-                            </div>
-                        </div>
-                        <div class="progress mt-40" role="meter" aria-valuenow="<?= $score ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Trust score <?= $score ?> out of 100">
-                            <div class="progress-bar <?= h($t['progressBar']) ?>" data-sa-bar="<?= $score ?>" style="width:0%"></div>
-                        </div>
-                    </div>
-                    <?php if ($lastUpdate !== ''): ?>
-                        <p class="text-tile-title text-little-dark-grey mt-24">Last Update: <?= h($lastUpdate) ?></p>
-                    <?php endif; ?>
-                    <p class="sa-trust-hint"><?= h($t['hint']) ?></p>
+        <div class="sg-trust">
+            <p class="sg-trust-lead"><?= h($subject) ?> has <?= h($t['why']) ?> trust score. Why?</p>
+            <div class="sg-trust-panel">
+                <div class="sg-trust-row">
+                    <span class="sg-trust-brand"><?= h($brand) ?></span>
+                    <span class="sg-trust-score-wrap">
+                        <span class="sg-trust-score-label">Trust Score</span>
+                        <strong class="sg-trust-score" data-sa-score="<?= $score ?>"><?= $score ?></strong>
+                    </span>
+                </div>
+                <div class="progress mt-40" role="meter" aria-valuenow="<?= $score ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Trust score <?= $score ?> out of 100">
+                    <div class="progress-bar <?= h($t['bar']) ?>" data-sa-bar="<?= $score ?>" style="width:0%"></div>
                 </div>
             </div>
-        </section>
+            <?php if ($lastUpdate !== ''): ?>
+                <p class="sg-trust-meta">Last Update: <?= h($lastUpdate) ?></p>
+            <?php endif; ?>
+            <p class="sg-trust-hint"><?= h($t['hint']) ?></p>
+        </div>
     </div>
     <script>
     (function () {
@@ -310,7 +352,7 @@ function render_status_banner(string $status, int $score, string $subject, array
         n.textContent = String(cur);
         bar.style.width = cur + '%';
         if (cur >= target) clearInterval(tick);
-      }, 25);
+      }, 18);
     })();
     </script>
     <?php
