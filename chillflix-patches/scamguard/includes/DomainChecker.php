@@ -489,14 +489,23 @@ class DomainChecker
 
         $ipNote = '';
         if ($this->data['uses_cdn']) {
-            $ipNote = 'This is a ' . $this->data['cdn_provider'] . ' edge IP (proxy/CDN), not necessarily the origin server.';
+            $ipNote = 'This is a ' . $this->data['cdn_provider'] . ' edge IP (proxy/CDN), not necessarily the origin server. Normal for many legitimate sites.';
         }
 
-        $this->addSignal('network', 'Resolved IP', $this->data['ip_address'] ?? 'None', $ipNote, $this->data['uses_cdn'] ? 'warn' : 'neutral');
+        // CDN is informational — most legit sites use Cloudflare/etc. Do NOT mark as warn/bad.
+        $this->addSignal('network', 'Resolved IP', $this->data['ip_address'] ?? 'None', $ipNote, 'neutral');
         if (count($ips) > 1) {
             $this->addSignal('network', 'All A/AAAA', implode(', ', array_slice($ips, 0, 6)), '', 'neutral');
         }
-        $this->addSignal('network', 'CDN / proxy', $this->data['uses_cdn'] ? ($this->data['cdn_provider'] ?: 'Yes') : 'Not detected', '', $this->data['uses_cdn'] ? 'warn' : 'good');
+        $this->addSignal(
+            'network',
+            'CDN / proxy',
+            $this->data['uses_cdn'] ? ($this->data['cdn_provider'] ?: 'Yes') : 'Not detected',
+            $this->data['uses_cdn']
+                ? 'Common on legitimate sites (Cloudflare, Fastly, Akamai, etc.). Not a scam signal by itself.'
+                : 'No major CDN fingerprint detected.',
+            'neutral'
+        );
         $this->addSignal('network', 'Nameservers', $this->data['nameservers'] ?? 'Unknown', '', 'neutral');
         $this->addSignal('network', 'Hosting / ASN', $this->data['asn_org'] ?? 'Unknown', $this->data['asn'] ?? '', 'neutral');
         $this->addSignal('network', 'Geo', $this->data['host_country'] ?? 'Unknown', '', 'neutral');
