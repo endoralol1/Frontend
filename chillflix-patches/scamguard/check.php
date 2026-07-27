@@ -271,8 +271,8 @@ function tone_class(string $tone): string
 
     <?php if ($unchecked): ?>
     <div class="card" style="margin-top:16px;">
-        <h3 style="margin-top:0;">Not checked (vs ScamAdviser)</h3>
-        <p style="color:var(--text-faint); font-size:14px; margin-top:0;">These partner/paid sources are shown so the gap is explicit.</p>
+        <h3 style="margin-top:0;">Not checked here</h3>
+        <p style="color:var(--text-faint); font-size:14px; margin-top:0;">These optional sources were unavailable for this scan.</p>
         <ul class="verdict-reasons">
             <?php foreach ($unchecked as $u): ?>
                 <li><strong><?= h((string) $u['label']) ?>:</strong> <?= h((string) ($u['note'] ?: 'Not available')) ?></li>

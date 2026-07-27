@@ -1,7 +1,7 @@
 <?php
 /**
  * Phone number scam check — format, country, line type, VoIP heuristics,
- * and community abuse reports (ScamAdviser-style key facts / network info).
+ * and community abuse reports (key facts / network info).
  */
 class PhoneChecker
 {
@@ -440,7 +440,7 @@ class PhoneChecker
                 '211' => 'Düsseldorf',
                 '491' => 'Leer / Ostfriesland',
             ];
-            // Mobile: region often unknown; ScamAdviser sometimes still shows an area from HLR
+            // Mobile: region often unknown; area may still come from HLR-style data when available
             if (preg_match('/^1[5-7]/', $national)) {
                 return 'Mobile (region unknown)';
             }

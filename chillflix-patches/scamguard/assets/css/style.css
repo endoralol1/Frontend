@@ -955,7 +955,7 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
 .summary-label { color: var(--faint); font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; }
 .summary-value { margin-top: 6px; font-weight: 750; overflow-wrap: anywhere; }
 
-/* ScamAdviser-style green/red highlight panels */
+/* Positive / negative highlight panels */
 .highlights-grid {
     display: grid;
     grid-template-columns: 1fr;

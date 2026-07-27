@@ -1,6 +1,6 @@
 <?php
 /**
- * External reputation lookups that ScamAdviser-style UIs surface:
+ * External reputation lookups:
  * Trustpilot reviews, multi-RBL abuse/spam, multi-engine web safety (URLVoid),
  * reverse-IP neighbors, and origin IP DNSBL checks.
  */
@@ -247,7 +247,7 @@ class ExternalReputation
         ];
     }
 
-    /** Public RBL sweep via MXToolbox (closest free stand-in for iQ Abuse Scan). */
+    /** Public RBL sweep via MXToolbox. */
     private function abuseBlacklists(): array
     {
         $cached = $this->cacheGet('mxtoolbox');
@@ -268,7 +268,7 @@ class ExternalReputation
                     'threat',
                     'Abuse / spam blacklists',
                     'Unavailable',
-                    'Public RBL sweep failed. (iQ Abuse Scan itself is partner-only; this is the free equivalent.)',
+                    'Public RBL sweep failed or timed out.',
                     'neutral'
                 ),
                 'hit' => 0,
@@ -291,7 +291,7 @@ class ExternalReputation
                     'threat',
                     'Abuse / spam blacklists',
                     'Listed on ' . $listed . ' list(s)',
-                    'Public multi-RBL scan (MXToolbox). Closest free equivalent to ScamAdviser iQ Abuse Scan.',
+                    'Public multi-RBL scan via MXToolbox.',
                     'bad'
                 ),
                 'hit' => 1,
@@ -305,7 +305,7 @@ class ExternalReputation
                 'threat',
                 'Abuse / spam blacklists',
                 'Clean on public RBLs',
-                'Swept ~68 public blacklists via MXToolbox. Not the proprietary iQ Abuse feed, but same class of signal.',
+                'Swept ~68 public blacklists via MXToolbox.',
                 'good'
             ),
             'hit' => 0,

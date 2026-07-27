@@ -724,7 +724,7 @@ class DomainChecker
             preg_match('/privacy([ -_]?policy)?/i', $html)
         ) ? 1 : 0;
 
-        // Phone / WhatsApp presence (ScamAdviser-style contact verification signal).
+        // Phone / WhatsApp presence (contact verification signal).
         $phoneHit = (bool) (
             preg_match('/tel:\+?[0-9()\s.-]{7,}/i', $html)
             || preg_match('/wa\.me\/\+?[0-9]{7,}/i', $html)
@@ -974,8 +974,7 @@ class DomainChecker
             );
         }
 
-        // Paid/partner spam products (e.g. ScamAdviser iQ Abuse Scan) are not available to us.
-        // A fuller public RBL sweep is added in ExternalReputation (abuseBlacklists).
+        // Broader public RBL sweep is added in ExternalReputation (abuseBlacklists).
     }
 
     /**
@@ -1018,7 +1017,7 @@ class DomainChecker
                     'reputation',
                     'Tranco traffic rank',
                     '#' . number_format($rank),
-                    $label . ' — same data family ScamAdviser cites for traffic.',
+                    $label . ' — research list of the most-visited sites globally.',
                     $tone
                 );
             } else {
@@ -1472,7 +1471,7 @@ class DomainChecker
         if (!empty($this->data['analyst_summary'])) {
             array_unshift($reasons, 'Analyst: ' . $this->data['analyst_summary']);
         }
-        $reasons[] = 'Note: Review coverage includes Trustpilot + Sitejabber when available, plus ScamGuard community reports — not Google Reviews, BBB, Reddit, or ScamAdviser\'s private report network.';
+        $reasons[] = 'Note: Review coverage includes Trustpilot + Sitejabber when available, plus ScamGuard community reports. Google Reviews, BBB, and Reddit are not queried.';
 
 
         $this->data['verdict'] = $verdict;

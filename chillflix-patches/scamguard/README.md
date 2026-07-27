@@ -1,6 +1,6 @@
 # ScamGuard patches
 
-## Multi-type checks (ScamAdviser-style)
+## Multi-type checks
 - Homepage Type tabs: Website / Phone / Crypto / IBAN
 - Pretty URLs: `/scamguard/phone/{n}`, `/crypto/{addr}`, `/iban/{iban}`
 - Phone: country, carrier (prefix map), line type, VoIP, community abuse
