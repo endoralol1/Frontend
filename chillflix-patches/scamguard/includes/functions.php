@@ -331,7 +331,7 @@ function render_status_banner(string $status, int $score, string $subject, array
                     </span>
                 </div>
                 <div class="progress mt-40" role="meter" aria-valuenow="<?= $score ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Trust score <?= $score ?> out of 100">
-                    <div class="progress-bar <?= h($t['bar']) ?>" data-sa-bar="<?= $score ?>" style="width:0%"></div>
+                    <div class="progress-bar <?= h($t['bar']) ?>" data-sa-bar="<?= $score ?>" style="width:<?= $score ?>%"></div>
                 </div>
             </div>
             <?php if ($lastUpdate !== ''): ?>
@@ -346,13 +346,16 @@ function render_status_banner(string $status, int $score, string $subject, array
       var bar = document.querySelector('[data-sa-bar]');
       if (!n || !bar) return;
       var target = parseInt(n.getAttribute('data-sa-score'), 10) || 0;
+      // Animate from 0 even though final width is already set for no-JS fallback
       var cur = 0;
+      bar.style.width = '0%';
       var tick = setInterval(function () {
-        cur = cur >= target ? target : cur + 1;
+        cur = cur >= target ? target : cur + 2;
+        if (cur > target) cur = target;
         n.textContent = String(cur);
         bar.style.width = cur + '%';
         if (cur >= target) clearInterval(tick);
-      }, 18);
+      }, 16);
     })();
     </script>
     <?php
