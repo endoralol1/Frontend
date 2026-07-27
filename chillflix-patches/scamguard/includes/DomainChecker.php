@@ -1431,7 +1431,8 @@ class DomainChecker
         if (!empty($this->data['threat_feed_sources'])) {
             $reasons[] = 'Feeds: ' . $this->data['threat_feed_sources'];
         }
-        $reasons[] = 'Note: ScamGuard does not yet ingest paid review networks (Trustpilot/ScamAdviser user reports).';
+        $reasons[] = 'Note: Review coverage includes Trustpilot + Sitejabber when available, plus ScamGuard community reports — not Google Reviews, BBB, Reddit, or ScamAdviser\'s private report network.';
+
 
         $this->data['verdict'] = $verdict;
         $this->data['verdict_reasons'] = json_encode($reasons);
