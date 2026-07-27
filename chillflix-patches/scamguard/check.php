@@ -39,7 +39,8 @@ if (!is_array($signals)) {
 
 $groups = [
     'verdict' => 'Verdict',
-    'threat' => 'Malware & phishing intel',
+    'reputation' => 'Reputation & traffic',
+    'threat' => 'Malware, phishing & spam',
     'heuristics' => 'Scam heuristics',
     'registration' => 'Registration',
     'ssl' => 'SSL / TLS',
@@ -58,6 +59,10 @@ foreach ($signals as $signal) {
     $g = $signal['group'] ?? 'other';
     $grouped[$g][] = $signal;
 }
+
+$positives = array_values(array_filter($signals, static fn($s) => ($s['tone'] ?? '') === 'good'));
+$negatives = array_values(array_filter($signals, static fn($s) => in_array(($s['tone'] ?? ''), ['bad', 'warn'], true)));
+$unchecked = array_values(array_filter($signals, static fn($s) => ($s['value'] ?? '') === 'Not checked'));
 
 $score = (int) $record['trust_score'];
 $statusLabel = $badge['label'];
@@ -178,6 +183,43 @@ function tone_class(string $tone): string
             <div class="summary-value"><?= $record['threat_feed_hit'] ? 'Hit' : 'Clean' ?></div>
         </div>
     </div>
+
+    <div class="grid grid-2" style="margin-top:16px;">
+        <div class="card">
+            <h3 style="margin-top:0;">Positive signals</h3>
+            <?php if (!$positives): ?>
+                <p style="color:var(--text-faint); font-size:14px;">No strong positive signals recorded.</p>
+            <?php endif; ?>
+            <ul class="verdict-reasons">
+                <?php foreach (array_slice($positives, 0, 8) as $p): ?>
+                    <li><strong><?= h((string) $p['label']) ?>:</strong> <?= h((string) $p['value']) ?><?php if (!empty($p['note'])): ?> — <?= h((string) $p['note']) ?><?php endif; ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+        <div class="card">
+            <h3 style="margin-top:0;">Risk / caution signals</h3>
+            <?php if (!$negatives): ?>
+                <p style="color:var(--text-faint); font-size:14px;">No elevated risk signals recorded.</p>
+            <?php endif; ?>
+            <ul class="verdict-reasons">
+                <?php foreach (array_slice($negatives, 0, 8) as $n): ?>
+                    <li><strong><?= h((string) $n['label']) ?>:</strong> <?= h((string) $n['value']) ?><?php if (!empty($n['note'])): ?> — <?= h((string) $n['note']) ?><?php endif; ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    </div>
+
+    <?php if ($unchecked): ?>
+    <div class="card" style="margin-top:16px;">
+        <h3 style="margin-top:0;">Not checked (vs ScamAdviser)</h3>
+        <p style="color:var(--text-faint); font-size:14px; margin-top:0;">These partner/paid sources are shown so the gap is explicit.</p>
+        <ul class="verdict-reasons">
+            <?php foreach ($unchecked as $u): ?>
+                <li><strong><?= h((string) $u['label']) ?>:</strong> <?= h((string) ($u['note'] ?: 'Not available')) ?></li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+    <?php endif; ?>
 
     <?php if ($signals): ?>
         <div class="signal-groups">

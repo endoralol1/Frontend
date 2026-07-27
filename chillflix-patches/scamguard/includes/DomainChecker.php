@@ -31,6 +31,9 @@ class DomainChecker
         $this->data['content_incomplete'] = 0;
         $this->data['registrar_risk'] = 0;
         $this->data['spam_hit'] = 0;
+        $this->data['tranco_rank'] = null;
+        $this->data['tranco_bonus'] = 0;
+        $this->data['review_penalty'] = 0;
 
         $this->checkWhois();
         $this->checkSsl();
@@ -40,6 +43,7 @@ class DomainChecker
         $this->checkThreatFeeds();
         $this->checkHeuristics();
         $this->scoreRegistrarReputation();
+        $this->checkReputationExtras();
 
         $score = $this->calculateScore();
         $this->data['trust_score'] = $score;
@@ -803,16 +807,145 @@ class DomainChecker
         }
         if ($hits) {
             $this->data['spam_hit'] = 1;
-            $this->addSignal('threat', 'Spam reputation', 'Listed', implode(', ', $hits), 'bad');
+            $this->addSignal('threat', 'Spam reputation (DNSBL)', 'Listed', implode(', ', $hits), 'bad');
         } else {
             $this->addSignal(
                 'threat',
-                'Spam reputation',
-                'No clear DNSBL hit',
-                'Checked Spamhaus DBL / SURBL when reachable. Not the same as ScamAdviser iQ Abuse Scan.',
+                'Spam reputation (DNSBL)',
+                'No clear hit',
+                'Checked Spamhaus DBL / SURBL when reachable.',
                 'neutral'
             );
         }
+
+        // Paid/partner spam products (e.g. ScamAdviser iQ Abuse Scan) are not available to us.
+        $this->addSignal(
+            'threat',
+            'iQ Abuse Scan',
+            'Not checked',
+            'ScamAdviser uses iQ Abuse Scan (partner/paid). ScamGuard does not have that feed.',
+            'neutral'
+        );
+    }
+
+    /**
+     * Extra reputation layers ScamAdviser-style UIs show: traffic rank, reviews, DNSFilter.
+     */
+    private function checkReputationExtras(): void
+    {
+        $this->data['tranco_rank'] = null;
+        $this->data['tranco_bonus'] = 0;
+        $this->data['review_penalty'] = 0;
+
+        // --- Tranco traffic rank (free research API) ---
+        try {
+            $json = $this->httpGet('https://tranco-list.eu/api/ranks/domain/' . rawurlencode($this->domain), 8);
+            $payload = json_decode($json ?: '', true);
+            $rank = null;
+            if (is_array($payload) && !empty($payload['ranks'][0]['rank'])) {
+                $rank = (int) $payload['ranks'][0]['rank'];
+            }
+            if ($rank && $rank > 0) {
+                $this->data['tranco_rank'] = $rank;
+                if ($rank <= 10000) {
+                    $this->data['tranco_bonus'] = 10;
+                    $tone = 'good';
+                    $label = 'High traffic (top 10k)';
+                } elseif ($rank <= 100000) {
+                    $this->data['tranco_bonus'] = 6;
+                    $tone = 'good';
+                    $label = 'Solid traffic (top 100k)';
+                } elseif ($rank <= 500000) {
+                    $this->data['tranco_bonus'] = 3;
+                    $tone = 'good';
+                    $label = 'Some traffic (top 500k)';
+                } else {
+                    $this->data['tranco_bonus'] = 1;
+                    $tone = 'neutral';
+                    $label = 'Listed in Tranco top 1M';
+                }
+                $this->addSignal(
+                    'reputation',
+                    'Tranco traffic rank',
+                    '#' . number_format($rank),
+                    $label . ' — same data family ScamAdviser cites for traffic.',
+                    $tone
+                );
+            } else {
+                $this->addSignal(
+                    'reputation',
+                    'Tranco traffic rank',
+                    'Not in top 1M',
+                    'No recent Tranco rank — common for brand-new or low-traffic sites.',
+                    'warn'
+                );
+            }
+        } catch (Throwable $e) {
+            $this->addSignal('reputation', 'Tranco traffic rank', 'Unavailable', 'Tranco API request failed', 'neutral');
+        }
+
+        // --- User reviews: our own reports + honesty about Trustpilot/ScamAdviser reviews ---
+        try {
+            $db = Database::getConnection();
+            $stmt = $db->prepare("SELECT status, COUNT(*) AS n FROM reports WHERE domain_text = ? GROUP BY status");
+            $stmt->execute([$this->domain]);
+            $rows = $stmt->fetchAll();
+            $approved = 0;
+            $pending = 0;
+            foreach ($rows as $row) {
+                if ($row['status'] === 'approved') {
+                    $approved = (int) $row['n'];
+                }
+                if ($row['status'] === 'pending') {
+                    $pending = (int) $row['n'];
+                }
+            }
+            if ($approved > 0) {
+                $this->data['review_penalty'] = min(25, 8 + ($approved * 5));
+                $this->addSignal(
+                    'reputation',
+                    'User reports (ScamGuard)',
+                    $approved . ' approved',
+                    ($pending ? "$pending pending. " : '') . 'Community reports on ScamGuard.',
+                    'bad'
+                );
+            } elseif ($pending > 0) {
+                $this->data['review_penalty'] = 4;
+                $this->addSignal(
+                    'reputation',
+                    'User reports (ScamGuard)',
+                    $pending . ' pending',
+                    'Unreviewed reports exist — soft caution only.',
+                    'warn'
+                );
+            } else {
+                $this->addSignal(
+                    'reputation',
+                    'User reports (ScamGuard)',
+                    'None yet',
+                    'No community reports filed on ScamGuard for this domain.',
+                    'neutral'
+                );
+            }
+        } catch (Throwable $e) {
+            $this->addSignal('reputation', 'User reports (ScamGuard)', 'Unavailable', $e->getMessage(), 'neutral');
+        }
+
+        $this->addSignal(
+            'reputation',
+            'External review networks',
+            'Not checked',
+            'Trustpilot / ScamAdviser user-review feeds are not connected (blocked or partner-only). This is a known gap vs ScamAdviser.',
+            'neutral'
+        );
+
+        $this->addSignal(
+            'reputation',
+            'DNSFilter safety label',
+            'Not checked',
+            'DNSFilter is a commercial DNS security product. ScamGuard does not have that partner feed.',
+            'neutral'
+        );
     }
 
     private function scoreSecurityHeaders(array $headers): array
@@ -1323,6 +1456,14 @@ class DomainChecker
 
         if (!empty($this->data['registrar_risk'])) {
             $score -= (int) $this->data['registrar_risk'];
+        }
+
+        if (!empty($this->data['tranco_bonus'])) {
+            $score += (int) $this->data['tranco_bonus'];
+        }
+
+        if (!empty($this->data['review_penalty'])) {
+            $score -= (int) $this->data['review_penalty'];
         }
 
         $flags = json_decode((string) ($this->data['heuristic_flags'] ?? '[]'), true) ?: [];
