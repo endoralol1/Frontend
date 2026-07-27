@@ -28,12 +28,18 @@ class DomainChecker
         $this->data['verdict'] = 'unknown';
         $this->data['verdict_reasons'] = null;
 
+        $this->data['content_incomplete'] = 0;
+        $this->data['registrar_risk'] = 0;
+        $this->data['spam_hit'] = 0;
+
         $this->checkWhois();
         $this->checkSsl();
         $this->checkDns();
         $this->checkContent();
+        $this->checkSpamReputation();
         $this->checkThreatFeeds();
         $this->checkHeuristics();
+        $this->scoreRegistrarReputation();
 
         $score = $this->calculateScore();
         $this->data['trust_score'] = $score;
@@ -107,7 +113,13 @@ class DomainChecker
             $ageTone = $age < 30 ? 'bad' : ($age < 180 ? 'warn' : 'good');
         }
 
-        $this->addSignal('registration', 'Registrar', $this->data['whois_registrar'] ?? 'Unknown', $parsed['source'] ?? '', 'neutral');
+        $this->addSignal(
+            'registration',
+            'Registrar',
+            $this->data['whois_registrar'] ?? 'Unknown',
+            $parsed['source'] ?? '',
+            'neutral'
+        );
         $this->addSignal(
             'registration',
             'Domain age',
@@ -638,6 +650,8 @@ class DomainChecker
             'limited time offer', 'urgent action required', 'wire transfer only',
             'send bitcoin', 'guaranteed profit', 'claim your prize', 'you have won',
             'seed phrase', 'connect your wallet', 'unusual activity detected',
+            'nulled', 'cracked script', 'crack download', 'license key generator',
+            'warez', 'leaked script', 'null scripts', 'premium nulled',
         ];
         $hits = 0;
         $hitList = [];
@@ -649,31 +663,156 @@ class DomainChecker
         }
         $this->data['suspicious_keyword_hits'] = $hits;
 
+        // Bot walls / challenge pages mean we did not actually see the site.
+        $title = strtolower((string) ($this->data['page_title'] ?? ''));
+        $challenge = (
+            str_contains($title, 'just a moment')
+            || str_contains($title, 'attention required')
+            || str_contains($title, 'checking your browser')
+            || str_contains($lower, 'cf-browser-verification')
+            || str_contains($lower, 'challenge-platform')
+            || str_contains($lower, '_cf_chl')
+            || str_contains($lower, 'cdn-cgi/challenge')
+            || ((int) ($this->data['http_status'] ?? 0) === 403 && strlen($html) < 8000)
+        );
+        $this->data['content_incomplete'] = $challenge ? 1 : 0;
+        if ($challenge) {
+            // Do not treat challenge-page headers / empty legal pages as positive proof.
+            $this->data['has_contact_info'] = 0;
+            $this->data['has_privacy_policy'] = 0;
+            $this->addSignal(
+                'content',
+                'Content visibility',
+                'Blocked / challenge page',
+                'Bot protection hid the real page, so content signals are incomplete — score is capped.',
+                'warn'
+            );
+        } else {
+            $this->addSignal('content', 'Content visibility', 'Readable', 'Homepage HTML fetched for analysis', 'good');
+        }
+
         $sec = $this->scoreSecurityHeaders($headersOut);
         $this->data['security_headers'] = json_encode($sec);
 
         $this->addSignal('content', 'HTTP status', (string) ($this->data['http_status'] ?? 'Unknown'), $this->data['final_url'] ?? '', ($this->data['http_status'] ?? 0) >= 400 ? 'bad' : 'good');
         $this->addSignal('content', 'Page title', $this->data['page_title'] ?: 'None', '', 'neutral');
         $this->addSignal('content', 'Redirects', (string) $this->data['redirect_count'], '', $this->data['redirect_count'] > 3 ? 'warn' : 'neutral');
-        $this->addSignal('content', 'Contact info', $this->data['has_contact_info'] ? 'Found' : 'Not found', '', $this->data['has_contact_info'] ? 'good' : 'warn');
-        $this->addSignal('content', 'Privacy policy', $this->data['has_privacy_policy'] ? 'Found' : 'Not found', '', $this->data['has_privacy_policy'] ? 'good' : 'warn');
-        $this->addSignal('content', 'Terms page', $hasTerms ? 'Found' : 'Not found', '', $hasTerms ? 'good' : 'neutral');
-        $this->addSignal('content', 'Login / account UI', $hasLogin ? 'Present' : 'Not detected', '', 'neutral');
-        $this->addSignal('content', 'Payment language', $hasPayment ? 'Present' : 'Not detected', $hasPayment ? 'Commerce-style wording detected' : '', $hasPayment ? 'warn' : 'neutral');
-        $this->addSignal(
-            'content',
-            'Suspicious phrases',
-            $hits === 0 ? 'None' : ($hits . ' hit(s)'),
-            $hitList ? implode('; ', array_slice($hitList, 0, 5)) : '',
-            $hits === 0 ? 'good' : 'bad'
-        );
+        if (!$challenge) {
+            $this->addSignal('content', 'Contact info', $this->data['has_contact_info'] ? 'Found' : 'Not found', '', $this->data['has_contact_info'] ? 'good' : 'warn');
+            $this->addSignal('content', 'Privacy policy', $this->data['has_privacy_policy'] ? 'Found' : 'Not found', '', $this->data['has_privacy_policy'] ? 'good' : 'warn');
+            $this->addSignal('content', 'Terms page', $hasTerms ? 'Found' : 'Not found', '', $hasTerms ? 'good' : 'neutral');
+            $this->addSignal('content', 'Login / account UI', $hasLogin ? 'Present' : 'Not detected', '', 'neutral');
+            $this->addSignal('content', 'Payment language', $hasPayment ? 'Present' : 'Not detected', $hasPayment ? 'Commerce-style wording detected' : '', $hasPayment ? 'warn' : 'neutral');
+            $this->addSignal(
+                'content',
+                'Suspicious phrases',
+                $hits === 0 ? 'None' : ($hits . ' hit(s)'),
+                $hitList ? implode('; ', array_slice($hitList, 0, 5)) : '',
+                $hits === 0 ? 'good' : 'bad'
+            );
+        }
         $this->addSignal(
             'security',
             'Security headers',
             $sec['score'] . '/' . $sec['max'],
-            implode(', ', $sec['present'] ?: ['none detected']),
-            $sec['score'] >= 3 ? 'good' : ($sec['score'] >= 1 ? 'warn' : 'bad')
+            $challenge
+                ? 'Headers may belong to the CDN challenge page, not the origin site'
+                : implode(', ', $sec['present'] ?: ['none detected']),
+            $challenge ? 'neutral' : ($sec['score'] >= 3 ? 'good' : ($sec['score'] >= 1 ? 'warn' : 'bad'))
         );
+    }
+
+    private function scoreRegistrarReputation(): void
+    {
+        $registrar = strtolower((string) ($this->data['whois_registrar'] ?? ''));
+        if ($registrar === '') {
+            $this->data['registrar_risk'] = 0;
+            return;
+        }
+
+        // Soft risk only — cheap/high-volume registrars are common for both legit sites and scams.
+        $elevated = [
+            'namecheap' => 8,
+            'namesilo' => 7,
+            'porkbun' => 6,
+            'dynadot' => 6,
+            'nicenic' => 10,
+            'alibaba' => 8,
+            'alibaba cloud' => 8,
+            'hostinger' => 7,
+            'publicdomainregistry' => 9,
+            'pdr ltd' => 9,
+            'webnic' => 8,
+            'gname' => 10,
+            'todaynic' => 10,
+            'reg.ru' => 7,
+        ];
+        $risk = 0;
+        $matched = null;
+        foreach ($elevated as $needle => $pts) {
+            if (str_contains($registrar, $needle)) {
+                $risk = $pts;
+                $matched = $needle;
+                break;
+            }
+        }
+        $this->data['registrar_risk'] = $risk;
+        if ($risk > 0) {
+            $this->addSignal(
+                'registration',
+                'Registrar reputation',
+                'Elevated risk volume',
+                'Registrar "' . ($this->data['whois_registrar'] ?? '') . '" is commonly used by both normal and scam sites (' . $matched . '). Soft penalty only.',
+                'warn'
+            );
+        } else {
+            $this->addSignal(
+                'registration',
+                'Registrar reputation',
+                'No elevated flag',
+                'Not on our high-volume abuse registrar list',
+                'good'
+            );
+        }
+    }
+
+    private function checkSpamReputation(): void
+    {
+        $this->data['spam_hit'] = 0;
+        // Domain Block List style lookups. Many resolvers block Spamhaus; treat only clear positives.
+        $zones = [
+            'dbl.spamhaus.org' => 'Spamhaus DBL',
+            'multi.surbl.org' => 'SURBL',
+        ];
+        $hits = [];
+        foreach ($zones as $zone => $label) {
+            $qhost = $this->domain . '.' . $zone;
+            $records = @dns_get_record($qhost, DNS_A);
+            if (!$records) {
+                continue;
+            }
+            foreach ($records as $rec) {
+                $ip = $rec['ip'] ?? '';
+                // Spamhaus/SURBL list responses are 127.0.0.x; 127.255.255.x are errors/policy.
+                if (preg_match('/^127\.0\.0\.\d+$/', $ip) && !str_starts_with($ip, '127.255.')) {
+                    if ($ip !== '127.0.0.1') { // some APIs use .1 as "not listed" noise
+                        $hits[] = $label . " ($ip)";
+                    }
+                }
+            }
+        }
+        if ($hits) {
+            $this->data['spam_hit'] = 1;
+            $this->addSignal('threat', 'Spam reputation', 'Listed', implode(', ', $hits), 'bad');
+        } else {
+            $this->addSignal(
+                'threat',
+                'Spam reputation',
+                'No clear DNSBL hit',
+                'Checked Spamhaus DBL / SURBL when reachable. Not the same as ScamAdviser iQ Abuse Scan.',
+                'neutral'
+            );
+        }
     }
 
     private function scoreSecurityHeaders(array $headers): array
@@ -937,12 +1076,19 @@ class DomainChecker
         } else {
             $flags = json_decode((string) ($this->data['heuristic_flags'] ?? '[]'), true) ?: [];
             $penalty = array_sum(array_map(static fn($f) => (int) ($f['penalty'] ?? 0), $flags));
+            $incomplete = !empty($this->data['content_incomplete']);
+
             if ($penalty >= 30 || $score <= 25) {
                 $verdict = 'likely_scam';
                 $reasons[] = 'Multiple scam heuristics and/or very low trust score.';
-            } elseif ($penalty >= 14 || $score < 50) {
+            } elseif ($penalty >= 14 || $score < 50 || !empty($this->data['spam_hit'])) {
                 $verdict = 'suspicious';
-                $reasons[] = 'Elevated risk signals; treat with caution.';
+                $reasons[] = !empty($this->data['spam_hit'])
+                    ? 'Spam reputation signals were found.'
+                    : 'Elevated risk signals; treat with caution.';
+            } elseif ($incomplete) {
+                $verdict = 'caution';
+                $reasons[] = 'Real page content was blocked (bot challenge/CDN wall), so this is not a full safety verification.';
             } elseif ($score >= 80) {
                 $verdict = 'likely_safe';
                 $reasons[] = 'No malware/phishing list hits and strong positive signals.';
@@ -953,11 +1099,15 @@ class DomainChecker
             foreach (array_slice($flags, 0, 3) as $flag) {
                 $reasons[] = $flag['label'] . ': ' . $flag['detail'];
             }
+            if (!empty($this->data['registrar_risk'])) {
+                $reasons[] = 'Registrar is commonly used by high volumes of low-trust sites (soft signal).';
+            }
         }
 
         if (!empty($this->data['threat_feed_sources'])) {
             $reasons[] = 'Feeds: ' . $this->data['threat_feed_sources'];
         }
+        $reasons[] = 'Note: ScamGuard does not yet ingest paid review networks (Trustpilot/ScamAdviser user reports).';
 
         $this->data['verdict'] = $verdict;
         $this->data['verdict_reasons'] = json_encode($reasons);
@@ -1134,19 +1284,29 @@ class DomainChecker
             $score += 2;
         }
 
-        if ($this->data['has_contact_info']) {
-            $score += $wContent * 0.35;
-        }
-        if ($this->data['has_privacy_policy']) {
-            $score += $wContent * 0.25;
-        }
-        if ($this->data['suspicious_keyword_hits'] > 0) {
-            $score -= min($this->data['suspicious_keyword_hits'] * 8, $wContent + 10);
-        }
+        $incomplete = !empty($this->data['content_incomplete']);
 
-        $sec = json_decode((string) ($this->data['security_headers'] ?? ''), true);
-        if (is_array($sec) && isset($sec['score'])) {
-            $score += min(6, (int) $sec['score']);
+        if (!$incomplete) {
+            if ($this->data['has_contact_info']) {
+                $score += $wContent * 0.35;
+            }
+            if ($this->data['has_privacy_policy']) {
+                $score += $wContent * 0.25;
+            }
+            if ($this->data['suspicious_keyword_hits'] > 0) {
+                $score -= min($this->data['suspicious_keyword_hits'] * 8, $wContent + 10);
+            }
+
+            $sec = json_decode((string) ($this->data['security_headers'] ?? ''), true);
+            if (is_array($sec) && isset($sec['score'])) {
+                $score += min(6, (int) $sec['score']);
+            }
+        } else {
+            // Challenge pages are not proof of safety.
+            $score -= 12;
+            if (((int) ($this->data['http_status'] ?? 0)) >= 400) {
+                $score -= 6;
+            }
         }
 
         if (!empty($this->data['malware_hit'])) {
@@ -1157,12 +1317,26 @@ class DomainChecker
             $score -= $wThreat;
         }
 
+        if (!empty($this->data['spam_hit'])) {
+            $score -= 18;
+        }
+
+        if (!empty($this->data['registrar_risk'])) {
+            $score -= (int) $this->data['registrar_risk'];
+        }
+
         $flags = json_decode((string) ($this->data['heuristic_flags'] ?? '[]'), true) ?: [];
         foreach ($flags as $flag) {
             $score -= (int) ($flag['penalty'] ?? 0);
         }
 
-        return max(1, min(100, (int) round($score)));
+        $score = (int) round($score);
+        // Never call an unread/challenge-blocked site "fully safe".
+        if ($incomplete) {
+            $score = min($score, 68);
+        }
+
+        return max(1, min(100, $score));
     }
 
     // -------------------------------------------------------------
