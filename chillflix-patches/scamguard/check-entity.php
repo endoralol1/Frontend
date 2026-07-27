@@ -6,13 +6,18 @@
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/EntityRepository.php';
 
-$type = strtolower(trim($_GET['type'] ?? 'website'));
+$type = strtolower(trim($_GET['type'] ?? 'auto'));
 $q = trim($_GET['q'] ?? ($_GET['d'] ?? ''));
 $force = isset($_GET['refresh']) && $_GET['refresh'] === '1';
 
-$allowed = ['website', 'phone', 'crypto', 'iban'];
+$allowed = ['website', 'phone', 'crypto', 'iban', 'auto'];
 if (!in_array($type, $allowed, true)) {
-    $type = 'website';
+    $type = 'auto';
+}
+
+if ($type === 'auto') {
+    require_once __DIR__ . '/includes/EntityRepository.php';
+    $type = EntityRepository::detectType($q);
 }
 
 if ($type === 'website') {

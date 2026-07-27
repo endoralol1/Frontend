@@ -130,23 +130,40 @@ class EntityRepository
         if ($input === '') {
             return 'website';
         }
+
+        $compact = preg_replace('/\s+/', '', $input) ?? $input;
+
         if (IbanChecker::normalize($input)) {
             return 'iban';
         }
-        if (CryptoChecker::normalize($input) && (
-            preg_match('/^0x[a-fA-F0-9]{40}$/', trim($input))
-            || preg_match('/^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/', trim($input))
-            || preg_match('/^T[1-9A-HJ-NP-Za-km-z]{33}$/', trim($input))
-        )) {
+
+        if (
+            preg_match('/^0x[a-fA-F0-9]{40}$/', $compact)
+            || preg_match('/^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/', $compact)
+            || preg_match('/^T[1-9A-HJ-NP-Za-km-z]{33}$/', $compact)
+            || (preg_match('/^[LM3][a-km-zA-HJ-NP-Z1-9]{26,33}$/', $compact) && strlen($compact) >= 26)
+        ) {
             return 'crypto';
         }
-        // Phone-like: mostly digits with optional + / spaces
-        $digits = preg_replace('/\D+/', '', $input);
-        if ($digits && strlen($digits) >= 8 && strlen($digits) <= 15 && preg_match('/^\+?[\d\s().-]{8,20}$/', $input)) {
-            if (PhoneChecker::normalize($input)) {
-                return 'phone';
-            }
+
+        $digits = preg_replace('/\D+/', '', $input) ?? '';
+        if (
+            preg_match('/^[\s()+.\-]*\d[\d\s()+.\-]*$/', $input)
+            && strlen($digits) >= 6
+            && strlen($digits) <= 15
+            && PhoneChecker::normalize($input)
+        ) {
+            return 'phone';
         }
+
+        if (normalize_domain($input) || preg_match('#^https?://#i', $input)) {
+            return 'website';
+        }
+
+        if (strlen($digits) >= 8 && (strlen($digits) / max(strlen($input), 1)) > 0.6 && PhoneChecker::normalize($input)) {
+            return 'phone';
+        }
+
         return 'website';
     }
 }

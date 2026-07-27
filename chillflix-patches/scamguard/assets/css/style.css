@@ -292,18 +292,84 @@ body.nav-open { overflow: hidden; }
 .type-chip {
     border: 1px solid var(--line);
     background: rgba(255,255,255,.03);
-    color: var(--text);
+    color: var(--muted);
     border-radius: 999px;
     padding: 8px 14px;
     font-size: .9rem;
     font-weight: 600;
-    cursor: pointer;
+    pointer-events: none;
+    user-select: none;
 }
 .type-chip.is-active {
     background: var(--brand);
     border-color: var(--brand);
     color: #fff;
 }
+
+.dial-wrap {
+    position: relative;
+}
+.dial-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 10px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--line);
+    color: var(--text);
+    cursor: pointer;
+    white-space: nowrap;
+    font-weight: 600;
+}
+.dial-caret { color: var(--faint); font-size: .75rem; }
+.dial-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 40;
+    width: min(92vw, 320px);
+    max-height: 320px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+}
+.dial-menu[hidden] { display: none !important; }
+.dial-filter {
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    background: transparent;
+    color: var(--text);
+    padding: 12px 12px;
+    outline: 0;
+}
+.dial-list {
+    overflow: auto;
+    max-height: 260px;
+}
+.dial-option {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    cursor: pointer;
+}
+.dial-option:hover,
+.dial-option.is-active {
+    background: rgba(61,139,253,.12);
+}
+.dial-option-code { color: var(--muted); font-size: .86rem; }
+.dial-wrap[hidden] { display: none !important; }
 .report-cta-card {
     width: min(100%, 640px);
     margin: 18px auto 0;

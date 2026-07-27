@@ -6,15 +6,64 @@ $repo = new DomainRepository();
 $stats = $repo->stats();
 $recent = $repo->recentlyCheckedMixed(12);
 
-$type = strtolower(trim($_GET['type'] ?? 'website'));
-if (!in_array($type, ['website', 'phone', 'crypto', 'iban'], true)) {
-    $type = 'website';
-}
 $prefill = trim($_GET['q'] ?? '');
 $error = isset($_GET['error']);
 
+// Dial countries for the phone picker (flag + ISO + dial code)
+$dialCountries = [
+    ['iso' => 'DE', 'name' => 'Germany', 'dial' => '49', 'flag' => '🇩🇪'],
+    ['iso' => 'US', 'name' => 'United States', 'dial' => '1', 'flag' => '🇺🇸'],
+    ['iso' => 'GB', 'name' => 'United Kingdom', 'dial' => '44', 'flag' => '🇬🇧'],
+    ['iso' => 'FR', 'name' => 'France', 'dial' => '33', 'flag' => '🇫🇷'],
+    ['iso' => 'NL', 'name' => 'Netherlands', 'dial' => '31', 'flag' => '🇳🇱'],
+    ['iso' => 'BE', 'name' => 'Belgium', 'dial' => '32', 'flag' => '🇧🇪'],
+    ['iso' => 'AT', 'name' => 'Austria', 'dial' => '43', 'flag' => '🇦🇹'],
+    ['iso' => 'CH', 'name' => 'Switzerland', 'dial' => '41', 'flag' => '🇨🇭'],
+    ['iso' => 'IT', 'name' => 'Italy', 'dial' => '39', 'flag' => '🇮🇹'],
+    ['iso' => 'ES', 'name' => 'Spain', 'dial' => '34', 'flag' => '🇪🇸'],
+    ['iso' => 'PT', 'name' => 'Portugal', 'dial' => '351', 'flag' => '🇵🇹'],
+    ['iso' => 'PL', 'name' => 'Poland', 'dial' => '48', 'flag' => '🇵🇱'],
+    ['iso' => 'CZ', 'name' => 'Czechia', 'dial' => '420', 'flag' => '🇨🇿'],
+    ['iso' => 'SE', 'name' => 'Sweden', 'dial' => '46', 'flag' => '🇸🇪'],
+    ['iso' => 'NO', 'name' => 'Norway', 'dial' => '47', 'flag' => '🇳🇴'],
+    ['iso' => 'DK', 'name' => 'Denmark', 'dial' => '45', 'flag' => '🇩🇰'],
+    ['iso' => 'FI', 'name' => 'Finland', 'dial' => '358', 'flag' => '🇫🇮'],
+    ['iso' => 'IE', 'name' => 'Ireland', 'dial' => '353', 'flag' => '🇮🇪'],
+    ['iso' => 'RO', 'name' => 'Romania', 'dial' => '40', 'flag' => '🇷🇴'],
+    ['iso' => 'HU', 'name' => 'Hungary', 'dial' => '36', 'flag' => '🇭🇺'],
+    ['iso' => 'GR', 'name' => 'Greece', 'dial' => '30', 'flag' => '🇬🇷'],
+    ['iso' => 'TR', 'name' => 'Turkey', 'dial' => '90', 'flag' => '🇹🇷'],
+    ['iso' => 'UA', 'name' => 'Ukraine', 'dial' => '380', 'flag' => '🇺🇦'],
+    ['iso' => 'RU', 'name' => 'Russia', 'dial' => '7', 'flag' => '🇷🇺'],
+    ['iso' => 'IN', 'name' => 'India', 'dial' => '91', 'flag' => '🇮🇳'],
+    ['iso' => 'PK', 'name' => 'Pakistan', 'dial' => '92', 'flag' => '🇵🇰'],
+    ['iso' => 'BD', 'name' => 'Bangladesh', 'dial' => '880', 'flag' => '🇧🇩'],
+    ['iso' => 'CN', 'name' => 'China', 'dial' => '86', 'flag' => '🇨🇳'],
+    ['iso' => 'JP', 'name' => 'Japan', 'dial' => '81', 'flag' => '🇯🇵'],
+    ['iso' => 'KR', 'name' => 'South Korea', 'dial' => '82', 'flag' => '🇰🇷'],
+    ['iso' => 'AU', 'name' => 'Australia', 'dial' => '61', 'flag' => '🇦🇺'],
+    ['iso' => 'NZ', 'name' => 'New Zealand', 'dial' => '64', 'flag' => '🇳🇿'],
+    ['iso' => 'CA', 'name' => 'Canada', 'dial' => '1', 'flag' => '🇨🇦'],
+    ['iso' => 'MX', 'name' => 'Mexico', 'dial' => '52', 'flag' => '🇲🇽'],
+    ['iso' => 'BR', 'name' => 'Brazil', 'dial' => '55', 'flag' => '🇧🇷'],
+    ['iso' => 'AR', 'name' => 'Argentina', 'dial' => '54', 'flag' => '🇦🇷'],
+    ['iso' => 'ZA', 'name' => 'South Africa', 'dial' => '27', 'flag' => '🇿🇦'],
+    ['iso' => 'NG', 'name' => 'Nigeria', 'dial' => '234', 'flag' => '🇳🇬'],
+    ['iso' => 'KE', 'name' => 'Kenya', 'dial' => '254', 'flag' => '🇰🇪'],
+    ['iso' => 'EG', 'name' => 'Egypt', 'dial' => '20', 'flag' => '🇪🇬'],
+    ['iso' => 'AE', 'name' => 'United Arab Emirates', 'dial' => '971', 'flag' => '🇦🇪'],
+    ['iso' => 'SA', 'name' => 'Saudi Arabia', 'dial' => '966', 'flag' => '🇸🇦'],
+    ['iso' => 'IL', 'name' => 'Israel', 'dial' => '972', 'flag' => '🇮🇱'],
+    ['iso' => 'PH', 'name' => 'Philippines', 'dial' => '63', 'flag' => '🇵🇭'],
+    ['iso' => 'ID', 'name' => 'Indonesia', 'dial' => '62', 'flag' => '🇮🇩'],
+    ['iso' => 'MY', 'name' => 'Malaysia', 'dial' => '60', 'flag' => '🇲🇾'],
+    ['iso' => 'SG', 'name' => 'Singapore', 'dial' => '65', 'flag' => '🇸🇬'],
+    ['iso' => 'TH', 'name' => 'Thailand', 'dial' => '66', 'flag' => '🇹🇭'],
+    ['iso' => 'VN', 'name' => 'Vietnam', 'dial' => '84', 'flag' => '🇻🇳'],
+];
+
 $pageTitle = get_setting('site_name', 'ScamGuard') . ' — Check websites, phones, crypto & IBAN';
-$pageDescription = 'Free scam checker for websites, phone numbers, crypto addresses, and IBANs. Scan before you click, call, or send money.';
+$pageDescription = 'Free scam checker for websites, phone numbers, crypto addresses, and IBANs. Paste anything — ScamGuard detects the type as you type.';
 $canonicalUrl = absolute_url('/');
 $jsonLd = json_encode([
     '@context' => 'https://schema.org',
@@ -25,43 +74,43 @@ $jsonLd = json_encode([
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
 require __DIR__ . '/includes/header.php';
-
-$placeholders = [
-    'website' => 'Enter website, e.g. example.com',
-    'phone' => 'Enter phone, e.g. +491721094066',
-    'crypto' => 'Enter crypto address (BTC / ETH / TRX…)',
-    'iban' => 'Enter IBAN, e.g. DE89 3704 0044 0532 0130 00',
-];
 ?>
 
 <section class="hero">
     <div class="container">
         <h1>Quick check for scams</h1>
-        <p>Scan a website, phone number, crypto address, or IBAN — then report scams to help others.</p>
+        <p>Paste a website, phone, crypto address, or IBAN — we detect it while you type.</p>
 
         <?php if ($error): ?>
             <div class="alert alert-error" style="max-width:640px;margin:0 auto 14px;">That input didn’t look valid. Try again.</div>
         <?php endif; ?>
 
         <form class="multi-search" action="<?= BASE_PATH ?>/check-entity.php" method="get" id="scam-search">
-            <input type="hidden" name="type" id="search-type" value="<?= h($type) ?>">
+            <input type="hidden" name="type" id="search-type" value="auto">
 
             <div class="search-box search-box-phone" id="search-box">
-                <span class="phone-cc" id="phone-cc" hidden>
-                    <span class="phone-cc-flag" aria-hidden="true">🌐</span>
-                    <span class="phone-cc-code">+</span>
-                </span>
+                <div class="dial-wrap" id="dial-wrap" hidden>
+                    <button type="button" class="dial-btn" id="dial-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Country calling code">
+                        <span class="dial-flag" id="dial-flag">🇩🇪</span>
+                        <span class="dial-code" id="dial-code">+49</span>
+                        <span class="dial-caret" aria-hidden="true">▾</span>
+                    </button>
+                    <div class="dial-menu" id="dial-menu" role="listbox" hidden>
+                        <input type="search" class="dial-filter" id="dial-filter" placeholder="Search country…" autocomplete="off">
+                        <div class="dial-list" id="dial-list"></div>
+                    </div>
+                </div>
                 <input type="text" name="q" id="search-q"
-                       placeholder="<?= h($placeholders[$type]) ?>"
+                       placeholder="Enter website, phone, crypto address…"
                        value="<?= h($prefill) ?>"
                        autofocus required
                        autocomplete="off"
-                       inputmode="<?= $type === 'phone' ? 'tel' : 'text' ?>">
+                       inputmode="text">
                 <button type="submit">Check scam</button>
             </div>
 
-            <div class="type-row" role="tablist" aria-label="Check type">
-                <span class="type-label">Type :</span>
+            <div class="type-row" aria-live="polite">
+                <span class="type-label">Detected:</span>
                 <?php
                 $types = [
                     'website' => 'Website',
@@ -71,13 +120,7 @@ $placeholders = [
                 ];
                 foreach ($types as $key => $label):
                 ?>
-                    <button type="button"
-                            class="type-chip<?= $type === $key ? ' is-active' : '' ?>"
-                            data-type="<?= h($key) ?>"
-                            role="tab"
-                            aria-selected="<?= $type === $key ? 'true' : 'false' ?>">
-                        <?= h($label) ?>
-                    </button>
+                    <span class="type-chip" data-type="<?= h($key) ?>" id="chip-<?= h($key) ?>"><?= h($label) ?></span>
                 <?php endforeach; ?>
             </div>
         </form>
@@ -145,30 +188,185 @@ $placeholders = [
 
 <script>
 (() => {
-  const placeholders = <?= json_encode($placeholders, JSON_UNESCAPED_SLASHES) ?>;
+  const countries = <?= json_encode($dialCountries, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+  const form = document.getElementById('scam-search');
   const typeInput = document.getElementById('search-type');
   const q = document.getElementById('search-q');
-  const phoneCc = document.getElementById('phone-cc');
+  const box = document.getElementById('search-box');
+  const dialWrap = document.getElementById('dial-wrap');
+  const dialBtn = document.getElementById('dial-btn');
+  const dialMenu = document.getElementById('dial-menu');
+  const dialList = document.getElementById('dial-list');
+  const dialFilter = document.getElementById('dial-filter');
+  const dialFlag = document.getElementById('dial-flag');
+  const dialCode = document.getElementById('dial-code');
   const chips = document.querySelectorAll('.type-chip');
 
-  function setType(t) {
-    typeInput.value = t;
-    q.placeholder = placeholders[t] || placeholders.website;
-    q.inputMode = t === 'phone' ? 'tel' : 'text';
-    phoneCc.hidden = t !== 'phone';
-    document.getElementById('search-box').classList.toggle('has-phone-cc', t === 'phone');
-    chips.forEach((c) => {
-      const on = c.dataset.type === t;
-      c.classList.toggle('is-active', on);
-      c.setAttribute('aria-selected', on ? 'true' : 'false');
-    });
-    const url = new URL(window.location.href);
-    url.searchParams.set('type', t);
-    history.replaceState(null, '', url.pathname + '?' + url.searchParams.toString());
+  let selected = countries.find((c) => c.iso === 'DE') || countries[0];
+  let menuOpen = false;
+
+  function detectType(raw) {
+    const v = (raw || '').trim();
+    if (!v) return 'website';
+
+    const compact = v.replace(/\s+/g, '');
+    const upper = compact.toUpperCase();
+
+    // IBAN: 2 letters + 2 digits + alphanumeric
+    if (/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/i.test(compact) && compact.length >= 15) {
+      return 'iban';
+    }
+
+    // Crypto
+    if (/^0x[a-fA-F0-9]{40}$/.test(compact)) return 'crypto';
+    if (/^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(compact)) return 'crypto';
+    if (/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(compact)) return 'crypto';
+    if (/^[LM3][a-km-zA-HJ-NP-Z1-9]{26,33}$/.test(compact) && compact.length >= 26) return 'crypto';
+
+    // Phone: mostly digits / + / spaces / dashes / parens
+    const digits = v.replace(/\D+/g, '');
+    const phoneLike = /^[\s()+.\-]*\d[\d\s()+.\-]*$/.test(v) && digits.length >= 6 && digits.length <= 15;
+    if (phoneLike) return 'phone';
+
+    // Website / domain
+    if (/^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}([\/?#].*)?$/i.test(v)) return 'website';
+    if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(v)) return 'website';
+
+    // Digits-heavy fallback → phone
+    if (digits.length >= 8 && digits.length / Math.max(v.length, 1) > 0.6) return 'phone';
+
+    return 'website';
   }
 
-  chips.forEach((c) => c.addEventListener('click', () => setType(c.dataset.type)));
-  setType(typeInput.value || 'website');
+  function matchDialFromInput(v) {
+    const digits = v.replace(/\D+/g, '');
+    if (!digits) return null;
+    // Longest dial-code prefix match
+    const sorted = [...countries].sort((a, b) => b.dial.length - a.dial.length);
+    for (const c of sorted) {
+      if (digits.startsWith(c.dial) && digits.length > c.dial.length) return c;
+      if (v.trim().startsWith('+' + c.dial) || v.trim().startsWith('00' + c.dial)) return c;
+    }
+    return null;
+  }
+
+  function setDial(country) {
+    selected = country;
+    dialFlag.textContent = country.flag;
+    dialCode.textContent = '+' + country.dial;
+    dialBtn.setAttribute('aria-label', country.name + ' +' + country.dial);
+  }
+
+  function setTypeUI(t) {
+    typeInput.value = t;
+    const isPhone = t === 'phone';
+    dialWrap.hidden = !isPhone;
+    box.classList.toggle('has-phone-cc', isPhone);
+    q.inputMode = isPhone ? 'tel' : 'text';
+    q.placeholder = isPhone
+      ? 'Phone number'
+      : t === 'crypto'
+        ? 'Crypto address'
+        : t === 'iban'
+          ? 'IBAN'
+          : 'Website, phone, crypto, or IBAN';
+    chips.forEach((c) => c.classList.toggle('is-active', c.dataset.type === t));
+  }
+
+  function refreshDetection() {
+    const t = detectType(q.value);
+    setTypeUI(t);
+    if (t === 'phone') {
+      const matched = matchDialFromInput(q.value);
+      if (matched) setDial(matched);
+    }
+  }
+
+  function renderDialList(filter) {
+    const f = (filter || '').trim().toLowerCase();
+    dialList.innerHTML = '';
+    countries
+      .filter((c) => !f || c.name.toLowerCase().includes(f) || c.iso.toLowerCase().includes(f) || ('+' + c.dial).includes(f) || c.dial.includes(f))
+      .forEach((c) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'dial-option' + (c.iso === selected.iso && c.dial === selected.dial ? ' is-active' : '');
+        btn.setAttribute('role', 'option');
+        btn.innerHTML = '<span class="dial-option-flag">' + c.flag + '</span><span class="dial-option-name">' + c.name + '</span><span class="dial-option-code">+' + c.dial + '</span>';
+        btn.addEventListener('click', () => {
+          setDial(c);
+          closeMenu();
+          // If local number without country, keep as-is; dial is prepended on submit
+          q.focus();
+        });
+        dialList.appendChild(btn);
+      });
+  }
+
+  function openMenu() {
+    menuOpen = true;
+    dialMenu.hidden = false;
+    dialBtn.setAttribute('aria-expanded', 'true');
+    renderDialList('');
+    dialFilter.value = '';
+    dialFilter.focus();
+  }
+
+  function closeMenu() {
+    menuOpen = false;
+    dialMenu.hidden = true;
+    dialBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  dialBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    menuOpen ? closeMenu() : openMenu();
+  });
+  dialFilter.addEventListener('input', () => renderDialList(dialFilter.value));
+  document.addEventListener('click', (e) => {
+    if (!dialWrap.contains(e.target)) closeMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeMenu();
+  });
+
+  q.addEventListener('input', refreshDetection);
+  q.addEventListener('paste', () => setTimeout(refreshDetection, 0));
+
+  form.addEventListener('submit', (e) => {
+    const t = detectType(q.value);
+    typeInput.value = t;
+    if (t !== 'phone') return;
+
+    let v = q.value.trim();
+    // Already international?
+    if (v.startsWith('+') || v.startsWith('00')) return;
+
+    // Strip leading trunk 0 for many countries (DE/FR/UK local style)
+    let national = v.replace(/[^\d]/g, '');
+    if (national.startsWith('0')) national = national.replace(/^0+/, '');
+
+    // Avoid double-prefix if user already typed country digits
+    if (national.startsWith(selected.dial) && national.length > selected.dial.length + 4) {
+      q.value = '+' + national;
+      return;
+    }
+
+    q.value = '+' + selected.dial + national;
+  });
+
+  // Guess default dial country from browser locale
+  try {
+    const lang = (navigator.language || 'de').toUpperCase();
+    const iso = lang.split('-')[1] || lang.split('-')[0];
+    const guess = countries.find((c) => c.iso === iso);
+    if (guess) setDial(guess);
+    else setDial(selected);
+  } catch (_) {
+    setDial(selected);
+  }
+
+  refreshDetection();
 })();
 </script>
 
