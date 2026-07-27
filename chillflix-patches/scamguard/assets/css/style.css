@@ -6,8 +6,8 @@
     --text: #eef3f9;
     --muted: #9aa8ba;
     --faint: #6b7a8d;
-    --brand: #e8650f;
-    --brand-2: #f08a3a;
+    --brand: #c9550c;
+    --brand-2: #e07828;
     --safe: #2fbf71;
     --caution: #e3b341;
     --risky: #f08a4b;
@@ -40,7 +40,7 @@ button, input, select, textarea { font: inherit; }
 }
 
 .announce {
-    background: rgba(232,101,15,.16);
+    background: rgba(201,85,12,.16);
     color: var(--brand-2);
     text-align: center;
     padding: 10px 16px;
@@ -86,7 +86,7 @@ button, input, select, textarea { font: inherit; }
     width: 30px;
     height: 30px;
     border-radius: 8px;
-    background: linear-gradient(135deg, #f07820, #c9520a);
+    background: linear-gradient(135deg, #d96818, #a84608);
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -114,7 +114,7 @@ button, input, select, textarea { font: inherit; }
     border-radius: 10px !important;
     font-weight: 700 !important;
 }
-.nav-cta:hover { background: #c9550c !important; }
+.nav-cta:hover { background: #a84608 !important; }
 
 /* Phone hamburger */
 .nav-toggle {
@@ -202,7 +202,7 @@ body.nav-open { overflow: hidden; }
 .hero {
     padding: 56px 0 40px;
     background:
-        radial-gradient(ellipse 70% 55% at 50% -10%, rgba(232,101,15,.28), transparent 60%);
+        radial-gradient(ellipse 70% 55% at 50% -10%, rgba(201,85,12,.26), transparent 60%);
     text-align: center;
 }
 .hero h1 {
@@ -414,7 +414,7 @@ body.nav-open { overflow: hidden; }
 }
 .dial-option:hover,
 .dial-option.is-active {
-    background: rgba(232,101,15,.16);
+    background: rgba(201,85,12,.16);
 }
 .dial-option-code { color: var(--muted); font-size: .86rem; }
 .dial-wrap[hidden] { display: none !important; }
@@ -553,7 +553,7 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
     line-height: 1.45;
     overflow-wrap: anywhere;
 }
-.alert-info { background: rgba(232,101,15,.14); color: var(--brand-2); }
+.alert-info { background: rgba(201,85,12,.14); color: var(--brand-2); }
 .alert-error { background: rgba(239,77,98,.12); color: #ff8ea0; }
 .alert-success { background: rgba(47,191,113,.12); color: var(--safe); }
 
@@ -891,7 +891,7 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
     padding: 16px;
     border-radius: 16px;
     border: 1px solid var(--line);
-    background: linear-gradient(135deg, rgba(232,101,15,.12), transparent 55%);
+    background: linear-gradient(135deg, rgba(201,85,12,.12), transparent 55%);
 }
 .analyst-card.tone-good { border-color: rgba(47,191,113,.4); }
 .analyst-card.tone-warn { border-color: rgba(240,138,75,.4); }
