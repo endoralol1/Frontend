@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/ThreatFeeds.php';
+require_once __DIR__ . '/ExternalReputation.php';
 
 /**
  * DomainChecker — multi-source trust signals (no headless browser).
@@ -819,23 +820,17 @@ class DomainChecker
         }
 
         // Paid/partner spam products (e.g. ScamAdviser iQ Abuse Scan) are not available to us.
-        $this->addSignal(
-            'threat',
-            'iQ Abuse Scan',
-            'Not checked',
-            'ScamAdviser uses iQ Abuse Scan (partner/paid). ScamGuard does not have that feed.',
-            'neutral'
-        );
+        // A fuller public RBL sweep is added in ExternalReputation (abuseBlacklists).
     }
 
     /**
-     * Extra reputation layers ScamAdviser-style UIs show: traffic rank, reviews, DNSFilter.
+     * Extra reputation layers: Trustpilot, Sitejabber, public abuse RBLs, URLVoid safety engines.
      */
     private function checkReputationExtras(): void
     {
         $this->data['tranco_rank'] = null;
         $this->data['tranco_bonus'] = 0;
-        $this->data['review_penalty'] = 0;
+        $this->data['review_penalty'] = (int) ($this->data['review_penalty'] ?? 0);
 
         // --- Tranco traffic rank (free research API) ---
         try {
@@ -884,7 +879,7 @@ class DomainChecker
             $this->addSignal('reputation', 'Tranco traffic rank', 'Unavailable', 'Tranco API request failed', 'neutral');
         }
 
-        // --- User reviews: our own reports + honesty about Trustpilot/ScamAdviser reviews ---
+        // --- ScamGuard local reports ---
         try {
             $db = Database::getConnection();
             $stmt = $db->prepare("SELECT status, COUNT(*) AS n FROM reports WHERE domain_text = ? GROUP BY status");
@@ -901,7 +896,8 @@ class DomainChecker
                 }
             }
             if ($approved > 0) {
-                $this->data['review_penalty'] = min(25, 8 + ($approved * 5));
+                $localReview = min(25, 8 + ($approved * 5));
+                $this->data['local_review_penalty'] = $localReview;
                 $this->addSignal(
                     'reputation',
                     'User reports (ScamGuard)',
@@ -910,7 +906,7 @@ class DomainChecker
                     'bad'
                 );
             } elseif ($pending > 0) {
-                $this->data['review_penalty'] = 4;
+                $this->data['local_review_penalty'] = 4;
                 $this->addSignal(
                     'reputation',
                     'User reports (ScamGuard)',
@@ -919,6 +915,7 @@ class DomainChecker
                     'warn'
                 );
             } else {
+                $this->data['local_review_penalty'] = 0;
                 $this->addSignal(
                     'reputation',
                     'User reports (ScamGuard)',
@@ -928,24 +925,40 @@ class DomainChecker
                 );
             }
         } catch (Throwable $e) {
+            $this->data['local_review_penalty'] = 0;
             $this->addSignal('reputation', 'User reports (ScamGuard)', 'Unavailable', $e->getMessage(), 'neutral');
         }
 
-        $this->addSignal(
-            'reputation',
-            'External review networks',
-            'Not checked',
-            'Trustpilot / ScamAdviser user-review feeds are not connected (blocked or partner-only). This is a known gap vs ScamAdviser.',
-            'neutral'
-        );
+        // --- Live external sources (Trustpilot, Sitejabber, RBLs, URLVoid) ---
+        try {
+            $ext = (new ExternalReputation($this->domain))->collect();
+            foreach ($ext['signals'] as $signal) {
+                $this->addSignal(
+                    (string) $signal['group'],
+                    (string) $signal['label'],
+                    (string) $signal['value'],
+                    (string) ($signal['note'] ?? ''),
+                    (string) ($signal['tone'] ?? 'neutral')
+                );
+            }
 
-        $this->addSignal(
-            'reputation',
-            'DNSFilter safety label',
-            'Not checked',
-            'DNSFilter is a commercial DNS security product. ScamGuard does not have that partner feed.',
-            'neutral'
-        );
+            $delta = (int) ($ext['score_delta'] ?? 0);
+            $reviewPen = (int) ($ext['review_penalty'] ?? 0);
+            // Huge popular sites often have angry Trustpilot threads; dampen if top-ranked.
+            if (!empty($this->data['tranco_rank']) && (int) $this->data['tranco_rank'] <= 1000 && $reviewPen > 0) {
+                $dampened = (int) floor($reviewPen * 0.25);
+                $delta += $reviewPen - $dampened;
+                $reviewPen = $dampened;
+            }
+            $this->data['review_penalty'] = $reviewPen + (int) ($this->data['local_review_penalty'] ?? 0);
+            $this->data['external_score_delta'] = $delta;
+            if (!empty($ext['spam_hit'])) {
+                $this->data['spam_hit'] = 1;
+            }
+        } catch (Throwable $e) {
+            $this->addSignal('reputation', 'External reputation', 'Error', $e->getMessage(), 'neutral');
+            $this->data['external_score_delta'] = 0;
+        }
     }
 
     private function scoreSecurityHeaders(array $headers): array
@@ -1462,8 +1475,12 @@ class DomainChecker
             $score += (int) $this->data['tranco_bonus'];
         }
 
-        if (!empty($this->data['review_penalty'])) {
-            $score -= (int) $this->data['review_penalty'];
+        if (!empty($this->data['external_score_delta'])) {
+            $score += (int) $this->data['external_score_delta'];
+        }
+
+        if (!empty($this->data['local_review_penalty'])) {
+            $score -= (int) $this->data['local_review_penalty'];
         }
 
         $flags = json_decode((string) ($this->data['heuristic_flags'] ?? '[]'), true) ?: [];
@@ -1475,6 +1492,11 @@ class DomainChecker
         // Never call an unread/challenge-blocked site "fully safe".
         if ($incomplete) {
             $score = min($score, 68);
+        }
+
+        // Strong negative Trustpilot + incomplete content should not stay mid-caution forever.
+        if ($incomplete && !empty($this->data['review_penalty']) && (int) $this->data['review_penalty'] >= 12) {
+            $score = min($score, 45);
         }
 
         return max(1, min(100, $score));
