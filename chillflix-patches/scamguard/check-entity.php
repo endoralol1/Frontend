@@ -108,14 +108,14 @@ require __DIR__ . '/includes/header.php';
     <?php
     render_status_banner((string) ($record['status'] ?? 'unknown'), $score, $display, [
         [
+            'label' => 'REPORT',
+            'href' => BASE_PATH . '/report.php?type=' . urlencode($type) . '&q=' . urlencode($display),
+            'class' => 'btn btn-sm btn-danger',
+        ],
+        [
             'label' => '↻ Rescan',
             'href' => $pretty . '?refresh=1',
             'class' => 'btn btn-sm',
-        ],
-        [
-            'label' => 'Report',
-            'href' => BASE_PATH . '/report.php?type=' . urlencode($type) . '&q=' . urlencode($display),
-            'class' => 'btn btn-sm btn-danger',
         ],
         [
             'label' => 'New check',

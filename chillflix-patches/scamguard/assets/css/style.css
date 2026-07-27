@@ -513,146 +513,181 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
 .alert-error { background: rgba(239,77,98,.12); color: #ff8ea0; }
 .alert-success { background: rgba(47,191,113,.12); color: var(--safe); }
 
-.result-page { padding-top: 24px; padding-bottom: 48px; }
+.result-page { padding-top: 8px; padding-bottom: 48px; }
 
-/* ---- ScamAdviser-style top verdict banner ---- */
-.status-banner {
-    display: grid;
-    grid-template-columns: 1fr minmax(160px, 220px);
-    gap: 20px;
-    align-items: center;
-    padding: 22px 22px 20px;
-    border-radius: 18px;
-    border: 1px solid var(--line);
-    background: var(--card);
-    margin-bottom: 18px;
+/* ---- ScamAdviser-style result hero (uses their public hero BG art) ---- */
+.sa-result-hero {
+    margin: 0 0 22px;
+}
+.sa-hero-stage {
+    background-color: #f3f4f6;
+    background-position: center top;
+    background-repeat: no-repeat;
+    background-size: min(1200px, 160vw) auto;
+    border-radius: 16px 16px 0 0;
+    text-align: center;
+    color: #111;
     overflow: hidden;
-    position: relative;
 }
-.status-banner::before {
-    content: '';
-    position: absolute;
-    inset: -40% auto auto -20%;
-    width: 280px;
-    height: 280px;
-    border-radius: 50%;
-    opacity: .18;
-    pointer-events: none;
-    background: radial-gradient(circle, currentColor 0%, transparent 68%);
+.sa-hero-content {
+    padding: 200px 24px 36px;
+    max-width: 720px;
+    margin: 0 auto;
 }
-.status-banner-main {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-    min-width: 0;
-    position: relative;
-    z-index: 1;
+@media (max-width: 560px) {
+    .sa-hero-stage { background-size: 200vw auto; border-radius: 12px 12px 0 0; }
+    .sa-hero-content { padding: 42vw 16px 28px; }
 }
-.status-mark {
-    width: 88px;
-    height: 88px;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    flex: 0 0 auto;
-    color: #fff;
-    box-shadow: 0 10px 28px rgba(0,0,0,.25);
-}
-.status-mark span {
-    font-size: 2.4rem;
-    font-weight: 800;
-    line-height: 1;
-}
-.status-copy { min-width: 0; }
-.status-label {
+.sa-hero-title {
+    margin: 0;
     font-family: var(--display);
-    font-size: clamp(1.55rem, 4vw, 2.1rem);
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.1;
+    font-size: 40px;
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: #111;
 }
-.status-subject {
-    margin-top: 6px;
-    color: var(--muted);
-    font-size: 1.05rem;
+@media (max-width: 767px) {
+    .sa-hero-title { font-size: 24px; }
+}
+.sa-hero-domain {
+    margin-top: 10px;
+    font-size: 32px;
+    font-weight: 500;
+    line-height: 1.2;
+    color: rgba(0,0,0,.5);
     overflow-wrap: anywhere;
     word-break: break-word;
 }
-.status-hint {
-    margin: 8px 0 0;
-    color: var(--faint);
-    font-size: .9rem;
-    max-width: 36rem;
+@media (max-width: 767px) {
+    .sa-hero-domain { font-size: 18px; }
 }
-.status-actions {
+.sa-hero-actions {
+    margin-top: 28px;
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 14px;
+    gap: 10px;
+    justify-content: center;
 }
-.status-scorebox {
-    position: relative;
-    z-index: 1;
-    padding: 14px 14px 12px;
-    border-radius: 14px;
-    background: rgba(0,0,0,.22);
-    border: 1px solid rgba(255,255,255,.06);
+.sa-btn-visit,
+.sa-btn-report,
+.sa-btn-extra {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 160px;
+    height: 56px;
+    padding: 0 18px;
+    border-radius: 2rem;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    text-decoration: none;
+    box-sizing: border-box;
 }
-.status-score-top {
+@media (max-width: 767px) {
+    .sa-btn-visit,
+    .sa-btn-report,
+    .sa-btn-extra {
+        min-width: 100px;
+        height: 36px;
+        font-size: 11px;
+    }
+}
+.sa-btn-visit {
+    background: transparent;
+    border: 2px solid rgba(0,0,0,.5);
+    color: rgba(0,0,0,.65);
+}
+.sa-btn-visit:hover { border-color: #111; color: #111; }
+.sa-btn-report {
+    background: #ee3e41;
+    border: 2px solid #ee3e41;
+    color: #fff;
+}
+.sa-btn-report:hover { background: #c6283d; border-color: #c6283d; }
+.sa-btn-extra {
+    background: #fff;
+    border: 2px solid rgba(0,0,0,.2);
+    color: rgba(0,0,0,.7);
+}
+
+.sa-trust-card {
+    background: #fff;
+    color: #111;
+    border-radius: 0 0 16px 16px;
+    padding: 28px 24px 24px;
+    box-shadow: 0 10px 40px rgba(0,0,0,.18);
+}
+@media (max-width: 560px) {
+    .sa-trust-card { border-radius: 0 0 12px 12px; padding: 22px 16px 18px; }
+}
+.sa-trust-why {
+    margin: 0 0 18px;
+    font-size: 24px;
+    font-weight: 500;
+    line-height: 1.25;
+    color: #111;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 767px) {
+    .sa-trust-why { font-size: 18px; }
+}
+.sa-trust-panel {
+    background: #fff;
+    border: 1px solid rgba(0,0,0,.06);
+    border-radius: .75rem;
+    padding: 20px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+@media (min-width: 768px) {
+    .sa-trust-panel { padding: 40px; }
+}
+.sa-trust-row {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    gap: 8px;
-    font-size: .82rem;
-    color: var(--muted);
-    margin-bottom: 10px;
+    gap: 12px;
+    flex-wrap: wrap;
 }
-.status-score-top strong {
-    font-family: var(--display);
-    font-size: 1.55rem;
-    color: var(--text);
+.sa-trust-brand {
+    font-size: 24px;
+    font-weight: 500;
+    color: #111;
 }
-.status-bar {
-    height: 10px;
-    border-radius: 999px;
-    background: rgba(255,255,255,.08);
+.sa-trust-score-label {
+    font-size: 16px;
+    color: rgba(0,0,0,.55);
+}
+.sa-trust-score-label strong {
+    font-size: 28px;
+    font-weight: 700;
+    color: #111;
+    margin-left: 6px;
+}
+.sa-progress {
+    margin-top: 28px;
+    height: 20px;
+    border-radius: 100px;
+    background: #e9ecef;
     overflow: hidden;
 }
-.status-bar > span {
+.sa-progress > span {
     display: block;
     height: 100%;
     border-radius: inherit;
-    transition: width .35s ease;
+    transition: width .6s ease;
 }
-
-.status-good { color: var(--safe); border-color: rgba(47,191,113,.35); }
-.status-good .status-mark { background: linear-gradient(145deg, #2fbf71, #1e9a58); }
-.status-good .status-bar > span { background: linear-gradient(90deg, #2fbf71, #62e39a); }
-.status-good .status-label { color: #7dffb3; }
-
-.status-caution { color: var(--caution); border-color: rgba(227,179,65,.35); }
-.status-caution .status-mark { background: linear-gradient(145deg, #e3b341, #c4921f); }
-.status-caution .status-bar > span { background: linear-gradient(90deg, #e3b341, #f0d07a); }
-.status-caution .status-label { color: #f0d07a; }
-
-.status-risky { color: var(--risky); border-color: rgba(240,138,75,.4); }
-.status-risky .status-mark { background: linear-gradient(145deg, #f08a4b, #d96a28); }
-.status-risky .status-bar > span { background: linear-gradient(90deg, #f08a4b, #ffb184); }
-.status-risky .status-label { color: #ffb184; }
-
-.status-bad { color: var(--scam); border-color: rgba(239,77,98,.45); }
-.status-bad .status-mark { background: linear-gradient(145deg, #ef4d62, #c6283d); }
-.status-bad .status-bar > span { background: linear-gradient(90deg, #ef4d62, #ff8ea0); }
-.status-bad .status-label { color: #ff8ea0; }
-
-.status-unknown { color: var(--muted); }
-.status-unknown .status-mark { background: linear-gradient(145deg, #6b7a8d, #4a5564); }
-.status-unknown .status-bar > span { background: #9aa8ba; }
-
-@media (max-width: 720px) {
-    .status-banner { grid-template-columns: 1fr; }
-    .status-mark { width: 72px; height: 72px; }
-    .status-mark span { font-size: 2rem; }
+.sa-progress-good > span { background: #63b100; }
+.sa-progress-caution > span { background: #ff8a00; }
+.sa-progress-risky > span { background: #ff8a00; }
+.sa-progress-bad > span { background: #ee3e41; }
+.sa-progress-unknown > span { background: #9aa8ba; }
+.sa-trust-hint {
+    margin: 18px 0 0;
+    color: rgba(0,0,0,.45);
+    font-size: 14px;
 }
 
 .score-hero {

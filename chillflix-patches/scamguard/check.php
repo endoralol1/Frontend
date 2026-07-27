@@ -107,25 +107,25 @@ function tone_class(string $tone): string
     <?php
     render_status_banner((string) $record['status'], (int) $record['trust_score'], (string) $record['domain'], [
         [
-            'label' => 'Visit',
+            'label' => 'VISIT',
             'href' => 'https://' . $record['domain'],
             'class' => 'btn btn-sm btn-primary',
             'external' => true,
+        ],
+        [
+            'label' => 'REPORT',
+            'href' => BASE_PATH . '/report.php?d=' . urlencode($record['domain']),
+            'class' => 'btn btn-sm btn-danger',
         ],
         [
             'label' => '↻ Rescan',
             'href' => domain_page_path($record['domain']) . '?refresh=1',
             'class' => 'btn btn-sm',
         ],
-        [
-            'label' => 'Report',
-            'href' => BASE_PATH . '/report.php?d=' . urlencode($record['domain']),
-            'class' => 'btn btn-sm btn-danger',
-        ],
     ]);
     ?>
 
-    <div class="score-meta-line" style="margin:-6px 0 14px;">
+    <div class="score-meta-line" style="margin:-6px 0 14px; color:var(--muted);">
         Last checked: <?= h($record['last_checked'] ?? 'just now') ?>
         &middot; <?= (int) $record['check_count'] ?> scan<?= $record['check_count'] == 1 ? '' : 's' ?>
         <?php if (!empty($record['uses_cdn'])): ?>

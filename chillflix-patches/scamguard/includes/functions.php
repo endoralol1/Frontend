@@ -109,82 +109,111 @@ function status_badge(string $status): array
 
 /**
  * Big top-of-page verdict banner (ScamAdviser-style check / X).
- * @return array{tone:string,icon:string,label:string,hint:string}
+ * @return array{tone:string,bg:string,bar:string,label:string,hint:string,why:string}
  */
 function status_banner(string $status): array
 {
     return match ($status) {
         'safe', 'whitelisted' => [
             'tone' => 'good',
-            'icon' => 'check',
+            'bg' => 'status-good.png',
+            'bar' => 'good',
             'label' => $status === 'whitelisted' ? 'Verified Safe' : 'Likely Safe',
             'hint' => 'No strong scam signals found for this result.',
+            'why' => 'a strong',
         ],
         'caution' => [
             'tone' => 'caution',
-            'icon' => 'alert',
+            'bg' => 'status-caution.png',
+            'bar' => 'caution',
             'label' => 'Use Caution',
             'hint' => 'Some risk signals are present — verify before you trust it.',
+            'why' => 'a mixed',
         ],
         'risky' => [
             'tone' => 'risky',
-            'icon' => 'alert',
+            'bg' => 'status-risky.png',
+            'bar' => 'risky',
             'label' => 'Risky',
             'hint' => 'Elevated risk patterns were detected.',
+            'why' => 'a low',
         ],
         'scam', 'blacklisted' => [
             'tone' => 'bad',
-            'icon' => 'cross',
+            'bg' => 'status-bad.png',
+            'bar' => 'bad',
             'label' => $status === 'blacklisted' ? 'Confirmed Scam' : 'Likely Scam',
             'hint' => 'Strong scam / abuse signals — do not trust this.',
+            'why' => 'a very low',
         ],
         default => [
             'tone' => 'unknown',
-            'icon' => 'quest',
+            'bg' => 'status-unknown.png',
+            'bar' => 'unknown',
             'label' => 'Unknown',
             'hint' => 'Not enough data for a confident verdict yet.',
+            'why' => 'an unclear',
         ],
     };
 }
 
 /**
- * Render the top verdict banner HTML.
+ * Render the ScamAdviser-style hero + trust score block.
+ *
+ * @param array<int,array{label:string,href:string,class?:string,external?:bool}> $actions
  */
 function render_status_banner(string $status, int $score, string $subject, array $actions = []): void
 {
     $b = status_banner($status);
-    $icon = match ($b['icon']) {
-        'check' => '✓',
-        'cross' => '✕',
-        'alert' => '!',
-        default => '?',
-    };
     $score = max(0, min(100, $score));
+    $base = defined('BASE_PATH') ? rtrim(BASE_PATH, '/') : '';
+    $bgUrl = $base . '/assets/img/hero/' . $b['bg'];
+
+    $visit = null;
+    $report = null;
+    $extra = [];
+    foreach ($actions as $a) {
+        $label = strtolower($a['label'] ?? '');
+        if ($visit === null && (str_contains($label, 'visit') || !empty($a['external']))) {
+            $visit = $a;
+        } elseif ($report === null && str_contains($label, 'report')) {
+            $report = $a;
+        } else {
+            $extra[] = $a;
+        }
+    }
     ?>
-    <div class="status-banner status-<?= h($b['tone']) ?>">
-        <div class="status-banner-main">
-            <div class="status-mark" aria-hidden="true"><span><?= $icon ?></span></div>
-            <div class="status-copy">
-                <div class="status-label"><?= h($b['label']) ?></div>
-                <div class="status-subject"><?= h($subject) ?></div>
-                <p class="status-hint"><?= h($b['hint']) ?></p>
-                <?php if ($actions): ?>
-                    <div class="status-actions">
-                        <?php foreach ($actions as $a): ?>
-                            <a class="<?= h($a['class'] ?? 'btn btn-sm') ?>" href="<?= h($a['href']) ?>"<?= !empty($a['external']) ? ' target="_blank" rel="noopener noreferrer"' : '' ?>><?= h($a['label']) ?></a>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
+    <div class="sa-result-hero">
+        <div class="sa-hero-stage sa-hero-<?= h($b['tone']) ?>" style="background-image:url('<?= h($bgUrl) ?>')">
+            <div class="sa-hero-content">
+                <h1 class="sa-hero-title"><?= h($b['label']) ?></h1>
+                <div class="sa-hero-domain"><?= h($subject) ?></div>
+                <div class="sa-hero-actions">
+                    <?php if ($visit): ?>
+                        <a class="sa-btn-visit" href="<?= h($visit['href']) ?>"<?= !empty($visit['external']) ? ' target="_blank" rel="noopener noreferrer"' : '' ?>><?= h($visit['label']) ?></a>
+                    <?php endif; ?>
+                    <?php if ($report): ?>
+                        <a class="sa-btn-report" href="<?= h($report['href']) ?>"><?= h($report['label']) ?></a>
+                    <?php endif; ?>
+                    <?php foreach ($extra as $a): ?>
+                        <a class="sa-btn-extra" href="<?= h($a['href']) ?>"><?= h($a['label']) ?></a>
+                    <?php endforeach; ?>
+                </div>
             </div>
         </div>
-        <div class="status-scorebox">
-            <div class="status-score-top">
-                <span>Trust Score</span>
-                <strong><?= $score ?></strong>
+
+        <div class="sa-trust-card">
+            <p class="sa-trust-why">Why does <?= h($subject) ?> have <?= h($b['why']) ?> trust score?</p>
+            <div class="sa-trust-panel">
+                <div class="sa-trust-row">
+                    <span class="sa-trust-brand"><?= h(get_setting('site_name', 'ScamGuard')) ?></span>
+                    <span class="sa-trust-score-label">Trust Score <strong><?= $score ?></strong></span>
+                </div>
+                <div class="sa-progress sa-progress-<?= h($b['bar']) ?>" role="meter" aria-valuenow="<?= $score ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Trust score <?= $score ?> out of 100">
+                    <span style="width:<?= $score ?>%"></span>
+                </div>
             </div>
-            <div class="status-bar" role="meter" aria-valuenow="<?= $score ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Trust score <?= $score ?> out of 100">
-                <span style="width:<?= $score ?>%"></span>
-            </div>
+            <p class="sa-trust-hint"><?= h($b['hint']) ?></p>
         </div>
     </div>
     <?php
