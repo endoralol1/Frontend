@@ -28,3 +28,8 @@ package-lock.json
 
 # config
 .env
+
+# Local ScamGuard workspace copies
+scamguard-admin/
+scamguard-src/
+artifacts/
