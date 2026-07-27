@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Geist", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --color-background: oklch(0.14 0.012 255);
+  --color-foreground: oklch(0.93 0.01 255);
+  --color-card: oklch(0.18 0.014 255);
+  --color-card-foreground: oklch(0.93 0.01 255);
+  --color-muted: oklch(0.22 0.014 255);
+  --color-muted-foreground: oklch(0.68 0.02 255);
+  --color-border: oklch(0.28 0.016 255);
+  --color-input: oklch(0.26 0.016 255);
+  --color-primary: oklch(0.72 0.12 210);
+  --color-primary-foreground: oklch(0.14 0.02 255);
+  --color-secondary: oklch(0.24 0.014 255);
+  --color-secondary-foreground: oklch(0.9 0.01 255);
+  --color-accent: oklch(0.26 0.02 230);
+  --color-accent-foreground: oklch(0.94 0.01 255);
+  --color-destructive: oklch(0.62 0.2 25);
+  --color-destructive-foreground: oklch(0.98 0 0);
+  --color-ring: oklch(0.62 0.1 210);
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    background-image:
+      radial-gradient(1100px 520px at 8% -12%, oklch(0.28 0.05 220 / 0.45), transparent 58%),
+      radial-gradient(900px 420px at 100% 0%, oklch(0.24 0.04 200 / 0.35), transparent 55%),
+      linear-gradient(180deg, oklch(0.12 0.01 255), oklch(0.15 0.012 255));
+    min-height: 100vh;
+  }
+  ::selection {
+    background: oklch(0.45 0.08 210 / 0.45);
+  }
+}

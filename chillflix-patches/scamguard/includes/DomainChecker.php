@@ -611,6 +611,10 @@ class DomainChecker
     {
         $this->data['has_contact_info'] = 0;
         $this->data['has_privacy_policy'] = 0;
+        $this->data['has_phone'] = 0;
+        $this->data['free_email_contact'] = 0;
+        $this->data['noindex'] = 0;
+        $this->data['crypto_only_payment'] = 0;
         $this->data['redirect_count'] = 0;
         $this->data['suspicious_keyword_hits'] = 0;
         $this->data['page_title'] = null;
@@ -646,9 +650,54 @@ class DomainChecker
             preg_match('/privacy([ -_]?policy)?/i', $html)
         ) ? 1 : 0;
 
+        // Phone / WhatsApp presence (ScamAdviser-style contact verification signal).
+        $phoneHit = (bool) (
+            preg_match('/tel:\+?[0-9()\s.-]{7,}/i', $html)
+            || preg_match('/wa\.me\/\+?[0-9]{7,}/i', $html)
+            || preg_match('/\bwhatsapp\b/i', $html)
+            || preg_match('/(?:\+|00)?\d{1,3}[\s().-]?\d{2,4}[\s().-]?\d{3,4}[\s().-]?\d{3,4}/', $html)
+        );
+        $this->data['has_phone'] = $phoneHit ? 1 : 0;
+
+        // Free-mail-only public contacts (gmail/yahoo/etc.) — weak trust signal.
+        $freeMail = (bool) preg_match(
+            '/mailto:[^"\'\s>]+@(?:gmail|googlemail|yahoo|ymail|hotmail|outlook|live|msn|aol|proton\.?me|protonmail|icloud|mail\.ru|yandex)\./i',
+            $html
+        );
+        $businessMail = (bool) preg_match(
+            '/mailto:[^"\'\s>]+@' . preg_quote($this->domain, '/') . '/i',
+            $html
+        );
+        $this->data['free_email_contact'] = ($freeMail && !$businessMail) ? 1 : 0;
+
+        // Hide-from-search / noindex (common on disposable scam landers).
+        $robotsMeta = '';
+        if (preg_match('/<meta[^>]+name=["\']robots["\'][^>]*>/i', $html, $rm)) {
+            $robotsMeta = $rm[0];
+        }
+        $xRobots = '';
+        foreach ($headersOut as $hk => $hv) {
+            if (strtolower((string) $hk) === 'x-robots-tag') {
+                $xRobots = is_array($hv) ? implode(' ', $hv) : (string) $hv;
+            }
+        }
+        $this->data['noindex'] = (
+            preg_match('/\bnoindex\b/i', $robotsMeta)
+            || preg_match('/\bnoindex\b/i', $xRobots)
+        ) ? 1 : 0;
+
         $hasTerms = (bool) preg_match('/terms([ -_]?(of)?[ -_]?(service|use))?/i', $html);
         $hasLogin = (bool) preg_match('/\b(login|sign in|create account|register)\b/i', $html);
         $hasPayment = (bool) preg_match('/\b(checkout|add to cart|payment|paypal|credit card|billing)\b/i', $html);
+        $hasCryptoPay = (bool) preg_match(
+            '/\b(bitcoin|btc|ethereum|eth|usdt|usdc|crypto(currency)?|wallet address|send (btc|eth)|coinpayments?|binance pay)\b/i',
+            $html
+        );
+        $hasCardPay = (bool) preg_match(
+            '/\b(visa|mastercard|amex|american express|paypal|stripe|apple pay|google pay|credit card|debit card)\b/i',
+            $html
+        );
+        $this->data['crypto_only_payment'] = ($hasCryptoPay && !$hasCardPay) ? 1 : 0;
 
         $suspiciousPhrases = [
             'verify your account', 'confirm your identity', 'account suspended', 'act now',
@@ -685,6 +734,10 @@ class DomainChecker
             // Do not treat challenge-page headers / empty legal pages as positive proof.
             $this->data['has_contact_info'] = 0;
             $this->data['has_privacy_policy'] = 0;
+            $this->data['has_phone'] = 0;
+            $this->data['free_email_contact'] = 0;
+            $this->data['noindex'] = 0;
+            $this->data['crypto_only_payment'] = 0;
             $this->addSignal(
                 'content',
                 'Content visibility',
@@ -704,10 +757,46 @@ class DomainChecker
         $this->addSignal('content', 'Redirects', (string) $this->data['redirect_count'], '', $this->data['redirect_count'] > 3 ? 'warn' : 'neutral');
         if (!$challenge) {
             $this->addSignal('content', 'Contact info', $this->data['has_contact_info'] ? 'Found' : 'Not found', '', $this->data['has_contact_info'] ? 'good' : 'warn');
+            $this->addSignal(
+                'content',
+                'Phone / WhatsApp',
+                $this->data['has_phone'] ? 'Found' : 'Not found',
+                $this->data['has_phone']
+                    ? 'Public phone or messaging contact detected on the homepage.'
+                    : 'No clear phone / WhatsApp contact on the homepage.',
+                $this->data['has_phone'] ? 'good' : 'warn'
+            );
+            $this->addSignal(
+                'content',
+                'Contact email type',
+                $this->data['free_email_contact'] ? 'Free webmail only' : ($businessMail ? 'Domain / business email' : 'Not detected'),
+                $this->data['free_email_contact']
+                    ? 'Only free providers (Gmail/Yahoo/Outlook/etc.) — weaker trust signal.'
+                    : ($businessMail ? 'Uses an address on this domain.' : ''),
+                $this->data['free_email_contact'] ? 'warn' : ($businessMail ? 'good' : 'neutral')
+            );
             $this->addSignal('content', 'Privacy policy', $this->data['has_privacy_policy'] ? 'Found' : 'Not found', '', $this->data['has_privacy_policy'] ? 'good' : 'warn');
             $this->addSignal('content', 'Terms page', $hasTerms ? 'Found' : 'Not found', '', $hasTerms ? 'good' : 'neutral');
+            $this->addSignal(
+                'content',
+                'Search indexing',
+                $this->data['noindex'] ? 'noindex' : 'Indexable / not blocked',
+                $this->data['noindex']
+                    ? 'Page asks search engines not to index it — common on disposable landers.'
+                    : 'No robots noindex directive detected on the homepage.',
+                $this->data['noindex'] ? 'warn' : 'good'
+            );
             $this->addSignal('content', 'Login / account UI', $hasLogin ? 'Present' : 'Not detected', '', 'neutral');
             $this->addSignal('content', 'Payment language', $hasPayment ? 'Present' : 'Not detected', $hasPayment ? 'Commerce-style wording detected' : '', $hasPayment ? 'warn' : 'neutral');
+            $this->addSignal(
+                'content',
+                'Crypto-only payments',
+                $this->data['crypto_only_payment'] ? 'Likely' : 'Not detected',
+                $this->data['crypto_only_payment']
+                    ? 'Crypto payment wording without common card/PayPal options.'
+                    : ($hasCryptoPay ? 'Crypto mentioned alongside other payment methods.' : ''),
+                $this->data['crypto_only_payment'] ? 'bad' : ($hasCryptoPay ? 'warn' : 'neutral')
+            );
             $this->addSignal(
                 'content',
                 'Suspicious phrases',
@@ -929,9 +1018,14 @@ class DomainChecker
             $this->addSignal('reputation', 'User reports (ScamGuard)', 'Unavailable', $e->getMessage(), 'neutral');
         }
 
-        // --- Live external sources (Trustpilot, Sitejabber, RBLs, URLVoid) ---
+        // --- Live external sources (Trustpilot, Sitejabber, RBLs, URLVoid, neighbors, IP BL) ---
         try {
-            $ext = (new ExternalReputation($this->domain))->collect();
+            $cdnProv = (string) ($this->data['cdn_provider'] ?? '');
+            $ext = (new ExternalReputation($this->domain, [
+                'ip' => $this->data['ip_address'] ?? null,
+                'is_cloudflare' => strcasecmp($cdnProv, 'Cloudflare') === 0,
+                'uses_cdn' => !empty($this->data['uses_cdn']),
+            ]))->collect();
             foreach ($ext['signals'] as $signal) {
                 $this->addSignal(
                     (string) $signal['group'],
@@ -1144,18 +1238,33 @@ class DomainChecker
             ];
         }
 
-        $riskyTlds = ['zip','mov','country','gq','tk','ml','ga','cf','top','buzz','xyz','click','work','rest'];
+        $riskyTlds = [
+            'zip', 'mov', 'country', 'gq', 'tk', 'ml', 'ga', 'cf', 'top', 'buzz', 'xyz', 'click',
+            'work', 'rest', 'icu', 'cfd', 'sbs', 'cyou', 'lol', 'quest', 'cam', 'bond', 'hair',
+            'mom', 'pics', 'beauty', 'skin',
+        ];
         $tld = $labels[count($labels) - 1] ?? '';
         $age = $this->data['domain_age_days'];
         $young = is_int($age) && $age < 30;
         $newish = is_int($age) && $age < 90;
+        $onRiskyTld = in_array($tld, $riskyTlds, true);
 
-        if ($young && in_array($tld, $riskyTlds, true)) {
+        if ($onRiskyTld) {
+            $flags[] = [
+                'code' => 'risky_tld',
+                'label' => 'Higher-risk TLD',
+                'detail' => '.' . $tld . ' appears often in disposable / phishing campaigns',
+                'penalty' => $young ? 16 : ($newish ? 10 : 6),
+            ];
+        }
+
+        if ($young && $onRiskyTld) {
+            // Already covered by stronger risky_tld penalty when young — keep a distinct label for UI.
             $flags[] = [
                 'code' => 'young_risky_tld',
                 'label' => 'Very new domain on higher-risk TLD',
                 'detail' => 'Age ' . $age . ' days on .' . $tld,
-                'penalty' => 14,
+                'penalty' => 6,
             ];
         }
 
@@ -1175,6 +1284,47 @@ class DomainChecker
                 'label' => 'New site missing contact/privacy pages',
                 'detail' => 'Common pattern for disposable scam landing pages',
                 'penalty' => 10,
+            ];
+        }
+
+        if (!empty($this->data['noindex']) && ($young || $newish)) {
+            $flags[] = [
+                'code' => 'young_noindex',
+                'label' => 'New site hides from search engines',
+                'detail' => 'robots noindex on a young domain',
+                'penalty' => 10,
+            ];
+        }
+
+        if (!empty($this->data['free_email_contact']) && ($young || $newish || empty($this->data['has_phone']))) {
+            $flags[] = [
+                'code' => 'free_email_contact',
+                'label' => 'Only free webmail contact',
+                'detail' => 'Public contact uses Gmail/Yahoo/Outlook-style addresses',
+                'penalty' => 8,
+            ];
+        }
+
+        if (!empty($this->data['crypto_only_payment'])) {
+            $flags[] = [
+                'code' => 'crypto_only_payment',
+                'label' => 'Crypto-only payment language',
+                'detail' => 'Crypto checkout wording without common card/PayPal options',
+                'penalty' => 12,
+            ];
+        }
+
+        if (
+            empty($this->data['content_incomplete'])
+            && empty($this->data['has_phone'])
+            && empty($this->data['has_contact_info'])
+            && ($young || $newish)
+        ) {
+            $flags[] = [
+                'code' => 'no_phone_or_contact',
+                'label' => 'No phone or clear contact details',
+                'detail' => 'Young site with neither phone nor contact cues',
+                'penalty' => 8,
             ];
         }
 
@@ -1439,6 +1589,10 @@ class DomainChecker
             if ($this->data['has_privacy_policy']) {
                 $score += $wContent * 0.25;
             }
+            if (!empty($this->data['has_phone'])) {
+                $score += 3;
+            }
+            // free_email / noindex / crypto_only are scored via heuristic flags (avoid double-counting)
             if ($this->data['suspicious_keyword_hits'] > 0) {
                 $score -= min($this->data['suspicious_keyword_hits'] * 8, $wContent + 10);
             }

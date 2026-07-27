@@ -1,16 +1,20 @@
 <?php
 /**
  * External reputation lookups that ScamAdviser-style UIs surface:
- * Trustpilot reviews, multi-RBL abuse/spam, multi-engine web safety (URLVoid).
+ * Trustpilot reviews, multi-RBL abuse/spam, multi-engine web safety (URLVoid),
+ * reverse-IP neighbors, and origin IP DNSBL checks.
  */
 class ExternalReputation
 {
     private string $domain;
     private string $cacheDir;
+    /** @var array{ip?:?string,is_cloudflare?:bool,uses_cdn?:bool} */
+    private array $ctx;
 
-    public function __construct(string $domain)
+    public function __construct(string $domain, array $ctx = [])
     {
         $this->domain = strtolower(trim($domain));
+        $this->ctx = $ctx;
         $this->cacheDir = __DIR__ . '/../storage/cache/reputation';
         if (!is_dir($this->cacheDir)) {
             @mkdir($this->cacheDir, 0750, true);
@@ -50,6 +54,17 @@ class ExternalReputation
         $safety = $this->urlvoidSafety();
         $signals[] = $safety['signal'];
         $delta += (int) $safety['delta'];
+
+        $neighbors = $this->reverseIpNeighbors();
+        $signals[] = $neighbors['signal'];
+        $delta += (int) ($neighbors['delta'] ?? 0);
+
+        $ipBl = $this->originIpBlacklists();
+        $signals[] = $ipBl['signal'];
+        $delta += (int) ($ipBl['delta'] ?? 0);
+        if (!empty($ipBl['hit'])) {
+            $spamHit = 1;
+        }
 
         return [
             'signals' => $signals,
@@ -185,19 +200,30 @@ class ExternalReputation
         $neg = (int) ($cached['reviews_distribution']['negative'] ?? 0);
         $pos = (int) ($cached['positive_reviews_number'] ?? 0);
 
+        // Sitejabber sometimes returns 0-100 style scores.
+        $sjStars = $sj;
+        $sjLabel = null;
+        if ($sj !== null) {
+            if ($sj > 5) {
+                $sjStars = max(0, min(5, $sj / 20));
+                $sjLabel = number_format($sj, 0) . '/100';
+            } else {
+                $sjLabel = number_format($sj, 1) . '/5';
+            }
+        }
+
         $penalty = 0;
         $tone = 'neutral';
-        $value = ($sj !== null ? ('SJ ' . number_format($sj, 1) . '/5') : 'Profile found')
-            . ' · ' . $reviews . ' reviews';
+        $value = ($sjLabel ?: 'Profile found') . ' · ' . $reviews . ' reviews';
 
-        if ($reviews > 0 && $sj !== null && $sj <= 2.0) {
+        if ($reviews > 0 && $sjStars !== null && $sjStars <= 2.0) {
             $penalty = min(18, 8 + $neg * 2);
             $tone = 'bad';
             $note = 'Negative Sitejabber/SmartCustomer rating.';
         } elseif ($reviews === 0) {
             $note = 'No Sitejabber reviews yet.';
             $tone = 'neutral';
-        } elseif ($sj !== null && $sj >= 4.0) {
+        } elseif ($sjStars !== null && $sjStars >= 4.0) {
             $note = 'Positive Sitejabber rating.';
             $tone = 'good';
         } else {
@@ -274,6 +300,237 @@ class ExternalReputation
             'hit' => 0,
             'penalty' => 0,
             'bonus' => 3,
+        ];
+    }
+
+    /**
+     * Same-server neighbor domains via reverse IP (HackerTarget).
+     * Skipped on Cloudflare / shared CDN anycast IPs — too noisy.
+     */
+    private function reverseIpNeighbors(): array
+    {
+        $ip = trim((string) ($this->ctx['ip'] ?? ''));
+        $skip = !empty($this->ctx['is_cloudflare']) || !empty($this->ctx['uses_cdn']);
+        if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return [
+                'signal' => $this->sig(
+                    'hosting',
+                    'Same-server neighbors',
+                    'No origin IPv4',
+                    'Need a public A record to reverse-look up co-hosted domains.',
+                    'neutral'
+                ),
+                'delta' => 0,
+            ];
+        }
+        if ($skip) {
+            return [
+                'signal' => $this->sig(
+                    'hosting',
+                    'Same-server neighbors',
+                    'Skipped (CDN / Cloudflare)',
+                    'Reverse-IP neighbor checks are noisy on shared CDN anycast addresses.',
+                    'neutral'
+                ),
+                'delta' => 0,
+            ];
+        }
+
+        $cached = $this->cacheGet('revip');
+        if ($cached === null) {
+            $body = $this->httpGet('https://api.hackertarget.com/reverseiplookup/?q=' . rawurlencode($ip), 12);
+            $lines = [];
+            $error = false;
+            if (is_string($body) && $body !== '') {
+                if (preg_match('/error|api count|limit|no records/i', $body) && !str_contains($body, "\n")) {
+                    $error = true;
+                } else {
+                    foreach (preg_split('/\r?\n/', trim($body)) as $line) {
+                        $line = strtolower(trim($line));
+                        if ($line === '' || !preg_match('/^[a-z0-9.-]+\.[a-z]{2,}$/', $line)) {
+                            continue;
+                        }
+                        if ($line === $this->domain || str_ends_with($line, '.' . $this->domain)) {
+                            continue;
+                        }
+                        $lines[] = $line;
+                    }
+                    $lines = array_values(array_unique($lines));
+                }
+            } else {
+                $error = true;
+            }
+            $cached = [
+                'ok' => !$error,
+                'count' => count($lines),
+                'sample' => array_slice($lines, 0, 8),
+            ];
+            $this->cacheSet('revip', $cached, 21600);
+        }
+
+        if (empty($cached['ok'])) {
+            return [
+                'signal' => $this->sig(
+                    'hosting',
+                    'Same-server neighbors',
+                    'Unavailable',
+                    'Reverse IP lookup failed or rate-limited.',
+                    'neutral'
+                ),
+                'delta' => 0,
+            ];
+        }
+
+        $count = (int) ($cached['count'] ?? 0);
+        $sample = is_array($cached['sample'] ?? null) ? $cached['sample'] : [];
+        $sampleNote = $sample ? (' e.g. ' . implode(', ', array_slice($sample, 0, 4))) : '';
+
+        if ($count === 0) {
+            return [
+                'signal' => $this->sig(
+                    'hosting',
+                    'Same-server neighbors',
+                    'None found',
+                    'No other hostnames reported on this origin IP.',
+                    'good'
+                ),
+                'delta' => 2,
+            ];
+        }
+
+        // Dense shared hosts are weakly correlated with disposable scam kits.
+        if ($count >= 80) {
+            return [
+                'signal' => $this->sig(
+                    'hosting',
+                    'Same-server neighbors',
+                    $count . ' co-hosted domains',
+                    'Very crowded origin IP — common on cheap shared hosting used by disposable sites.' . $sampleNote,
+                    'warn'
+                ),
+                'delta' => -8,
+            ];
+        }
+        if ($count >= 25) {
+            return [
+                'signal' => $this->sig(
+                    'hosting',
+                    'Same-server neighbors',
+                    $count . ' co-hosted domains',
+                    'Busy shared host; soft caution only.' . $sampleNote,
+                    'warn'
+                ),
+                'delta' => -4,
+            ];
+        }
+
+        return [
+            'signal' => $this->sig(
+                'hosting',
+                'Same-server neighbors',
+                $count . ' co-hosted domain(s)',
+                'Other hostnames share this origin IP.' . $sampleNote,
+                'neutral'
+            ),
+            'delta' => 0,
+        ];
+    }
+
+    /**
+     * Origin IP DNSBL checks (skipped on Cloudflare/CDN).
+     * Complements domain RBL sweep with host-level abuse lists.
+     */
+    private function originIpBlacklists(): array
+    {
+        $ip = trim((string) ($this->ctx['ip'] ?? ''));
+        $skip = !empty($this->ctx['is_cloudflare']) || !empty($this->ctx['uses_cdn']);
+        if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            return [
+                'signal' => $this->sig(
+                    'threat',
+                    'Origin IP blacklists',
+                    'No origin IPv4',
+                    'Cannot DNSBL-check without a public A record.',
+                    'neutral'
+                ),
+                'delta' => 0,
+                'hit' => 0,
+            ];
+        }
+        if ($skip) {
+            return [
+                'signal' => $this->sig(
+                    'threat',
+                    'Origin IP blacklists',
+                    'Skipped (CDN / Cloudflare)',
+                    'CDN edge IPs are shared; listing them would false-positive many sites.',
+                    'neutral'
+                ),
+                'delta' => 0,
+                'hit' => 0,
+            ];
+        }
+
+        $cached = $this->cacheGet('ipdnsbl');
+        if ($cached === null) {
+            $lists = [
+                'zen.spamhaus.org',
+                'bl.spamcop.net',
+                'b.barracudacentral.org',
+                'dnsbl.sorbs.net',
+                'cbl.abuseat.org',
+            ];
+            $hits = [];
+            $parts = explode('.', $ip);
+            $rev = $parts[3] . '.' . $parts[2] . '.' . $parts[1] . '.' . $parts[0];
+            foreach ($lists as $zone) {
+                $q = $rev . '.' . $zone;
+                $answers = @dns_get_record($q, DNS_A);
+                if (!is_array($answers) || !$answers) {
+                    continue;
+                }
+                foreach ($answers as $ans) {
+                    $a = (string) ($ans['ip'] ?? '');
+                    // Real listings are typically 127.0.0.2–127.0.0.255; skip policy/error codes.
+                    if (preg_match('/^127\.0\.0\.(?:[2-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/', $a)) {
+                        $hits[] = $zone;
+                        break;
+                    }
+                }
+            }
+            $cached = [
+                'ok' => true,
+                'hits' => array_values(array_unique($hits)),
+            ];
+            $this->cacheSet('ipdnsbl', $cached, 21600);
+        }
+
+        $hits = is_array($cached['hits'] ?? null) ? $cached['hits'] : [];
+        $n = count($hits);
+        if ($n === 0) {
+            return [
+                'signal' => $this->sig(
+                    'threat',
+                    'Origin IP blacklists',
+                    'Clean on checked DNSBLs',
+                    'Origin IP not listed on Spamhaus/SpamCop/Barracuda/SORBS/CBL.',
+                    'good'
+                ),
+                'delta' => 3,
+                'hit' => 0,
+            ];
+        }
+
+        return [
+            'signal' => $this->sig(
+                'threat',
+                'Origin IP blacklists',
+                'Listed on ' . $n . ' DNSBL(s)',
+                'Hit: ' . implode(', ', $hits),
+                'bad'
+            ),
+            'delta' => -min(22, 8 + $n * 4),
+            'hit' => 1,
         ];
     }
 
