@@ -2,7 +2,7 @@
 $siteName = get_setting('site_name', 'ScamGuard');
 $announcementEnabled = get_setting('announcement_enabled', '0') === '1';
 $announcement = get_setting('announcement_banner', '');
-$assetVer = '20260727sa1';
+$assetVer = '20260727sa4';
 
 $pageTitle = $pageTitle ?? $siteName;
 $pageDescription = $pageDescription ?? 'Check websites for scam, phishing, and malware risk signals before you click.';

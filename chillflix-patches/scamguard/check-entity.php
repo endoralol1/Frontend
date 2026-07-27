@@ -122,6 +122,8 @@ require __DIR__ . '/includes/header.php';
             'href' => BASE_PATH . '/?type=' . urlencode($type),
             'class' => 'btn btn-sm',
         ],
+    ], [
+        'last_update' => (string) ($record['checked_at'] ?? $record['last_checked'] ?? 'just now'),
     ]);
     ?>
 

@@ -122,12 +122,13 @@ function tone_class(string $tone): string
             'href' => domain_page_path($record['domain']) . '?refresh=1',
             'class' => 'btn btn-sm',
         ],
+    ], [
+        'last_update' => (string) ($record['last_checked'] ?? 'just now'),
     ]);
     ?>
 
     <div class="score-meta-line" style="margin:-6px 0 14px; color:var(--muted);">
-        Last checked: <?= h($record['last_checked'] ?? 'just now') ?>
-        &middot; <?= (int) $record['check_count'] ?> scan<?= $record['check_count'] == 1 ? '' : 's' ?>
+        <?= (int) $record['check_count'] ?> scan<?= $record['check_count'] == 1 ? '' : 's' ?>
         <?php if (!empty($record['uses_cdn'])): ?>
             &middot; Behind <?= h($record['cdn_provider'] ?: 'CDN') ?>
         <?php endif; ?>
