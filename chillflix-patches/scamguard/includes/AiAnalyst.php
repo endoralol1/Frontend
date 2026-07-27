@@ -117,7 +117,7 @@ class AiAnalyst
      */
     public static function llmOpinion(string $domain, array $data, array $signals, array $ruleBrief): ?array
     {
-        $key = defined('AI_API_KEY') ? trim((string) AI_API_KEY) : '';
+        $key = self::resolveApiKey();
         if ($key === '') {
             return null;
         }
@@ -135,12 +135,8 @@ class AiAnalyst
             ];
         }
 
-        $url = defined('AI_API_URL') && AI_API_URL !== ''
-            ? (string) AI_API_URL
-            : 'https://api.openai.com/v1/chat/completions';
-        $model = defined('AI_MODEL') && AI_MODEL !== ''
-            ? (string) AI_MODEL
-            : 'gpt-4o-mini';
+        $url = self::resolveApiUrl();
+        $model = self::resolveModel();
 
         $compactSignals = [];
         foreach (array_slice($signals, 0, 40) as $s) {
@@ -263,5 +259,45 @@ class AiAnalyst
             'score_delta' => $delta,
             'factors' => array_slice($factors, 0, 6),
         ];
+    }
+
+    /** Admin site_settings override, then config.php constant. */
+    private static function resolveApiKey(): string
+    {
+        if (function_exists('get_setting')) {
+            $fromDb = trim(get_setting('ai_api_key', ''));
+            if ($fromDb !== '') {
+                return $fromDb;
+            }
+        }
+        return defined('AI_API_KEY') ? trim((string) AI_API_KEY) : '';
+    }
+
+    private static function resolveApiUrl(): string
+    {
+        if (function_exists('get_setting')) {
+            $fromDb = trim(get_setting('ai_api_url', ''));
+            if ($fromDb !== '') {
+                return $fromDb;
+            }
+        }
+        if (defined('AI_API_URL') && trim((string) AI_API_URL) !== '') {
+            return (string) AI_API_URL;
+        }
+        return 'https://api.openai.com/v1/chat/completions';
+    }
+
+    private static function resolveModel(): string
+    {
+        if (function_exists('get_setting')) {
+            $fromDb = trim(get_setting('ai_model', ''));
+            if ($fromDb !== '') {
+                return $fromDb;
+            }
+        }
+        if (defined('AI_MODEL') && trim((string) AI_MODEL) !== '') {
+            return (string) AI_MODEL;
+        }
+        return 'gpt-4o-mini';
     }
 }

@@ -1513,16 +1513,7 @@ class DomainChecker
 
         $ai = AiAnalyst::llmOpinion($this->domain, $this->data, $this->signals, $brief);
         if ($ai === null) {
-            $configured = defined('AI_API_KEY') && trim((string) AI_API_KEY) !== '';
-            $this->addSignal(
-                'ai',
-                'AI opinion',
-                $configured ? 'Unavailable' : 'Not configured',
-                $configured
-                    ? 'AI API key is set but the model call failed or timed out.'
-                    : 'Set AI_API_KEY (OpenAI-compatible) in config for a model second opinion. Rule-based analyst above still runs.',
-                'neutral'
-            );
+            // No public “not configured” noise — rule-based analyst is enough without a key.
             return;
         }
 

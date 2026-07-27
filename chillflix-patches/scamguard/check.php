@@ -157,7 +157,18 @@ function tone_class(string $tone): string
     </div>
 
     <?php
-    $analystSignals = array_values(array_filter($signals, static fn($s) => in_array(($s['group'] ?? ''), ['analysis', 'ai'], true)));
+    // Show rule-based analyst; only include AI rows when a model actually ran.
+    $analystSignals = array_values(array_filter($signals, static function ($s) {
+        $g = $s['group'] ?? '';
+        if ($g === 'analysis') {
+            return true;
+        }
+        if ($g === 'ai') {
+            $v = strtolower((string) ($s['value'] ?? ''));
+            return $v !== '' && $v !== 'not configured' && $v !== 'unavailable';
+        }
+        return false;
+    }));
     if ($analystSignals):
         $primaryAnalyst = $analystSignals[0];
         $analystTone = tone_class((string) ($primaryAnalyst['tone'] ?? 'neutral'));
