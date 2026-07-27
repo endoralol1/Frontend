@@ -110,7 +110,8 @@ require __DIR__ . '/includes/header.php';
             </div>
 
             <div class="type-row" aria-live="polite">
-                <span class="type-label">Detected:</span>
+                <span class="type-label">Detected</span>
+                <div class="type-track" role="status">
                 <?php
                 $types = [
                     'website' => 'Website',
@@ -123,6 +124,7 @@ require __DIR__ . '/includes/header.php';
                 ?>
                     <span class="type-chip" data-type="<?= h($key) ?>" id="chip-<?= h($key) ?>"><?= h($label) ?></span>
                 <?php endforeach; ?>
+                </div>
             </div>
         </form>
 
