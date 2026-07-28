@@ -190,47 +190,8 @@ function tone_class(string $tone): string
     ]);
     ?>
 
-    <div class="seo-domain-intro card" style="margin:14px 0 16px; padding:14px 16px;">
-        <h2 style="margin:0 0 6px; font-size:1.05rem;"><?= h($domain) ?> scam check</h2>
-        <p style="margin:0; color:var(--muted); font-size:14px; line-height:1.55;">
-            Looking up <strong><?= h($domain) ?></strong> before you click?
-            <?= h($siteName) ?> gives it a trust score of <strong><?= (int) $score ?>/100</strong>
-            (<strong><?= h($statusLabel) ?></strong>). Review threat-list hits, domain age, SSL, hosting,
-            and community reports on this page — then
-            <a href="<?= h(domain_page_path($domain) . '?refresh=1') ?>" style="color:var(--brand-2); font-weight:700;">recheck / rescan <?= h($domain) ?></a>
-            anytime.
-        </p>
-    </div>
-
-    <div class="score-meta-line" style="margin:-6px 0 14px; color:var(--muted);">
-        <?= (int) $record['check_count'] ?> scan<?= $record['check_count'] == 1 ? '' : 's' ?>
-        <?php if (!empty($record['uses_cdn'])): ?>
-            &middot; Behind <?= h($record['cdn_provider'] ?: 'CDN') ?>
-        <?php endif; ?>
-        <?php if (!empty($record['page_title'])): ?>
-            &middot; <?= h($record['page_title']) ?>
-        <?php endif; ?>
-    </div>
-
-    <div class="verdict-card <?= h($verdict) ?>" style="margin-top:16px;">
-        <div class="verdict-kicker">Automated verdict</div>
-        <div class="verdict-title"><?= h($verdictLabel) ?></div>
-        <?php if ($verdictReasons): ?>
-            <ul class="verdict-reasons">
-                <?php foreach ($verdictReasons as $reason): ?>
-                    <li><?= h((string) $reason) ?></li>
-                <?php endforeach; ?>
-            </ul>
-        <?php endif; ?>
-        <div class="verdict-pills">
-            <span class="pill <?= !empty($record['malware_hit']) ? 'bad' : 'good' ?>">Malware lists: <?= !empty($record['malware_hit']) ? 'HIT' : 'Clean' ?></span>
-            <span class="pill <?= !empty($record['phishing_hit']) ? 'bad' : 'good' ?>">Phishing lists: <?= !empty($record['phishing_hit']) ? 'HIT' : 'Clean' ?></span>
-            <span class="pill">Score <?= (int) $record['trust_score'] ?>/100</span>
-        </div>
-    </div>
-
     <?php
-    // Show rule-based analyst; only include AI rows when a model actually ran.
+    // ---- Compact report body (user-facing) --------------------------------
     $analystSignals = array_values(array_filter($signals, static function ($s) {
         $g = $s['group'] ?? '';
         if ($g === 'analysis') {
@@ -242,145 +203,191 @@ function tone_class(string $tone): string
         }
         return false;
     }));
-    if ($analystSignals):
-        $primaryAnalyst = $analystSignals[0];
-        $analystTone = tone_class((string) ($primaryAnalyst['tone'] ?? 'neutral'));
+    $primaryAnalyst = $analystSignals[0] ?? null;
+    $plainSummary = match (true) {
+        !empty($record['malware_hit']) || !empty($record['phishing_hit']) || ($record['status'] ?? '') === 'blacklisted'
+            => 'Strong warning signals were found. Avoid logging in or sending money until you verify the site another way.',
+        ($record['status'] ?? '') === 'scam' || $score < 25
+            => 'This looks risky. Treat it as unsafe for payments, passwords, or personal data.',
+        ($record['status'] ?? '') === 'risky' || $score < 50
+            => 'Some risk signals showed up. Proceed carefully and double-check before sharing anything sensitive.',
+        ($record['status'] ?? '') === 'caution' || $score < 80
+            => 'No clear scam hit, but a few caution signs remain. Fine to browse carefully — stay alert.',
+        default
+            => 'No major red flags in this scan. Still use normal caution with logins and payments.',
+    };
+    $shortReasons = [];
+    foreach (array_slice($verdictReasons ?: [], 0, 3) as $reason) {
+        $r = trim((string) $reason);
+        if ($r === '') {
+            continue;
+        }
+        // Keep only the lead clause for readability.
+        $r = preg_replace('/\s*\|\s*.*$/u', '', $r) ?? $r;
+        if (mb_strlen($r) > 110) {
+            $r = mb_substr($r, 0, 107) . '…';
+        }
+        $shortReasons[] = $r;
+    }
+    $goodBits = [];
+    foreach (array_slice($positives, 0, 4) as $p) {
+        $goodBits[] = (string) ($p['label'] ?? '');
+    }
+    $badBits = [];
+    foreach (array_slice($negatives, 0, 4) as $n) {
+        $badBits[] = (string) ($n['label'] ?? '');
+    }
+    $ageLabel = $record['domain_age_days'] !== null
+        ? number_format((int) $record['domain_age_days']) . ' days'
+        : 'Unknown';
     ?>
-    <div class="analyst-card <?= h($analystTone) ?>" style="margin-top:16px;">
-        <div class="verdict-kicker">Positive / negative lean</div>
-        <div class="analyst-title"><?= h((string) ($primaryAnalyst['value'] ?? 'Analyst')) ?></div>
-        <?php if (!empty($primaryAnalyst['note'])): ?>
-            <p class="analyst-summary"><?= h((string) $primaryAnalyst['note']) ?></p>
-        <?php endif; ?>
-        <?php if (count($analystSignals) > 1): ?>
-            <ul class="verdict-reasons" style="margin-top:10px;">
-                <?php foreach (array_slice($analystSignals, 1, 4) as $as): ?>
-                    <li><strong><?= h((string) (($as['label'] ?? '') !== '' ? $as['label'] . ': ' : '') . (string) ($as['value'] ?? '')) ?></strong><?php if (!empty($as['note'])): ?> — <?= h((string) $as['note']) ?><?php endif; ?></li>
-                <?php endforeach; ?>
-            </ul>
-        <?php endif; ?>
-    </div>
-    <?php endif; ?>
 
-    <?php if (!empty($record['uses_cdn'])): ?>
-        <div class="alert alert-info" style="margin-top:16px;">
-            The public A-record IP (<code><?= h($record['ip_address'] ?? '') ?></code>) belongs to
-            <strong><?= h($record['cdn_provider'] ?: 'a CDN') ?></strong>.
-            That is normal for many legit sites and does <em>not</em> mean the origin server is in that location.
-        </div>
-    <?php endif; ?>
+    <h2 class="sr-only"><?= h($domain) ?> scam check</h2>
+    <p class="sr-only">
+        <?= h($siteName) ?> rates <?= h($domain) ?> at <?= (int) $score ?>/100 (<?= h($statusLabel) ?>).
+        Recheck anytime at <?= h(domain_page_url($domain)) ?>?refresh=1
+    </p>
 
-    <?php if ($record['manual_override']): ?>
-        <div class="alert alert-info" style="margin-top:16px;">
-            This domain's status has been manually reviewed by an administrator.
-            <?php if (!empty($record['admin_notes'])): ?><br><?= h($record['admin_notes']) ?><?php endif; ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($record['threat_feed_hit']): ?>
-        <div class="alert alert-error" style="margin-top:16px;">
-            ⚠ Listed on threat/phishing feeds: <?= h($record['threat_feed_sources']) ?>
-        </div>
-    <?php endif; ?>
-
-    <div class="summary-grid">
-        <div class="card summary-card">
-            <div class="summary-label">Registrar</div>
-            <div class="summary-value"><?= h($record['whois_registrar'] ?? 'Unknown') ?></div>
-        </div>
-        <div class="card summary-card">
-            <div class="summary-label">Domain age</div>
-            <div class="summary-value"><?= $record['domain_age_days'] !== null ? number_format((int) $record['domain_age_days']) . ' days' : 'Unknown' ?></div>
-        </div>
-        <div class="card summary-card">
-            <div class="summary-label">SSL</div>
-            <div class="summary-value"><?= $record['ssl_valid'] ? 'Valid' : 'Missing/invalid' ?></div>
-        </div>
-        <div class="card summary-card">
-            <div class="summary-label">Threat feeds</div>
-            <div class="summary-value"><?= $record['threat_feed_hit'] ? 'Hit' : 'Clean' ?></div>
-        </div>
-    </div>
-
-    <div class="highlights-grid">
-        <section class="highlight-panel highlight-positive">
-            <h3>Positive highlights</h3>
-            <?php if (!$positives): ?>
-                <p class="highlight-empty">No strong positive signals recorded.</p>
-            <?php else: ?>
-                <ul class="highlight-list">
-                    <?php foreach (array_slice($positives, 0, 8) as $p): ?>
-                        <li class="highlight-item">
-                            <span class="highlight-icon" aria-hidden="true">✓</span>
-                            <div class="highlight-body">
-                                <div class="highlight-title"><?= h((string) $p['label']) ?></div>
-                                <div class="highlight-text"><?= h((string) $p['value']) ?><?php if (!empty($p['note'])): ?> — <?= h((string) $p['note']) ?><?php endif; ?></div>
-                            </div>
-                        </li>
+    <div class="report-compact">
+        <section class="rc-card rc-summary <?= h(tone_class(($score >= 80) ? 'good' : (($score >= 50) ? 'warn' : 'bad'))) ?>">
+            <div class="rc-summary-top">
+                <div>
+                    <p class="rc-kicker">In plain words</p>
+                    <h2 class="rc-title"><?= h($statusLabel) ?></h2>
+                </div>
+                <div class="rc-scorechip" aria-label="Trust score <?= (int) $score ?> out of 100">
+                    <span class="rc-scorechip-num"><?= (int) $score ?></span>
+                    <span class="rc-scorechip-den">/100</span>
+                </div>
+            </div>
+            <p class="rc-plain"><?= h($plainSummary) ?></p>
+            <?php if ($shortReasons): ?>
+                <ul class="rc-reasons">
+                    <?php foreach ($shortReasons as $reason): ?>
+                        <li><?= h($reason) ?></li>
                     <?php endforeach; ?>
                 </ul>
+            <?php elseif (!empty($primaryAnalyst['note'])): ?>
+                <p class="rc-plain rc-plain-muted"><?= h(mb_strimwidth((string) $primaryAnalyst['note'], 0, 180, '…')) ?></p>
             <?php endif; ?>
+            <div class="rc-pills">
+                <span class="rc-pill <?= !empty($record['malware_hit']) ? 'is-bad' : 'is-good' ?>">
+                    Malware <?= !empty($record['malware_hit']) ? 'hit' : 'clean' ?>
+                </span>
+                <span class="rc-pill <?= !empty($record['phishing_hit']) ? 'is-bad' : 'is-good' ?>">
+                    Phishing <?= !empty($record['phishing_hit']) ? 'hit' : 'clean' ?>
+                </span>
+                <span class="rc-pill"><?= (int) $record['check_count'] ?> scan<?= (int) $record['check_count'] === 1 ? '' : 's' ?></span>
+                <?php if (!empty($record['page_title'])): ?>
+                    <span class="rc-pill rc-pill-wide"><?= h(mb_strimwidth((string) $record['page_title'], 0, 42, '…')) ?></span>
+                <?php endif; ?>
+            </div>
         </section>
 
-        <section class="highlight-panel highlight-negative">
-            <h3>Negative highlights</h3>
-            <?php if (!$negatives): ?>
-                <p class="highlight-empty">No elevated risk signals recorded.</p>
-            <?php else: ?>
-                <ul class="highlight-list">
-                    <?php foreach (array_slice($negatives, 0, 8) as $n): ?>
-                        <li class="highlight-item">
-                            <span class="highlight-icon" aria-hidden="true">✕</span>
-                            <div class="highlight-body">
-                                <div class="highlight-title"><?= h((string) $n['label']) ?></div>
-                                <div class="highlight-text"><?= h((string) $n['value']) ?><?php if (!empty($n['note'])): ?> — <?= h((string) $n['note']) ?><?php endif; ?></div>
-                            </div>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
+        <?php if ($record['threat_feed_hit']): ?>
+            <div class="rc-alert is-danger">Listed on threat feeds: <?= h((string) $record['threat_feed_sources']) ?></div>
+        <?php endif; ?>
+        <?php if ($record['manual_override']): ?>
+            <div class="rc-alert is-info">Manually reviewed by an admin<?= !empty($record['admin_notes']) ? ': ' . h((string) $record['admin_notes']) : '.' ?></div>
+        <?php endif; ?>
+
+        <section class="rc-facts" aria-label="Key facts">
+            <div class="rc-fact">
+                <span class="rc-fact-label">Age</span>
+                <span class="rc-fact-value"><?= h($ageLabel) ?></span>
+            </div>
+            <div class="rc-fact">
+                <span class="rc-fact-label">SSL</span>
+                <span class="rc-fact-value <?= !empty($record['ssl_valid']) ? 'is-good' : 'is-bad' ?>"><?= !empty($record['ssl_valid']) ? 'Valid' : 'Issue' ?></span>
+            </div>
+            <div class="rc-fact">
+                <span class="rc-fact-label">Threat lists</span>
+                <span class="rc-fact-value <?= $record['threat_feed_hit'] ? 'is-bad' : 'is-good' ?>"><?= $record['threat_feed_hit'] ? 'Hit' : 'Clean' ?></span>
+            </div>
+            <div class="rc-fact">
+                <span class="rc-fact-label">Registrar</span>
+                <span class="rc-fact-value"><?= h(mb_strimwidth((string) ($record['whois_registrar'] ?? 'Unknown'), 0, 22, '…')) ?></span>
+            </div>
         </section>
-    </div>
 
-    <?php if ($unchecked): ?>
-    <div class="card" style="margin-top:16px;">
-        <h3 style="margin-top:0;">Not checked here</h3>
-        <p style="color:var(--text-faint); font-size:14px; margin-top:0;">These optional sources were unavailable for this scan.</p>
-        <ul class="verdict-reasons">
-            <?php foreach ($unchecked as $u): ?>
-                <li><strong><?= h((string) $u['label']) ?>:</strong> <?= h((string) ($u['note'] ?: 'Not available')) ?></li>
-            <?php endforeach; ?>
-        </ul>
-    </div>
-    <?php endif; ?>
+        <section class="rc-signals" aria-label="What stood out">
+            <div class="rc-signal-col is-good">
+                <h3>Looking good</h3>
+                <?php if (!$goodBits): ?>
+                    <p class="rc-empty">Nothing strongly positive yet.</p>
+                <?php else: ?>
+                    <ul>
+                        <?php foreach ($goodBits as $bit): if ($bit === '') continue; ?>
+                            <li><span aria-hidden="true">✓</span><?= h($bit) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </div>
+            <div class="rc-signal-col is-bad">
+                <h3>Watch for</h3>
+                <?php if (!$badBits): ?>
+                    <p class="rc-empty">No elevated warnings.</p>
+                <?php else: ?>
+                    <ul>
+                        <?php foreach ($badBits as $bit): if ($bit === '') continue; ?>
+                            <li><span aria-hidden="true">!</span><?= h($bit) ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </div>
+        </section>
 
-    <?php if ($signals): ?>
-        <div class="signal-groups">
-            <?php foreach ($groups as $key => $title): ?>
-                <?php if (empty($grouped[$key])) continue; ?>
-                <div class="card signal-group">
-                    <h3><?= h($title) ?></h3>
-                    <div class="signal-list">
-                        <?php foreach ($grouped[$key] as $signal): ?>
-                            <div class="signal-row <?= tone_class((string) ($signal['tone'] ?? 'neutral')) ?>">
-                                <div class="signal-main">
-                                    <span class="label"><?= h((string) ($signal['label'] ?? '')) ?></span>
-                                    <?php if (!empty($signal['note'])): ?>
-                                        <span class="signal-note"><?= h((string) $signal['note']) ?></span>
-                                    <?php endif; ?>
+        <details class="rc-details">
+            <summary>Full technical details</summary>
+            <div class="rc-details-body">
+                <?php if (!empty($record['uses_cdn'])): ?>
+                    <p class="rc-tech-note">
+                        Public IP <code><?= h((string) ($record['ip_address'] ?? '')) ?></code> is
+                        <?= h((string) ($record['cdn_provider'] ?: 'CDN')) ?> — normal for many sites, not the origin location.
+                    </p>
+                <?php endif; ?>
+
+                <?php if ($signals): ?>
+                    <div class="signal-groups rc-signal-groups">
+                        <?php foreach ($groups as $key => $title): ?>
+                            <?php if (empty($grouped[$key])) continue; ?>
+                            <div class="card signal-group">
+                                <h3><?= h($title) ?></h3>
+                                <div class="signal-list">
+                                    <?php foreach ($grouped[$key] as $signal): ?>
+                                        <div class="signal-row <?= tone_class((string) ($signal['tone'] ?? 'neutral')) ?>">
+                                            <div class="signal-main">
+                                                <span class="label"><?= h((string) ($signal['label'] ?? '')) ?></span>
+                                                <?php if (!empty($signal['note'])): ?>
+                                                    <span class="signal-note"><?= h((string) $signal['note']) ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <span class="value"><?= h(is_scalar($signal['value'] ?? null) ? (string) $signal['value'] : json_encode($signal['value'])) ?></span>
+                                        </div>
+                                    <?php endforeach; ?>
                                 </div>
-                                <span class="value"><?= h(is_scalar($signal['value'] ?? null) ? (string) $signal['value'] : json_encode($signal['value'])) ?></span>
                             </div>
                         <?php endforeach; ?>
                     </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
+                <?php endif; ?>
+
+                <?php if ($unchecked): ?>
+                    <div class="card" style="margin-top:12px;">
+                        <h3 style="margin-top:0; font-size:14px;">Not checked in this scan</h3>
+                        <ul class="verdict-reasons">
+                            <?php foreach ($unchecked as $u): ?>
+                                <li><strong><?= h((string) $u['label']) ?>:</strong> <?= h((string) ($u['note'] ?: 'Not available')) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </details>
+    </div>
 
     <?php if (count($history) > 1): ?>
-    <div class="card" style="margin-top:16px;">
-        <h3 style="margin-top:0;">Score history</h3>
+    <div class="rc-card" style="margin-top:12px;">
+        <h3 class="rc-section-title">Score history</h3>
         <div class="history-bars">
             <?php foreach ($history as $hrow): ?>
                 <div title="<?= h($hrow['checked_at']) ?>: <?= (int) $hrow['trust_score'] ?>"
@@ -400,32 +407,31 @@ function tone_class(string $tone): string
     $threadStmt->execute([$record['domain']]);
     $domainThreads = $threadStmt->fetchAll();
     ?>
-    <div class="card" style="margin-top:16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
-            <h3 style="margin:0;">Community reports</h3>
-            <a class="btn btn-sm btn-danger" href="<?= BASE_PATH ?>/community.php?compose=1&type=website&q_prefill=<?= rawurlencode($record['domain']) ?>">Report this site</a>
+    <div class="rc-card" style="margin-top:12px;">
+        <div class="rc-community-head">
+            <h3 class="rc-section-title" style="margin:0;">Community</h3>
+            <a class="btn btn-sm btn-danger" href="<?= BASE_PATH ?>/community.php?compose=1&type=website&q_prefill=<?= rawurlencode($record['domain']) ?>">Report</a>
         </div>
         <?php if (!$domainThreads): ?>
-            <p style="color:var(--text-faint); font-size:14px; margin:10px 0 0;">No user reports for this site yet. Had an experience with it? Report it and open a discussion.</p>
+            <p class="rc-empty" style="margin:8px 0 0;">No reports yet for this site.</p>
         <?php else: ?>
-            <ul class="forum-list" style="margin-top:8px;">
+            <ul class="forum-list" style="margin-top:6px;">
                 <?php foreach ($domainThreads as $t): $rb = thread_review_badge((string) $t['review_status']); ?>
                 <li class="forum-item forum-item-compact">
                     <div class="forum-body">
                         <a class="forum-main" href="<?= BASE_PATH ?>/thread.php?id=<?= (int) $t['id'] ?>">
                             <div class="forum-title-row">
-                                <?php if ($t['is_sticky']): ?><span class="forum-flag">Pinned</span><?php endif; ?>
-                                <?php if ($t['is_locked']): ?><span class="forum-flag">Locked</span><?php endif; ?>
+                                <?php if ($t['is_sticky'] || $t['is_locked']): ?>
+                                <div class="forum-flags">
+                                    <?php if ($t['is_sticky']): ?><span class="forum-flag">Pinned</span><?php endif; ?>
+                                    <?php if ($t['is_locked']): ?><span class="forum-flag">Locked</span><?php endif; ?>
+                                </div>
+                                <?php endif; ?>
                                 <span class="forum-title"><?= h($t['title']) ?></span>
-                            </div>
-                            <div class="forum-meta">
-                                <span><?= h(report_category_label((string) $t['category'])) ?></span>
                             </div>
                         </a>
                         <div class="forum-foot">
                             <span class="forum-status <?= h($rb['class']) ?>"><?= h($rb['label']) ?></span>
-                            <span class="forum-sep" aria-hidden="true">·</span>
-                            <a class="user-link" href="<?= h(profile_path((string) $t['username'])) ?>"><?= h($t['username']) ?></a>
                             <span class="forum-sep" aria-hidden="true">·</span>
                             <span><?= h(time_ago($t['last_activity_at'])) ?></span>
                         </div>
@@ -437,14 +443,12 @@ function tone_class(string $tone): string
                 </li>
                 <?php endforeach; ?>
             </ul>
-            <p style="margin:10px 0 0;"><a href="<?= BASE_PATH ?>/community.php?q=<?= rawurlencode($record['domain']) ?>" style="color:var(--brand-2); font-size:13.5px;">View all discussions →</a></p>
         <?php endif; ?>
     </div>
 
-    <p style="margin-top:20px; color:var(--text-faint); font-size:13px;">
-        Permanent link:
-        <a href="<?= h(domain_page_path($record['domain'])) ?>"><?= h(domain_page_url($record['domain'])) ?></a>
-        · <a href="<?= BASE_PATH ?>/browse.php">Browse more checks</a>
+    <p class="rc-footer-link">
+        <a href="<?= h(domain_page_path($record['domain']) . '?refresh=1') ?>">Recheck <?= h($domain) ?></a>
+        · <a href="<?= BASE_PATH ?>/browse.php">Browse more</a>
     </p>
 
 </section>
