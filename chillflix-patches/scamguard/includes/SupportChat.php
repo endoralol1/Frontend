@@ -387,8 +387,38 @@ class SupportChat
             ];
         }
 
-        // Prefer AI for free-form questions when configured.
         $lookups = self::lookupDomainsFromText($message);
+
+        // Prefer factual lookup text for score questions so recheck links are never omitted.
+        if ($lookups && preg_match('/\b(score|rated|rating|safe|risky|scam|status|trust|how (bad|good)|what about)\b/i', $message)) {
+            $direct = self::formatDomainLookups($lookups);
+            if ($direct !== '') {
+                // Still try AI for a short natural intro, but always append links/facts.
+                if (self::aiEnabled()) {
+                    $ai = self::aiSupportReply($message, $history, $lookups);
+                    if ($ai !== null && empty($ai['escalate']) && !empty($ai['reply'])) {
+                        $reply = self::sanitizeReply((string) $ai['reply']);
+                        if (!str_contains($reply, 'refresh=1') || !str_contains($reply, '/site/')) {
+                            $reply = rtrim($reply) . "\n\n" . $direct;
+                        }
+                        return [
+                            'reply' => $reply,
+                            'escalate' => false,
+                            'matched' => 'ai+lookup',
+                            'source' => 'ai',
+                        ];
+                    }
+                }
+                return [
+                    'reply' => $direct,
+                    'escalate' => false,
+                    'matched' => 'domain-lookup',
+                    'source' => 'lookup',
+                ];
+            }
+        }
+
+        // Prefer AI for free-form questions when configured.
         if (self::aiEnabled()) {
             $ai = self::aiSupportReply($message, $history, $lookups);
             if ($ai !== null) {
@@ -507,24 +537,28 @@ class SupportChat
 
             if ($row) {
                 $badge = status_badge((string) $row['status']);
+                $page = domain_page_url($domain);
                 $out[] = [
                     'domain' => $domain,
                     'found' => true,
                     'score' => (int) $row['trust_score'],
                     'status' => (string) $row['status'],
                     'label' => (string) ($badge['label'] ?? $row['status']),
-                    'page' => domain_page_url($domain),
+                    'page' => $page,
+                    'recheck' => $page . (str_contains($page, '?') ? '&' : '?') . 'refresh=1',
                     'last_checked' => $row['last_checked'] ?? null,
                     'notes' => !empty($row['manual_override']) ? 'manual override set' : '',
                 ];
             } else {
+                $check = absolute_url('/check-entity.php?type=website&q=' . rawurlencode($domain));
                 $out[] = [
                     'domain' => $domain,
                     'found' => false,
                     'score' => null,
                     'status' => null,
                     'label' => null,
-                    'page' => absolute_url('/check-entity.php?type=website&q=' . rawurlencode($domain)),
+                    'page' => $check,
+                    'recheck' => $check . '&refresh=1',
                     'last_checked' => null,
                     'notes' => 'not in database yet',
                 ];
@@ -545,12 +579,22 @@ class SupportChat
         $parts = [];
         foreach ($lookups as $item) {
             $domain = (string) $item['domain'];
+            $page = (string) ($item['page'] ?? '');
+            $recheck = (string) ($item['recheck'] ?? $page);
             if (!empty($item['found'])) {
-                $parts[] = "{$domain} currently scores " . (int) $item['score'] . '/100 (' . ($item['label'] ?? $item['status']) . ') in ScamGuard.'
-                    . (!empty($item['last_checked']) ? ' Last checked: ' . $item['last_checked'] . '.' : '')
-                    . (!empty($item['page']) ? ' Details: ' . $item['page'] : '');
+                $line = "{$domain} currently scores " . (int) $item['score'] . '/100 (' . ($item['label'] ?? $item['status']) . ') in ScamGuard.';
+                if (!empty($item['last_checked'])) {
+                    $line .= ' Last checked: ' . $item['last_checked'] . '.';
+                }
+                if ($page !== '') {
+                    $line .= "\nDetails: {$page}";
+                }
+                if ($recheck !== '') {
+                    $line .= "\nRecheck now: {$recheck}";
+                }
+                $parts[] = $line;
             } else {
-                $parts[] = "{$domain} is not in our checked database yet. Run Quick check here: " . ($item['page'] ?? absolute_url('/'));
+                $parts[] = "{$domain} is not in our checked database yet.\nCheck now: {$page}\nRecheck/force scan: {$recheck}";
             }
         }
         return implode("\n\n", $parts);
@@ -629,8 +673,9 @@ class SupportChat
             . "Be accurate, concise (2–5 short sentences), friendly, and practical. Use plain language.\n"
             . "CRITICAL: When the user asks for a link, URL, or how to open a page, include the full https:// URL from the Important links list on one line with NO spaces inside the URL.\n"
             . "CRITICAL: When LIVE DOMAIN LOOKUPS are provided below, you MUST use those exact scores/status values to answer. "
-            . "Never say you cannot check a domain score if a lookup result is present. Quote score as N/100 and the status label, then optionally add the details URL.\n"
-            . "If a domain is listed as not in the database, say so and give the Quick check URL.\n"
+            . "Never say you cannot check a domain score if a lookup result is present. Quote score as N/100 and the status label. "
+            . "ALWAYS include both full URLs on their own (no spaces): Details (page) AND Recheck now (recheck, includes refresh=1 so the visitor can rescan).\n"
+            . "If a domain is listed as not in the database, say so and give the Check now / Recheck links.\n"
             . "Do not invent admin actions, refunds, legal advice, or features that are not described below.\n"
             . "Scores are risk signals, not legal proof of a scam.\n"
             . "If the user wants a human, set escalate=true.\n"
