@@ -1875,6 +1875,30 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
     background: var(--bg-2); color: var(--text);
     border: 1px solid var(--line); box-shadow: 0 6px 16px rgba(0,0,0,.25);
 }
+.sgchat-launcher.is-attention {
+    animation: sgchat-attention 1.6s ease-in-out infinite;
+}
+.sgchat-launcher.is-idle-pulse {
+    animation: sgchat-idle 2.8s ease-in-out infinite;
+}
+.sgchat-launcher.is-open.is-attention,
+.sgchat-launcher.is-open.is-idle-pulse {
+    animation: none;
+}
+@keyframes sgchat-attention {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+        box-shadow: 0 8px 22px rgba(0,0,0,.32), 0 0 0 0 rgba(184,76,10,.45);
+    }
+    50% {
+        transform: translateY(-2px) scale(1.06);
+        box-shadow: 0 12px 28px rgba(0,0,0,.38), 0 0 0 10px rgba(184,76,10,0);
+    }
+}
+@keyframes sgchat-idle {
+    0%, 100% { box-shadow: 0 8px 22px rgba(0,0,0,.32), 0 0 0 0 rgba(184,76,10,.0); }
+    50% { box-shadow: 0 8px 22px rgba(0,0,0,.32), 0 0 0 6px rgba(184,76,10,.18); }
+}
 .sgchat-launcher-icon { display: block; }
 .sgchat-badge {
     position: absolute; top: -5px; right: -5px; min-width: 16px; height: 16px;
@@ -1883,6 +1907,50 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
     padding: 0 4px; border: 2px solid var(--bg);
 }
 .sgchat-badge[hidden] { display: none !important; }
+
+/* Proactive welcome bubble */
+.sgchat-nudge {
+    position: fixed; right: 16px; bottom: 70px; z-index: 83;
+    width: min(280px, calc(100vw - 28px));
+    background: var(--card); color: var(--text);
+    border: 1px solid rgba(184,76,10,.45);
+    border-radius: 14px; padding: 12px 14px 12px;
+    box-shadow: 0 14px 36px rgba(0,0,0,.42);
+    opacity: 0; transform: translateY(8px) scale(.98);
+    pointer-events: none; transition: opacity .25s ease, transform .25s ease;
+}
+.sgchat-nudge.is-visible {
+    opacity: 1; transform: translateY(0) scale(1); pointer-events: auto;
+}
+.sgchat-nudge[hidden] { display: none !important; }
+.sgchat-nudge-close {
+    position: absolute; top: 6px; right: 8px;
+    width: 24px; height: 24px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--faint); cursor: pointer;
+    font-size: 18px; line-height: 1;
+}
+.sgchat-nudge-close:hover { color: var(--text); }
+.sgchat-nudge-text {
+    margin: 0 18px 10px 0; color: var(--text);
+    font-size: 13.5px; font-weight: 650; line-height: 1.4;
+}
+.sgchat-nudge-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.sgchat-nudge-btn {
+    border: 0; border-radius: 999px; padding: 6px 11px;
+    background: var(--brand); color: #fff;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.sgchat-nudge-btn.is-secondary {
+    background: var(--bg-2); color: var(--muted); border: 1px solid var(--line);
+}
+.sgchat-nudge-btn:hover { filter: brightness(1.06); }
+.sgchat-nudge::after {
+    content: ""; position: absolute; right: 18px; bottom: -7px;
+    width: 12px; height: 12px; background: var(--card);
+    border-right: 1px solid rgba(184,76,10,.45);
+    border-bottom: 1px solid rgba(184,76,10,.45);
+    transform: rotate(45deg);
+}
 .sgchat-panel {
     position: fixed; right: 16px; bottom: 68px; z-index: 82;
     width: min(380px, calc(100vw - 20px)); height: min(560px, calc(100vh - 110px));

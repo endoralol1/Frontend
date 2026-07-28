@@ -70,6 +70,22 @@
   root.appendChild(launcher);
   root.appendChild(panel);
 
+  var nudge = el('div', {
+    className: 'sgchat-nudge',
+    hidden: true,
+    role: 'dialog',
+    'aria-live': 'polite',
+    'aria-label': 'Chat suggestion'
+  });
+  nudge.innerHTML =
+    '<button type="button" class="sgchat-nudge-close" aria-label="Dismiss">&times;</button>' +
+    '<p class="sgchat-nudge-text"></p>' +
+    '<div class="sgchat-nudge-actions">' +
+      '<button type="button" class="sgchat-nudge-btn" data-action="open">Chat with me</button>' +
+      '<button type="button" class="sgchat-nudge-btn is-secondary" data-action="scan">Need a scan?</button>' +
+    '</div>';
+  root.appendChild(nudge);
+
   var messagesEl = panel.querySelector('#sgchat-messages');
   var suggestionsEl = panel.querySelector('#sgchat-suggestions');
   var statusEl = panel.querySelector('#sgchat-status');
@@ -79,6 +95,10 @@
   var guestFieldsEl = panel.querySelector('#sgchat-guest-fields');
   var restartEl = panel.querySelector('#sgchat-restart');
   var badgeEl = launcher.querySelector('.sgchat-badge');
+  var nudgeTextEl = nudge.querySelector('.sgchat-nudge-text');
+  var pendingPrompt = null;
+  var nudgeTimer = null;
+  var attentionTimer = null;
 
   // Start in chat mode UI hidden until opened; prechat only for guests.
   showChatUi(false);
@@ -87,6 +107,21 @@
 
   launcher.addEventListener('click', function () {
     setOpen(!open);
+  });
+
+  nudge.querySelector('.sgchat-nudge-close').addEventListener('click', function (e) {
+    e.stopPropagation();
+    hideNudge(true, 12);
+  });
+  nudge.querySelector('[data-action="open"]').addEventListener('click', function () {
+    openFromNudge(null);
+  });
+  nudge.querySelector('[data-action="scan"]').addEventListener('click', function () {
+    openFromNudge('Can you check something for me?');
+  });
+  nudge.addEventListener('click', function (e) {
+    if (e.target.closest('button')) return;
+    openFromNudge(null);
   });
 
   panel.querySelector('#sgchat-minimize').addEventListener('click', function () {
@@ -115,11 +150,11 @@
   });
 
   panel.querySelector('#sgchat-start').addEventListener('click', function () {
-    beginFreshChat();
+    beginFreshChat(function () { flushPendingPrompt(); });
   });
 
   panel.querySelector('#sgchat-new').addEventListener('click', function () {
-    beginFreshChat();
+    beginFreshChat(function () { flushPendingPrompt(); });
   });
 
   formEl.addEventListener('submit', function (e) {
@@ -163,29 +198,36 @@
     panel.setAttribute('aria-hidden', open ? 'false' : 'true');
     launcher.classList.toggle('is-open', open);
     launcher.setAttribute('aria-label', open ? 'Close support chat' : 'Open support chat');
-    if (!open) return;
-    clearBadge();
-    if (conversation && !isClosed()) {
-      showPrechat(false);
+    if (open) {
+      hideNudge(true, 24);
+      stopAttention();
+      clearBadge();
+      flushPendingPrompt();
+      if (conversation && !isClosed()) {
+        showPrechat(false);
+        showRestart(false);
+        showChatUi(true);
+        scrollBottom();
+        return;
+      }
+      if (conversation && isClosed()) {
+        showPrechat(false);
+        showChatUi(true);
+        showClosedState();
+        scrollBottom();
+        return;
+      }
+      if (loggedIn) {
+        beginFreshChat(function () { flushPendingPrompt(); });
+        return;
+      }
+      showChatUi(false);
       showRestart(false);
-      showChatUi(true);
-      scrollBottom();
+      showPrechat(true);
       return;
     }
-    if (conversation && isClosed()) {
-      showPrechat(false);
-      showChatUi(true);
-      showClosedState();
-      scrollBottom();
-      return;
-    }
-    if (loggedIn) {
-      beginFreshChat();
-      return;
-    }
-    showChatUi(false);
-    showRestart(false);
-    showPrechat(true);
+    // Closed: keep a soft attention pulse if they never chatted this session.
+    maybeStartAttention();
   }
 
   function bootstrap() {
@@ -223,9 +265,133 @@
         renderSuggestions(data.quick_actions || []);
       }
       startPolling();
+      scheduleSmartNudge();
     }).catch(function () {
       root.hidden = true;
     });
+  }
+
+  function nudgeStorageKey() {
+    return 'sgchat_nudge_hide_until';
+  }
+
+  function isNudgeSuppressed() {
+    try {
+      var until = Number(localStorage.getItem(nudgeStorageKey()) || 0);
+      return until > Date.now();
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function suppressNudgeHours(hours) {
+    try {
+      localStorage.setItem(nudgeStorageKey(), String(Date.now() + hours * 3600 * 1000));
+    } catch (e) {}
+  }
+
+  function smartNudgeCopy() {
+    var path = (location.pathname || '').toLowerCase();
+    var hour = new Date().getHours();
+    var hello = hour < 12 ? 'Good morning' : hour < 18 ? 'Hey' : 'Hi there';
+
+    if (path.indexOf('/site/') !== -1) {
+      return hello + ' — need help reading this score? I can explain the risks or recheck the site.';
+    }
+    if (path.indexOf('browse') !== -1) {
+      return hello + ' — want me to scan a website, phone, or crypto address for you?';
+    }
+    if (path.indexOf('/phone/') !== -1 || path.indexOf('/crypto/') !== -1 || path.indexOf('/iban/') !== -1) {
+      return hello + ' — questions about this result? Ask me, or request a fresh check.';
+    }
+    var pool = [
+      hello + '! Need a free scam check? Chat with me — I can scan sites for you.',
+      'Not sure if a site is safe? Tap here and I’ll check it with ScamGuard.',
+      'I’m the ScamGuard helper — ask about scores, or paste a domain and I’ll scan it.',
+      'Hey — stuck on a sketchy link? I can check websites, phones, crypto & IBANs.'
+    ];
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function scheduleSmartNudge() {
+    if (open || isNudgeSuppressed() || root.hidden) return;
+    maybeStartAttention();
+    if (nudgeTimer) clearTimeout(nudgeTimer);
+    nudgeTimer = setTimeout(function () {
+      if (open || isNudgeSuppressed()) return;
+      showNudge(smartNudgeCopy());
+    }, 3500);
+  }
+
+  function showNudge(text) {
+    if (!nudgeTextEl) return;
+    nudgeTextEl.textContent = text;
+    nudge.hidden = false;
+    nudge.classList.add('is-visible');
+    launcher.classList.add('is-attention');
+  }
+
+  function hideNudge(persist, hours) {
+    nudge.classList.remove('is-visible');
+    nudge.hidden = true;
+    if (nudgeTimer) {
+      clearTimeout(nudgeTimer);
+      nudgeTimer = null;
+    }
+    if (persist) suppressNudgeHours(hours || 12);
+  }
+
+  function maybeStartAttention() {
+    if (open || isNudgeSuppressed() || root.hidden) return;
+    launcher.classList.add('is-attention');
+    if (attentionTimer) clearTimeout(attentionTimer);
+    // After a while, settle to a gentler idle pulse so it isn’t nagging forever.
+    attentionTimer = setTimeout(function () {
+      launcher.classList.remove('is-attention');
+      launcher.classList.add('is-idle-pulse');
+    }, 18000);
+  }
+
+  function stopAttention() {
+    launcher.classList.remove('is-attention');
+    launcher.classList.remove('is-idle-pulse');
+    if (attentionTimer) {
+      clearTimeout(attentionTimer);
+      attentionTimer = null;
+    }
+  }
+
+  function openFromNudge(prompt) {
+    hideNudge(true, 24);
+    stopAttention();
+    pendingPrompt = prompt || null;
+    setOpen(true);
+    if (loggedIn || (conversation && !isClosed())) {
+      flushPendingPrompt();
+    }
+    // Guests see prechat; after they start, flushPendingPrompt runs via beginFreshChat/setOpen paths.
+    if (!loggedIn && !(conversation && !isClosed())) {
+      // Keep pendingPrompt for when they hit Start chat / auto-start after typing isn't available yet.
+      var startBtn = panel.querySelector('#sgchat-start');
+      if (startBtn && pendingPrompt) {
+        var once = function () {
+          startBtn.removeEventListener('click', once);
+          // beginFreshChat already wired on that button; flush after short delay once started
+          setTimeout(flushPendingPrompt, 600);
+        };
+        startBtn.addEventListener('click', once);
+      }
+    }
+  }
+
+  function flushPendingPrompt() {
+    if (!pendingPrompt) return;
+    if (!conversation || isClosed()) return;
+    var text = pendingPrompt;
+    pendingPrompt = null;
+    setTimeout(function () {
+      sendMessage(text);
+    }, 250);
   }
 
   function startChat(done) {
