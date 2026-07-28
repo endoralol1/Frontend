@@ -25,6 +25,7 @@ function nav_active(string $page, string $current): string {
             <a href="<?= BASE_PATH ?>/admin/domains.php" class="<?= nav_active('domains.php', $currentPage) ?>">🌐 Domains</a>
             <a href="<?= BASE_PATH ?>/admin/reports.php" class="<?= nav_active('reports.php', $currentPage) ?>">🚩 Reports</a>
             <a href="<?= BASE_PATH ?>/admin/community.php" class="<?= nav_active('community.php', $currentPage) ?>">💬 Community</a>
+            <a href="<?= BASE_PATH ?>/admin/chat.php" class="<?= nav_active('chat.php', $currentPage) ?>">🎧 Support Chat</a>
             <a href="<?= BASE_PATH ?>/admin/discovery.php" class="<?= nav_active('discovery.php', $currentPage) ?>">🔍 Discovery</a>
             <a href="<?= BASE_PATH ?>/admin/scoring.php" class="<?= nav_active('scoring.php', $currentPage) ?>">⚖️ Scoring</a>
             <a href="<?= BASE_PATH ?>/admin/api_keys.php" class="<?= nav_active('api_keys.php', $currentPage) ?>">🔑 API Keys</a>
