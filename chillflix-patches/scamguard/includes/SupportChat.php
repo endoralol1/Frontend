@@ -145,6 +145,11 @@ class SupportChat
                 'a' => "Browse checked domains here: {$browse}. FAQ: {$faq}.",
                 'keys' => ['browse', 'list', 'directory', 'faq'],
             ],
+            [
+                'q' => 'How many sites have been scanned?',
+                'a' => "The homepage counter shows live totals (domains scanned, likely safe, flagged scams, checked today). Ask me “how many sites?” and I’ll quote the current numbers from the database.",
+                'keys' => ['how many', 'counter', 'total', 'scanned', 'statistics', 'stats', 'homepage'],
+            ],
         ];
     }
 
@@ -387,6 +392,25 @@ class SupportChat
             ];
         }
 
+        // Homepage / database counters — answer from live stats, never guess.
+        if (self::wantsSiteStats($message)) {
+            $statsReply = self::formatSiteStats(self::liveSiteStats());
+            if ($statsReply !== '') {
+                return [
+                    'reply' => $statsReply,
+                    'escalate' => false,
+                    'matched' => 'site-stats',
+                    'source' => 'stats',
+                ];
+            }
+            return [
+                'reply' => 'I normally read the live homepage counters from the database, but that lookup failed just now. Please refresh https://www.chillflix.lol/scamguard/ — the numbers are at the top of the page.',
+                'escalate' => false,
+                'matched' => 'site-stats-error',
+                'source' => 'stats',
+            ];
+        }
+
         $lookups = self::lookupDomainsFromText($message);
 
         // Score / domain status questions: always return clean facts + recheck link.
@@ -404,7 +428,7 @@ class SupportChat
 
         // Prefer AI for free-form questions when configured.
         if (self::aiEnabled()) {
-            $ai = self::aiSupportReply($message, $history, $lookups);
+            $ai = self::aiSupportReply($message, $history, $lookups, self::liveSiteStats());
             if ($ai !== null) {
                 if (!empty($ai['escalate'])) {
                     return [
@@ -610,7 +634,70 @@ class SupportChat
      * @param list<array<string,mixed>> $lookups
      * @return array{reply:?string,escalate:bool}|null
      */
-    public static function aiSupportReply(string $message, array $history = [], array $lookups = []): ?array
+    /**
+     * Live homepage counters from the domains table (same source as index.php).
+     *
+     * @return array{total_domains:int,flagged_scams:int,likely_safe:int,checked_today:int}|null
+     */
+    public static function liveSiteStats(): ?array
+    {
+        try {
+            require_once __DIR__ . '/DomainRepository.php';
+            $repo = new DomainRepository(Database::getConnection());
+            $stats = $repo->stats();
+            if (!isset($stats['total_domains'])) {
+                return null;
+            }
+            return [
+                'total_domains' => (int) $stats['total_domains'],
+                'flagged_scams' => (int) ($stats['flagged_scams'] ?? 0),
+                'likely_safe' => (int) ($stats['likely_safe'] ?? 0),
+                'checked_today' => (int) ($stats['checked_today'] ?? 0),
+            ];
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    public static function wantsSiteStats(string $message): bool
+    {
+        $t = mb_strtolower($message);
+        if (preg_match('/\b(how many|how much|counter|statistic|stats|total)\b/i', $t)) {
+            if (preg_match('/\b(site|sites|domain|domains|scanned|checked|scan|scans|homepage|home page|database|listed|tracked)\b/i', $t)) {
+                return true;
+            }
+            // Short follow-ups like "how much u see?" after talking about the counter
+            if (preg_match('/\b(how many|how much)\b/i', $t) && mb_strlen(trim($message)) < 50) {
+                return true;
+            }
+        }
+        if (preg_match('/\b(number of|count of)\b.{0,20}\b(site|sites|domain|domains|scan)\b/i', $t)) {
+            return true;
+        }
+        return false;
+    }
+
+    /** @param array{total_domains:int,flagged_scams:int,likely_safe:int,checked_today:int}|null $stats */
+    public static function formatSiteStats(?array $stats): string
+    {
+        if (!$stats) {
+            return '';
+        }
+        $home = absolute_url('/');
+        $browse = absolute_url('/browse.php');
+        $total = number_format($stats['total_domains']);
+        $safe = number_format($stats['likely_safe']);
+        $scams = number_format($stats['flagged_scams']);
+        $today = number_format($stats['checked_today']);
+
+        return "Right now ScamGuard has {$total} domains scanned "
+            . "({$safe} likely safe, {$scams} flagged as scam/blacklist, {$today} checked today).\n"
+            . "Those are the same live counters on the homepage.\n"
+            . "Home: {$home}\n"
+            . "Browse: {$browse}";
+    }
+
+    public static function aiSupportReply(string $message, array $history = [], array $lookups = [], ?array $siteStats = null): ?array
     {
         $key = trim(get_setting('ai_api_key', ''));
         if ($key === '' && defined('AI_API_KEY')) {
@@ -659,6 +746,7 @@ class SupportChat
             . "how scores work, reporting scams, community forum, announcements, accounts/login/points, browsing flagged domains, and using the site.\n"
             . "Be accurate, concise (2–5 short sentences), friendly, and practical. Use plain language.\n"
             . "CRITICAL: When the user asks for a link, URL, or how to open a page, include the full https:// URL from the Important links list on one line with NO spaces inside the URL.\n"
+            . "CRITICAL: When LIVE SITE STATS are provided below, you MUST quote those exact numbers for questions about how many sites/domains are scanned, the homepage counter, totals, likely safe, flagged scams, or checked today. Never say you cannot see or do not have the exact number when LIVE SITE STATS are present.\n"
             . "CRITICAL: When LIVE DOMAIN LOOKUPS are provided below, you MUST use those exact scores/status values to answer. "
             . "Never say you cannot check a domain score if a lookup result is present. Quote score as N/100 and the status label. "
             . "ALWAYS include both full URLs on their own (no spaces): Details (page) AND Recheck now (recheck, includes refresh=1 so the visitor can rescan).\n"
@@ -675,6 +763,14 @@ class SupportChat
         $messages = [
             ['role' => 'system', 'content' => $system],
         ];
+
+        if ($siteStats) {
+            $messages[] = [
+                'role' => 'system',
+                'content' => "LIVE SITE STATS from ScamGuard database (same counters as the homepage — authoritative):\n"
+                    . json_encode($siteStats, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            ];
+        }
 
         if ($lookups) {
             $messages[] = [
@@ -701,6 +797,9 @@ class SupportChat
         $userContent = mb_substr(trim($message), 0, 1500);
         if ($lookups) {
             $userContent .= "\n\n[System note: live lookups attached. Answer with the real score if asked.]";
+        }
+        if ($siteStats && self::wantsSiteStats($message)) {
+            $userContent .= "\n\n[System note: live site stats attached. Quote the exact total_domains and related counters.]";
         }
         $messages[] = ['role' => 'user', 'content' => $userContent];
 
