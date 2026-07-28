@@ -99,6 +99,11 @@
   var pendingPrompt = null;
   var nudgeTimer = null;
   var attentionTimer = null;
+  var typeTimer = null;
+  var typeLines = [];
+  var typeIndex = 0;
+  var typePos = 0;
+  var typeMode = 'idle'; // idle | type | hold | erase
 
   // Start in chat mode UI hidden until opened; prechat only for guests.
   showChatUi(false);
@@ -290,27 +295,49 @@
     } catch (e) {}
   }
 
-  function smartNudgeCopy() {
+  function buildNudgeLines() {
     var path = (location.pathname || '').toLowerCase();
     var hour = new Date().getHours();
     var hello = hour < 12 ? 'Good morning' : hour < 18 ? 'Hey' : 'Hi there';
+    var lines = [];
 
     if (path.indexOf('/site/') !== -1) {
-      return hello + ' — need help reading this score? I can explain the risks or recheck the site.';
+      lines.push(hello + ' — need help reading this score?');
+      lines.push('I can explain the risks, or recheck this site for you.');
+      lines.push('Not sure what the signals mean? Ask me.');
+    } else if (path.indexOf('browse') !== -1) {
+      lines.push(hello + ' — want me to scan something from this list?');
+      lines.push('Paste a website, phone, crypto, or IBAN — I’ll check it.');
+    } else if (path.indexOf('/phone/') !== -1 || path.indexOf('/crypto/') !== -1 || path.indexOf('/iban/') !== -1) {
+      lines.push(hello + ' — questions about this result?');
+      lines.push('I can walk you through it, or run a fresh check.');
     }
-    if (path.indexOf('browse') !== -1) {
-      return hello + ' — want me to scan a website, phone, or crypto address for you?';
-    }
-    if (path.indexOf('/phone/') !== -1 || path.indexOf('/crypto/') !== -1 || path.indexOf('/iban/') !== -1) {
-      return hello + ' — questions about this result? Ask me, or request a fresh check.';
-    }
-    var pool = [
-      hello + '! Need a free scam check? Chat with me — I can scan sites for you.',
-      'Not sure if a site is safe? Tap here and I’ll check it with ScamGuard.',
-      'I’m the ScamGuard helper — ask about scores, or paste a domain and I’ll scan it.',
-      'Hey — stuck on a sketchy link? I can check websites, phones, crypto & IBANs.'
+
+    var rotating = [
+      hello + '! Need a free scam check?',
+      'I can scan websites, phones, crypto & IBANs.',
+      'Got a sketchy link? Paste it — I’ll check it.',
+      'Not sure if a site is safe? Tap “Need a scan?”',
+      'Ask me about scores, phishing, or red flags.',
+      'Someone asking you to pay? Let’s check them first.',
+      'I’m the ScamGuard helper — here if you need me.',
+      'Suspicious email? Drop the domain and I’ll look.',
+      'Before you click — I can check it in seconds.',
+      'Crypto wallet look off? I can check the address.',
+      'Phone number calling about money? Let’s verify it.',
+      'Free check. No signup. Just ask.'
     ];
-    return pool[Math.floor(Math.random() * pool.length)];
+
+    // Shuffle rotating lines so each visit feels different.
+    for (var i = rotating.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = rotating[i];
+      rotating[i] = rotating[j];
+      rotating[j] = tmp;
+    }
+
+    // Prefer page-aware lines first, then a mix of the rest.
+    return lines.concat(rotating).slice(0, 10);
   }
 
   function scheduleSmartNudge() {
@@ -319,19 +346,20 @@
     if (nudgeTimer) clearTimeout(nudgeTimer);
     nudgeTimer = setTimeout(function () {
       if (open || isNudgeSuppressed()) return;
-      showNudge(smartNudgeCopy());
+      showNudge();
     }, 3500);
   }
 
-  function showNudge(text) {
+  function showNudge() {
     if (!nudgeTextEl) return;
-    nudgeTextEl.textContent = text;
     nudge.hidden = false;
     nudge.classList.add('is-visible');
     launcher.classList.add('is-attention');
+    startTypewriter();
   }
 
   function hideNudge(persist, hours) {
+    stopTypewriter();
     nudge.classList.remove('is-visible');
     nudge.hidden = true;
     if (nudgeTimer) {
@@ -339,6 +367,68 @@
       nudgeTimer = null;
     }
     if (persist) suppressNudgeHours(hours || 12);
+  }
+
+  function stopTypewriter() {
+    if (typeTimer) {
+      clearTimeout(typeTimer);
+      typeTimer = null;
+    }
+    typeMode = 'idle';
+    if (nudgeTextEl) {
+      nudgeTextEl.classList.remove('is-typing');
+      nudgeTextEl.textContent = '';
+    }
+  }
+
+  function startTypewriter() {
+    stopTypewriter();
+    typeLines = buildNudgeLines();
+    if (!typeLines.length) return;
+    typeIndex = 0;
+    typePos = 0;
+    typeMode = 'type';
+    nudgeTextEl.classList.add('is-typing');
+    nudgeTextEl.textContent = '';
+    tickTypewriter();
+  }
+
+  function tickTypewriter() {
+    if (!nudgeTextEl || nudge.hidden || open) {
+      stopTypewriter();
+      return;
+    }
+    var line = typeLines[typeIndex] || '';
+    var delay = 42;
+
+    if (typeMode === 'type') {
+      typePos += 1;
+      nudgeTextEl.textContent = line.slice(0, typePos);
+      if (typePos >= line.length) {
+        typeMode = 'hold';
+        delay = 2200 + Math.floor(Math.random() * 900);
+      } else {
+        // Slightly snappier on spaces / punctuation so it feels natural.
+        var ch = line.charAt(typePos - 1);
+        delay = /[,.!?]/.test(ch) ? 90 : ch === ' ' ? 28 : 34 + Math.floor(Math.random() * 28);
+      }
+    } else if (typeMode === 'hold') {
+      typeMode = 'erase';
+      delay = 180;
+    } else if (typeMode === 'erase') {
+      typePos = Math.max(0, typePos - 1);
+      nudgeTextEl.textContent = line.slice(0, typePos);
+      if (typePos <= 0) {
+        typeIndex = (typeIndex + 1) % typeLines.length;
+        typeMode = 'type';
+        delay = 320;
+      } else {
+        // Faster delete than typing — like holding backspace.
+        delay = 14 + Math.floor(Math.random() * 10);
+      }
+    }
+
+    typeTimer = setTimeout(tickTypewriter, delay);
   }
 
   function maybeStartAttention() {

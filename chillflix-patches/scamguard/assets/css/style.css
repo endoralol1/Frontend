@@ -1933,6 +1933,19 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
 .sgchat-nudge-text {
     margin: 0 18px 10px 0; color: var(--text);
     font-size: 13.5px; font-weight: 650; line-height: 1.4;
+    min-height: 2.8em;
+}
+.sgchat-nudge-text.is-typing::after {
+    content: "";
+    display: inline-block;
+    width: 2px; height: 0.95em;
+    margin-left: 2px; vertical-align: -2px;
+    background: var(--brand);
+    animation: sgchat-caret 0.85s steps(1) infinite;
+}
+@keyframes sgchat-caret {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
 }
 .sgchat-nudge-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .sgchat-nudge-btn {
