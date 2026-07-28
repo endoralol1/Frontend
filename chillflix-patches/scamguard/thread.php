@@ -212,28 +212,39 @@ require __DIR__ . '/includes/header.php';
 <section class="section container thread-page">
     <p class="thread-breadcrumb"><a href="<?= BASE_PATH ?>/community.php">&larr; Community reports</a></p>
 
+    <?php $isAnnounce = !empty($thread['is_announcement']); ?>
     <?php if (isset($_GET['new'])): ?>
-        <div class="alert alert-success">Your report is live. Admins will review it — you can keep discussing below.</div>
+        <div class="alert alert-success"><?= $isAnnounce
+            ? 'Announcement published.'
+            : 'Your report is live. Admins will review it — you can keep discussing below.' ?></div>
     <?php endif; ?>
     <?php if ($error): ?><div class="alert alert-error"><?= h($error) ?></div><?php endif; ?>
 
-    <article class="card thread-card">
+    <article class="card thread-card <?= $isAnnounce ? 'thread-card-announce' : '' ?>">
         <div class="thread-kicker">
-            <span class="forum-status <?= h($review['class']) ?>"><?= h($review['label']) ?></span>
+            <?php if ($isAnnounce): ?>
+                <span class="forum-flag forum-flag-announce">Announcement</span>
+                <span class="forum-status status-verified">Official</span>
+            <?php else: ?>
+                <span class="forum-status <?= h($review['class']) ?>"><?= h($review['label']) ?></span>
+            <?php endif; ?>
             <?php if ($thread['is_sticky']): ?><span class="forum-flag">Pinned</span><?php endif; ?>
             <?php if ($thread['is_locked']): ?><span class="forum-flag">Locked</span><?php endif; ?>
-            <span class="forum-sep" aria-hidden="true">·</span>
-            <span><?= h(report_category_label((string) $thread['category'])) ?></span>
-            <span class="forum-sep" aria-hidden="true">·</span>
-            <span><?= h(thread_subject_label((string) $thread['subject_type'])) ?></span>
+            <?php if (!$isAnnounce): ?>
+                <span class="forum-sep" aria-hidden="true">·</span>
+                <span><?= h(report_category_label((string) $thread['category'])) ?></span>
+                <span class="forum-sep" aria-hidden="true">·</span>
+                <span><?= h(thread_subject_label((string) $thread['subject_type'])) ?></span>
+            <?php endif; ?>
         </div>
 
         <h1 class="thread-title"><?= h($thread['title']) ?></h1>
         <div class="thread-byline">
-            Reported by <a class="user-link" href="<?= h(profile_path((string) $thread['username'])) ?>"><strong><?= h($thread['username']) ?></strong></a><?= role_chip($thread['author_role'] ?? null) ?> · <?= h(time_ago($thread['created_at'])) ?>
+            <?= $isAnnounce ? 'Posted by' : 'Reported by' ?>
+            <a class="user-link" href="<?= h(profile_path((string) $thread['username'])) ?>"><strong><?= h($thread['username']) ?></strong></a><?= role_chip($thread['author_role'] ?? null) ?> · <?= h(time_ago($thread['created_at'])) ?>
         </div>
 
-        <?php if ($thread['subject_type'] !== 'card'): ?>
+        <?php if (!$isAnnounce && $thread['subject_type'] !== 'card'): ?>
         <div class="thread-subject-card">
             <div class="thread-subject-main">
                 <span class="thread-subject-label">Reported <?= h(strtolower(thread_subject_label((string) $thread['subject_type']))) ?></span>

@@ -275,8 +275,16 @@ function thread_subject_label(string $type): string
         'crypto' => 'Crypto',
         'iban' => 'IBAN',
         'card' => 'Card',
+        'announcement' => 'Announcement',
         default => 'Website',
     };
+}
+
+/** Only community/panel admins can post announcements (not moderators). */
+function can_post_announcement(): bool
+{
+    require_once __DIR__ . '/Auth.php';
+    return UserAuth::isAdminRole() || Auth::check();
 }
 
 /** Public profile URL for a community user */
@@ -309,12 +317,13 @@ function user_reputation(PDO $db, int $userId): array
 {
     $w = reputation_weights();
 
+    // Announcements are staff posts — they do not count toward report reputation.
     $stmt = $db->prepare(
         "SELECT COUNT(*) AS reports,
                 COALESCE(SUM(review_status = 'approved'), 0) AS approved,
                 COALESCE(SUM(review_status = 'rejected'), 0) AS rejected,
                 COALESCE(SUM(review_status = 'pending'), 0) AS pending
-         FROM forum_threads WHERE user_id = ?"
+         FROM forum_threads WHERE user_id = ? AND is_announcement = 0"
     );
     $stmt->execute([$userId]);
     $stats = $stmt->fetch() ?: ['reports' => 0, 'approved' => 0, 'rejected' => 0, 'pending' => 0];
@@ -328,7 +337,7 @@ function user_reputation(PDO $db, int $userId): array
             COALESCE(SUM(v.vote = 1), 0) AS positive,
             COALESCE(SUM(v.vote = -1), 0) AS negative
          FROM forum_votes v
-         WHERE (v.subject_type = 'thread'  AND v.subject_id IN (SELECT id FROM forum_threads WHERE user_id = ?))
+         WHERE (v.subject_type = 'thread'  AND v.subject_id IN (SELECT id FROM forum_threads WHERE user_id = ? AND is_announcement = 0))
             OR (v.subject_type = 'comment' AND v.subject_id IN (SELECT id FROM forum_comments WHERE user_id = ? AND is_deleted = 0))"
     );
     $stmt->execute([$userId, $userId]);

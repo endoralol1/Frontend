@@ -32,9 +32,9 @@ $points = (int) $rep['points'];
 
 $showAll = $isSelf || $isAdmin;
 $stmt = $db->prepare(
-    "SELECT id, subject_type, subject_value, category, title, review_status, is_sticky, is_locked, comment_count, created_at, last_activity_at
+    "SELECT id, subject_type, subject_value, category, is_announcement, title, review_status, is_sticky, is_locked, comment_count, created_at, last_activity_at
      FROM forum_threads
-     WHERE user_id = ?" . ($showAll ? '' : " AND review_status <> 'rejected'") . "
+     WHERE user_id = ? AND is_announcement = 0" . ($showAll ? '' : " AND review_status <> 'rejected'") . "
      ORDER BY created_at DESC LIMIT 30"
 );
 $stmt->execute([$profileId]);

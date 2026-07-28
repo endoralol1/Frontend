@@ -1662,3 +1662,19 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
     .composer-footer { flex-direction: column; align-items: stretch; }
     .composer-submit { justify-content: space-between; }
 }
+
+/* Announcements */
+.forum-flag-announce {
+    color: #fff; background: var(--brand); border-color: var(--brand);
+}
+.forum-item.is-announcement { background: rgba(184,76,10,.07); }
+.thread-card-announce { border-color: rgba(184,76,10,.4); }
+.composer-modes {
+    display: flex; gap: 6px; margin: 0 0 14px; padding: 3px;
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px;
+}
+.composer-mode {
+    flex: 1; border: 0; background: transparent; color: var(--muted);
+    padding: 8px 10px; border-radius: 9px; font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.composer-mode.is-active { background: var(--brand); color: #fff; }

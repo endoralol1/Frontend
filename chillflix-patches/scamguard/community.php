@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/UserAuth.php';
+require_once __DIR__ . '/includes/Auth.php';
 require_once __DIR__ . '/includes/DomainRepository.php';
 require_once __DIR__ . '/includes/PhoneChecker.php';
 require_once __DIR__ . '/includes/CryptoChecker.php';
@@ -9,107 +10,159 @@ require_once __DIR__ . '/includes/CardChecker.php';
 
 UserAuth::start();
 $db = Database::getConnection();
+$canAnnounce = can_post_announcement();
 
-// ---- Inline report composer -------------------------------------------
+// ---- Inline report / announcement composer ----------------------------
 $composeError = null;
+$composeMode = ($_POST['post_mode'] ?? $_GET['mode'] ?? 'report') === 'announcement' ? 'announcement' : 'report';
+if ($composeMode === 'announcement' && !$canAnnounce) {
+    $composeMode = 'report';
+}
 $composeType = strtolower(trim($_GET['type'] ?? $_POST['type'] ?? 'website'));
 if (!in_array($composeType, ['website', 'phone', 'crypto', 'iban', 'card'], true)) {
     $composeType = 'website';
 }
 $composePrefill = trim($_GET['q_prefill'] ?? $_GET['d'] ?? '');
-$composeOpen = isset($_GET['compose']) || $composePrefill !== '';
-$selfComposeUrl = '/community.php?compose=1' . ($composePrefill !== '' ? '&type=' . rawurlencode($composeType) . '&q_prefill=' . rawurlencode($composePrefill) : '');
+$composeOpen = isset($_GET['compose']) || $composePrefill !== '' || isset($_GET['mode']);
+$selfComposeUrl = '/community.php?compose=1'
+    . ($composeMode === 'announcement' ? '&mode=announcement' : '')
+    . ($composePrefill !== '' ? '&type=' . rawurlencode($composeType) . '&q_prefill=' . rawurlencode($composePrefill) : '');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_report' && UserAuth::check()) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && UserAuth::check()) {
+    $action = $_POST['action'] ?? '';
     $composeOpen = true;
-    $composeType = strtolower(trim($_POST['type'] ?? 'website'));
-    $input = trim($_POST['entity'] ?? '');
-    $category = $_POST['category'] ?? 'other';
-    $title = trim($_POST['title'] ?? '');
-    $body = trim($_POST['description'] ?? '');
-    $commentsOpen = isset($_POST['comments_open']) ? 1 : 0;
     $userId = (int) UserAuth::id();
 
-    if (!UserAuth::verifyCsrf($_POST['csrf'] ?? null)) {
-        $composeError = 'Session expired — please submit again.';
-    } elseif (!in_array($composeType, ['website', 'phone', 'crypto', 'iban', 'card'], true)) {
-        $composeError = 'Please choose what you are reporting.';
-    } elseif (!array_key_exists($category, report_categories())) {
-        $composeError = 'Please choose a valid category.';
-    } elseif (mb_strlen($title) < 8 || mb_strlen($title) > 150) {
-        $composeError = 'Give your report a short title (8–150 characters).';
-    } elseif (mb_strlen($body) < 20) {
-        $composeError = 'Describe what happened in at least 20 characters — it helps others and our reviewers.';
-    } elseif (mb_strlen($body) > 8000) {
-        $composeError = 'Description is too long (max 8000 characters).';
-    } else {
-        $rate = UserAuth::canPostThread($userId);
-        if (!$rate['ok']) {
-            $composeError = $rate['error'];
-        }
-    }
+    if ($action === 'create_announcement') {
+        $composeMode = 'announcement';
+        $title = trim($_POST['title'] ?? '');
+        $body = trim($_POST['description'] ?? '');
+        $commentsOpen = isset($_POST['comments_open']) ? 1 : 0;
+        $pin = isset($_POST['is_sticky']) ? 1 : 0;
 
-    if ($composeError === null) {
-        if ($composeType === 'website') {
-            $normalized = normalize_domain($input);
+        if (!$canAnnounce) {
+            $composeError = 'Only admins can post announcements.';
+        } elseif (!UserAuth::verifyCsrf($_POST['csrf'] ?? null)) {
+            $composeError = 'Session expired — please submit again.';
+        } elseif (mb_strlen($title) < 5 || mb_strlen($title) > 150) {
+            $composeError = 'Announcement title must be 5–150 characters.';
+        } elseif (mb_strlen($body) < 10) {
+            $composeError = 'Write a bit more for the announcement (at least 10 characters).';
+        } elseif (mb_strlen($body) > 8000) {
+            $composeError = 'Announcement is too long (max 8000 characters).';
         } else {
-            $normalized = match ($composeType) {
-                'phone' => PhoneChecker::normalize($input),
-                'crypto' => CryptoChecker::normalize($input),
-                'iban' => IbanChecker::normalize($input),
-                'card' => CardChecker::normalize($input),
-                default => null,
-            };
-            if ($composeType === 'card' && $normalized) {
-                $normalized = 'card:' . hash('sha256', $normalized);
-            }
-        }
-
-        if (!$normalized) {
-            $composeError = $composeType === 'website'
-                ? 'Please enter a valid domain (e.g. example.com).'
-                : 'Please enter a valid ' . $composeType . '.';
-        } else {
-            $ipHash = UserAuth::ipHash();
-            $stmt = $db->prepare('SELECT email FROM users WHERE id = ?');
-            $stmt->execute([$userId]);
-            $userEmail = (string) $stmt->fetchColumn();
-
-            $reportId = null;
-            $entityReportId = null;
-            $domainId = null;
-
-            if ($composeType === 'website') {
-                $repo = new DomainRepository();
-                $existing = $repo->find($normalized);
-                $domainId = $existing['id'] ?? null;
-                $reportCategory = in_array($category, ['phishing','fake_shop','crypto_scam','tech_support_scam','identity_theft','other'], true) ? $category : 'other';
-                $stmt = $db->prepare('INSERT INTO reports (domain_id, domain_text, reporter_email, category, description, ip_hash) VALUES (?, ?, ?, ?, ?, ?)');
-                $stmt->execute([$domainId, $normalized, $userEmail, $reportCategory, $body, $ipHash]);
-                $reportId = (int) $db->lastInsertId();
-            } else {
-                $stmt = $db->prepare('INSERT INTO entity_reports (entity_type, entity_value, reporter_email, category, description, ip_hash) VALUES (?, ?, ?, ?, ?, ?)');
-                $stmt->execute([$composeType, $normalized, $userEmail, $category, $body, $ipHash]);
-                $entityReportId = (int) $db->lastInsertId();
-            }
-
             $stmt = $db->prepare(
                 'INSERT INTO forum_threads
-                    (user_id, subject_type, subject_value, domain_id, report_id, entity_report_id, category, title, body, comments_open)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+                    (user_id, subject_type, subject_value, category, is_announcement, title, body,
+                     comments_open, is_sticky, review_status, reviewed_by, reviewed_at)
+                 VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, NOW())'
             );
             $stmt->execute([
-                $userId, $composeType, $normalized, $domainId, $reportId, $entityReportId,
-                $category, $title, $body, $commentsOpen,
+                $userId,
+                'announcement',
+                'announcement',
+                'announcement',
+                $title,
+                $body,
+                $commentsOpen,
+                $pin,
+                'approved',
+                Auth::id() ?? $userId,
             ]);
-            redirect('/thread.php?id=' . (int) $db->lastInsertId() . '&new=1');
+            $threadId = (int) $db->lastInsertId();
+            log_admin_activity(Auth::id(), 'forum_announcement', 'thread:' . $threadId, UserAuth::username());
+            redirect('/thread.php?id=' . $threadId . '&new=1');
+        }
+    } elseif ($action === 'create_report') {
+        $composeMode = 'report';
+        $composeType = strtolower(trim($_POST['type'] ?? 'website'));
+        $input = trim($_POST['entity'] ?? '');
+        $category = $_POST['category'] ?? 'other';
+        $title = trim($_POST['title'] ?? '');
+        $body = trim($_POST['description'] ?? '');
+        $commentsOpen = isset($_POST['comments_open']) ? 1 : 0;
+
+        if (!UserAuth::verifyCsrf($_POST['csrf'] ?? null)) {
+            $composeError = 'Session expired — please submit again.';
+        } elseif (!in_array($composeType, ['website', 'phone', 'crypto', 'iban', 'card'], true)) {
+            $composeError = 'Please choose what you are reporting.';
+        } elseif (!array_key_exists($category, report_categories())) {
+            $composeError = 'Please choose a valid category.';
+        } elseif (mb_strlen($title) < 8 || mb_strlen($title) > 150) {
+            $composeError = 'Give your report a short title (8–150 characters).';
+        } elseif (mb_strlen($body) < 20) {
+            $composeError = 'Describe what happened in at least 20 characters — it helps others and our reviewers.';
+        } elseif (mb_strlen($body) > 8000) {
+            $composeError = 'Description is too long (max 8000 characters).';
+        } else {
+            $rate = UserAuth::canPostThread($userId);
+            if (!$rate['ok']) {
+                $composeError = $rate['error'];
+            }
+        }
+
+        if ($composeError === null) {
+            if ($composeType === 'website') {
+                $normalized = normalize_domain($input);
+            } else {
+                $normalized = match ($composeType) {
+                    'phone' => PhoneChecker::normalize($input),
+                    'crypto' => CryptoChecker::normalize($input),
+                    'iban' => IbanChecker::normalize($input),
+                    'card' => CardChecker::normalize($input),
+                    default => null,
+                };
+                if ($composeType === 'card' && $normalized) {
+                    $normalized = 'card:' . hash('sha256', $normalized);
+                }
+            }
+
+            if (!$normalized) {
+                $composeError = $composeType === 'website'
+                    ? 'Please enter a valid domain (e.g. example.com).'
+                    : 'Please enter a valid ' . $composeType . '.';
+            } else {
+                $ipHash = UserAuth::ipHash();
+                $stmt = $db->prepare('SELECT email FROM users WHERE id = ?');
+                $stmt->execute([$userId]);
+                $userEmail = (string) $stmt->fetchColumn();
+
+                $reportId = null;
+                $entityReportId = null;
+                $domainId = null;
+
+                if ($composeType === 'website') {
+                    $repo = new DomainRepository();
+                    $existing = $repo->find($normalized);
+                    $domainId = $existing['id'] ?? null;
+                    $reportCategory = in_array($category, ['phishing','fake_shop','crypto_scam','tech_support_scam','identity_theft','other'], true) ? $category : 'other';
+                    $stmt = $db->prepare('INSERT INTO reports (domain_id, domain_text, reporter_email, category, description, ip_hash) VALUES (?, ?, ?, ?, ?, ?)');
+                    $stmt->execute([$domainId, $normalized, $userEmail, $reportCategory, $body, $ipHash]);
+                    $reportId = (int) $db->lastInsertId();
+                } else {
+                    $stmt = $db->prepare('INSERT INTO entity_reports (entity_type, entity_value, reporter_email, category, description, ip_hash) VALUES (?, ?, ?, ?, ?, ?)');
+                    $stmt->execute([$composeType, $normalized, $userEmail, $category, $body, $ipHash]);
+                    $entityReportId = (int) $db->lastInsertId();
+                }
+
+                $stmt = $db->prepare(
+                    'INSERT INTO forum_threads
+                        (user_id, subject_type, subject_value, domain_id, report_id, entity_report_id, category, is_announcement, title, body, comments_open)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)'
+                );
+                $stmt->execute([
+                    $userId, $composeType, $normalized, $domainId, $reportId, $entityReportId,
+                    $category, $title, $body, $commentsOpen,
+                ]);
+                redirect('/thread.php?id=' . (int) $db->lastInsertId() . '&new=1');
+            }
         }
     }
 }
 
 $q = trim($_GET['q'] ?? '');
 $filter = $_GET['filter'] ?? 'all';
-if (!in_array($filter, ['all', 'verified', 'pending', 'mine'], true)) {
+if (!in_array($filter, ['all', 'verified', 'pending', 'mine', 'announcements'], true)) {
     $filter = 'all';
 }
 $page = max(1, (int) ($_GET['page'] ?? 1));
@@ -129,9 +182,11 @@ if ($userId) {
 }
 
 if ($filter === 'verified') {
-    $where[] = "t.review_status = 'approved'";
+    $where[] = "t.review_status = 'approved' AND t.is_announcement = 0";
 } elseif ($filter === 'pending') {
-    $where[] = "t.review_status = 'pending'";
+    $where[] = "t.review_status = 'pending' AND t.is_announcement = 0";
+} elseif ($filter === 'announcements') {
+    $where[] = 't.is_announcement = 1';
 } elseif ($filter === 'mine') {
     if (!$userId) {
         redirect('/login.php?next=' . rawurlencode('/community.php?filter=mine'));
@@ -177,18 +232,18 @@ require __DIR__ . '/includes/header.php';
 <section class="section container forum-page">
     <div class="forum-head">
         <div>
-            <h2 class="section-title" style="margin:0;">Community reports</h2>
-            <p style="color:var(--muted); margin:6px 0 0; font-size:14px;">Real reports from real users — verified by admins.</p>
+            <h2 class="section-title" style="margin:0;">Community</h2>
+            <p style="color:var(--muted); margin:6px 0 0; font-size:14px;">Reports from users and announcements from admins.</p>
         </div>
-        <button type="button" class="btn btn-primary" id="composer-toggle" aria-haspopup="dialog" aria-controls="composer-modal">+ New report</button>
+        <button type="button" class="btn btn-primary" id="composer-toggle" aria-haspopup="dialog" aria-controls="composer-modal">+ New post</button>
     </div>
 
     <form class="forum-toolbar" method="get" action="<?= BASE_PATH ?>/community.php">
         <div class="forum-tabs">
             <?php
-            $tabs = ['all' => 'All', 'verified' => 'Verified', 'pending' => 'Pending'];
+            $tabs = ['all' => 'All', 'announcements' => 'Announcements', 'verified' => 'Verified', 'pending' => 'Pending'];
             if ($userId) {
-                $tabs['mine'] = 'My reports';
+                $tabs['mine'] = 'Mine';
             }
             foreach ($tabs as $key => $label):
                 $url = BASE_PATH . '/community.php?filter=' . $key . ($q !== '' ? '&q=' . rawurlencode($q) : '');
@@ -210,28 +265,38 @@ require __DIR__ . '/includes/header.php';
         <?php else: ?>
             <ul class="forum-list">
                 <?php foreach ($threads as $t):
+                    $isAnnounce = !empty($t['is_announcement']);
                     $review = thread_review_badge((string) $t['review_status']);
                 ?>
-                <li class="forum-item <?= $t['is_sticky'] ? 'is-sticky' : '' ?>">
+                <li class="forum-item <?= $t['is_sticky'] ? 'is-sticky' : '' ?> <?= $isAnnounce ? 'is-announcement' : '' ?>">
                     <div class="forum-body">
                         <a class="forum-main" href="<?= BASE_PATH ?>/thread.php?id=<?= (int) $t['id'] ?>">
                             <div class="forum-title-row">
+                                <?php if ($isAnnounce): ?><span class="forum-flag forum-flag-announce">Announcement</span><?php endif; ?>
                                 <?php if ($t['is_sticky']): ?><span class="forum-flag">Pinned</span><?php endif; ?>
                                 <?php if ($t['is_locked']): ?><span class="forum-flag">Locked</span><?php endif; ?>
                                 <span class="forum-title"><?= h($t['title']) ?></span>
                             </div>
                             <div class="forum-meta">
-                                <?php if ($t['subject_type'] !== 'card'): ?>
-                                    <span class="forum-subject"><?= h($t['subject_value']) ?></span>
+                                <?php if ($isAnnounce): ?>
+                                    <span>Official update</span>
+                                <?php else: ?>
+                                    <?php if ($t['subject_type'] !== 'card'): ?>
+                                        <span class="forum-subject"><?= h($t['subject_value']) ?></span>
+                                        <span class="forum-sep" aria-hidden="true">·</span>
+                                    <?php endif; ?>
+                                    <span><?= h(report_category_label((string) $t['category'])) ?></span>
                                     <span class="forum-sep" aria-hidden="true">·</span>
+                                    <span><?= h(thread_subject_label((string) $t['subject_type'])) ?></span>
                                 <?php endif; ?>
-                                <span><?= h(report_category_label((string) $t['category'])) ?></span>
-                                <span class="forum-sep" aria-hidden="true">·</span>
-                                <span><?= h(thread_subject_label((string) $t['subject_type'])) ?></span>
                             </div>
                         </a>
                         <div class="forum-foot">
-                            <span class="forum-status <?= h($review['class']) ?>"><?= h($review['label']) ?></span>
+                            <?php if ($isAnnounce): ?>
+                                <span class="forum-status status-verified">Official</span>
+                            <?php else: ?>
+                                <span class="forum-status <?= h($review['class']) ?>"><?= h($review['label']) ?></span>
+                            <?php endif; ?>
                             <span class="forum-sep" aria-hidden="true">·</span>
                             <a class="user-link" href="<?= h(profile_path((string) $t['username'])) ?>"><?= h($t['username']) ?></a>
                             <span class="forum-sep" aria-hidden="true">·</span>
@@ -265,8 +330,10 @@ require __DIR__ . '/includes/header.php';
     <div class="composer-dialog card">
         <div class="composer-dialog-head">
             <div>
-                <h3 id="composer-title" class="composer-dialog-title">New report</h3>
-                <p class="composer-dialog-sub">Opens a public discussion — verified by admins.</p>
+                <h3 id="composer-title" class="composer-dialog-title"><?= $composeMode === 'announcement' ? 'New announcement' : 'New report' ?></h3>
+                <p class="composer-dialog-sub" id="composer-sub"><?= $composeMode === 'announcement'
+                    ? 'Admin-only official post — visible to everyone in the community.'
+                    : 'Opens a public discussion — verified by admins.' ?></p>
             </div>
             <button type="button" class="composer-close" data-composer-close aria-label="Close">✕</button>
         </div>
@@ -280,10 +347,19 @@ require __DIR__ . '/includes/header.php';
                 </div>
             </div>
         <?php else: ?>
+            <?php if ($canAnnounce): ?>
+            <div class="composer-modes" role="tablist">
+                <button type="button" class="composer-mode <?= $composeMode === 'report' ? 'is-active' : '' ?>" data-mode="report">Report scam</button>
+                <button type="button" class="composer-mode <?= $composeMode === 'announcement' ? 'is-active' : '' ?>" data-mode="announcement">Announcement</button>
+            </div>
+            <?php endif; ?>
+
             <?php if ($composeError): ?><div class="alert alert-error"><?= h($composeError) ?></div><?php endif; ?>
-            <form method="post" class="composer-form" action="<?= BASE_PATH ?>/community.php">
+
+            <form method="post" class="composer-form" id="form-report" action="<?= BASE_PATH ?>/community.php" <?= $composeMode === 'announcement' ? 'hidden' : '' ?>>
                 <input type="hidden" name="csrf" value="<?= h(UserAuth::csrfToken()) ?>">
                 <input type="hidden" name="action" value="create_report">
+                <input type="hidden" name="post_mode" value="report">
                 <div class="composer-grid">
                     <div class="field">
                         <label>What are you reporting?</label>
@@ -310,15 +386,15 @@ require __DIR__ . '/includes/header.php';
                 </div>
                 <div class="field">
                     <label>Title of your report</label>
-                    <input type="text" name="title" placeholder="e.g. Fake shop — took payment, never shipped" value="<?= h($_POST['title'] ?? '') ?>" required minlength="8" maxlength="150">
+                    <input type="text" name="title" placeholder="e.g. Fake shop — took payment, never shipped" value="<?= h(($_POST['action'] ?? '') === 'create_report' ? ($_POST['title'] ?? '') : '') ?>" required minlength="8" maxlength="150">
                 </div>
                 <div class="field">
                     <label>Describe what happened</label>
-                    <textarea name="description" rows="5" placeholder="What did you see? Did you lose money or data? Include as much detail as possible." required minlength="20"><?= h($_POST['description'] ?? '') ?></textarea>
+                    <textarea name="description" rows="5" placeholder="What did you see? Did you lose money or data? Include as much detail as possible." required minlength="20"><?= h(($_POST['action'] ?? '') === 'create_report' ? ($_POST['description'] ?? '') : '') ?></textarea>
                 </div>
                 <div class="composer-footer">
                     <label class="check-toggle" style="margin:0;">
-                        <input type="checkbox" name="comments_open" <?= isset($_POST['comments_open']) || ($_POST['action'] ?? '') !== 'create_report' ? 'checked' : '' ?>>
+                        <input type="checkbox" name="comments_open" <?= !isset($_POST['action']) || isset($_POST['comments_open']) ? 'checked' : '' ?>>
                         <span>Let others join the discussion</span>
                     </label>
                     <div class="composer-submit">
@@ -327,6 +403,38 @@ require __DIR__ . '/includes/header.php';
                     </div>
                 </div>
             </form>
+
+            <?php if ($canAnnounce): ?>
+            <form method="post" class="composer-form" id="form-announcement" action="<?= BASE_PATH ?>/community.php" <?= $composeMode !== 'announcement' ? 'hidden' : '' ?>>
+                <input type="hidden" name="csrf" value="<?= h(UserAuth::csrfToken()) ?>">
+                <input type="hidden" name="action" value="create_announcement">
+                <input type="hidden" name="post_mode" value="announcement">
+                <div class="field">
+                    <label>Announcement title</label>
+                    <input type="text" name="title" placeholder="e.g. New phishing wave targeting banks" value="<?= h(($_POST['action'] ?? '') === 'create_announcement' ? ($_POST['title'] ?? '') : '') ?>" required minlength="5" maxlength="150">
+                </div>
+                <div class="field">
+                    <label>Message</label>
+                    <textarea name="description" rows="6" placeholder="Write the announcement for the community…" required minlength="10"><?= h(($_POST['action'] ?? '') === 'create_announcement' ? ($_POST['description'] ?? '') : '') ?></textarea>
+                </div>
+                <div class="composer-footer">
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <label class="check-toggle" style="margin:0;">
+                            <input type="checkbox" name="comments_open" <?= !isset($_POST['action']) || isset($_POST['comments_open']) ? 'checked' : '' ?>>
+                            <span>Allow discussion</span>
+                        </label>
+                        <label class="check-toggle" style="margin:0;">
+                            <input type="checkbox" name="is_sticky" <?= !isset($_POST['action']) || isset($_POST['is_sticky']) ? 'checked' : '' ?>>
+                            <span>Pin to top</span>
+                        </label>
+                    </div>
+                    <div class="composer-submit">
+                        <span class="composer-as">Admin post as <strong><?= h(UserAuth::username()) ?></strong></span>
+                        <button type="submit" class="btn btn-primary">Post announcement</button>
+                    </div>
+                </div>
+            </form>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 </div>
@@ -382,6 +490,25 @@ require __DIR__ . '/includes/header.php';
         open();
       } catch (_) {}
     });
+  });
+
+  const titleEl = document.getElementById('composer-title');
+  const subEl = document.getElementById('composer-sub');
+  const formReport = document.getElementById('form-report');
+  const formAnnounce = document.getElementById('form-announcement');
+  const setMode = (mode) => {
+    document.querySelectorAll('.composer-mode').forEach((b) => b.classList.toggle('is-active', b.dataset.mode === mode));
+    if (formReport) formReport.hidden = mode !== 'report';
+    if (formAnnounce) formAnnounce.hidden = mode !== 'announcement';
+    if (titleEl) titleEl.textContent = mode === 'announcement' ? 'New announcement' : 'New report';
+    if (subEl) {
+      subEl.textContent = mode === 'announcement'
+        ? 'Admin-only official post — visible to everyone in the community.'
+        : 'Opens a public discussion — verified by admins.';
+    }
+  };
+  document.querySelectorAll('.composer-mode').forEach((btn) => {
+    btn.addEventListener('click', () => setMode(btn.dataset.mode || 'report'));
   });
 
   const type = document.getElementById('report-type');
