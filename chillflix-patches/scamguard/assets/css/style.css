@@ -1709,8 +1709,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
     width: min(380px, calc(100vw - 20px)); height: min(560px, calc(100vh - 110px));
     background: var(--card); border: 1px solid var(--line); border-radius: 18px;
     box-shadow: 0 18px 50px rgba(0,0,0,.45);
-    display: flex; flex-direction: column; overflow: hidden;
+    display: none; flex-direction: column; overflow: hidden;
 }
+.sgchat-panel.is-open { display: flex; }
 .sgchat-head {
     display: flex; align-items: center; justify-content: space-between; gap: 10px;
     padding: 12px 14px; border-bottom: 1px solid var(--line);

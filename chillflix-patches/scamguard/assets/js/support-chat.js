@@ -20,7 +20,7 @@
   });
   launcher.innerHTML = '<span class="sgchat-launcher-icon" aria-hidden="true">💬</span><span class="sgchat-badge" hidden>0</span>';
 
-  var panel = el('div', { className: 'sgchat-panel', hidden: true, role: 'dialog', 'aria-label': 'Support chat' });
+  var panel = el('div', { className: 'sgchat-panel', role: 'dialog', 'aria-label': 'Support chat', 'aria-hidden': 'true' });
   panel.innerHTML =
     '<div class="sgchat-head">' +
       '<div class="sgchat-head-text">' +
@@ -58,20 +58,11 @@
   var badgeEl = launcher.querySelector('.sgchat-badge');
 
   launcher.addEventListener('click', function () {
-    open = !open;
-    panel.hidden = !open;
-    launcher.classList.toggle('is-open', open);
-    if (open) {
-      clearBadge();
-      if (!conversation) showPrechat(true);
-      else { showPrechat(false); scrollBottom(); }
-    }
+    setOpen(!open);
   });
 
   panel.querySelector('#sgchat-minimize').addEventListener('click', function () {
-    open = false;
-    panel.hidden = true;
-    launcher.classList.remove('is-open');
+    setOpen(false);
   });
 
   panel.querySelector('#sgchat-human').addEventListener('click', function () {
@@ -83,8 +74,7 @@
 
   panel.querySelector('#sgchat-close-chat').addEventListener('click', function () {
     if (!conversation) {
-      open = false;
-      panel.hidden = true;
+      setOpen(false);
       return;
     }
     if (!confirm('End this chat?')) return;
@@ -109,6 +99,19 @@
   });
 
   bootstrap();
+
+  function setOpen(next) {
+    open = !!next;
+    panel.classList.toggle('is-open', open);
+    panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+    launcher.classList.toggle('is-open', open);
+    launcher.setAttribute('aria-label', open ? 'Close support chat' : 'Open support chat');
+    if (open) {
+      clearBadge();
+      if (!conversation) showPrechat(true);
+      else { showPrechat(false); scrollBottom(); }
+    }
+  }
 
   function bootstrap() {
     get('bootstrap').then(function (data) {
