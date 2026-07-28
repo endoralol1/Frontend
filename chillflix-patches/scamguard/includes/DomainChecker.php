@@ -1257,6 +1257,8 @@ class DomainChecker
                 $reviewPen = $dampened;
             }
             $this->data['review_penalty'] = $reviewPen + (int) ($this->data['local_review_penalty'] ?? 0);
+            $this->data['review_bonus'] = (int) ($ext['review_bonus'] ?? 0);
+            $this->data['review_consensus'] = $ext['review_consensus'] ?? null;
             $this->data['external_score_delta'] = $delta;
             if (!empty($ext['spam_hit'])) {
                 $this->data['spam_hit'] = 1;

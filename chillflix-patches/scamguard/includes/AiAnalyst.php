@@ -66,10 +66,20 @@ class AiAnalyst
             $scoreHint += 2;
         }
         // Reviews already affect the numeric score via external_score_delta —
-        // only nudge the AI lean lightly here to avoid double-counting.
+        // use consensus text for the lean, and only lightly nudge the hint.
+        $reviewConsensus = trim((string) ($data['review_consensus'] ?? ''));
         if (!empty($data['review_penalty'])) {
             $scoreHint -= min(4, (int) floor(((int) $data['review_penalty']) / 4));
-            $badBits[] = 'Weak review reputation';
+            $badBits[] = $reviewConsensus !== ''
+                ? 'Reviews: ' . mb_strimwidth($reviewConsensus, 0, 140, '…')
+                : 'Weak review reputation';
+        } elseif (!empty($data['review_bonus']) || ($reviewConsensus !== '' && stripos($reviewConsensus, 'positive') !== false)) {
+            $scoreHint += min(3, 1 + (int) floor(((int) ($data['review_bonus'] ?? 0)) / 4));
+            $goodBits[] = $reviewConsensus !== ''
+                ? 'Reviews: ' . mb_strimwidth($reviewConsensus, 0, 140, '…')
+                : 'Positive review reputation';
+        } elseif ($reviewConsensus !== '') {
+            $goodBits[] = 'Reviews: ' . mb_strimwidth($reviewConsensus, 0, 140, '…');
         }
         if (!empty($data['content_incomplete'])) {
             $scoreHint -= 4;

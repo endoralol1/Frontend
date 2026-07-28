@@ -65,6 +65,37 @@ foreach ($signals as $signal) {
 
 $positives = array_values(array_filter($signals, static fn($s) => ($s['tone'] ?? '') === 'good'));
 $negatives = array_values(array_filter($signals, static fn($s) => in_array(($s['tone'] ?? ''), ['bad', 'warn'], true)));
+// Prefer review consensus / major review sources in the highlight strip.
+$reviewPriority = static function (array $s): int {
+    $label = (string) ($s['label'] ?? '');
+    if ($label === 'Review consensus') {
+        return 0;
+    }
+    if (preg_match('/Trustpilot|Sitejabber|Scamadviser|Yelp/i', $label)) {
+        return 1;
+    }
+    return 5;
+};
+usort($positives, static function ($a, $b) use ($reviewPriority) {
+    return $reviewPriority($a) <=> $reviewPriority($b);
+});
+// Tiny-sample review warnings should not crowd out real issues when consensus is positive.
+$negatives = array_values(array_filter($negatives, static function ($s) use ($positives) {
+    $label = (string) ($s['label'] ?? '');
+    $note = (string) ($s['note'] ?? '');
+    $hasPositiveConsensus = false;
+    foreach ($positives as $p) {
+        if (($p['label'] ?? '') === 'Review consensus') {
+            $hasPositiveConsensus = true;
+            break;
+        }
+    }
+    if ($hasPositiveConsensus && preg_match('/Sitejabber|Yelp/i', $label)
+        && (stripos($note, 'small sample') !== false || stripos($note, 'tiny sample') !== false || stripos($note, 'Down-weighted') !== false)) {
+        return false;
+    }
+    return true;
+}));
 $unchecked = array_values(array_filter($signals, static fn($s) => ($s['value'] ?? '') === 'Not checked'));
 
 $score = (int) $record['trust_score'];
@@ -274,9 +305,12 @@ function tone_class(string $tone): string
             'SPF' => 'Email SPF protection is set up',
             'DMARC' => 'Email DMARC protection is set up',
             'MX records' => 'Mail server (MX) records are set up',
+            'Review consensus' => 'Overall review picture looks positive',
             'Trustpilot reviews' => 'Positive Trustpilot review profile',
             'Sitejabber / SmartCustomer' => 'Positive Sitejabber review profile',
             'Sitejabber reviews' => 'Positive Sitejabber review profile',
+            'Scamadviser' => 'Scamadviser trust score looks solid',
+            'Yelp reviews' => 'Positive Yelp review profile',
             'Tranco traffic rank' => 'This website gets notable traffic (Tranco ranked)',
             'AI risk judgment' => 'AI review found no major concerns',
             'Threat intel summary' => 'No hits across threat intelligence feeds',
@@ -303,9 +337,12 @@ function tone_class(string $tone): string
             'Suspicious phrases' => 'Scam-style wording was detected on the page',
             'Payment language' => 'Commerce / payment wording detected',
             'MX records' => 'No mail server (MX) records found',
+            'Review consensus' => 'Overall review picture raises concerns',
             'Trustpilot reviews' => 'Trustpilot reviews raise concerns',
             'Sitejabber / SmartCustomer' => 'Sitejabber reviews raise concerns',
             'Sitejabber reviews' => 'Sitejabber reviews raise concerns',
+            'Scamadviser' => 'Scamadviser trust score looks weak',
+            'Yelp reviews' => 'Yelp reviews raise concerns',
             'Redirects' => 'Many redirects before the final page',
             'WHOIS / RDAP' => 'Domain registration data is unavailable',
         ];
