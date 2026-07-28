@@ -150,6 +150,11 @@ class SupportChat
                 'a' => "The homepage counter shows live totals (domains scanned, likely safe, flagged scams, checked today). Ask me “how many sites?” and I’ll quote the current numbers from the database.",
                 'keys' => ['how many', 'counter', 'total', 'scanned', 'statistics', 'stats', 'homepage'],
             ],
+            [
+                'q' => 'Can the chat check or recheck something for me?',
+                'a' => "Yes. Paste a website, phone number, crypto address, or IBAN and ask me to check or recheck it. I’ll run the same public ScamGuard scan and reply with the score, status, and detail links. I can’t do admin-only actions or post community reports for you (sign in on the site for that).",
+                'keys' => ['can you check', 'check for me', 'recheck', 'scan for me', 'look up for me', 'do a scan'],
+            ],
         ];
     }
 
@@ -174,6 +179,7 @@ class SupportChat
     {
         return [
             ['id' => 'check', 'label' => 'Check a website'],
+            ['id' => 'scan_help', 'label' => 'Scan something for me'],
             ['id' => 'report', 'label' => 'Report a scam'],
             ['id' => 'score', 'label' => 'How scores work'],
             ['id' => 'human', 'label' => 'Talk to an admin'],
@@ -366,6 +372,7 @@ class SupportChat
         // Quick-action ids from widget buttons
         $quickMap = [
             'check' => 'How do I check a website?',
+            'scan_help' => 'Can you check something for me?',
             'report' => 'How do I report a scam?',
             'score' => 'What does the trust score mean?',
             'human' => 'talk to an admin',
@@ -411,9 +418,15 @@ class SupportChat
             ];
         }
 
+        // Public actions: check / recheck websites & entities (same as the website UI).
+        $action = self::tryPublicAction($message, $history);
+        if ($action !== null) {
+            return $action;
+        }
+
         $lookups = self::lookupDomainsFromText($message);
 
-        // Score / domain status questions: always return clean facts + recheck link.
+        // Score / domain status questions against existing DB rows.
         if ($lookups && preg_match('/\b(score|rated|rating|safe|risky|scam|status|trust|how (bad|good)|what about|check|lookup|look up)\b/i', $message)) {
             $direct = self::formatDomainLookups($lookups);
             if ($direct !== '') {
@@ -442,12 +455,16 @@ class SupportChat
                     $reply = self::sanitizeReply((string) $ai['reply']);
                     if (
                         $lookups
-                        && preg_match('/\b(cannot|can\'t|unable to)\b.{0,40}\b(check|look\s*up|tell|provide)\b/i', $reply)
+                        && preg_match('/\b(cannot|can\'t|unable to)\b.{0,40}\b(check|look\s*up|tell|provide|scan)\b/i', $reply)
                     ) {
                         $direct = self::formatDomainLookups($lookups);
                         if ($direct !== '') {
                             $reply = $direct;
                         }
+                    }
+                    // If the AI still refuses a check it could do, nudge toward pasting a subject.
+                    if (preg_match('/\b(cannot|can\'t|unable to)\b.{0,60}\b(check|scan|recheck)\b/i', $reply)) {
+                        $reply .= "\n\nPaste a website, phone, crypto address, or IBAN and ask me to check it — I can run the public scan here.";
                     }
                     return [
                         'reply' => $reply,
@@ -511,6 +528,300 @@ class SupportChat
         ];
     }
 
+    /** True when the visitor wants us to run a public check/recheck. */
+    public static function wantsPublicCheck(string $message): bool
+    {
+        return (bool) preg_match(
+            '/\b(check|scan|recheck|rescan|refresh|lookup|look\s*up|verify|analyse|analyze|investigate|'
+            . 'is\s+(it|this|that)\s+safe|safe\??|scam\??|risky\??|'
+            . 'can\s+you\s+(check|scan|look)|check\s+(it|this|that|for\s+me)|'
+            . 'do\s+(a\s+)?(scan|check)|run\s+(a\s+)?(scan|check))\b/i',
+            $message
+        );
+    }
+
+    public static function wantsForceRecheck(string $message): bool
+    {
+        return (bool) preg_match(
+            '/\b(recheck|rescan|refresh|scan\s+again|check\s+again|force\s+(scan|check)|new\s+scan)\b/i',
+            $message
+        );
+    }
+
+    /**
+     * Run the same public checks visitors can do on the site (website / phone / crypto / IBAN / card).
+     *
+     * @param list<array<string,mixed>> $history
+     * @return array{reply:string,escalate:bool,matched:?string,source:string}|null
+     */
+    public static function tryPublicAction(string $message, array $history = []): ?array
+    {
+        $force = self::wantsForceRecheck($message);
+        $wants = self::wantsPublicCheck($message) || $force;
+
+        // Soft score questions still trigger a check when the domain is unknown.
+        $softScoreAsk = (bool) preg_match(
+            '/\b(score|rated|rating|safe|risky|scam|status|trust|what about|how (bad|good))\b/i',
+            $message
+        );
+
+        $domains = self::extractDomainsFromText($message);
+        if (!$domains) {
+            $ref = self::lastDomainFromHistory($history);
+            if ($ref && ($force || preg_match('/\b(it|this|that|again)\b/i', $message))) {
+                $domains = [$ref];
+            }
+        }
+
+        // Offer help when they ask to check but forgot the subject.
+        if ($wants && !$domains && !self::extractEntitySubject($message)) {
+            if (preg_match('/\b(can you check|check for me|scan for me|scan something|check something)\b/i', $message)
+                || mb_strlen(trim($message)) < 80
+            ) {
+                return [
+                    'reply' => "Yes — I can run the same public ScamGuard checks here.\n"
+                        . "Paste one of these and ask me to check or recheck it:\n"
+                        . "- Website (example.com)\n"
+                        . "- Phone number\n"
+                        . "- Crypto address\n"
+                        . "- IBAN\n"
+                        . "I’ll reply with the score, status, and detail links. "
+                        . "Community reports still need you signed in on the website.",
+                    'escalate' => false,
+                    'matched' => 'check-prompt',
+                    'source' => 'action',
+                ];
+            }
+        }
+
+        if ($domains && ($wants || $softScoreAsk || $force)) {
+            $lines = [];
+            $didScan = false;
+            foreach (array_slice($domains, 0, 2) as $domain) {
+                $allowScan = $force || $wants || self::shouldAutoScanDomain($domain, $wants, $softScoreAsk);
+                $result = self::runWebsiteCheck($domain, $force, $allowScan);
+                if ($result === null) {
+                    continue;
+                }
+                if (!empty($result['scanned'])) {
+                    $didScan = true;
+                }
+                $lines[] = $result['text'];
+            }
+            if ($lines) {
+                return [
+                    'reply' => implode("\n\n", $lines),
+                    'escalate' => false,
+                    'matched' => $didScan ? 'website-scan' : 'website-lookup',
+                    'source' => $didScan ? 'scan' : 'lookup',
+                ];
+            }
+        }
+
+        $entity = self::extractEntitySubject($message);
+        if ($entity && ($wants || $softScoreAsk || $force)) {
+            $result = self::runEntityCheck($entity['type'], $entity['raw'], $force);
+            if ($result !== null) {
+                return [
+                    'reply' => $result['text'],
+                    'escalate' => false,
+                    'matched' => 'entity-scan',
+                    'source' => 'scan',
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    public static function shouldAutoScanDomain(string $domain, bool $wantsCheck, bool $softScoreAsk): bool
+    {
+        if ($wantsCheck) {
+            return true;
+        }
+        if (!$softScoreAsk) {
+            return false;
+        }
+        // Soft “is X safe?” — scan when we have no fresh row yet.
+        require_once __DIR__ . '/DomainRepository.php';
+        $repo = new DomainRepository();
+        $row = $repo->find($domain);
+        return !$row || $repo->isStale($row);
+    }
+
+    /** @return list<string> */
+    public static function extractDomainsFromText(string $message): array
+    {
+        if (!preg_match_all(
+            '/\b(?:https?:\/\/)?(?:www\.)?([a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?)+)\b/i',
+            $message,
+            $m
+        )) {
+            return [];
+        }
+        $out = [];
+        $seen = [];
+        foreach ($m[1] as $raw) {
+            $domain = normalize_domain($raw);
+            if (!$domain) {
+                continue;
+            }
+            if (str_starts_with($domain, 'www.')) {
+                $domain = substr($domain, 4);
+            }
+            // Skip common false positives
+            if (preg_match('/\.(png|jpe?g|gif|webp|css|js)$/i', $domain)) {
+                continue;
+            }
+            if (isset($seen[$domain])) {
+                continue;
+            }
+            $seen[$domain] = true;
+            $out[] = $domain;
+            if (count($out) >= 3) {
+                break;
+            }
+        }
+        return $out;
+    }
+
+    /** @param list<array<string,mixed>> $history */
+    public static function lastDomainFromHistory(array $history): ?string
+    {
+        for ($i = count($history) - 1; $i >= 0; $i--) {
+            $body = (string) ($history[$i]['body'] ?? '');
+            $domains = self::extractDomainsFromText($body);
+            if ($domains) {
+                return $domains[0];
+            }
+        }
+        return null;
+    }
+
+    /** @return array{type:string,raw:string}|null */
+    public static function extractEntitySubject(string $message): ?array
+    {
+        require_once __DIR__ . '/EntityRepository.php';
+
+        // Strip URLs/domains so phone/iban detection is cleaner
+        $stripped = preg_replace(
+            '/\b(?:https?:\/\/)?(?:www\.)?[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?)+\b/i',
+            ' ',
+            $message
+        ) ?? $message;
+        $stripped = preg_replace(
+            '/\b(check|scan|recheck|rescan|refresh|lookup|look\s*up|verify|please|can you|for me|is it safe|safe|scam|risky)\b/i',
+            ' ',
+            $stripped
+        ) ?? $stripped;
+        $stripped = trim(preg_replace('/\s+/', ' ', $stripped) ?? $stripped);
+        if ($stripped === '' || mb_strlen($stripped) < 4) {
+            return null;
+        }
+
+        $type = EntityRepository::detectType($stripped);
+        if ($type === 'website') {
+            return null;
+        }
+        return ['type' => $type, 'raw' => $stripped];
+    }
+
+    /** @return array{text:string,scanned:bool}|null */
+    public static function runWebsiteCheck(string $domain, bool $forceRecheck, bool $allowScan = true): ?array
+    {
+        require_once __DIR__ . '/DomainRepository.php';
+        $repo = new DomainRepository();
+
+        try {
+            @set_time_limit(90);
+            $before = $repo->find($domain);
+            $wasMissingOrStale = !$before || $repo->isStale($before);
+            if (!$allowScan && !$forceRecheck && $before && !$wasMissingOrStale) {
+                $row = $before;
+                $scanned = false;
+            } else {
+                // force=true only for explicit recheck; stale/missing still rescans via getOrCheck.
+                $row = $repo->getOrCheck($domain, 'chat', $forceRecheck);
+                $scanned = $forceRecheck || $wasMissingOrStale || !$before;
+            }
+        } catch (Throwable $e) {
+            $page = absolute_url('/check-entity.php?type=website&q=' . rawurlencode($domain));
+            return [
+                'text' => "I tried to check {$domain} but the scan hit an error. You can open it here:\n{$page}",
+                'scanned' => false,
+            ];
+        }
+
+        if (!$row) {
+            return null;
+        }
+
+        $badge = status_badge((string) ($row['status'] ?? 'unknown'));
+        $score = (int) ($row['trust_score'] ?? 0);
+        $label = (string) ($badge['label'] ?? $row['status']);
+        $page = domain_page_url($domain);
+        $recheck = $page . (str_contains($page, '?') ? '&' : '?') . 'refresh=1';
+        $verb = $forceRecheck ? 'Rechecked' : ($scanned ? 'Checked' : 'Current result for');
+        $text = "{$verb} {$domain}: {$score}/100 ({$label}).";
+        if (!empty($row['last_checked'])) {
+            $text .= ' Last checked: ' . $row['last_checked'] . '.';
+        }
+        $text .= "\nDetails: {$page}\nRecheck now: {$recheck}";
+        if (!$scanned && !$forceRecheck) {
+            $text .= "\nSay “recheck {$domain}” if you want a fresh scan.";
+        }
+        return ['text' => $text, 'scanned' => $scanned];
+    }
+
+    /** @return array{text:string}|null */
+    public static function runEntityCheck(string $type, string $raw, bool $force): ?array
+    {
+        require_once __DIR__ . '/EntityRepository.php';
+        $repo = new EntityRepository();
+
+        try {
+            @set_time_limit(60);
+            $row = $repo->getOrCheck($type, $raw, $force);
+        } catch (Throwable $e) {
+            return [
+                'text' => 'I tried that check but hit an error. You can run it on the homepage: '
+                    . absolute_url('/'),
+            ];
+        }
+
+        $display = (string) ($row['display_value'] ?? $raw);
+        if ($type === 'card') {
+            // Never echo full PAN material back into chat.
+            $display = (string) ($row['display_value'] ?? 'card check');
+        }
+        $badge = status_badge((string) ($row['status'] ?? 'unknown'));
+        $score = (int) ($row['trust_score'] ?? 0);
+        $label = (string) ($badge['label'] ?? $row['status']);
+        $pretty = match ($type) {
+            'phone' => absolute_url('phone/' . rawurlencode(ltrim((string) ($row['entity_value'] ?: $raw), '+'))),
+            'crypto' => absolute_url('crypto/' . rawurlencode((string) ($row['entity_value'] ?: $raw))),
+            'iban' => absolute_url('iban/' . rawurlencode((string) ($row['entity_value'] ?: $raw))),
+            'card' => absolute_url('card/' . rawurlencode((string) ($row['entity_value'] ?: 'check'))),
+            default => absolute_url('/'),
+        };
+        $typeLabel = match ($type) {
+            'phone' => 'Phone',
+            'crypto' => 'Crypto',
+            'iban' => 'IBAN',
+            'card' => 'Card',
+            default => ucfirst($type),
+        };
+        $text = "{$typeLabel} check for {$display}: {$score}/100 ({$label}).";
+        if (!empty($row['last_checked'])) {
+            $text .= ' Last checked: ' . $row['last_checked'] . '.';
+        }
+        if (!empty($row['_invalid'])) {
+            $text = "That {$typeLabel} input looks invalid. Please double-check and try again, or use the homepage form.";
+        }
+        $text .= "\nDetails: {$pretty}";
+        return ['text' => $text];
+    }
+
     /**
      * Pull domains mentioned in a message and resolve live ScamGuard records.
      *
@@ -518,31 +829,16 @@ class SupportChat
      */
     public static function lookupDomainsFromText(string $message): array
     {
-        if (!preg_match_all('/\b(?:https?:\/\/)?(?:www\.)?([a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?)+)\b/i', $message, $m)) {
+        $domains = self::extractDomainsFromText($message);
+        if (!$domains) {
             return [];
         }
 
         require_once __DIR__ . '/DomainRepository.php';
         $repo = new DomainRepository();
         $out = [];
-        $seen = [];
-        foreach ($m[1] as $raw) {
-            $domain = normalize_domain($raw);
-            if (!$domain || isset($seen[$domain])) {
-                continue;
-            }
-            // Skip generic non-site words that look like domains rarely; keep normal TLDs.
-            $seen[$domain] = true;
+        foreach ($domains as $domain) {
             $row = $repo->find($domain);
-            if (!$row && str_starts_with($domain, 'www.')) {
-                $domain = substr($domain, 4);
-                if (isset($seen[$domain])) {
-                    continue;
-                }
-                $seen[$domain] = true;
-                $row = $repo->find($domain);
-            }
-
             if ($row) {
                 $badge = status_badge((string) $row['status']);
                 $page = domain_page_url($domain);
@@ -643,7 +939,7 @@ class SupportChat
     {
         try {
             require_once __DIR__ . '/DomainRepository.php';
-            $repo = new DomainRepository(Database::getConnection());
+            $repo = new DomainRepository();
             $stats = $repo->stats();
             if (!isset($stats['total_domains'])) {
                 return null;
@@ -745,12 +1041,15 @@ class SupportChat
             . "Help visitors with anything about this website and product: trust checks (website/phone/crypto/IBAN/card), "
             . "how scores work, reporting scams, community forum, announcements, accounts/login/points, browsing flagged domains, and using the site.\n"
             . "Be accurate, concise (2–5 short sentences), friendly, and practical. Use plain language.\n"
+            . "CAPABILITIES: The chat can itself run public ScamGuard checks/rechecks for websites, phones, crypto, IBAN, and cards, "
+            . "and can quote live homepage counters. When a visitor asks you to check something, ask them to paste the subject if missing — "
+            . "do NOT say you are unable to check. You cannot post community reports or do admin actions without the visitor using those pages while signed in.\n"
             . "CRITICAL: When the user asks for a link, URL, or how to open a page, include the full https:// URL from the Important links list on one line with NO spaces inside the URL.\n"
             . "CRITICAL: When LIVE SITE STATS are provided below, you MUST quote those exact numbers for questions about how many sites/domains are scanned, the homepage counter, totals, likely safe, flagged scams, or checked today. Never say you cannot see or do not have the exact number when LIVE SITE STATS are present.\n"
             . "CRITICAL: When LIVE DOMAIN LOOKUPS are provided below, you MUST use those exact scores/status values to answer. "
             . "Never say you cannot check a domain score if a lookup result is present. Quote score as N/100 and the status label. "
             . "ALWAYS include both full URLs on their own (no spaces): Details (page) AND Recheck now (recheck, includes refresh=1 so the visitor can rescan).\n"
-            . "If a domain is listed as not in the database, say so and give the Check now / Recheck links.\n"
+            . "If a domain is listed as not in the database, say so and invite them to paste it again asking you to check/scan it (the chat can run the scan).\n"
             . "Do not invent admin actions, refunds, legal advice, or features that are not described below.\n"
             . "Scores are risk signals, not legal proof of a scam.\n"
             . "If the user wants a human, set escalate=true.\n"

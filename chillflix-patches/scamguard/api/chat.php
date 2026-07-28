@@ -159,11 +159,40 @@ if ($action === 'send') {
 
     if (($conv['status'] ?? '') === 'bot') {
         $history = SupportChat::messages($db, $convId);
+        $looksLikeScan = (
+            SupportChat::wantsPublicCheck($body) || SupportChat::wantsForceRecheck($body)
+        ) && (
+            SupportChat::extractDomainsFromText($body)
+            || SupportChat::extractEntitySubject($body)
+            || SupportChat::lastDomainFromHistory($history)
+        );
+        if ($looksLikeScan && !chat_rate_limit('scan', 8, 600)) {
+            SupportChat::addMessage(
+                $db,
+                $convId,
+                'bot',
+                'You asked for several scans in a short time. Please wait a few minutes, or open the check on the website: '
+                    . absolute_url('/'),
+                'ScamGuard Bot'
+            );
+            $fresh = SupportChat::getById($db, $convId);
+            $after = (int) ($_POST['after_id'] ?? 0);
+            $msgs = SupportChat::messages($db, $convId, $after);
+            chat_json([
+                'ok' => true,
+                'conversation' => SupportChat::publicPayload($fresh ?? $conv, $msgs),
+            ]);
+        }
+        // Public scans can take a while (same as opening a check page).
+        @set_time_limit(120);
         $decision = SupportChat::botReply($body, $history);
         if (!empty($decision['escalate'])) {
             SupportChat::escalate($db, $conv);
         } elseif (!empty($decision['reply'])) {
-            $botName = (($decision['source'] ?? '') === 'ai') ? 'ScamGuard AI' : 'ScamGuard Bot';
+            $src = (string) ($decision['source'] ?? '');
+            $botName = in_array($src, ['ai', 'scan', 'stats', 'lookup', 'action'], true)
+                ? 'ScamGuard AI'
+                : 'ScamGuard Bot';
             SupportChat::addMessage($db, $convId, 'bot', (string) $decision['reply'], $botName);
         }
     }
