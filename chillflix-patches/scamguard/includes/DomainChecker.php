@@ -22,9 +22,13 @@ class DomainChecker
     /** Real Chrome UA for homepage fetches — ScamGuardBot UA triggers CF harder. */
     private const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
-    public function __construct(string $domain, private bool $fast = false)
+    /** Where a discovery candidate came from: 'malware'|'phishing'|'popular_strong'|'popular'|null */
+    private ?string $sourceClass = null;
+
+    public function __construct(string $domain, private bool $fast = false, ?string $sourceClass = null)
     {
         $this->domain = $domain;
+        $this->sourceClass = $sourceClass;
         // Discovery mode optimized for maximum throughput. It skips slow external
         // waits (RDAP/WHOIS, TLS socket, IP metadata) and stores a lightweight row.
         // User-opened pages still run full scans.
@@ -84,13 +88,7 @@ class DomainChecker
             );
         }
         if ($this->turboFast) {
-            $this->addSignal(
-                'threat',
-                'Local threat feeds',
-                'Deferred (turbo)',
-                'Discovery source already supplied the domain; exact feed confirmation runs during the full report.',
-                'neutral'
-            );
+            $this->applyProvenanceClassification();
         } else {
             $this->checkThreatFeeds();
         }
@@ -1220,6 +1218,53 @@ class DomainChecker
     // -------------------------------------------------------------
     // Threat feeds
     // -------------------------------------------------------------
+    /**
+     * Turbo classification from the discovery source the domain came from.
+     * A domain pulled off a live malware/phishing feed is treated as a hit
+     * immediately (reliable — it is actively listed), and one from the
+     * research-grade Tranco top list gets a verified-safe baseline. This lets
+     * automatic discovery move the "safe" and "scam" counters without doing a
+     * slow per-domain lookup or full scan.
+     */
+    private function applyProvenanceClassification(): void
+    {
+        $this->data['threat_feed_hit'] = 0;
+        $this->data['malware_hit'] = 0;
+        $this->data['phishing_hit'] = 0;
+        $this->data['threat_feed_sources'] = null;
+        $this->data['popular_verified'] = 0;
+
+        $hasIp = !empty($this->data['ip_address']);
+
+        switch ($this->sourceClass) {
+            case 'malware':
+                $this->data['malware_hit'] = 1;
+                $this->data['threat_feed_hit'] = 1;
+                $this->data['threat_feed_sources'] = 'URLhaus (malware/botnet URLs)';
+                $this->addSignal('threat', 'Threat feeds', 'Listed (malware)', 'Domain is on an active malware/botnet URL feed.', 'bad');
+                break;
+            case 'phishing':
+                $this->data['phishing_hit'] = 1;
+                $this->data['threat_feed_hit'] = 1;
+                $this->data['threat_feed_sources'] = 'Phishing feed (OpenPhish / Phishing.Database)';
+                $this->addSignal('threat', 'Threat feeds', 'Listed (phishing)', 'Domain is on an active phishing feed.', 'bad');
+                break;
+            case 'popular_strong':
+                // Tranco is hardened against manipulation; membership + resolving DNS
+                // is a strong legitimacy signal for a quick pass.
+                if ($hasIp) {
+                    $this->data['popular_verified'] = 1;
+                }
+                $this->addSignal('reputation', 'Traffic ranking', 'Top-ranked site', 'Listed on the Tranco top sites ranking (high global traffic).', $hasIp ? 'good' : 'neutral');
+                break;
+            case 'popular':
+                $this->addSignal('reputation', 'Traffic ranking', 'On a top-domains list', 'Appears on a major top-domains list; full checks run when the report is opened.', 'neutral');
+                break;
+            default:
+                $this->addSignal('threat', 'Threat feeds', 'Deferred (turbo)', 'Exact feed confirmation runs during the full report.', 'neutral');
+        }
+    }
+
     private function checkThreatFeeds(): void
     {
         $this->data['threat_feed_hit'] = 0;
@@ -1921,6 +1966,13 @@ class DomainChecker
         $hardEvidence = !empty($this->data['malware_hit'])
             || !empty($this->data['phishing_hit'])
             || !empty($this->data['threat_feed_hit']);
+
+        // Research-grade top-list membership (Tranco) that resolves is a reliable
+        // fast-pass to "likely safe" during automatic discovery.
+        if (!$hardEvidence && !empty($this->data['popular_verified'])) {
+            $score = max($score, 82);
+        }
+
         if (!$hardEvidence) {
             $floor = 25;
             if (!empty($this->data['ssl_valid'])) {

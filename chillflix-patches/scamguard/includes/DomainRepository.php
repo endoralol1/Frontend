@@ -52,7 +52,7 @@ class DomainRepository
         return $noWhois || ($noHost && $noSignals);
     }
 
-    public function getOrCheck(string $domain, string $discoveredVia = 'search', bool $force = false, bool $fast = false): array
+    public function getOrCheck(string $domain, string $discoveredVia = 'search', bool $force = false, bool $fast = false, ?string $sourceClass = null): array
     {
         $existing = $this->find($domain);
 
@@ -73,7 +73,7 @@ class DomainRepository
 
         // User-facing / refresh always full; discovery can request fast.
         $useFast = $fast && (!$existing || $force);
-        $checker = new DomainChecker($domain, $useFast);
+        $checker = new DomainChecker($domain, $useFast, $useFast ? $sourceClass : null);
         $result = $checker->run();
 
         $id = $this->upsert($result, $existing['id'] ?? null, $discoveredVia);

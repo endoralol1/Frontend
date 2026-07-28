@@ -129,29 +129,29 @@ require __DIR__ . '/includes/header.php';
         </form>
 
         <div class="report-cta-card">
-            <div>
-                <strong>Report scams to help others</strong>
-                <p>Share your experience and protect the community.</p>
+            <div class="report-cta-text">
+                <strong>Report a scam</strong>
+                <span>Help protect the community.</span>
             </div>
-            <a class="btn btn-danger" href="<?= BASE_PATH ?>/report.php">Report</a>
+            <a class="btn btn-danger btn-sm" href="<?= BASE_PATH ?>/report.php">Report</a>
         </div>
 
-        <div class="stats-row">
+        <div class="stats-strip">
             <div class="stat">
-                <div class="num"><?= number_format($stats['total_domains']) ?></div>
-                <div class="label">Domains tracked</div>
+                <span class="num"><?= number_format($stats['total_domains']) ?></span>
+                <span class="label">Tracked</span>
             </div>
             <div class="stat">
-                <div class="num"><?= number_format($stats['likely_safe']) ?></div>
-                <div class="label">Likely safe</div>
+                <span class="num num-safe"><?= number_format($stats['likely_safe']) ?></span>
+                <span class="label">Likely safe</span>
             </div>
             <div class="stat">
-                <div class="num"><?= number_format($stats['flagged_scams']) ?></div>
-                <div class="label">Flagged as scams</div>
+                <span class="num num-scam"><?= number_format($stats['flagged_scams']) ?></span>
+                <span class="label">Flagged scams</span>
             </div>
             <div class="stat">
-                <div class="num"><?= number_format($stats['checked_today']) ?></div>
-                <div class="label">Checked today</div>
+                <span class="num"><?= number_format($stats['checked_today']) ?></span>
+                <span class="label">Today</span>
             </div>
         </div>
     </div>

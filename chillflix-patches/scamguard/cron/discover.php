@@ -119,11 +119,12 @@ foreach ($sources as $source) {
 
         $found = count($candidateDomains);
 
-        foreach ($candidateDomains as $domain) {
+        // Candidate lists are maps of host => provenance class (null if unknown).
+        foreach ($candidateDomains as $domain => $sourceClass) {
             if ($queued >= $slot) {
                 break;
             }
-            $domain = normalize_domain($domain);
+            $domain = normalize_domain((string) $domain);
             if (!$domain) {
                 continue;
             }
@@ -135,7 +136,7 @@ foreach ($sources as $source) {
             }
 
             try {
-                $repo->getOrCheck($domain, $source['name'], false, true); // fast discovery
+                $repo->getOrCheck($domain, $source['name'], false, true, $sourceClass); // fast discovery
                 $queued++;
                 $totalQueued++;
                 cron_log("Checked: $domain");
@@ -216,11 +217,13 @@ function discover_from_ct_logs(): array
         }
     }
 
-    return array_values(array_unique($domains));
+    // CT-log hosts have unknown safety — no provenance class.
+    return array_fill_keys(array_values(array_unique($domains)), null);
 }
 
 /**
  * Walk threat-feed files with a persistent offset, collecting domains not yet in DB.
+ * Returns a map of host => provenance class.
  */
 function discover_new_from_threat_feeds(PDO $db, int $want): array
 {
@@ -289,15 +292,14 @@ function discover_new_from_threat_feeds(PDO $db, int $want): array
             }
             $host = strtolower(ltrim((string) $host, '*.'));
             $host = normalize_domain($host) ?? '';
-            if ($host === '' || isset($known[$host])) {
+            if ($host === '' || isset($known[$host]) || isset($domains[$host])) {
                 if ($scanned >= $maxScan) {
                     break 2;
                 }
                 continue;
             }
 
-            $domains[] = $host;
-            $known[$host] = true;
+            $domains[$host] = classify_feed_file($file);
             if (count($domains) >= $want) {
                 $offset = $absolute + 1;
                 break 2;
@@ -317,11 +319,31 @@ function discover_new_from_threat_feeds(PDO $db, int $want): array
     }
     set_setting('threat_feed_scan_offset', (string) $offset);
 
-    return array_values(array_unique($domains));
+    return $domains; // map of host => source class
+}
+
+/** Classify a feed file into a provenance class used for fast turbo scoring. */
+function classify_feed_file(string $file): ?string
+{
+    $b = strtolower(basename($file));
+    if (str_contains($b, 'urlhaus')) {
+        return 'malware';
+    }
+    if (str_contains($b, 'phishing') || str_contains($b, 'openphish')) {
+        return 'phishing';
+    }
+    if (str_contains($b, 'tranco')) {
+        return 'popular_strong';
+    }
+    if (str_contains($b, 'umbrella') || str_contains($b, 'majestic') || str_contains($b, 'domcop')) {
+        return 'popular';
+    }
+    return null;
 }
 
 function discover_from_pending_reports(PDO $db): array
 {
     $stmt = $db->query("SELECT DISTINCT domain_text FROM reports WHERE status = 'pending'");
-    return array_column($stmt->fetchAll(), 'domain_text');
+    // User-reported domains have unknown safety — no provenance class.
+    return array_fill_keys(array_column($stmt->fetchAll(), 'domain_text'), null);
 }
