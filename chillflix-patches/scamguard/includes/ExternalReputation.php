@@ -286,16 +286,27 @@ class ExternalReputation
         }
 
         if ($listed > 0) {
+            // Public RBLs are noisy: a single listing is common for streaming, proxy,
+            // and high-traffic sites and is NOT proof of fraud. Only treat multiple
+            // listings as a real spam "hit"; a lone listing is a soft caution.
+            $strong = $listed >= 3;
+            $moderate = $listed === 2;
+            $penalty = $strong ? min(20, 6 + $listed * 3) : ($moderate ? 8 : 4);
+            $note = $strong
+                ? 'Listed on several public RBLs — a stronger abuse signal.'
+                : ($moderate
+                    ? 'Listed on a couple of public RBLs.'
+                    : 'Listed on a single public RBL — often noisy for streaming / high-traffic sites, so treated as a soft caution.');
             return [
                 'signal' => $this->sig(
                     'threat',
                     'Abuse / spam blacklists',
                     'Listed on ' . $listed . ' list(s)',
-                    'Public multi-RBL scan via MXToolbox.',
-                    'bad'
+                    $note,
+                    $strong ? 'bad' : 'warn'
                 ),
-                'hit' => 1,
-                'penalty' => min(25, 10 + $listed * 3),
+                'hit' => $strong ? 1 : 0,
+                'penalty' => $penalty,
                 'bonus' => 0,
             ];
         }

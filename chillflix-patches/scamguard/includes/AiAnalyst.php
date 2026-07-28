@@ -175,15 +175,16 @@ class AiAnalyst
                 . 'Then set lean + score_delta that should move the trust score.',
         ];
 
-        $system = 'You are ScamGuard’s website investigator. '
-            . 'First figure out WHAT the site is (forum, shop, bank phishing, warez/nulled downloads, casino, SaaS, etc.) from page_title, meta_description, and page_text_excerpt. '
-            . 'Then judge risk for a normal user: positive = reasonably legit for its category; negative = scam, phishing, piracy/nulled/cracked goods, fake shop, investment fraud, or high chance of harm; mixed = unclear or dual-use. '
-            . 'Piracy, nulled/cracked software, credential markets, fake support, and “too good to be true” finance are NEGATIVE even if the domain is old. '
-            . 'CDN/Cloudflare is NOT a negative. Do not invent page facts — if content_incomplete or excerpt is empty, say you could not fully read the site and lean mixed unless other signals are strong. '
-            . 'score_delta MUST influence the trust score: strongly negative site purpose → -12 to -25; mildly risky → -5 to -11; mixed → -4 to +4; clearly legit → +5 to +18. '
-            . 'Scale by confidence. Respond with ONLY JSON: '
+        $system = 'You are ScamGuard’s website investigator. Your job is to judge whether a site will HARM a normal visitor, not to police content legality. '
+            . 'First figure out WHAT the site is (shop, forum, streaming, SaaS, blog, bank-phishing page, nulled-software downloads, casino, etc.) from page_title, meta_description, and page_text_excerpt. '
+            . 'Separate two different things: (A) VISITOR HARM = scam/fraud, phishing/credential theft, fake shop that takes money and never delivers, malware or virus pop-ups, forced downloads, wallet-drainers. (B) GRAY / legality = piracy, unofficial movie/TV streaming, ROMs, or similar. '
+            . 'Scoring rules: real VISITOR HARM → negative, strong penalty. GRAY-but-not-harmful sites (e.g. an unofficial streaming site with ads but no fraud/malware signs) are only MILDLY risky, NOT scams → lean mixed with a small penalty (about -3 to -8); do not treat piracy alone as fraud. Clearly legitimate sites → positive. '
+            . 'CDN/Cloudflare, a bot challenge page, or missing SPF/DMARC/MX are NOT scam signals — ignore them as fraud evidence. '
+            . 'Do not invent page facts — if content_incomplete is true or the excerpt is empty, say you could not fully read the site and stay mixed with a small delta unless there is hard evidence (feed/blacklist) of harm. '
+            . 'score_delta guidance: confirmed fraud/phishing/malware → -14 to -22; clearly risky commercial behaviour → -8 to -13; gray/piracy or minor concerns → -3 to -8; unclear/mixed → -3 to +3; solid legit → +5 to +16. Scale magnitude by your confidence. '
+            . 'Respond with ONLY JSON: '
             . '{"site_about":"short what the site is","lean":"positive|negative|mixed","confidence":0-100,'
-            . '"summary":"2 sentences: what it is + why good/bad","factors":["..."],"score_delta":-25..18}';
+            . '"harm":"none|low|medium|high","summary":"2 sentences: what it is + whether it can actually harm a visitor","factors":["..."],"score_delta":-22..16}';
 
         $body = json_encode([
             'model' => $model,
@@ -254,19 +255,32 @@ class AiAnalyst
             $factors
         )));
 
+        $harm = strtolower((string) ($parsed['harm'] ?? ''));
         $delta = (int) ($parsed['score_delta'] ?? 0);
-        // Enforce sane range; boost from lean if model under-penalizes clear negatives.
-        $delta = max(-25, min(18, $delta));
-        if ($lean === 'negative' && $confidence >= 60 && $delta > -8) {
-            $delta = min($delta, -10);
+        $delta = max(-22, min(16, $delta));
+
+        // Scale negative penalties by confidence so a 60%-sure hunch can't crush a site.
+        if ($delta < 0) {
+            $delta = (int) round($delta * max(35, min(100, $confidence)) / 100);
         }
-        if ($lean === 'positive' && $confidence >= 60 && $delta < 4) {
+
+        // Cap penalties when there is no evidence of real visitor harm. Gray/piracy
+        // content alone should be a small nudge, never a scam-level drop.
+        if ($harm === 'none' || $harm === 'low' || $harm === '') {
+            $delta = max($delta, -8);
+        } elseif ($harm === 'medium') {
+            $delta = max($delta, -13);
+        }
+
+        if ($lean === 'positive' && $confidence >= 65 && $delta < 4) {
             $delta = max($delta, 5);
         }
-        if ($incomplete && $lean === 'positive') {
-            // Don't crown a site "safe" when we couldn't read live content.
-            $delta = min($delta, 4);
-            $lean = 'mixed';
+        if ($incomplete) {
+            // Couldn't read live content — don't let AI strongly swing the score either way.
+            $delta = max(-8, min(4, $delta));
+            if ($lean === 'positive') {
+                $lean = 'mixed';
+            }
         }
 
         $tone = $lean === 'positive' ? 'good' : ($lean === 'negative' ? 'bad' : 'warn');

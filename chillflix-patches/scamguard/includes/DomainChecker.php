@@ -1434,25 +1434,36 @@ class DomainChecker
         } elseif (!empty($this->data['phishing_hit'])) {
             $verdict = 'phishing';
             $reasons[] = 'Domain appears on phishing intelligence feeds.';
+        } elseif (!empty($this->data['threat_feed_hit'])) {
+            $verdict = 'likely_scam';
+            $reasons[] = 'Listed on a threat / abuse feed.';
         } else {
             $flags = json_decode((string) ($this->data['heuristic_flags'] ?? '[]'), true) ?: [];
             $penalty = array_sum(array_map(static fn($f) => (int) ($f['penalty'] ?? 0), $flags));
             $incomplete = !empty($this->data['content_incomplete']);
+            $aiDelta = (int) ($this->data['ai_score_delta'] ?? 0);
 
-            if ($penalty >= 30 || $score <= 25) {
+            // Without a malware/phishing/feed hit we have NO hard proof of fraud.
+            // Only call it a scam when soft evidence is overwhelming AND corroborated —
+            // otherwise the strongest we say is "suspicious / risky". This keeps
+            // niche-but-not-fraudulent sites (small shops, streaming, hobby sites) from
+            // being branded outright scams.
+            $overwhelmingSoft = $penalty >= 45 || ($penalty >= 26 && $aiDelta <= -12);
+
+            if ($overwhelmingSoft) {
                 $verdict = 'likely_scam';
-                $reasons[] = 'Multiple scam heuristics and/or very low trust score.';
-            } elseif ($penalty >= 14 || $score < 50 || !empty($this->data['spam_hit'])) {
+                $reasons[] = 'Multiple strong scam heuristics point to fraud (no feed hit, but high-risk pattern).';
+            } elseif ($penalty >= 14 || $score < 45 || $aiDelta <= -10 || !empty($this->data['spam_hit'])) {
                 $verdict = 'suspicious';
                 $reasons[] = !empty($this->data['spam_hit'])
-                    ? 'Spam reputation signals were found.'
-                    : 'Elevated risk signals; treat with caution.';
+                    ? 'Spam / blacklist reputation signals were found — treat with caution.'
+                    : 'Elevated risk signals; not confirmed fraud, but be careful.';
             } elseif ($incomplete) {
                 $verdict = 'caution';
                 $reasons[] = 'Real page content was blocked (bot challenge/CDN wall), so this is not a full safety verification.';
-            } elseif ($score >= 80) {
+            } elseif ($score >= 78) {
                 $verdict = 'likely_safe';
-                $reasons[] = 'No malware/phishing list hits and strong positive signals.';
+                $reasons[] = 'No malware/phishing/feed hits and strong positive signals.';
             } else {
                 $verdict = 'caution';
                 $reasons[] = 'No direct malware/phishing hit, but not strongly verified either.';
@@ -1520,13 +1531,13 @@ class DomainChecker
             return;
         }
 
-        // AI site judgment drives score (larger range); rule hint only fills in when AI is mixed/low confidence.
+        // AI site judgment nudges the score; rule hint only fills in when AI is mixed/low confidence.
         $aiDelta = (int) ($ai['score_delta'] ?? 0);
         $conf = (int) ($ai['confidence'] ?? 50);
         if (($ai['lean'] ?? '') === 'mixed' || $conf < 45) {
-            $this->data['ai_score_delta'] = max(-25, min(18, $aiDelta + (int) round(($brief['score_hint'] ?? 0) * 0.35)));
+            $this->data['ai_score_delta'] = max(-18, min(16, $aiDelta + (int) round(($brief['score_hint'] ?? 0) * 0.35)));
         } else {
-            $this->data['ai_score_delta'] = max(-25, min(18, $aiDelta));
+            $this->data['ai_score_delta'] = max(-18, min(16, $aiDelta));
         }
 
         if (!empty($ai['site_about'])) {
@@ -1767,10 +1778,21 @@ class DomainChecker
                 $score += min(6, (int) $sec['score']);
             }
         } else {
-            // Challenge pages are not proof of safety.
-            $score -= 12;
-            if (((int) ($this->data['http_status'] ?? 0)) >= 400) {
-                $score -= 6;
+            // Challenge pages are not proof of safety — but a Cloudflare/CDN bot wall
+            // is extremely common on legitimate sites, so it should only mildly reduce
+            // confidence, not act like a scam signal.
+            $cdnChallenge = !empty($this->data['uses_cdn'])
+                || strcasecmp((string) ($this->data['cdn_provider'] ?? ''), 'Cloudflare') === 0;
+            $httpStatus = (int) ($this->data['http_status'] ?? 0);
+            if ($cdnChallenge && ($httpStatus === 0 || $httpStatus < 400 || $httpStatus === 403)) {
+                // Recognised CDN challenge — small confidence trim only.
+                $score -= 4;
+            } else {
+                // Genuinely unreadable / broken origin is more concerning.
+                $score -= 10;
+                if ($httpStatus >= 400) {
+                    $score -= 4;
+                }
             }
         }
 
@@ -1783,7 +1805,9 @@ class DomainChecker
         }
 
         if (!empty($this->data['spam_hit'])) {
-            $score -= 18;
+            // Graduated RBL penalty already applied via external_score_delta;
+            // this is the extra weight for a confirmed multi-list spam hit.
+            $score -= 12;
         }
 
         if (!empty($this->data['registrar_risk'])) {
@@ -1803,8 +1827,8 @@ class DomainChecker
         }
 
         if (!empty($this->data['ai_score_delta'])) {
-            // AI investigated site purpose + risk — meaningful score impact (still cannot beat list hits alone).
-            $score += max(-25, min(18, (int) $this->data['ai_score_delta']));
+            // AI investigated site purpose + visitor-harm risk — meaningful but bounded nudge.
+            $score += max(-18, min(16, (int) $this->data['ai_score_delta']));
         }
 
         $flags = json_decode((string) ($this->data['heuristic_flags'] ?? '[]'), true) ?: [];
@@ -1813,6 +1837,26 @@ class DomainChecker
         }
 
         $score = (int) round($score);
+
+        // Without a malware/phishing/threat-feed hit we have NO hard proof of fraud.
+        // Soft signals alone (new-ish domain, risky TLD, one RBL, CDN wall, gray content)
+        // should land a site in "risky / caution" territory — not crush it into the
+        // single digits reserved for confirmed scams. Establish a reasonable floor.
+        $hardEvidence = !empty($this->data['malware_hit'])
+            || !empty($this->data['phishing_hit'])
+            || !empty($this->data['threat_feed_hit']);
+        if (!$hardEvidence) {
+            $floor = 25;
+            if (!empty($this->data['ssl_valid'])) {
+                $floor += 6;
+            }
+            $ageDays = $this->data['domain_age_days'];
+            if (is_int($ageDays) && $ageDays >= $newDomainThreshold) {
+                $floor += 6; // established registration age
+            }
+            $score = max($score, $floor);
+        }
+
         // Never call an unread/challenge-blocked site "fully safe".
         if ($incomplete) {
             $score = min($score, 68);
