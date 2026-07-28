@@ -120,7 +120,7 @@ function tone_class(string $tone): string
             'class' => 'btn btn-sm btn-danger',
         ],
         [
-            'label' => '↻ Rescan',
+            'label' => 'Rescan',
             'href' => domain_page_path($record['domain']) . '?refresh=1',
             'class' => 'btn btn-sm',
         ],

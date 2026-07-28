@@ -618,6 +618,82 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
 .btn-danger { background: rgba(239,77,98,.12); border-color: rgba(239,77,98,.45); color: #ff8ea0; }
 .btn-danger:hover { background: rgba(239,77,98,.2); color: #ffb0bb; }
 
+.scan-loading {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    background: rgba(7, 5, 4, .62);
+    backdrop-filter: blur(10px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .16s ease;
+}
+.scan-loading.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+.scan-loading-open { overflow: hidden; }
+.scan-loading-card {
+    width: min(100%, 360px);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 14px;
+    align-items: center;
+    padding: 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(184,76,10,.46);
+    background:
+        radial-gradient(100% 90% at 15% 0%, rgba(184,76,10,.22), transparent 58%),
+        linear-gradient(180deg, rgba(24,20,16,.98), rgba(14,11,9,.98));
+    box-shadow: 0 22px 70px rgba(0,0,0,.55);
+}
+.scan-loading-ring {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 3px solid rgba(212,106,31,.18);
+    border-top-color: var(--brand-2);
+    box-shadow: 0 0 22px rgba(184,76,10,.22);
+    animation: scan-spin .72s linear infinite;
+}
+.scan-loading-copy strong {
+    display: block;
+    font-family: var(--display);
+    font-size: 1rem;
+    letter-spacing: -.01em;
+}
+.scan-loading-copy span {
+    display: block;
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: .82rem;
+    line-height: 1.35;
+}
+.scan-loading-steps {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 7px;
+    padding-top: 2px;
+}
+.scan-loading-steps span {
+    flex: 1;
+    text-align: center;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: rgba(184,76,10,.12);
+    color: var(--brand-2);
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+@keyframes scan-spin {
+    to { transform: rotate(360deg); }
+}
+
 .alert {
     padding: 12px 14px;
     border-radius: 12px;

@@ -2,7 +2,7 @@
 $siteName = get_setting('site_name', 'ScamGuard');
 $announcementEnabled = get_setting('announcement_enabled', '0') === '1';
 $announcement = get_setting('announcement_banner', '');
-$assetVer = '20260728warm1';
+$assetVer = '20260728rescan1';
 
 $pageTitle = $pageTitle ?? $siteName;
 $pageDescription = $pageDescription ?? 'Check websites for scam, phishing, and malware risk signals before you click.';
@@ -76,6 +76,21 @@ $ogType = $ogType ?? 'website';
     </div>
 </nav>
 
+<div class="scan-loading" id="scan-loading" aria-hidden="true" role="status" aria-live="polite">
+    <div class="scan-loading-card">
+        <div class="scan-loading-ring" aria-hidden="true"></div>
+        <div class="scan-loading-copy">
+            <strong>Rescanning site</strong>
+            <span>Refreshing live signals, reputation checks, and AI review.</span>
+        </div>
+        <div class="scan-loading-steps" aria-hidden="true">
+            <span>DNS</span>
+            <span>Feeds</span>
+            <span>AI</span>
+        </div>
+    </div>
+</div>
+
 <script>
 (() => {
   const nav = document.getElementById('site-nav');
@@ -105,6 +120,39 @@ $ogType = $ogType ?? 'website';
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') setOpen(false);
+  });
+})();
+
+(() => {
+  const overlay = document.getElementById('scan-loading');
+  if (!overlay) return;
+
+  const showLoading = () => {
+    overlay.classList.add('is-visible');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('scan-loading-open');
+  };
+
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest && event.target.closest('a[href]');
+    if (!link) return;
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    if (link.target && link.target !== '_self') return;
+
+    const href = link.getAttribute('href') || '';
+    let url;
+    try {
+      url = new URL(href, window.location.href);
+    } catch (e) {
+      return;
+    }
+    if (url.searchParams.get('refresh') !== '1') return;
+
+    event.preventDefault();
+    showLoading();
+    window.setTimeout(() => {
+      window.location.href = url.toString();
+    }, 90);
   });
 })();
 </script>
