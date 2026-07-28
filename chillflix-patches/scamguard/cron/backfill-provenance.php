@@ -239,12 +239,12 @@ $updThreat = $db->prepare(
      WHERE id = ? AND manual_override = 0'
 );
 $updSafe = $db->prepare(
-    'UPDATE domains SET
+    "UPDATE domains SET
         trust_score = ?, status = ?, verdict = ?, verdict_reasons = ?,
         malware_hit = 0, phishing_hit = 0, threat_feed_hit = 0, threat_feed_sources = NULL,
         ip_address = COALESCE(NULLIF(ip_address, ''), ?),
         signals_json = ?, updated_at = NOW()
-     WHERE id = ? AND manual_override = 0'
+     WHERE id = ? AND manual_override = 0"
 );
 $hist = $db->prepare('INSERT INTO domain_history (domain_id, trust_score, status) VALUES (?, ?, ?)');
 
