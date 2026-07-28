@@ -69,26 +69,86 @@ $unchecked = array_values(array_filter($signals, static fn($s) => ($s['value'] ?
 
 $score = (int) $record['trust_score'];
 $statusLabel = $badge['label'];
-$pageTitle = $domain . ' scam check — score ' . $score . '/100 (' . $statusLabel . ') | ' . get_setting('site_name', 'ScamGuard');
-$pageDescription = "Is {$domain} safe or a scam? ScamGuard trust score {$score}/100 — {$statusLabel}. Includes phishing/malware feed hits, domain age, SSL, and hosting signals.";
+$siteName = get_setting('site_name', 'ScamGuard');
+// Lead with the exact domain so brand queries like "chillflix.lol" can match this report.
+$pageTitle = $domain . ' Scam Check (' . $score . '/100 · ' . $statusLabel . ') | ' . $siteName;
+$pageDescription = $domain . ' scam check by ' . $siteName . ': trust score ' . $score . '/100 (' . $statusLabel . '). '
+    . 'See phishing/malware list hits, domain age, SSL, hosting, and community reports before you visit ' . $domain . '.';
 $canonicalUrl = domain_page_url($domain);
 $ogType = 'article';
 $jsonLd = json_encode([
     '@context' => 'https://schema.org',
-    '@type' => 'WebPage',
-    'name' => $pageTitle,
-    'url' => $canonicalUrl,
-    'description' => $pageDescription,
-    'dateModified' => !empty($record['last_checked']) ? date('c', strtotime($record['last_checked'])) : date('c'),
-    'about' => [
-        '@type' => 'Thing',
-        'name' => $domain,
-        'url' => 'https://' . $domain,
-    ],
-    'isPartOf' => [
-        '@type' => 'WebSite',
-        'name' => get_setting('site_name', 'ScamGuard'),
-        'url' => absolute_url('/'),
+    '@graph' => [
+        [
+            '@type' => 'WebPage',
+            '@id' => $canonicalUrl . '#webpage',
+            'name' => $pageTitle,
+            'headline' => $domain . ' scam check',
+            'url' => $canonicalUrl,
+            'description' => $pageDescription,
+            'dateModified' => !empty($record['last_checked']) ? date('c', strtotime($record['last_checked'])) : date('c'),
+            'inLanguage' => 'en',
+            'isPartOf' => [
+                '@type' => 'WebSite',
+                'name' => $siteName,
+                'url' => absolute_url('/'),
+            ],
+            'about' => [
+                '@type' => 'Thing',
+                'name' => $domain,
+                'url' => 'https://' . $domain,
+            ],
+            'mainEntity' => [
+                '@type' => 'Thing',
+                'name' => $domain,
+                'description' => $statusLabel . ' — trust score ' . $score . '/100',
+            ],
+        ],
+        [
+            '@type' => 'BreadcrumbList',
+            'itemListElement' => [
+                [
+                    '@type' => 'ListItem',
+                    'position' => 1,
+                    'name' => $siteName,
+                    'item' => absolute_url('/'),
+                ],
+                [
+                    '@type' => 'ListItem',
+                    'position' => 2,
+                    'name' => 'Browse',
+                    'item' => absolute_url('browse.php'),
+                ],
+                [
+                    '@type' => 'ListItem',
+                    'position' => 3,
+                    'name' => $domain . ' scam check',
+                    'item' => $canonicalUrl,
+                ],
+            ],
+        ],
+        [
+            '@type' => 'FAQPage',
+            'mainEntity' => [
+                [
+                    '@type' => 'Question',
+                    'name' => 'Is ' . $domain . ' safe or a scam?',
+                    'acceptedAnswer' => [
+                        '@type' => 'Answer',
+                        'text' => $siteName . ' rates ' . $domain . ' at ' . $score . '/100 (' . $statusLabel . '). '
+                            . 'This is a risk signal based on threat feeds, registration data, SSL, hosting, and community reports — not a legal verdict.',
+                    ],
+                ],
+                [
+                    '@type' => 'Question',
+                    'name' => 'What is the ' . $domain . ' trust score?',
+                    'acceptedAnswer' => [
+                        '@type' => 'Answer',
+                        'text' => 'The current ' . $siteName . ' trust score for ' . $domain . ' is ' . $score . ' out of 100 (' . $statusLabel . ').',
+                    ],
+                ],
+            ],
+        ],
     ],
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
@@ -129,6 +189,18 @@ function tone_class(string $tone): string
         'last_update' => (string) ($record['last_checked'] ?? 'just now'),
     ]);
     ?>
+
+    <div class="seo-domain-intro card" style="margin:14px 0 16px; padding:14px 16px;">
+        <h2 style="margin:0 0 6px; font-size:1.05rem;"><?= h($domain) ?> scam check</h2>
+        <p style="margin:0; color:var(--muted); font-size:14px; line-height:1.55;">
+            Looking up <strong><?= h($domain) ?></strong> before you click?
+            <?= h($siteName) ?> gives it a trust score of <strong><?= (int) $score ?>/100</strong>
+            (<strong><?= h($statusLabel) ?></strong>). Review threat-list hits, domain age, SSL, hosting,
+            and community reports on this page — then
+            <a href="<?= h(domain_page_path($domain) . '?refresh=1') ?>" style="color:var(--brand-2); font-weight:700;">recheck / rescan <?= h($domain) ?></a>
+            anytime.
+        </p>
+    </div>
 
     <div class="score-meta-line" style="margin:-6px 0 14px; color:var(--muted);">
         <?= (int) $record['check_count'] ?> scan<?= $record['check_count'] == 1 ? '' : 's' ?>

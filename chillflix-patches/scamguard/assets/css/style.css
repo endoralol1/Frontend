@@ -847,15 +847,22 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
     letter-spacing: -.03em;
     line-height: 1.15;
     color: #fff;
-    animation: sg-rise .75s .08s cubic-bezier(.2,.8,.2,1) both;
-}
-.sg-verdict-subject {
-    margin: 12px 0 0;
-    font-size: clamp(1rem, 2.8vw, 1.35rem);
-    font-weight: 500;
-    color: rgba(238,243,249,.62);
     overflow-wrap: anywhere;
     word-break: break-word;
+    animation: sg-rise .75s .08s cubic-bezier(.2,.8,.2,1) both;
+}
+.sg-verdict-status {
+    margin: 10px 0 0;
+    font-size: clamp(1.05rem, 2.6vw, 1.35rem);
+    font-weight: 700;
+    color: var(--sg-accent);
+    animation: sg-rise .75s .11s cubic-bezier(.2,.8,.2,1) both;
+}
+.sg-verdict-subject {
+    margin: 8px 0 0;
+    font-size: clamp(.92rem, 2.2vw, 1.1rem);
+    font-weight: 500;
+    color: rgba(238,243,249,.62);
     animation: sg-rise .75s .14s cubic-bezier(.2,.8,.2,1) both;
 }
 .sg-verdict-actions {

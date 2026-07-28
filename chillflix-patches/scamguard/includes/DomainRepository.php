@@ -278,9 +278,11 @@ class DomainRepository
     public function sitemapEntries(int $limit = 50000): array
     {
         $stmt = $this->db->prepare(
-            'SELECT domain, last_checked, updated_at FROM domains
+            'SELECT domain, last_checked, updated_at, search_count, trust_score, status
+             FROM domains
              WHERE last_checked IS NOT NULL
-             ORDER BY last_checked DESC LIMIT ?'
+             ORDER BY search_count DESC, last_checked DESC
+             LIMIT ?'
         );
         $stmt->bindValue(1, $limit, PDO::PARAM_INT);
         $stmt->execute();

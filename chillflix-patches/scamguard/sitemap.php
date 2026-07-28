@@ -22,6 +22,11 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
     <priority>0.8</priority>
   </url>
   <url>
+    <loc><?= htmlspecialchars(absolute_url('community.php'), ENT_XML1) ?></loc>
+    <changefreq>hourly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc><?= htmlspecialchars(absolute_url('how-it-works.php'), ENT_XML1) ?></loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
@@ -34,12 +39,15 @@ echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
 <?php foreach ($entries as $row):
     $last = $row['last_checked'] ?: ($row['updated_at'] ?? null);
     $lastmod = $last ? date('Y-m-d', strtotime($last)) : date('Y-m-d');
+    $searches = (int) ($row['search_count'] ?? 0);
+    // Popular / frequently searched domains get higher sitemap priority for indexing.
+    $priority = $searches >= 50 ? '0.9' : ($searches >= 10 ? '0.8' : ($searches >= 3 ? '0.7' : '0.6'));
 ?>
   <url>
     <loc><?= htmlspecialchars(domain_page_url($row['domain']), ENT_XML1) ?></loc>
     <lastmod><?= h($lastmod) ?></lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <changefreq>daily</changefreq>
+    <priority><?= $priority ?></priority>
   </url>
 <?php endforeach; ?>
 </urlset>

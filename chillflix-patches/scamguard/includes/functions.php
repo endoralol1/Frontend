@@ -304,8 +304,9 @@ function render_status_banner(string $status, int $score, string $subject, array
                     <span class="sg-verdict-glow" aria-hidden="true"></span>
                     <?php render_verdict_icon($t['icon']); ?>
                 </div>
-                <h1 class="sg-verdict-title"><?= h($t['label']) ?></h1>
-                <p class="sg-verdict-subject"><?= h($subject) ?></p>
+                <h1 class="sg-verdict-title"><?= h($subject) ?></h1>
+                <p class="sg-verdict-status"><?= h($t['label']) ?> · <?= (int) $score ?>/100</p>
+                <p class="sg-verdict-subject"><?= h($brand) ?> scam check &amp; trust report</p>
                 <div class="sg-verdict-actions">
                     <?php if ($visit): ?>
                         <a class="sg-btn sg-btn-ghost" href="<?= h($visit['href']) ?>"<?= !empty($visit['external']) ? ' target="_blank" rel="noopener noreferrer"' : '' ?>><?= h(strtoupper($visit['label'])) ?></a>
