@@ -1762,6 +1762,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
     display: flex; gap: 8px; align-items: flex-end; padding: 10px 12px;
     border-top: 1px solid var(--line); background: var(--card);
 }
+.sgchat-compose[hidden] { display: none !important; }
 .sgchat-compose textarea {
     flex: 1; resize: none; min-height: 40px; max-height: 110px;
     border: 1px solid var(--line); border-radius: 12px; background: var(--bg-2);
@@ -1773,8 +1774,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
     background: var(--brand); color: #fff; cursor: pointer; font-size: 16px;
 }
 .sgchat-prechat {
-    padding: 16px; display: flex; flex-direction: column; gap: 10px; overflow: auto;
+    display: none; padding: 16px; flex-direction: column; gap: 10px; overflow: auto; flex: 1;
 }
+.sgchat-prechat.is-visible { display: flex; }
 .sgchat-prechat p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
 .sgchat-signedin { color: var(--brand-2) !important; font-weight: 700; font-size: 13px !important; }
 .sgchat-prechat label { display: grid; gap: 4px; color: var(--faint); font-size: 12px; font-weight: 600; }
@@ -1782,6 +1784,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
     border: 1px solid var(--line); border-radius: 10px; background: var(--bg-2);
     color: var(--text); padding: 9px 11px; font: inherit;
 }
+.sgchat-messages[hidden],
+.sgchat-suggestions[hidden] { display: none !important; }
+.sgchat-msg-body a { color: var(--brand-2); text-decoration: underline; word-break: break-all; }
 .sgchat-rating { text-align: center; padding: 8px; color: var(--muted); }
 .sgchat-stars { display: flex; justify-content: center; gap: 6px; margin-top: 6px; }
 .sgchat-star {

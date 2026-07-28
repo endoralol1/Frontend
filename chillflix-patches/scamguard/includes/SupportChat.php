@@ -92,10 +92,17 @@ class SupportChat
     public static function knowledge(): array
     {
         $site = get_setting('site_name', 'ScamGuard');
+        $home = absolute_url('/');
+        $community = absolute_url('/community.php');
+        $report = absolute_url('/community.php?compose=1');
+        $browse = absolute_url('/browse.php');
+        $login = absolute_url('/login.php');
+        $register = absolute_url('/register.php');
+        $faq = absolute_url('/faq.php');
         return [
             [
                 'q' => 'How do I check a website?',
-                'a' => "Paste a domain on the home page Quick check (e.g. example.com). {$site} scores registration age, TLS, DNS, threat feeds, and community reports.",
+                'a' => "Open {$home} and paste a domain into Quick check (e.g. example.com). {$site} scores registration age, TLS, DNS, threat feeds, and community reports.",
                 'keys' => ['check', 'website', 'domain', 'url', 'scan', 'lookup', 'how to use', 'start'],
             ],
             [
@@ -105,17 +112,22 @@ class SupportChat
             ],
             [
                 'q' => 'How do I report a scam?',
-                'a' => 'Open Community → + New post (or Report Now). Sign in, describe what happened, and submit. Admins review reports; verified ones can affect site scores.',
+                'a' => "Report here: {$report} (sign in required). Describe what happened and submit. Admins review reports; verified ones can affect site scores.",
                 'keys' => ['report', 'scam', 'phishing', 'fake', 'fraud', 'complaint'],
             ],
             [
+                'q' => 'Where is the community forum?',
+                'a' => "Community forum: {$community}. Browse reports, announcements, and discussions. Reporting requires signing in.",
+                'keys' => ['community', 'forum', 'discussion', 'thread', 'announcement', 'link'],
+            ],
+            [
                 'q' => 'Can I check phones, crypto, IBAN, or cards?',
-                'a' => 'Yes. Use Quick check type tabs: Phone, Crypto, IBAN, or Card. Results are stored as entity checks, separate from website domains.',
+                'a' => "Yes — use the type tabs on {$home} (Phone, Crypto, IBAN, Card). Results are entity checks, separate from website domains.",
                 'keys' => ['phone', 'crypto', 'iban', 'card', 'wallet', 'bitcoin', 'address'],
             ],
             [
                 'q' => 'How do accounts and points work?',
-                'a' => 'Create a free account to report and comment. Reputation points come from verified reports and helpful community feedback. Announcements do not count as reports.',
+                'a' => "Register at {$register} or sign in at {$login}. Reputation points come from verified reports and helpful community feedback. Announcements do not count as reports.",
                 'keys' => ['account', 'login', 'register', 'points', 'reputation', 'profile', 'sign in'],
             ],
             [
@@ -129,10 +141,26 @@ class SupportChat
                 'keys' => ['proof', 'guaranteed', 'false positive', 'legitimate', 'new business'],
             ],
             [
-                'q' => 'Where is the community forum?',
-                'a' => 'Use the Community link in the nav. You can browse reports, announcements, and discussions. Reporting requires signing in.',
-                'keys' => ['community', 'forum', 'discussion', 'thread', 'announcement'],
+                'q' => 'Where can I browse checked sites?',
+                'a' => "Browse checked domains here: {$browse}. FAQ: {$faq}.",
+                'keys' => ['browse', 'list', 'directory', 'faq'],
             ],
+        ];
+    }
+
+    /** Important absolute links for the AI helper. */
+    public static function siteLinks(): array
+    {
+        return [
+            'home' => absolute_url('/'),
+            'community' => absolute_url('/community.php'),
+            'report' => absolute_url('/community.php?compose=1'),
+            'browse' => absolute_url('/browse.php'),
+            'login' => absolute_url('/login.php'),
+            'register' => absolute_url('/register.php'),
+            'faq' => absolute_url('/faq.php'),
+            'phone_check' => absolute_url('/?type=phone'),
+            'crypto_check' => absolute_url('/?type=crypto'),
         ];
     }
 
@@ -468,16 +496,29 @@ class SupportChat
             $facts[] = '- ' . $item['q'] . ' → ' . $item['a'];
         }
         $factBlock = implode("\n", $facts);
+        $links = self::siteLinks();
+        $linkBlock = "Important links (always paste the full URL when the user asks for a link or how to open a page):\n"
+            . "- Home / Quick check: {$links['home']}\n"
+            . "- Community forum: {$links['community']}\n"
+            . "- Report a scam: {$links['report']}\n"
+            . "- Browse domains: {$links['browse']}\n"
+            . "- Sign in: {$links['login']}\n"
+            . "- Register: {$links['register']}\n"
+            . "- FAQ: {$links['faq']}\n"
+            . "- Phone check: {$links['phone_check']}\n"
+            . "- Crypto check: {$links['crypto_check']}\n";
 
         $system = "You are the {$site} support assistant in a live chat widget.\n"
             . "Help visitors with anything about this website and product: trust checks (website/phone/crypto/IBAN/card), "
             . "how scores work, reporting scams, community forum, announcements, accounts/login/points, browsing flagged domains, and using the site.\n"
             . "Be accurate, concise (2–5 short sentences), friendly, and practical. Use plain language.\n"
+            . "CRITICAL: When the user asks for a link, URL, or how to open a page, include the full https:// URL from the Important links list. Do not only say “look in the navigation”.\n"
             . "Do not invent admin actions, refunds, legal advice, or features that are not described below.\n"
             . "Scores are risk signals, not legal proof of a scam.\n"
             . "If the user wants a human, set escalate=true.\n"
             . "If you truly cannot help from the facts, say so briefly and suggest Talk to an admin (escalate=false unless they asked for a human).\n"
             . "Never ask for passwords, seed phrases, full card numbers, or OTPs.\n\n"
+            . "{$linkBlock}\n"
             . "Known facts about {$site}:\n{$factBlock}\n\n"
             . "Respond with ONLY JSON: {\"reply\":\"...\",\"escalate\":false}";
 

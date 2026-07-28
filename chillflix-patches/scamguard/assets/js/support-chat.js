@@ -41,13 +41,12 @@
       '<textarea id="sgchat-input" rows="1" maxlength="2000" placeholder="Ask anything about ScamGuard…" required></textarea>' +
       '<button type="submit" class="sgchat-send" aria-label="Send">➤</button>' +
     '</form>' +
-    '<div class="sgchat-prechat" id="sgchat-prechat" hidden>' +
+    '<div class="sgchat-prechat" id="sgchat-prechat">' +
       '<p>Chat with our AI helper about ScamGuard. An admin can join if needed.</p>' +
       '<div id="sgchat-guest-fields">' +
         '<label>Name <input type="text" id="sgchat-name" maxlength="80" placeholder="Optional"></label>' +
         '<label>Email <input type="email" id="sgchat-email" maxlength="190" placeholder="Optional"></label>' +
       '</div>' +
-      '<p class="sgchat-signedin" id="sgchat-signedin" hidden></p>' +
       '<button type="button" class="btn btn-primary sgchat-start" id="sgchat-start">Start chat</button>' +
     '</div>';
 
@@ -61,8 +60,11 @@
   var inputEl = panel.querySelector('#sgchat-input');
   var prechatEl = panel.querySelector('#sgchat-prechat');
   var guestFieldsEl = panel.querySelector('#sgchat-guest-fields');
-  var signedInEl = panel.querySelector('#sgchat-signedin');
   var badgeEl = launcher.querySelector('.sgchat-badge');
+
+  // Start in chat mode UI hidden until opened; prechat only for guests.
+  showChatUi(false);
+  showPrechat(false);
 
   launcher.addEventListener('click', function () {
     setOpen(!open);
@@ -122,15 +124,17 @@
     clearBadge();
     if (conversation) {
       showPrechat(false);
+      showChatUi(true);
       scrollBottom();
       return;
     }
-    // Logged-in users skip name/email and go straight into chat.
     if (loggedIn) {
       showPrechat(false);
+      showChatUi(true);
       startChat();
       return;
     }
+    showChatUi(false);
     showPrechat(true);
   }
 
@@ -148,18 +152,16 @@
 
       if (loggedIn) {
         guestFieldsEl.hidden = true;
-        signedInEl.hidden = false;
-        signedInEl.textContent = 'Signed in as ' + username;
         var nameInput = panel.querySelector('#sgchat-name');
         if (nameInput) nameInput.value = username;
       } else {
         guestFieldsEl.hidden = false;
-        signedInEl.hidden = true;
       }
 
       if (data.conversation) {
         applyConversation(data.conversation, true);
         showPrechat(false);
+        showChatUi(true);
         if ((data.conversation.unread_visitor || 0) > 0) setBadge(data.conversation.unread_visitor);
       } else {
         renderSuggestions(data.quick_actions || []);
@@ -189,6 +191,7 @@
       if (!data.ok) { alert(data.error || 'Could not start chat'); return; }
       applyConversation(data.conversation, true);
       showPrechat(false);
+      showChatUi(true);
       inputEl.focus();
       if (typeof done === 'function') done();
     }).catch(function () { busy = false; });
@@ -256,8 +259,17 @@
     var who = m.sender_name || m.sender_type || '';
     row.innerHTML =
       '<div class="sgchat-msg-meta">' + escapeHtml(who) + '</div>' +
-      '<div class="sgchat-msg-body">' + escapeHtml(m.body || '').replace(/\n/g, '<br>') + '</div>';
+      '<div class="sgchat-msg-body">' + formatBody(m.body || '') + '</div>';
     messagesEl.appendChild(row);
+  }
+
+  function formatBody(text) {
+    var esc = escapeHtml(text).replace(/\n/g, '<br>');
+    return esc.replace(/(https?:\/\/[^\s<]+)/g, function (url) {
+      var clean = url.replace(/[),.;!?]+$/g, '');
+      var trail = url.slice(clean.length);
+      return '<a href="' + clean + '" target="_blank" rel="noopener noreferrer">' + clean + '</a>' + trail;
+    });
   }
 
   function renderSuggestions(actions) {
@@ -294,10 +306,14 @@
   }
 
   function showPrechat(show) {
+    prechatEl.classList.toggle('is-visible', !!show);
     prechatEl.hidden = !show;
-    formEl.hidden = show;
-    messagesEl.hidden = show;
-    suggestionsEl.hidden = show;
+  }
+
+  function showChatUi(show) {
+    formEl.hidden = !show;
+    messagesEl.hidden = !show;
+    if (!show) suggestionsEl.hidden = true;
   }
 
   function startPolling() {
