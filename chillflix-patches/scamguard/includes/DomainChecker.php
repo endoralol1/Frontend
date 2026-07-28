@@ -523,9 +523,18 @@ class DomainChecker
         $this->addSignal('network', 'Nameservers', $this->data['nameservers'] ?? 'Unknown', '', 'neutral');
         $this->addSignal('network', 'Hosting / ASN', $this->data['asn_org'] ?? 'Unknown', $this->data['asn'] ?? '', 'neutral');
         $this->addSignal('network', 'Geo', $this->data['host_country'] ?? 'Unknown', '', 'neutral');
-        $this->addSignal('email', 'MX records', $this->data['mx_records'] ?: 'None', $this->data['mx_records'] ? 'Mail infrastructure present' : 'No mail exchangers', $this->data['mx_records'] ? 'good' : 'warn');
-        $this->addSignal('email', 'SPF', $spf ? 'Present' : 'Missing', '', $spf ? 'good' : 'warn');
-        $this->addSignal('email', 'DMARC', $dmarc ? 'Present' : 'Missing', '', $dmarc ? 'good' : 'warn');
+        // Email auth (MX/SPF/DMARC) is hygiene, not a scam signal: plenty of legit
+        // sites — especially small ones and landing pages — have none. Reward when
+        // present, but stay NEUTRAL (informational) when missing, never a red negative.
+        $this->addSignal(
+            'email',
+            'MX records',
+            $this->data['mx_records'] ?: 'None',
+            $this->data['mx_records'] ? 'Domain can receive email' : 'No mail exchangers — normal for sites that don’t run email on this domain.',
+            $this->data['mx_records'] ? 'good' : 'neutral'
+        );
+        $this->addSignal('email', 'SPF', $spf ? 'Present' : 'Missing', $spf ? '' : 'Common to omit on small sites; not a scam signal by itself.', $spf ? 'good' : 'neutral');
+        $this->addSignal('email', 'DMARC', $dmarc ? 'Present' : 'Missing', $dmarc ? '' : 'Common to omit on small sites; not a scam signal by itself.', $dmarc ? 'good' : 'neutral');
     }
 
     private function detectCdn(array $nameservers, array $ips, array $txt): ?string
@@ -797,19 +806,23 @@ class DomainChecker
 
         $this->data['content_incomplete'] = $challenge ? 1 : 0;
         if ($challenge) {
-            // Do not treat challenge-page headers / empty legal pages as positive proof.
+            // We never actually saw the real page, so NOTHING read from the challenge
+            // HTML is trustworthy — neither positives nor negatives. Zero them all,
+            // including suspicious-phrase hits (otherwise the CDN challenge text can
+            // trigger a false "scam-style urgency language" flag).
             $this->data['has_contact_info'] = 0;
             $this->data['has_privacy_policy'] = 0;
             $this->data['has_phone'] = 0;
             $this->data['free_email_contact'] = 0;
             $this->data['noindex'] = 0;
             $this->data['crypto_only_payment'] = 0;
+            $this->data['suspicious_keyword_hits'] = 0;
             $this->addSignal(
                 'content',
                 'Content visibility',
-                'Blocked / challenge page',
-                'Bot protection hid the real page (and no archive/API fallback worked), so content signals are incomplete — score is capped.',
-                'warn'
+                'Not readable (bot wall)',
+                'A CDN/bot challenge hid the page, so content could not be inspected. This is common on legitimate sites and is treated as "unknown", not negative.',
+                'neutral'
             );
         } else {
             $this->addSignal('content', 'Content visibility', $contentLabel, $contentNote, $contentTone);
@@ -890,22 +903,18 @@ class DomainChecker
             return;
         }
 
-        // Soft risk only — cheap/high-volume registrars are common for both legit sites and scams.
+        // Registrar is a very weak signal: mainstream budget registrars (Namecheap,
+        // Porkbun, etc.) host millions of legitimate sites. Keep only a tiny nudge for
+        // the registrars most abused by bulk scam operations, and show it as neutral
+        // context — never a red "negative highlight".
         $elevated = [
-            'namecheap' => 8,
-            'namesilo' => 7,
-            'porkbun' => 6,
-            'dynadot' => 6,
-            'nicenic' => 10,
-            'alibaba' => 8,
-            'alibaba cloud' => 8,
-            'hostinger' => 7,
-            'publicdomainregistry' => 9,
-            'pdr ltd' => 9,
-            'webnic' => 8,
-            'gname' => 10,
-            'todaynic' => 10,
-            'reg.ru' => 7,
+            'nicenic' => 5,
+            'gname' => 5,
+            'todaynic' => 5,
+            'webnic' => 4,
+            'publicdomainregistry' => 4,
+            'pdr ltd' => 4,
+            'reg.ru' => 3,
         ];
         $risk = 0;
         $matched = null;
@@ -920,10 +929,10 @@ class DomainChecker
         if ($risk > 0) {
             $this->addSignal(
                 'registration',
-                'Registrar reputation',
-                'Elevated risk volume',
-                'Registrar "' . ($this->data['whois_registrar'] ?? '') . '" is commonly used by both normal and scam sites (' . $matched . '). Soft penalty only.',
-                'warn'
+                'Registrar',
+                $this->data['whois_registrar'] ?? 'Unknown',
+                'This registrar sees high volumes of bulk registrations; minor context only, not a scam signal on its own.',
+                'neutral'
             );
         } else {
             $this->addSignal(
@@ -1333,13 +1342,17 @@ class DomainChecker
             ];
         }
 
+        // Only meaningful when we actually read the page. A single generic phrase
+        // ("limited time offer") is common on legit marketing sites, so scale by count.
         $hits = (int) ($this->data['suspicious_keyword_hits'] ?? 0);
-        if ($newish && $hits > 0) {
+        $contentRead = empty($this->data['content_incomplete']);
+        if ($newish && $hits > 0 && $contentRead) {
+            $penaltyForUrgency = $hits >= 3 ? 16 : ($hits === 2 ? 10 : 5);
             $flags[] = [
                 'code' => 'young_plus_urgency',
                 'label' => 'New domain with scam-style urgency language',
                 'detail' => $hits . ' suspicious phrase hit(s) on a domain under 90 days old',
-                'penalty' => 16,
+                'penalty' => $penaltyForUrgency,
             ];
         }
 
