@@ -272,9 +272,13 @@ require __DIR__ . '/includes/header.php';
                     <div class="forum-body">
                         <a class="forum-main" href="<?= BASE_PATH ?>/thread.php?id=<?= (int) $t['id'] ?>">
                             <div class="forum-title-row">
-                                <?php if ($isAnnounce): ?><span class="forum-flag forum-flag-announce">Announcement</span><?php endif; ?>
-                                <?php if ($t['is_sticky']): ?><span class="forum-flag">Pinned</span><?php endif; ?>
-                                <?php if ($t['is_locked']): ?><span class="forum-flag">Locked</span><?php endif; ?>
+                                <?php if ($isAnnounce || $t['is_sticky'] || $t['is_locked']): ?>
+                                <div class="forum-flags">
+                                    <?php if ($isAnnounce): ?><span class="forum-flag forum-flag-announce">Announcement</span><?php endif; ?>
+                                    <?php if ($t['is_sticky']): ?><span class="forum-flag">Pinned</span><?php endif; ?>
+                                    <?php if ($t['is_locked']): ?><span class="forum-flag">Locked</span><?php endif; ?>
+                                </div>
+                                <?php endif; ?>
                                 <span class="forum-title"><?= h($t['title']) ?></span>
                             </div>
                             <div class="forum-meta">
