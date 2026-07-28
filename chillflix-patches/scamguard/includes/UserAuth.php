@@ -285,6 +285,76 @@ function profile_path(string $username): string
     return base_path('profile.php?u=' . rawurlencode($username));
 }
 
+/** Reputation point weights — admin decisions are the reliable source. */
+function reputation_weights(): array
+{
+    return [
+        'approve' => 10,   // admin verified a report
+        'reject'  => -15,  // admin rejected a report
+        'up'      => 1,    // community positive feedback
+        'down'    => -1,   // community negative feedback
+    ];
+}
+
+/**
+ * Live reputation for a community user.
+ * Points = (verified×10) + (rejected×−15) + (positive−negative community votes).
+ *
+ * @return array{
+ *   points:int,approved:int,rejected:int,pending:int,reports:int,comments:int,
+ *   positive:int,negative:int,admin_points:int,community_points:int
+ * }
+ */
+function user_reputation(PDO $db, int $userId): array
+{
+    $w = reputation_weights();
+
+    $stmt = $db->prepare(
+        "SELECT COUNT(*) AS reports,
+                COALESCE(SUM(review_status = 'approved'), 0) AS approved,
+                COALESCE(SUM(review_status = 'rejected'), 0) AS rejected,
+                COALESCE(SUM(review_status = 'pending'), 0) AS pending
+         FROM forum_threads WHERE user_id = ?"
+    );
+    $stmt->execute([$userId]);
+    $stats = $stmt->fetch() ?: ['reports' => 0, 'approved' => 0, 'rejected' => 0, 'pending' => 0];
+
+    $stmt = $db->prepare('SELECT COUNT(*) FROM forum_comments WHERE user_id = ? AND is_deleted = 0');
+    $stmt->execute([$userId]);
+    $comments = (int) $stmt->fetchColumn();
+
+    $stmt = $db->prepare(
+        "SELECT
+            COALESCE(SUM(v.vote = 1), 0) AS positive,
+            COALESCE(SUM(v.vote = -1), 0) AS negative
+         FROM forum_votes v
+         WHERE (v.subject_type = 'thread'  AND v.subject_id IN (SELECT id FROM forum_threads WHERE user_id = ?))
+            OR (v.subject_type = 'comment' AND v.subject_id IN (SELECT id FROM forum_comments WHERE user_id = ? AND is_deleted = 0))"
+    );
+    $stmt->execute([$userId, $userId]);
+    $votes = $stmt->fetch() ?: ['positive' => 0, 'negative' => 0];
+
+    $approved = (int) $stats['approved'];
+    $rejected = (int) $stats['rejected'];
+    $positive = (int) $votes['positive'];
+    $negative = (int) $votes['negative'];
+    $adminPoints = ($approved * $w['approve']) + ($rejected * $w['reject']);
+    $communityPoints = ($positive * $w['up']) + ($negative * $w['down']);
+
+    return [
+        'points' => $adminPoints + $communityPoints,
+        'admin_points' => $adminPoints,
+        'community_points' => $communityPoints,
+        'reports' => (int) $stats['reports'],
+        'approved' => $approved,
+        'rejected' => $rejected,
+        'pending' => (int) $stats['pending'],
+        'comments' => $comments,
+        'positive' => $positive,
+        'negative' => $negative,
+    ];
+}
+
 /**
  * Up/down vote totals for a set of threads or comments.
  * @return array<int, array{up:int,down:int}>

@@ -184,8 +184,8 @@ function render_vote_widget(string $subject, int $subjectId, array $counts, int 
             <input type="hidden" name="subject" value="<?= h($subject) ?>">
             <input type="hidden" name="subject_id" value="<?= $subjectId ?>">
             <input type="hidden" name="dir" value="up">
-            <button type="submit" class="vote-btn vote-up <?= $myVote === 1 ? 'is-active' : '' ?>" title="Helpful">
-                ▲ <span><?= (int) ($counts['up'] ?? 0) ?></span>
+            <button type="submit" class="vote-btn vote-up <?= $myVote === 1 ? 'is-active' : '' ?>" title="Positive feedback (+1 pt to author)">
+                + <span><?= (int) ($counts['up'] ?? 0) ?></span>
             </button>
         </form>
         <form method="post" style="display:inline;">
@@ -194,8 +194,8 @@ function render_vote_widget(string $subject, int $subjectId, array $counts, int 
             <input type="hidden" name="subject" value="<?= h($subject) ?>">
             <input type="hidden" name="subject_id" value="<?= $subjectId ?>">
             <input type="hidden" name="dir" value="down">
-            <button type="submit" class="vote-btn vote-down <?= $myVote === -1 ? 'is-active' : '' ?>" title="Not helpful">
-                ▼ <span><?= (int) ($counts['down'] ?? 0) ?></span>
+            <button type="submit" class="vote-btn vote-down <?= $myVote === -1 ? 'is-active' : '' ?>" title="Negative feedback (−1 pt to author)">
+                − <span><?= (int) ($counts['down'] ?? 0) ?></span>
             </button>
         </form>
     </div>
@@ -253,7 +253,7 @@ require __DIR__ . '/includes/header.php';
         <div class="thread-body"><?= nl2br(h($thread['body'])) ?></div>
 
         <div class="thread-feedback">
-            <span class="thread-feedback-label">Was this report helpful?</span>
+            <span class="thread-feedback-label">Feedback</span>
             <?php render_vote_widget('thread', $threadId, $threadVotes, $myThreadVote); ?>
             <?php if (!$userId): ?>
                 <a class="thread-feedback-signin" href="<?= BASE_PATH ?>/login.php?next=<?= rawurlencode('/thread.php?id=' . $threadId) ?>">Sign in to vote</a>

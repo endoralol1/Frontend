@@ -26,34 +26,9 @@ if (!$user) {
 
 $profileId = (int) $user['id'];
 $isSelf = $viewerId === $profileId;
-
-// ---- Report stats -----------------------------------------------------
-$stmt = $db->prepare(
-    "SELECT COUNT(*) AS total,
-            SUM(review_status = 'approved') AS approved,
-            SUM(review_status = 'rejected') AS rejected,
-            SUM(review_status = 'pending') AS pending
-     FROM forum_threads WHERE user_id = ?"
-);
-$stmt->execute([$profileId]);
-$reportStats = $stmt->fetch() ?: ['total' => 0, 'approved' => 0, 'rejected' => 0, 'pending' => 0];
-
-$stmt = $db->prepare('SELECT COUNT(*) FROM forum_comments WHERE user_id = ? AND is_deleted = 0');
-$stmt->execute([$profileId]);
-$commentCount = (int) $stmt->fetchColumn();
-
-// ---- Feedback received (votes on their threads + comments) ------------
-$stmt = $db->prepare(
-    "SELECT
-        COALESCE(SUM(v.vote = 1), 0) AS up,
-        COALESCE(SUM(v.vote = -1), 0) AS down
-     FROM forum_votes v
-     WHERE (v.subject_type = 'thread'  AND v.subject_id IN (SELECT id FROM forum_threads  WHERE user_id = ?))
-        OR (v.subject_type = 'comment' AND v.subject_id IN (SELECT id FROM forum_comments WHERE user_id = ? AND is_deleted = 0))"
-);
-$stmt->execute([$profileId, $profileId]);
-$feedback = $stmt->fetch() ?: ['up' => 0, 'down' => 0];
-$repScore = (int) $feedback['up'] - (int) $feedback['down'];
+$rep = user_reputation($db, $profileId);
+$weights = reputation_weights();
+$points = (int) $rep['points'];
 
 // ---- Their reports (hide rejected from strangers) ----------------------
 $showAll = $isSelf || $isAdmin;
@@ -65,8 +40,6 @@ $stmt = $db->prepare(
 );
 $stmt->execute([$profileId]);
 $threads = $stmt->fetchAll();
-
-// Votes per thread for display
 $threadVoteMap = forum_vote_counts($db, 'thread', array_map(static fn($t) => (int) $t['id'], $threads));
 
 // ---- Their recent comments ---------------------------------------------
@@ -81,7 +54,7 @@ $stmt->execute([$profileId]);
 $recentComments = $stmt->fetchAll();
 
 $pageTitle = $user['username'] . ' — Community profile — ' . get_setting('site_name', 'ScamGuard');
-$pageDescription = 'Community profile of ' . $user['username'] . ': scam reports, discussions, and feedback.';
+$pageDescription = 'Community profile of ' . $user['username'] . ': reputation points, scam reports, and feedback.';
 $canonicalUrl = absolute_url('profile.php?u=' . rawurlencode((string) $user['username']));
 require __DIR__ . '/includes/header.php';
 ?>
@@ -89,56 +62,70 @@ require __DIR__ . '/includes/header.php';
 <section class="section container profile-page">
     <p class="thread-breadcrumb"><a href="<?= BASE_PATH ?>/community.php">&larr; Community reports</a></p>
 
-    <div class="card profile-head">
-        <div class="profile-avatar" aria-hidden="true"><?= h(mb_strtoupper(mb_substr((string) $user['username'], 0, 1))) ?></div>
-        <div class="profile-id">
-            <h1 class="profile-name"><?= h($user['username']) ?>
-                <?= role_chip($user['role'] ?? null) ?>
-                <?php if ($user['is_banned']): ?><span class="badge badge-sm badge-scam">Banned</span><?php endif; ?>
-                <?php if ($isSelf): ?><span class="badge badge-sm badge-unknown">You</span><?php endif; ?>
-            </h1>
-            <div class="profile-meta">
-                Member since <?= h(date('M j, Y', strtotime((string) $user['created_at']))) ?>
-                <?php if (!empty($user['last_login_at'])): ?> · Last active <?= h(time_ago($user['last_login_at'])) ?><?php endif; ?>
-                <?php if ($isAdmin): ?> · <span class="profile-admin-info">Email: <?= h($user['email']) ?> (admin-only)</span><?php endif; ?>
+    <div class="card profile-card">
+        <div class="profile-top">
+            <div class="profile-avatar" aria-hidden="true"><?= h(mb_strtoupper(mb_substr((string) $user['username'], 0, 1))) ?></div>
+            <div class="profile-id">
+                <div class="profile-name-row">
+                    <h1 class="profile-name"><?= h($user['username']) ?></h1>
+                    <?= role_chip($user['role'] ?? null) ?>
+                    <?php if ($user['is_banned']): ?><span class="badge badge-sm badge-scam">Banned</span><?php endif; ?>
+                    <?php if ($isSelf): ?><span class="badge badge-sm badge-unknown">You</span><?php endif; ?>
+                </div>
+                <div class="profile-meta">
+                    Joined <?= h(date('M Y', strtotime((string) $user['created_at']))) ?>
+                    <?php if (!empty($user['last_login_at'])): ?> · Active <?= h(time_ago($user['last_login_at'])) ?><?php endif; ?>
+                    <?php if ($isAdmin): ?> · <span class="profile-admin-info"><?= h($user['email']) ?></span><?php endif; ?>
+                </div>
             </div>
-            <div class="profile-rep <?= $repScore > 0 ? 'is-positive' : ($repScore < 0 ? 'is-negative' : '') ?>">
-                <span class="profile-rep-score"><?= $repScore > 0 ? '+' : '' ?><?= $repScore ?></span>
-                <span class="profile-rep-label">community feedback</span>
-                <span class="profile-rep-split">▲ <?= (int) $feedback['up'] ?> helpful · ▼ <?= (int) $feedback['down'] ?> not helpful</span>
+            <div class="profile-score <?= $points > 0 ? 'is-positive' : ($points < 0 ? 'is-negative' : '') ?>">
+                <span class="profile-score-num"><?= $points > 0 ? '+' : '' ?><?= $points ?></span>
+                <span class="profile-score-label">points</span>
             </div>
         </div>
-        <?php if ($isAdmin): ?>
-        <div class="profile-actions">
-            <a class="btn btn-sm" href="<?= BASE_PATH ?>/admin/community.php" target="_blank">Moderate in admin</a>
+
+        <div class="profile-strip">
+            <div class="profile-strip-item">
+                <span class="k"><?= (int) $rep['reports'] ?></span>
+                <span class="l">Reports</span>
+            </div>
+            <div class="profile-strip-item">
+                <span class="k num-safe"><?= (int) $rep['approved'] ?></span>
+                <span class="l">Verified <em>+<?= (int) $weights['approve'] ?>ea</em></span>
+            </div>
+            <div class="profile-strip-item">
+                <span class="k num-scam"><?= (int) $rep['rejected'] ?></span>
+                <span class="l">Rejected <em><?= (int) $weights['reject'] ?>ea</em></span>
+            </div>
+            <div class="profile-strip-item">
+                <span class="k"><?= (int) $rep['pending'] ?></span>
+                <span class="l">Pending</span>
+            </div>
+            <div class="profile-strip-item">
+                <span class="k"><?= (int) $rep['comments'] ?></span>
+                <span class="l">Comments</span>
+            </div>
+            <div class="profile-strip-item">
+                <span class="k num-safe"><?= (int) $rep['positive'] ?></span>
+                <span class="l">Positive</span>
+            </div>
+            <div class="profile-strip-item">
+                <span class="k num-scam"><?= (int) $rep['negative'] ?></span>
+                <span class="l">Negative</span>
+            </div>
         </div>
-        <?php endif; ?>
+
+        <p class="profile-points-note">
+            Points from admin review (<?= (int) $rep['admin_points'] >= 0 ? '+' : '' ?><?= (int) $rep['admin_points'] ?>)
+            and community feedback (<?= (int) $rep['community_points'] >= 0 ? '+' : '' ?><?= (int) $rep['community_points'] ?>).
+            Verified reports add <?= (int) $weights['approve'] ?> pts; rejected reports deduct <?= abs((int) $weights['reject']) ?> pts.
+            <?php if ($isAdmin): ?>
+                <a href="<?= BASE_PATH ?>/admin/community.php" target="_blank">Moderate →</a>
+            <?php endif; ?>
+        </p>
     </div>
 
-    <div class="profile-stats">
-        <div class="stat">
-            <span class="num"><?= (int) $reportStats['total'] ?></span>
-            <span class="label">Reports</span>
-        </div>
-        <div class="stat">
-            <span class="num num-safe"><?= (int) $reportStats['approved'] ?></span>
-            <span class="label">Verified</span>
-        </div>
-        <div class="stat">
-            <span class="num num-scam"><?= (int) $reportStats['rejected'] ?></span>
-            <span class="label">Rejected</span>
-        </div>
-        <div class="stat">
-            <span class="num"><?= (int) $reportStats['pending'] ?></span>
-            <span class="label">Pending</span>
-        </div>
-        <div class="stat">
-            <span class="num"><?= $commentCount ?></span>
-            <span class="label">Comments</span>
-        </div>
-    </div>
-
-    <h3 class="profile-section-title">Reports by <?= h($user['username']) ?></h3>
+    <h3 class="profile-section-title">Reports</h3>
     <div class="card forum-card">
         <?php if (!$threads): ?>
             <p class="check-empty">No reports yet.</p>
@@ -165,7 +152,7 @@ require __DIR__ . '/includes/header.php';
                                 <span class="forum-sep" aria-hidden="true">·</span>
                                 <span><?= h(thread_subject_label((string) $t['subject_type'])) ?></span>
                                 <span class="forum-sep" aria-hidden="true">·</span>
-                                <span>▲ <?= (int) $tv['up'] ?> / ▼ <?= (int) $tv['down'] ?></span>
+                                <span>+<?= (int) $tv['up'] ?> / −<?= (int) $tv['down'] ?></span>
                             </div>
                         </a>
                         <div class="forum-foot">
