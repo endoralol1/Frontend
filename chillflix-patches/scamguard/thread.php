@@ -83,6 +83,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $db->prepare('UPDATE forum_threads SET comments_open = IF(comments_open = 1, 0, 1) WHERE id = ?')
            ->execute([$threadId]);
         redirect('/thread.php?id=' . $threadId);
+    } elseif ($action === 'vote') {
+        if (!$userId) {
+            redirect('/login.php?next=' . rawurlencode('/thread.php?id=' . $threadId));
+        }
+        $voteErr = forum_cast_vote(
+            $db,
+            $userId,
+            (string) ($_POST['subject'] ?? ''),
+            (int) ($_POST['subject_id'] ?? 0),
+            ($_POST['dir'] ?? '') === 'up' ? 1 : -1
+        );
+        if ($voteErr !== null) {
+            $error = $voteErr;
+        } else {
+            $anchor = ($_POST['subject'] ?? '') === 'comment' ? '#comments' : '';
+            redirect('/thread.php?id=' . $threadId . $anchor);
+        }
     } elseif ($isAdmin && in_array($action, ['approve', 'reject', 'sticky', 'unsticky', 'lock', 'unlock', 'delete_thread', 'delete_comment'], true)) {
         if ($action === 'approve' || $action === 'reject') {
             $status = $action === 'approve' ? 'approved' : 'rejected';
@@ -146,6 +163,42 @@ if ($thread['subject_type'] === 'website') {
 $review = thread_review_badge((string) $thread['review_status']);
 $canComment = !$thread['is_locked'] && ($thread['comments_open'] || $isOwner || $isAdmin);
 
+// Feedback votes for the thread and its comments.
+$threadVotes = forum_vote_counts($db, 'thread', [$threadId])[$threadId] ?? ['up' => 0, 'down' => 0];
+$myThreadVote = forum_user_votes($db, $userId, 'thread', [$threadId])[$threadId] ?? 0;
+$commentIds = array_map(static fn($c) => (int) $c['id'], $comments);
+$commentVotes = forum_vote_counts($db, 'comment', $commentIds);
+$myCommentVotes = forum_user_votes($db, $userId, 'comment', $commentIds);
+
+/** Compact up/down vote widget */
+function render_vote_widget(string $subject, int $subjectId, array $counts, int $myVote, bool $small = false): void
+{
+    ?>
+    <div class="vote-widget <?= $small ? 'vote-widget-sm' : '' ?>">
+        <form method="post" style="display:inline;">
+            <input type="hidden" name="csrf" value="<?= h(UserAuth::csrfToken()) ?>">
+            <input type="hidden" name="action" value="vote">
+            <input type="hidden" name="subject" value="<?= h($subject) ?>">
+            <input type="hidden" name="subject_id" value="<?= $subjectId ?>">
+            <input type="hidden" name="dir" value="up">
+            <button type="submit" class="vote-btn vote-up <?= $myVote === 1 ? 'is-active' : '' ?>" title="Helpful">
+                ▲ <span><?= (int) ($counts['up'] ?? 0) ?></span>
+            </button>
+        </form>
+        <form method="post" style="display:inline;">
+            <input type="hidden" name="csrf" value="<?= h(UserAuth::csrfToken()) ?>">
+            <input type="hidden" name="action" value="vote">
+            <input type="hidden" name="subject" value="<?= h($subject) ?>">
+            <input type="hidden" name="subject_id" value="<?= $subjectId ?>">
+            <input type="hidden" name="dir" value="down">
+            <button type="submit" class="vote-btn vote-down <?= $myVote === -1 ? 'is-active' : '' ?>" title="Not helpful">
+                ▼ <span><?= (int) ($counts['down'] ?? 0) ?></span>
+            </button>
+        </form>
+    </div>
+    <?php
+}
+
 $pageTitle = $thread['title'] . ' — Community — ' . get_setting('site_name', 'ScamGuard');
 $pageDescription = mb_substr(trim(preg_replace('/\s+/', ' ', (string) $thread['body'])), 0, 155);
 $canonicalUrl = absolute_url('thread.php?id=' . $threadId);
@@ -172,7 +225,7 @@ require __DIR__ . '/includes/header.php';
 
         <h1 class="thread-title"><?= h($thread['title']) ?></h1>
         <div class="thread-byline">
-            Reported by <strong><?= h($thread['username']) ?></strong> · <?= h(time_ago($thread['created_at'])) ?>
+            Reported by <a class="user-link" href="<?= h(profile_path((string) $thread['username'])) ?>"><strong><?= h($thread['username']) ?></strong></a> · <?= h(time_ago($thread['created_at'])) ?>
         </div>
 
         <?php if ($thread['subject_type'] !== 'card'): ?>
@@ -193,6 +246,14 @@ require __DIR__ . '/includes/header.php';
         <?php endif; ?>
 
         <div class="thread-body"><?= nl2br(h($thread['body'])) ?></div>
+
+        <div class="thread-feedback">
+            <span class="thread-feedback-label">Was this report helpful?</span>
+            <?php render_vote_widget('thread', $threadId, $threadVotes, $myThreadVote); ?>
+            <?php if (!$userId): ?>
+                <a class="thread-feedback-signin" href="<?= BASE_PATH ?>/login.php?next=<?= rawurlencode('/thread.php?id=' . $threadId) ?>">Sign in to vote</a>
+            <?php endif; ?>
+        </div>
 
         <?php if ($isOwner || $isAdmin): ?>
         <div class="thread-controls">
@@ -243,7 +304,7 @@ require __DIR__ . '/includes/header.php';
                     <div class="comment-avatar" aria-hidden="true"><?= h(mb_strtoupper(mb_substr((string) $c['username'], 0, 1))) ?></div>
                     <div class="comment-content">
                         <div class="comment-head">
-                            <span class="comment-author"><?= h($c['username']) ?></span>
+                            <a class="comment-author user-link" href="<?= h(profile_path((string) $c['username'])) ?>"><?= h($c['username']) ?></a>
                             <?php if ((int) $c['user_id'] === (int) $thread['user_id']): ?><span class="comment-op">Reporter</span><?php endif; ?>
                             <span class="comment-when"><?= h(time_ago($c['created_at'])) ?></span>
                             <?php if ($isAdmin && !$c['is_deleted']): ?>
@@ -258,6 +319,11 @@ require __DIR__ . '/includes/header.php';
                         <div class="comment-body">
                             <?= $c['is_deleted'] ? '<em style="color:var(--faint);">Comment removed by moderators.</em>' : nl2br(h($c['body'])) ?>
                         </div>
+                        <?php if (!$c['is_deleted']): ?>
+                            <div class="comment-votes">
+                                <?php render_vote_widget('comment', (int) $c['id'], $commentVotes[(int) $c['id']] ?? ['up' => 0, 'down' => 0], $myCommentVotes[(int) $c['id']] ?? 0, true); ?>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </li>
                 <?php endforeach; ?>

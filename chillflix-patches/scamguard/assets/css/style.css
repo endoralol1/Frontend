@@ -1464,3 +1464,75 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
     .forum-search input[type="search"] { flex: 1; min-width: 0; }
     .forum-search { width: 100%; }
 }
+
+/* ---------------- Votes + user profiles ---------------- */
+.user-link { color: inherit; }
+.user-link:hover, .user-link:hover strong { color: var(--brand-2); }
+.comment-author.user-link { font-weight: 700; font-size: 13.5px; }
+
+.vote-widget { display: inline-flex; gap: 6px; align-items: center; }
+.vote-btn {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--bg-2); border: 1px solid var(--line); color: var(--muted);
+    border-radius: 999px; padding: 5px 12px; font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: all .15s;
+}
+.vote-btn:hover { color: var(--text); border-color: var(--faint); }
+.vote-up.is-active { color: var(--safe); border-color: var(--safe); background: rgba(47,191,113,.1); }
+.vote-down.is-active { color: var(--scam); border-color: var(--scam); background: rgba(239,77,98,.1); }
+.vote-widget-sm .vote-btn { padding: 2px 9px; font-size: 11.5px; }
+
+.thread-feedback {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line);
+}
+.thread-feedback-label { color: var(--muted); font-size: 13.5px; font-weight: 600; }
+.thread-feedback-signin { color: var(--faint); font-size: 12.5px; }
+.thread-feedback-signin:hover { color: var(--brand-2); }
+.comment-votes { margin-top: 8px; }
+
+/* Profile page */
+.profile-page { max-width: 780px; }
+.profile-head { display: flex; gap: 16px; align-items: flex-start; padding: 22px; flex-wrap: wrap; }
+.profile-avatar {
+    width: 64px; height: 64px; border-radius: 50%; flex: 0 0 auto;
+    background: linear-gradient(135deg, #c85a14, #963d08); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 28px;
+    font-family: var(--display);
+}
+.profile-id { flex: 1; min-width: 220px; }
+.profile-name { font-family: var(--display); font-size: 1.4rem; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.profile-meta { color: var(--faint); font-size: 13px; margin-bottom: 10px; }
+.profile-admin-info { color: var(--caution); }
+.profile-rep { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.profile-rep-score { font-size: 1.35rem; font-weight: 800; font-family: var(--display); color: var(--muted); }
+.profile-rep.is-positive .profile-rep-score { color: var(--safe); }
+.profile-rep.is-negative .profile-rep-score { color: var(--scam); }
+.profile-rep-label { color: var(--muted); font-size: 13px; font-weight: 600; }
+.profile-rep-split { color: var(--faint); font-size: 12.5px; }
+.profile-actions { flex: 0 0 auto; }
+
+.profile-stats {
+    display: grid; grid-template-columns: repeat(5, minmax(0,1fr));
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    margin: 14px 0 22px; overflow: hidden;
+}
+.profile-stats .stat { text-align: center; padding: 14px 6px; border-left: 1px solid var(--line); }
+.profile-stats .stat:first-child { border-left: 0; }
+.profile-stats .num { display: block; font-family: var(--display); font-weight: 800; font-size: 1.2rem; }
+.profile-stats .num-safe { color: var(--safe); }
+.profile-stats .num-scam { color: var(--scam); }
+.profile-stats .label { color: var(--faint); font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; }
+
+.profile-section-title { font-family: var(--display); font-size: 1.05rem; margin: 22px 0 10px; }
+.profile-comment-list { list-style: none; margin: 0; padding: 0; }
+.profile-comment { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.profile-comment:last-child { border-bottom: 0; }
+.profile-comment-body { color: var(--text); font-size: 14px; line-height: 1.55; }
+.profile-comment-meta { color: var(--faint); font-size: 12.5px; margin-top: 5px; }
+.profile-comment-meta a { color: var(--brand-2); }
+
+@media (max-width: 560px) {
+    .profile-stats { grid-template-columns: repeat(3, minmax(0,1fr)); }
+    .profile-stats .stat:nth-child(4) { border-left: 0; }
+}

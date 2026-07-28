@@ -240,3 +240,103 @@ function thread_subject_label(string $type): string
         default => 'Website',
     };
 }
+
+/** Public profile URL for a community user */
+function profile_path(string $username): string
+{
+    return base_path('profile.php?u=' . rawurlencode($username));
+}
+
+/**
+ * Up/down vote totals for a set of threads or comments.
+ * @return array<int, array{up:int,down:int}>
+ */
+function forum_vote_counts(PDO $db, string $type, array $ids): array
+{
+    $out = [];
+    $ids = array_values(array_filter(array_map('intval', $ids)));
+    if (!$ids) {
+        return $out;
+    }
+    $in = implode(',', $ids);
+    $stmt = $db->prepare(
+        "SELECT subject_id,
+                SUM(vote = 1) AS up,
+                SUM(vote = -1) AS down
+         FROM forum_votes
+         WHERE subject_type = ? AND subject_id IN ($in)
+         GROUP BY subject_id"
+    );
+    $stmt->execute([$type]);
+    foreach ($stmt->fetchAll() as $row) {
+        $out[(int) $row['subject_id']] = ['up' => (int) $row['up'], 'down' => (int) $row['down']];
+    }
+    return $out;
+}
+
+/**
+ * The current user's own votes on a set of items.
+ * @return array<int, int> subject_id => -1|1
+ */
+function forum_user_votes(PDO $db, ?int $userId, string $type, array $ids): array
+{
+    $out = [];
+    $ids = array_values(array_filter(array_map('intval', $ids)));
+    if (!$userId || !$ids) {
+        return $out;
+    }
+    $in = implode(',', $ids);
+    $stmt = $db->prepare("SELECT subject_id, vote FROM forum_votes WHERE user_id = ? AND subject_type = ? AND subject_id IN ($in)");
+    $stmt->execute([$userId, $type]);
+    foreach ($stmt->fetchAll() as $row) {
+        $out[(int) $row['subject_id']] = (int) $row['vote'];
+    }
+    return $out;
+}
+
+/**
+ * Register/toggle a vote. Returns an error string or null on success.
+ */
+function forum_cast_vote(PDO $db, int $userId, string $type, int $subjectId, int $vote): ?string
+{
+    if (!in_array($type, ['thread', 'comment'], true) || !in_array($vote, [-1, 1], true)) {
+        return 'Invalid vote.';
+    }
+
+    // Item must exist; no votes on your own posts.
+    if ($type === 'thread') {
+        $stmt = $db->prepare('SELECT user_id FROM forum_threads WHERE id = ?');
+    } else {
+        $stmt = $db->prepare('SELECT user_id FROM forum_comments WHERE id = ? AND is_deleted = 0');
+    }
+    $stmt->execute([$subjectId]);
+    $ownerId = $stmt->fetchColumn();
+    if ($ownerId === false) {
+        return 'That post no longer exists.';
+    }
+    if ((int) $ownerId === $userId) {
+        return 'You cannot vote on your own post.';
+    }
+
+    // Light anti-abuse cap.
+    $stmt = $db->prepare('SELECT COUNT(*) FROM forum_votes WHERE user_id = ? AND created_at >= NOW() - INTERVAL 1 DAY');
+    $stmt->execute([$userId]);
+    if ((int) $stmt->fetchColumn() >= 300) {
+        return 'Daily vote limit reached.';
+    }
+
+    $stmt = $db->prepare('SELECT id, vote FROM forum_votes WHERE user_id = ? AND subject_type = ? AND subject_id = ?');
+    $stmt->execute([$userId, $type, $subjectId]);
+    $existing = $stmt->fetch();
+
+    if ($existing && (int) $existing['vote'] === $vote) {
+        // Same vote again = undo.
+        $db->prepare('DELETE FROM forum_votes WHERE id = ?')->execute([$existing['id']]);
+    } elseif ($existing) {
+        $db->prepare('UPDATE forum_votes SET vote = ?, created_at = NOW() WHERE id = ?')->execute([$vote, $existing['id']]);
+    } else {
+        $db->prepare('INSERT INTO forum_votes (user_id, subject_type, subject_id, vote) VALUES (?, ?, ?, ?)')
+           ->execute([$userId, $type, $subjectId, $vote]);
+    }
+    return null;
+}

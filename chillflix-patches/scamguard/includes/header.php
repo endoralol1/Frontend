@@ -6,7 +6,7 @@ $navUser = UserAuth::check() ? UserAuth::username() : null;
 $siteName = get_setting('site_name', 'ScamGuard');
 $announcementEnabled = get_setting('announcement_enabled', '0') === '1';
 $announcement = get_setting('announcement_banner', '');
-$assetVer = '20260728forum1';
+$assetVer = '20260728forum2';
 
 $pageTitle = $pageTitle ?? $siteName;
 $pageDescription = $pageDescription ?? 'Check websites for scam, phishing, and malware risk signals before you click.';
@@ -59,7 +59,7 @@ $ogType = $ogType ?? 'website';
             <a href="<?= BASE_PATH ?>/browse.php">Browse</a>
             <a href="<?= BASE_PATH ?>/community.php">Community</a>
             <?php if ($navUser): ?>
-                <a href="<?= BASE_PATH ?>/community.php?filter=mine" class="nav-user" title="My reports">👤 <?= h($navUser) ?></a>
+                <a href="<?= BASE_PATH ?>/profile.php?u=<?= rawurlencode($navUser) ?>" class="nav-user" title="My profile">👤 <?= h($navUser) ?></a>
                 <a href="<?= BASE_PATH ?>/logout.php" class="nav-signout">Sign out</a>
             <?php else: ?>
                 <a href="<?= BASE_PATH ?>/login.php">Sign in</a>
@@ -81,7 +81,7 @@ $ogType = $ogType ?? 'website';
             <a href="<?= BASE_PATH ?>/browse.php">Browse</a>
             <a href="<?= BASE_PATH ?>/community.php">Community</a>
             <?php if ($navUser): ?>
-                <a href="<?= BASE_PATH ?>/community.php?filter=mine">👤 <?= h($navUser) ?> — my reports</a>
+                <a href="<?= BASE_PATH ?>/profile.php?u=<?= rawurlencode($navUser) ?>">👤 <?= h($navUser) ?> — my profile</a>
                 <a href="<?= BASE_PATH ?>/logout.php">Sign out</a>
             <?php else: ?>
                 <a href="<?= BASE_PATH ?>/login.php">Sign in</a>

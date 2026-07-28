@@ -352,7 +352,7 @@ function tone_class(string $tone): string
                     </a>
                     <div class="forum-side">
                         <span class="forum-replies">💬 <?= (int) $t['comment_count'] ?></span>
-                        <span class="forum-when">by <?= h($t['username']) ?> · <?= h(time_ago($t['last_activity_at'])) ?></span>
+                        <span class="forum-when">by <a class="user-link" href="<?= h(profile_path((string) $t['username'])) ?>"><?= h($t['username']) ?></a> · <?= h(time_ago($t['last_activity_at'])) ?></span>
                     </div>
                 </li>
                 <?php endforeach; ?>
