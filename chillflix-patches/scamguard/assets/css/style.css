@@ -1546,19 +1546,63 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
 .role-chip-admin { color: #fff; background: var(--brand); }
 .role-chip-mod { color: var(--brand-2); border: 1px solid rgba(184,76,10,.5); background: rgba(184,76,10,.12); }
 
-/* Inline report composer on the community page */
-.composer { display: none; margin-bottom: 16px; }
-.composer.is-open { display: block; animation: composerIn .18s ease-out; }
-@keyframes composerIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-.composer-card { border-color: rgba(184,76,10,.45); }
+/* Report composer popup */
+.composer-open { overflow: hidden; }
+.composer-modal {
+    position: fixed; inset: 0; z-index: 120;
+    display: flex; align-items: center; justify-content: center;
+    padding: 18px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .18s ease;
+}
+.composer-modal.is-open { opacity: 1; pointer-events: auto; }
+.composer-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(6, 4, 3, .72);
+    backdrop-filter: blur(6px);
+}
+.composer-dialog {
+    position: relative; z-index: 1;
+    width: min(100%, 640px); max-height: min(92vh, 820px);
+    overflow: auto; padding: 22px 22px 18px;
+    border-color: rgba(184,76,10,.45);
+    box-shadow: 0 24px 80px rgba(0,0,0,.55);
+    transform: translateY(10px) scale(.98);
+    transition: transform .18s ease;
+}
+.composer-modal.is-open .composer-dialog { transform: none; }
+.composer-dialog-head {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+    margin-bottom: 14px;
+}
+.composer-dialog-title {
+    font-family: var(--display); font-size: 1.25rem; margin: 0 0 4px; letter-spacing: -0.02em;
+}
+.composer-dialog-sub { color: var(--muted); font-size: 13.5px; margin: 0; }
+.composer-close {
+    width: 36px; height: 36px; border-radius: 10px; flex: 0 0 auto;
+    border: 1px solid var(--line); background: var(--bg-2); color: var(--muted);
+    cursor: pointer; font-size: 16px; line-height: 1;
+}
+.composer-close:hover { color: var(--text); border-color: var(--faint); }
 .composer-grid { display: grid; grid-template-columns: 1fr; gap: 0 14px; }
 .composer-footer {
     display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
-    margin-top: 4px;
+    margin-top: 4px; padding-top: 6px;
 }
 .composer-submit { display: flex; align-items: center; gap: 12px; }
 .composer-as { color: var(--faint); font-size: 12.5px; }
 .composer-as strong { color: var(--muted); }
 @media (min-width: 720px) {
-    .composer-grid { grid-template-columns: 180px 1fr 220px; }
+    .composer-grid { grid-template-columns: 170px 1fr 200px; }
+}
+@media (max-width: 560px) {
+    .composer-modal { padding: 0; align-items: flex-end; }
+    .composer-dialog {
+        width: 100%; max-height: 92vh; border-radius: 18px 18px 0 0;
+        transform: translateY(24px);
+    }
+    .composer-modal.is-open .composer-dialog { transform: none; }
+    .composer-footer { flex-direction: column; align-items: stretch; }
+    .composer-submit { justify-content: space-between; }
 }

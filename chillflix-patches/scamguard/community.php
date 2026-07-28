@@ -180,67 +180,7 @@ require __DIR__ . '/includes/header.php';
             <h2 class="section-title" style="margin:0;">Community reports</h2>
             <p style="color:var(--muted); margin:6px 0 0; font-size:14px;">Real reports from real users — verified by admins.</p>
         </div>
-        <button type="button" class="btn btn-primary" id="composer-toggle" aria-expanded="<?= $composeOpen ? 'true' : 'false' ?>" aria-controls="composer">+ New report</button>
-    </div>
-
-    <div class="composer <?= $composeOpen ? 'is-open' : '' ?>" id="composer">
-        <?php if (!UserAuth::check()): ?>
-            <div class="card auth-gate auth-gate-inline" style="margin-top:0;">
-                <p style="margin:0 0 12px; color:var(--muted);"><strong>Sign in to report.</strong> Reports need a free account so the community stays spam-free.</p>
-                <div class="auth-gate-actions">
-                    <a class="btn btn-primary btn-sm" href="<?= BASE_PATH ?>/login.php?next=<?= rawurlencode($selfComposeUrl) ?>">Sign in</a>
-                    <a class="btn btn-sm" href="<?= BASE_PATH ?>/register.php?next=<?= rawurlencode($selfComposeUrl) ?>">Create account</a>
-                </div>
-            </div>
-        <?php else: ?>
-            <?php if ($composeError): ?><div class="alert alert-error"><?= h($composeError) ?></div><?php endif; ?>
-            <form method="post" class="card composer-card" action="<?= BASE_PATH ?>/community.php">
-                <input type="hidden" name="csrf" value="<?= h(UserAuth::csrfToken()) ?>">
-                <input type="hidden" name="action" value="create_report">
-                <div class="composer-grid">
-                    <div class="field">
-                        <label>What are you reporting?</label>
-                        <select name="type" id="report-type">
-                            <option value="website" <?= $composeType === 'website' ? 'selected' : '' ?>>Website</option>
-                            <option value="phone" <?= $composeType === 'phone' ? 'selected' : '' ?>>Phone number</option>
-                            <option value="card" <?= $composeType === 'card' ? 'selected' : '' ?>>Bank card</option>
-                            <option value="crypto" <?= $composeType === 'crypto' ? 'selected' : '' ?>>Crypto address</option>
-                            <option value="iban" <?= $composeType === 'iban' ? 'selected' : '' ?>>IBAN</option>
-                        </select>
-                    </div>
-                    <div class="field">
-                        <label id="entity-label">Value</label>
-                        <input type="text" name="entity" id="entity-input" placeholder="example.com" value="<?= h($_POST['entity'] ?? $composePrefill) ?>" required>
-                    </div>
-                    <div class="field">
-                        <label>Category</label>
-                        <select name="category">
-                            <?php foreach (report_categories() as $key => $label): ?>
-                                <option value="<?= h($key) ?>" <?= ($_POST['category'] ?? '') === $key ? 'selected' : '' ?>><?= h($label) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-                <div class="field">
-                    <label>Title of your report</label>
-                    <input type="text" name="title" placeholder="e.g. Fake shop — took payment, never shipped" value="<?= h($_POST['title'] ?? '') ?>" required minlength="8" maxlength="150">
-                </div>
-                <div class="field">
-                    <label>Describe what happened</label>
-                    <textarea name="description" rows="5" placeholder="What did you see? Did you lose money or data? Include as much detail as possible." required minlength="20"><?= h($_POST['description'] ?? '') ?></textarea>
-                </div>
-                <div class="composer-footer">
-                    <label class="check-toggle" style="margin:0;">
-                        <input type="checkbox" name="comments_open" <?= isset($_POST['comments_open']) || ($_POST['action'] ?? '') !== 'create_report' ? 'checked' : '' ?>>
-                        <span>Let others join the discussion</span>
-                    </label>
-                    <div class="composer-submit">
-                        <span class="composer-as">Posting as <strong><?= h(UserAuth::username()) ?></strong></span>
-                        <button type="submit" class="btn btn-primary">Post report</button>
-                    </div>
-                </div>
-            </form>
-        <?php endif; ?>
+        <button type="button" class="btn btn-primary" id="composer-toggle" aria-haspopup="dialog" aria-controls="composer-modal">+ New report</button>
     </div>
 
     <form class="forum-toolbar" method="get" action="<?= BASE_PATH ?>/community.php">
@@ -310,22 +250,129 @@ require __DIR__ . '/includes/header.php';
     <?php endif; ?>
 </section>
 
+<div class="composer-modal <?= $composeOpen ? 'is-open' : '' ?>" id="composer-modal" role="dialog" aria-modal="true" aria-labelledby="composer-title" aria-hidden="<?= $composeOpen ? 'false' : 'true' ?>">
+    <div class="composer-backdrop" data-composer-close></div>
+    <div class="composer-dialog card">
+        <div class="composer-dialog-head">
+            <div>
+                <h3 id="composer-title" class="composer-dialog-title">New report</h3>
+                <p class="composer-dialog-sub">Opens a public discussion — verified by admins.</p>
+            </div>
+            <button type="button" class="composer-close" data-composer-close aria-label="Close">✕</button>
+        </div>
+
+        <?php if (!UserAuth::check()): ?>
+            <div class="auth-gate auth-gate-inline" style="margin:0; border:0; padding:8px 0 4px; background:transparent;">
+                <p style="margin:0 0 14px; color:var(--muted);"><strong>Sign in to report.</strong> Reports need a free account so the community stays spam-free.</p>
+                <div class="auth-gate-actions">
+                    <a class="btn btn-primary" href="<?= BASE_PATH ?>/login.php?next=<?= rawurlencode($selfComposeUrl) ?>">Sign in</a>
+                    <a class="btn" href="<?= BASE_PATH ?>/register.php?next=<?= rawurlencode($selfComposeUrl) ?>">Create account</a>
+                </div>
+            </div>
+        <?php else: ?>
+            <?php if ($composeError): ?><div class="alert alert-error"><?= h($composeError) ?></div><?php endif; ?>
+            <form method="post" class="composer-form" action="<?= BASE_PATH ?>/community.php">
+                <input type="hidden" name="csrf" value="<?= h(UserAuth::csrfToken()) ?>">
+                <input type="hidden" name="action" value="create_report">
+                <div class="composer-grid">
+                    <div class="field">
+                        <label>What are you reporting?</label>
+                        <select name="type" id="report-type">
+                            <option value="website" <?= $composeType === 'website' ? 'selected' : '' ?>>Website</option>
+                            <option value="phone" <?= $composeType === 'phone' ? 'selected' : '' ?>>Phone number</option>
+                            <option value="card" <?= $composeType === 'card' ? 'selected' : '' ?>>Bank card</option>
+                            <option value="crypto" <?= $composeType === 'crypto' ? 'selected' : '' ?>>Crypto address</option>
+                            <option value="iban" <?= $composeType === 'iban' ? 'selected' : '' ?>>IBAN</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label id="entity-label">Value</label>
+                        <input type="text" name="entity" id="entity-input" placeholder="example.com" value="<?= h($_POST['entity'] ?? $composePrefill) ?>" required>
+                    </div>
+                    <div class="field">
+                        <label>Category</label>
+                        <select name="category">
+                            <?php foreach (report_categories() as $key => $label): ?>
+                                <option value="<?= h($key) ?>" <?= ($_POST['category'] ?? '') === $key ? 'selected' : '' ?>><?= h($label) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Title of your report</label>
+                    <input type="text" name="title" placeholder="e.g. Fake shop — took payment, never shipped" value="<?= h($_POST['title'] ?? '') ?>" required minlength="8" maxlength="150">
+                </div>
+                <div class="field">
+                    <label>Describe what happened</label>
+                    <textarea name="description" rows="5" placeholder="What did you see? Did you lose money or data? Include as much detail as possible." required minlength="20"><?= h($_POST['description'] ?? '') ?></textarea>
+                </div>
+                <div class="composer-footer">
+                    <label class="check-toggle" style="margin:0;">
+                        <input type="checkbox" name="comments_open" <?= isset($_POST['comments_open']) || ($_POST['action'] ?? '') !== 'create_report' ? 'checked' : '' ?>>
+                        <span>Let others join the discussion</span>
+                    </label>
+                    <div class="composer-submit">
+                        <span class="composer-as">Posting as <strong><?= h(UserAuth::username()) ?></strong></span>
+                        <button type="submit" class="btn btn-primary">Post report</button>
+                    </div>
+                </div>
+            </form>
+        <?php endif; ?>
+    </div>
+</div>
+
 <script>
 (() => {
+  const modal = document.getElementById('composer-modal');
   const toggle = document.getElementById('composer-toggle');
-  const composer = document.getElementById('composer');
-  if (toggle && composer) {
-    toggle.addEventListener('click', () => {
-      const open = !composer.classList.contains('is-open');
-      composer.classList.toggle('is-open', open);
-      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-      if (open) {
-        const first = composer.querySelector('input[name="entity"], a.btn');
-        if (first) first.focus();
-        composer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  if (!modal) return;
+
+  const open = () => {
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('composer-open');
+    const first = modal.querySelector('input[name="entity"], a.btn, button.composer-close');
+    if (first) setTimeout(() => first.focus(), 40);
+  };
+  const close = () => {
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('composer-open');
+    // Drop compose query params so a refresh doesn't reopen the popup.
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has('compose') || url.searchParams.has('q_prefill') || url.searchParams.has('d')) {
+        url.searchParams.delete('compose');
+        url.searchParams.delete('q_prefill');
+        url.searchParams.delete('d');
+        url.searchParams.delete('type');
+        history.replaceState({}, '', url.pathname + (url.search || '') + url.hash);
       }
+    } catch (_) {}
+  };
+
+  if (toggle) toggle.addEventListener('click', open);
+  modal.querySelectorAll('[data-composer-close]').forEach((el) => {
+    el.addEventListener('click', close);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('is-open')) close();
+  });
+
+  // Empty-state / deep links that include ?compose=1 already open via PHP class.
+  document.querySelectorAll('a[href*="compose=1"]').forEach((a) => {
+    a.addEventListener('click', (e) => {
+      // Same-page compose links: open popup instead of navigating.
+      const href = a.getAttribute('href') || '';
+      if (!href.includes('community.php')) return;
+      try {
+        const u = new URL(href, window.location.href);
+        if (u.pathname !== window.location.pathname && !u.pathname.endsWith('/community.php')) return;
+        e.preventDefault();
+        open();
+      } catch (_) {}
     });
-  }
+  });
 
   const type = document.getElementById('report-type');
   const input = document.getElementById('entity-input');
