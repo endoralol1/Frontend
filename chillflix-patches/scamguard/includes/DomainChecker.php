@@ -1258,7 +1258,13 @@ class DomainChecker
                 $this->addSignal('reputation', 'Traffic ranking', 'Top-ranked site', 'Listed on the Tranco top sites ranking (high global traffic).', $hasIp ? 'good' : 'neutral');
                 break;
             case 'popular':
-                $this->addSignal('reputation', 'Traffic ranking', 'On a top-domains list', 'Appears on a major top-domains list; full checks run when the report is opened.', 'neutral');
+                // Cisco Umbrella / Majestic / DomCop top lists — if it resolves, treat
+                // as a presumed-legit baseline so discovery reflects real safe sites.
+                // A full scan on open still re-verifies and can downgrade it.
+                if ($hasIp) {
+                    $this->data['popular_verified'] = 1;
+                }
+                $this->addSignal('reputation', 'Traffic ranking', 'On a top-domains list', 'Appears on a major top-domains ranking (presumed legitimate; re-verified on full scan).', $hasIp ? 'good' : 'neutral');
                 break;
             default:
                 $this->addSignal('threat', 'Threat feeds', 'Deferred (turbo)', 'Exact feed confirmation runs during the full report.', 'neutral');

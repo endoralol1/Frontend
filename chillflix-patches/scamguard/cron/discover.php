@@ -230,96 +230,98 @@ function discover_new_from_threat_feeds(PDO $db, int $want): array
     $feedDir = __DIR__ . '/../storage/feeds';
     $files = glob($feedDir . '/*.txt') ?: [];
     sort($files);
-
-    $offset = max(0, (int) get_setting('threat_feed_scan_offset', '0'));
-    $domains = [];
-    $scanned = 0;
-    $maxScan = max(20000, $want * 80); // lines to read while hunting for unknowns
+    if (!$files) {
+        return [];
+    }
 
     // Preload known domains for fast skip (only exact host match).
-    // For very large DBs this stays fine at current scale.
     $known = [];
     foreach ($db->query('SELECT domain FROM domains')->fetchAll(PDO::FETCH_COLUMN) as $d) {
         $known[strtolower((string) $d)] = true;
     }
 
-    $fileSizes = [];
-    $totalLines = 0;
+    // Sample a share from EVERY feed each run (round-robin via per-file byte
+    // offsets). This keeps discovery diverse so both the "safe" (Tranco) and
+    // "scam" (phishing/malware) counters move every run instead of the puller
+    // getting stuck for hours in one giant popularity list.
+    // Collect a slice from each file into its own list, then round-robin merge
+    // so the run's budget is shared across ALL source types (safe + scam + mixed)
+    // instead of the first files eating the whole batch.
+    $perFile = max(20, (int) ceil($want / count($files)));
+    $perFileLists = [];
+
     foreach ($files as $file) {
         if (!is_file($file)) {
             continue;
         }
-        $lines = max(0, (int) exec('wc -l < ' . escapeshellarg($file)));
-        $fileSizes[$file] = $lines;
-        $totalLines += $lines;
-    }
-    if ($totalLines <= 0) {
-        return [];
-    }
-    $offset = $offset % $totalLines;
-
-    $globalIndex = 0;
-    foreach ($files as $file) {
-        if (!isset($fileSizes[$file])) {
+        $class = classify_feed_file($file);
+        $size = filesize($file) ?: 0;
+        if ($size <= 0) {
             continue;
         }
+
+        $key = 'feedoff_' . preg_replace('/[^a-z0-9]/', '', strtolower(basename($file)));
+        $byteOffset = (int) get_setting($key, '0');
+        if ($byteOffset < 0 || $byteOffset >= $size) {
+            $byteOffset = 0;
+        }
+
         $fh = fopen($file, 'r');
         if (!$fh) {
-            $globalIndex += $fileSizes[$file];
             continue;
         }
+        if ($byteOffset > 0) {
+            fseek($fh, $byteOffset);
+            fgets($fh); // discard partial line
+        }
 
-        $local = 0;
+        $list = [];
+        $scanned = 0;
+        // Scan deep enough to push past big already-known clusters at the top of
+        // threat feeds so fresh (undiscovered) domains surface as new hits.
+        $maxScan = max(40000, $perFile * 400);
         while (($line = fgets($fh)) !== false) {
-            $absolute = $globalIndex + $local;
-            $local++;
-
-            if ($absolute < $offset) {
-                continue;
-            }
-
             $scanned++;
             $line = trim($line);
-            if ($line === '' || str_starts_with($line, '#')) {
-                continue;
-            }
-
-            $host = $line;
-            if (str_contains($line, '://')) {
-                $host = parse_url($line, PHP_URL_HOST) ?: '';
-            } else {
-                $host = explode('/', $line)[0];
-            }
-            $host = strtolower(ltrim((string) $host, '*.'));
-            $host = normalize_domain($host) ?? '';
-            if ($host === '' || isset($known[$host]) || isset($domains[$host])) {
-                if ($scanned >= $maxScan) {
-                    break 2;
+            if ($line !== '' && !str_starts_with($line, '#')) {
+                $host = str_contains($line, '://') ? (parse_url($line, PHP_URL_HOST) ?: '') : explode('/', $line)[0];
+                $host = strtolower(ltrim((string) $host, '*.'));
+                $host = normalize_domain($host) ?? '';
+                if ($host !== '' && !isset($known[$host])) {
+                    $known[$host] = true;
+                    $list[$host] = $class;
                 }
-                continue;
             }
-
-            $domains[$host] = classify_feed_file($file);
-            if (count($domains) >= $want) {
-                $offset = $absolute + 1;
-                break 2;
-            }
-            if ($scanned >= $maxScan) {
-                $offset = $absolute + 1;
-                break 2;
+            if (count($list) >= $perFile || $scanned >= $maxScan) {
+                break;
             }
         }
+
+        $newOffset = feof($fh) ? 0 : ftell($fh);
         fclose($fh);
-        $globalIndex += $fileSizes[$file];
+        set_setting($key, (string) $newOffset);
+
+        if ($list) {
+            $perFileLists[] = $list;
+        }
     }
 
-    // Wrap when we near EOF without filling the batch.
-    if (count($domains) < max(10, (int) floor($want / 5))) {
-        $offset = 0;
+    // Round-robin merge across files for a balanced mix.
+    $domains = [];
+    $cursors = array_map(static fn($l) => array_keys($l), $perFileLists);
+    $exhausted = false;
+    for ($i = 0; !$exhausted; $i++) {
+        $exhausted = true;
+        foreach ($perFileLists as $fi => $list) {
+            if (isset($cursors[$fi][$i])) {
+                $host = $cursors[$fi][$i];
+                $domains[$host] = $list[$host];
+                $exhausted = false;
+            }
+        }
     }
-    set_setting('threat_feed_scan_offset', (string) $offset);
 
-    return $domains; // map of host => source class
+    return $domains; // map of host => source class, interleaved by source
 }
 
 /** Classify a feed file into a provenance class used for fast turbo scoring. */
