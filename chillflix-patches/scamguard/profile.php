@@ -74,54 +74,27 @@ require __DIR__ . '/includes/header.php';
                 <?php if (!empty($user['last_login_at'])): ?> · Last active <?= h(time_ago($user['last_login_at'])) ?><?php endif; ?>
                 <?php if ($isAdmin): ?> · <span class="profile-admin-info"><?= h($user['email']) ?></span><?php endif; ?>
             </div>
-            <div class="profile-rep <?= $points > 0 ? 'is-positive' : ($points < 0 ? 'is-negative' : '') ?>">
-                <span class="profile-rep-score"><?= $points > 0 ? '+' : '' ?><?= $points ?></span>
-                <span class="profile-rep-label">points</span>
-                <span class="profile-rep-split">+<?= (int) $rep['positive'] ?> positive · −<?= (int) $rep['negative'] ?> negative</span>
+            <div class="profile-rep-note">
+                Verified +<?= (int) $weights['approve'] ?> · Rejected <?= (int) $weights['reject'] ?>
+                · Feedback +<?= (int) $rep['positive'] ?>/−<?= (int) $rep['negative'] ?>
+                <?php if ($isAdmin): ?> · <a href="<?= BASE_PATH ?>/admin/community.php" target="_blank">Moderate</a><?php endif; ?>
             </div>
         </div>
-        <?php if ($isAdmin): ?>
-        <div class="profile-actions">
-            <a class="btn btn-sm" href="<?= BASE_PATH ?>/admin/community.php" target="_blank">Moderate</a>
+        <div class="profile-points <?= $points > 0 ? 'is-positive' : ($points < 0 ? 'is-negative' : '') ?>" title="Reputation points">
+            <span class="profile-points-num"><?= $points > 0 ? '+' : '' ?><?= $points ?></span>
+            <span class="profile-points-label">Points</span>
         </div>
-        <?php endif; ?>
     </div>
 
-    <div class="profile-stats">
-        <div class="stat">
-            <span class="num"><?= (int) $rep['reports'] ?></span>
-            <span class="label">Reports</span>
-        </div>
-        <div class="stat">
-            <span class="num num-safe"><?= (int) $rep['approved'] ?></span>
-            <span class="label">Verified</span>
-        </div>
-        <div class="stat">
-            <span class="num num-scam"><?= (int) $rep['rejected'] ?></span>
-            <span class="label">Rejected</span>
-        </div>
-        <div class="stat">
-            <span class="num"><?= (int) $rep['pending'] ?></span>
-            <span class="label">Pending</span>
-        </div>
-        <div class="stat">
-            <span class="num"><?= (int) $rep['comments'] ?></span>
-            <span class="label">Comments</span>
-        </div>
-        <div class="stat">
-            <span class="num num-safe"><?= (int) $rep['positive'] ?></span>
-            <span class="label">Positive</span>
-        </div>
-        <div class="stat">
-            <span class="num num-scam"><?= (int) $rep['negative'] ?></span>
-            <span class="label">Negative</span>
-        </div>
+    <div class="profile-stats" role="list">
+        <div class="stat" role="listitem"><span class="num"><?= (int) $rep['reports'] ?></span><span class="label">Reports</span></div>
+        <div class="stat" role="listitem"><span class="num num-safe"><?= (int) $rep['approved'] ?></span><span class="label">Verified</span></div>
+        <div class="stat" role="listitem"><span class="num num-scam"><?= (int) $rep['rejected'] ?></span><span class="label">Rejected</span></div>
+        <div class="stat" role="listitem"><span class="num"><?= (int) $rep['pending'] ?></span><span class="label">Pending</span></div>
+        <div class="stat" role="listitem"><span class="num"><?= (int) $rep['comments'] ?></span><span class="label">Comments</span></div>
+        <div class="stat" role="listitem"><span class="num num-safe"><?= (int) $rep['positive'] ?></span><span class="label">Positive</span></div>
+        <div class="stat" role="listitem"><span class="num num-scam"><?= (int) $rep['negative'] ?></span><span class="label">Negative</span></div>
     </div>
-    <p class="profile-points-note">
-        Admin review <?= (int) $rep['admin_points'] >= 0 ? '+' : '' ?><?= (int) $rep['admin_points'] ?>
-        (verified +<?= (int) $weights['approve'] ?>, rejected <?= (int) $weights['reject'] ?>)
-        · community feedback <?= (int) $rep['community_points'] >= 0 ? '+' : '' ?><?= (int) $rep['community_points'] ?>
-    </p>
 
     <h3 class="profile-section-title">Reports</h3>
     <div class="card forum-card">
