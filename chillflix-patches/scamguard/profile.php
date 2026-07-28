@@ -149,24 +149,34 @@ require __DIR__ . '/includes/header.php';
                     $tv = $threadVoteMap[(int) $t['id']] ?? ['up' => 0, 'down' => 0];
                 ?>
                 <li class="forum-item">
-                    <a class="forum-main" href="<?= BASE_PATH ?>/thread.php?id=<?= (int) $t['id'] ?>">
-                        <div class="forum-title-row">
-                            <?php if ($t['is_sticky']): ?><span class="forum-pin">📌</span><?php endif; ?>
-                            <?php if ($t['is_locked']): ?><span class="forum-lock">🔒</span><?php endif; ?>
-                            <span class="forum-title"><?= h($t['title']) ?></span>
+                    <div class="forum-body">
+                        <a class="forum-main" href="<?= BASE_PATH ?>/thread.php?id=<?= (int) $t['id'] ?>">
+                            <div class="forum-title-row">
+                                <?php if ($t['is_sticky']): ?><span class="forum-flag">Pinned</span><?php endif; ?>
+                                <?php if ($t['is_locked']): ?><span class="forum-flag">Locked</span><?php endif; ?>
+                                <span class="forum-title"><?= h($t['title']) ?></span>
+                            </div>
+                            <div class="forum-meta">
+                                <?php if ($t['subject_type'] !== 'card'): ?>
+                                    <span class="forum-subject"><?= h($t['subject_value']) ?></span>
+                                    <span class="forum-sep" aria-hidden="true">·</span>
+                                <?php endif; ?>
+                                <span><?= h(report_category_label((string) $t['category'])) ?></span>
+                                <span class="forum-sep" aria-hidden="true">·</span>
+                                <span><?= h(thread_subject_label((string) $t['subject_type'])) ?></span>
+                                <span class="forum-sep" aria-hidden="true">·</span>
+                                <span>▲ <?= (int) $tv['up'] ?> / ▼ <?= (int) $tv['down'] ?></span>
+                            </div>
+                        </a>
+                        <div class="forum-foot">
+                            <span class="forum-status <?= h($review['class']) ?>"><?= h($review['label']) ?></span>
+                            <span class="forum-sep" aria-hidden="true">·</span>
+                            <span><?= h(time_ago($t['created_at'])) ?></span>
                         </div>
-                        <div class="forum-meta">
-                            <span class="forum-chip forum-chip-type"><?= h(thread_subject_label((string) $t['subject_type'])) ?></span>
-                            <?php if ($t['subject_type'] !== 'card'): ?>
-                                <span class="forum-subject"><?= h($t['subject_value']) ?></span>
-                            <?php endif; ?>
-                            <span class="badge badge-sm <?= h($review['class']) ?>"><?= h($review['label']) ?></span>
-                            <span class="forum-chip">▲ <?= (int) $tv['up'] ?> · ▼ <?= (int) $tv['down'] ?></span>
-                        </div>
-                    </a>
-                    <div class="forum-side">
-                        <span class="forum-replies">💬 <?= (int) $t['comment_count'] ?></span>
-                        <span class="forum-when"><?= h(time_ago($t['created_at'])) ?></span>
+                    </div>
+                    <div class="forum-side" title="<?= (int) $t['comment_count'] ?> replies">
+                        <span class="forum-replies"><?= (int) $t['comment_count'] ?></span>
+                        <span class="forum-replies-label">replies</span>
                     </div>
                 </li>
                 <?php endforeach; ?>

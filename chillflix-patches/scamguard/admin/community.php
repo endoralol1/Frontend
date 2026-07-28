@@ -139,7 +139,7 @@ require __DIR__ . '/includes/layout_top.php';
                     <?= role_chip($t['user_role'] ?? null) ?><?= $t['is_banned'] ? ' <span style="color:var(--scam);">(banned)</span>' : '' ?>
                 </td>
                 <td style="padding:8px;"><?= (int) $t['comment_count'] ?></td>
-                <td style="padding:8px;"><span class="badge badge-sm <?= h($review['class']) ?>"><?= h($review['label']) ?></span></td>
+                <td style="padding:8px;"><span class="forum-status <?= h($review['class']) ?>"><?= h($review['label']) ?></span></td>
                 <td style="padding:8px; white-space:nowrap;">
                     <?php
                     $actions = [];

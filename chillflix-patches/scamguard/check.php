@@ -338,21 +338,29 @@ function tone_class(string $tone): string
         <?php else: ?>
             <ul class="forum-list" style="margin-top:8px;">
                 <?php foreach ($domainThreads as $t): $rb = thread_review_badge((string) $t['review_status']); ?>
-                <li class="forum-item" style="padding:11px 2px;">
-                    <a class="forum-main" href="<?= BASE_PATH ?>/thread.php?id=<?= (int) $t['id'] ?>">
-                        <div class="forum-title-row">
-                            <?php if ($t['is_sticky']): ?><span class="forum-pin">📌</span><?php endif; ?>
-                            <?php if ($t['is_locked']): ?><span class="forum-lock">🔒</span><?php endif; ?>
-                            <span class="forum-title"><?= h($t['title']) ?></span>
+                <li class="forum-item forum-item-compact">
+                    <div class="forum-body">
+                        <a class="forum-main" href="<?= BASE_PATH ?>/thread.php?id=<?= (int) $t['id'] ?>">
+                            <div class="forum-title-row">
+                                <?php if ($t['is_sticky']): ?><span class="forum-flag">Pinned</span><?php endif; ?>
+                                <?php if ($t['is_locked']): ?><span class="forum-flag">Locked</span><?php endif; ?>
+                                <span class="forum-title"><?= h($t['title']) ?></span>
+                            </div>
+                            <div class="forum-meta">
+                                <span><?= h(report_category_label((string) $t['category'])) ?></span>
+                            </div>
+                        </a>
+                        <div class="forum-foot">
+                            <span class="forum-status <?= h($rb['class']) ?>"><?= h($rb['label']) ?></span>
+                            <span class="forum-sep" aria-hidden="true">·</span>
+                            <a class="user-link" href="<?= h(profile_path((string) $t['username'])) ?>"><?= h($t['username']) ?></a>
+                            <span class="forum-sep" aria-hidden="true">·</span>
+                            <span><?= h(time_ago($t['last_activity_at'])) ?></span>
                         </div>
-                        <div class="forum-meta">
-                            <span class="forum-chip"><?= h(report_category_label((string) $t['category'])) ?></span>
-                            <span class="badge badge-sm <?= h($rb['class']) ?>"><?= h($rb['label']) ?></span>
-                        </div>
-                    </a>
-                    <div class="forum-side">
-                        <span class="forum-replies">💬 <?= (int) $t['comment_count'] ?></span>
-                        <span class="forum-when">by <a class="user-link" href="<?= h(profile_path((string) $t['username'])) ?>"><?= h($t['username']) ?></a> · <?= h(time_ago($t['last_activity_at'])) ?></span>
+                    </div>
+                    <div class="forum-side" title="<?= (int) $t['comment_count'] ?> replies">
+                        <span class="forum-replies"><?= (int) $t['comment_count'] ?></span>
+                        <span class="forum-replies-label">replies</span>
                     </div>
                 </li>
                 <?php endforeach; ?>

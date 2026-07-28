@@ -218,12 +218,14 @@ require __DIR__ . '/includes/header.php';
     <?php if ($error): ?><div class="alert alert-error"><?= h($error) ?></div><?php endif; ?>
 
     <article class="card thread-card">
-        <div class="thread-badges">
-            <?php if ($thread['is_sticky']): ?><span class="badge badge-sm badge-caution">📌 Pinned</span><?php endif; ?>
-            <?php if ($thread['is_locked']): ?><span class="badge badge-sm badge-risky">🔒 Locked</span><?php endif; ?>
-            <span class="badge badge-sm <?= h($review['class']) ?>"><?= h($review['label']) ?></span>
-            <span class="forum-chip"><?= h(report_category_label((string) $thread['category'])) ?></span>
-            <span class="forum-chip forum-chip-type"><?= h(thread_subject_label((string) $thread['subject_type'])) ?></span>
+        <div class="thread-kicker">
+            <span class="forum-status <?= h($review['class']) ?>"><?= h($review['label']) ?></span>
+            <?php if ($thread['is_sticky']): ?><span class="forum-flag">Pinned</span><?php endif; ?>
+            <?php if ($thread['is_locked']): ?><span class="forum-flag">Locked</span><?php endif; ?>
+            <span class="forum-sep" aria-hidden="true">·</span>
+            <span><?= h(report_category_label((string) $thread['category'])) ?></span>
+            <span class="forum-sep" aria-hidden="true">·</span>
+            <span><?= h(thread_subject_label((string) $thread['subject_type'])) ?></span>
         </div>
 
         <h1 class="thread-title"><?= h($thread['title']) ?></h1>

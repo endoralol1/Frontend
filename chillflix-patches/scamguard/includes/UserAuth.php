@@ -261,9 +261,9 @@ function role_chip(?string $role): string
 function thread_review_badge(string $status): array
 {
     return match ($status) {
-        'approved' => ['label' => 'Verified by admins', 'class' => 'badge-safe'],
-        'rejected' => ['label' => 'Rejected', 'class' => 'badge-scam'],
-        default    => ['label' => 'Awaiting review', 'class' => 'badge-caution'],
+        'approved' => ['label' => 'Verified', 'class' => 'status-verified'],
+        'rejected' => ['label' => 'Rejected', 'class' => 'status-rejected'],
+        default    => ['label' => 'Pending', 'class' => 'status-pending'],
     };
 }
 
