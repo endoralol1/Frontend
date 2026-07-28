@@ -721,6 +721,8 @@ class DomainChecker
     {
         $this->data['has_contact_info'] = 0;
         $this->data['has_privacy_policy'] = 0;
+        $this->data['has_cookie_policy'] = 0;
+        $this->data['has_discord'] = 0;
         $this->data['has_phone'] = 0;
         $this->data['free_email_contact'] = 0;
         $this->data['noindex'] = 0;
@@ -784,13 +786,39 @@ class DomainChecker
 
         $lower = strtolower($html);
 
-        $this->data['has_contact_info'] = (
-            preg_match('/\b(contact|support@|mailto:|help center|customer service)\b/i', $html)
-        ) ? 1 : 0;
+        // Prefer title from Jina markdown when HTML <title> is missing.
+        if (($this->data['page_title'] ?? '') === '' || ($this->data['page_title'] ?? null) === null) {
+            if (preg_match('/^Title:\s*(.+)$/mi', $html, $tm)) {
+                $this->data['page_title'] = trim($tm[1]);
+            }
+        }
 
-        $this->data['has_privacy_policy'] = (
-            preg_match('/privacy([ -_]?policy)?/i', $html)
-        ) ? 1 : 0;
+        $legal = $this->detectLegalAndContactSignals($html);
+        $this->data['has_contact_info'] = $legal['contact'] ? 1 : 0;
+        $this->data['has_privacy_policy'] = $legal['privacy'] ? 1 : 0;
+        $this->data['has_cookie_policy'] = $legal['cookies'] ? 1 : 0;
+        $this->data['has_discord'] = $legal['discord'] ? 1 : 0;
+        $hasTerms = $legal['terms'];
+
+        // If homepage HTML is readable but privacy still missing, probe common legal paths.
+        if (!$challenge && !$legal['privacy']) {
+            $probed = $this->probeCommonLegalPages();
+            if ($probed['privacy']) {
+                $this->data['has_privacy_policy'] = 1;
+                $legal['privacy'] = true;
+            }
+            if ($probed['terms']) {
+                $hasTerms = true;
+            }
+            if ($probed['cookies']) {
+                $this->data['has_cookie_policy'] = 1;
+                $legal['cookies'] = true;
+            }
+            if ($probed['contact']) {
+                $this->data['has_contact_info'] = 1;
+                $legal['contact'] = true;
+            }
+        }
 
         // Phone / WhatsApp presence (contact verification signal).
         $phoneHit = (bool) (
@@ -828,7 +856,6 @@ class DomainChecker
             || preg_match('/\bnoindex\b/i', $xRobots)
         ) ? 1 : 0;
 
-        $hasTerms = (bool) preg_match('/terms([ -_]?(of)?[ -_]?(service|use))?/i', $html);
         $hasLogin = (bool) preg_match('/\b(login|sign in|create account|register)\b/i', $html);
         $hasPayment = (bool) preg_match('/\b(checkout|add to cart|payment|paypal|credit card|billing)\b/i', $html);
         $hasCryptoPay = (bool) preg_match(
@@ -872,11 +899,14 @@ class DomainChecker
             // trigger a false "scam-style urgency language" flag).
             $this->data['has_contact_info'] = 0;
             $this->data['has_privacy_policy'] = 0;
+            $this->data['has_cookie_policy'] = 0;
+            $this->data['has_discord'] = 0;
             $this->data['has_phone'] = 0;
             $this->data['free_email_contact'] = 0;
             $this->data['noindex'] = 0;
             $this->data['crypto_only_payment'] = 0;
             $this->data['suspicious_keyword_hits'] = 0;
+            $hasTerms = false;
             // Don't store/display the challenge page's own title ("Attention Required!
             // | Cloudflare") as if it were the site's title.
             $challengePageTitle = (string) ($this->data['page_title'] ?? '');
@@ -936,8 +966,34 @@ class DomainChecker
                     : ($businessMail ? 'Uses an address on this domain.' : ''),
                 $this->data['free_email_contact'] ? 'warn' : ($businessMail ? 'good' : 'neutral')
             );
-            $this->addSignal('content', 'Privacy policy', $this->data['has_privacy_policy'] ? 'Found' : 'Not found', '', $this->data['has_privacy_policy'] ? 'good' : 'warn');
+            $this->addSignal(
+                'content',
+                'Privacy policy',
+                $this->data['has_privacy_policy'] ? 'Found' : 'Not found',
+                $this->data['has_privacy_policy']
+                    ? 'Privacy policy / privacy statement / do-not-sell style link detected.'
+                    : 'No clear privacy policy, privacy statement, or privacy-rights link found.',
+                $this->data['has_privacy_policy'] ? 'good' : 'warn'
+            );
+            $this->addSignal(
+                'content',
+                'Cookie policy',
+                !empty($this->data['has_cookie_policy']) ? 'Found' : 'Not found',
+                !empty($this->data['has_cookie_policy'])
+                    ? 'Cookie policy / cookie preferences link detected.'
+                    : 'No clear cookie policy or cookie-preferences link found.',
+                !empty($this->data['has_cookie_policy']) ? 'good' : 'neutral'
+            );
             $this->addSignal('content', 'Terms page', $hasTerms ? 'Found' : 'Not found', '', $hasTerms ? 'good' : 'neutral');
+            $this->addSignal(
+                'content',
+                'Discord community',
+                !empty($this->data['has_discord']) ? 'Link found' : 'Not detected',
+                !empty($this->data['has_discord'])
+                    ? 'A Discord invite/community link was found. Informational only — not a trust score by itself.'
+                    : 'No Discord invite link detected on the inspected page.',
+                'neutral'
+            );
             $this->addSignal(
                 'content',
                 'Search indexing',
@@ -1491,7 +1547,10 @@ class DomainChecker
             ];
         }
 
-        if ($young && !(int) ($this->data['has_privacy_policy'] ?? 0) && !(int) ($this->data['has_contact_info'] ?? 0)) {
+        // Only when we actually read the page — bot walls must not look like "missing privacy".
+        if ($young && $contentRead
+            && !(int) ($this->data['has_privacy_policy'] ?? 0)
+            && !(int) ($this->data['has_contact_info'] ?? 0)) {
             $flags[] = [
                 'code' => 'young_no_trust_pages',
                 'label' => 'New site missing contact/privacy pages',
@@ -1915,6 +1974,9 @@ class DomainChecker
             if ($this->data['has_privacy_policy']) {
                 $score += $wContent * 0.25;
             }
+            if (!empty($this->data['has_cookie_policy'])) {
+                $score += 1;
+            }
             if (!empty($this->data['has_phone'])) {
                 $score += 3;
             }
@@ -2032,7 +2094,7 @@ class DomainChecker
     // -------------------------------------------------------------
 
     /**
-     * Detect Cloudflare / bot-challenge interstitial pages.
+     * Detect Cloudflare / Incapsula / bot-challenge interstitial pages.
      */
     private function isChallengeHtml(string $html, string $title = '', int $httpStatus = 0): bool
     {
@@ -2042,22 +2104,167 @@ class DomainChecker
             $title = strtolower(trim(html_entity_decode(strip_tags($m[1]))));
         }
 
+        $len = strlen($html);
+
         return (
             str_contains($title, 'just a moment')
             || str_contains($title, 'attention required')
             || str_contains($title, 'checking your browser')
+            || str_contains($title, 'access denied')
+            || str_contains($title, 'request unsuccessful')
             || str_contains($lower, 'cf-browser-verification')
             || str_contains($lower, 'challenge-platform')
             || str_contains($lower, '_cf_chl')
             || str_contains($lower, 'cdn-cgi/challenge')
             || str_contains($lower, 'performing security verification')
-            || ($httpStatus === 403 && strlen($html) < 8000)
+            || str_contains($lower, 'incapsula')
+            || str_contains($lower, '_incapsula_resource')
+            || str_contains($lower, 'imperva')
+            || str_contains($lower, 'distil_referrer')
+            || str_contains($lower, 'pardon our interruption')
+            || ($httpStatus === 403 && $len < 8000)
+            // Tiny 200 responses with no real document body are almost always interstitials.
+            || ($httpStatus === 200 && $len > 0 && $len < 450
+                && !preg_match('/<(?:main|article|nav|footer)\b/i', $html))
         );
     }
 
     /**
+     * Detect privacy / terms / cookies / contact / Discord from HTML or markdown text.
+     *
+     * @return array{privacy:bool,terms:bool,cookies:bool,contact:bool,discord:bool}
+     */
+    private function detectLegalAndContactSignals(string $text): array
+    {
+        $decoded = html_entity_decode($text, ENT_QUOTES | ENT_HTML5);
+        $lower = strtolower($decoded);
+
+        $privacy = (bool) preg_match(
+            '/\b('
+            . 'privacy[ \-_]?(policy|statement|notice|center)?'
+            . '|online privacy'
+            . '|data protection( policy| notice)?'
+            . '|do not sell( or share)?( my (personal )?(information|info|data))?'
+            . '|your privacy choices'
+            . '|privacy rights'
+            . '|ccpa'
+            . '|gdpr'
+            . ')\b/i',
+            $decoded
+        );
+        $privacy = $privacy || (bool) preg_match(
+            '/(?:href|]\()(["\']?)[^"\')\s]*(?:privacy|do-not-sell|donotsell|data-protection|privacy-policy|privacy_policy)[^"\')\s]*\1/i',
+            $decoded
+        );
+
+        $terms = (bool) preg_match(
+            '/\b(terms([ \-_]?(of)?[ \-_]?(service|use))?|terms & conditions|user agreement|legal terms)\b/i',
+            $decoded
+        );
+        $terms = $terms || (bool) preg_match(
+            '/(?:href|]\()(["\']?)[^"\')\s]*(?:terms(?:-of-(?:use|service))?|tos|user-agreement)[^"\')\s]*\1/i',
+            $decoded
+        );
+
+        $cookies = (bool) preg_match(
+            '/\b(cookie[ \-_]?(policy|notice|preferences|settings|banner)|manage your cookie|cookie settings|cookie list)\b/i',
+            $decoded
+        );
+        $cookies = $cookies || (bool) preg_match(
+            '/(?:href|]\()(["\']?)[^"\')\s]*(?:cookie(?:-policy|-preferences|-settings)?|cookies)[^"\')\s]*\1/i',
+            $decoded
+        );
+
+        $contact = (bool) preg_match(
+            '/\b(contact( us)?|support@|mailto:|help center|customer service|get in touch|reach us)\b/i',
+            $decoded
+        );
+        $contact = $contact || (bool) preg_match(
+            '/(?:href|]\()(["\']?)[^"\')\s]*(?:contact(?:-us)?|support|help)[^"\')\s]*\1/i',
+            $decoded
+        );
+
+        $discord = (bool) preg_match(
+            '/(?:discord\.gg\/|discord\.com\/invite\/|discordapp\.com\/invite\/)/i',
+            $decoded
+        );
+
+        // Avoid false "privacy" from challenge/vendor noise alone.
+        if ($privacy && (str_contains($lower, 'incapsula') || str_contains($lower, 'cf-browser-verification'))) {
+            if (!preg_match('/privacy[ \-_]?(policy|statement|notice)|online privacy|do not sell/i', $decoded)) {
+                $privacy = false;
+            }
+        }
+
+        return [
+            'privacy' => $privacy,
+            'terms' => $terms,
+            'cookies' => $cookies,
+            'contact' => $contact,
+            'discord' => $discord,
+        ];
+    }
+
+    /**
+     * Probe a small allowlist of common legal/contact paths when homepage missed them.
+     *
+     * @return array{privacy:bool,terms:bool,cookies:bool,contact:bool}
+     */
+    private function probeCommonLegalPages(): array
+    {
+        $out = ['privacy' => false, 'terms' => false, 'cookies' => false, 'contact' => false];
+        // Keep this short — only a few common paths, short timeout.
+        $paths = [
+            '/privacy-policy',
+            '/privacy',
+            '/legal/privacy',
+            '/do-not-sell-my-info',
+            '/cookie-policy',
+            '/terms-of-use',
+            '/contact-us',
+        ];
+
+        foreach ($paths as $path) {
+            $url = 'https://' . $this->domain . $path;
+            $headers = [];
+            // Do not track redirects here — avoid overwriting homepage http_status/final_url.
+            $body = $this->httpGet($url, 4, false, $headers, true);
+            if ($body === null || strlen($body) < 250) {
+                continue;
+            }
+            if ($this->isChallengeHtml($body, '', 200)) {
+                continue;
+            }
+
+            // Soft 404 / empty marketing shells: require relevant wording near the path purpose.
+            $legal = $this->detectLegalAndContactSignals($body);
+            $pathLower = strtolower($path);
+            if (!$out['privacy'] && $legal['privacy']
+                && (str_contains($pathLower, 'privacy') || str_contains($pathLower, 'do-not-sell') || str_contains($pathLower, 'legal'))) {
+                $out['privacy'] = true;
+            }
+            if (!$out['cookies'] && $legal['cookies'] && str_contains($pathLower, 'cookie')) {
+                $out['cookies'] = true;
+            }
+            if (!$out['terms'] && $legal['terms'] && str_contains($pathLower, 'term')) {
+                $out['terms'] = true;
+            }
+            if (!$out['contact'] && $legal['contact'] && str_contains($pathLower, 'contact')) {
+                $out['contact'] = true;
+            }
+
+            // Early exit once we have privacy (main trust page).
+            if ($out['privacy'] && ($out['terms'] || $out['cookies'] || $out['contact'])) {
+                break;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
      * Low-RAM content fallbacks when live fetch hits a bot wall.
-     * Order: optional remote fetch API → Internet Archive Wayback.
+     * Order: optional remote fetch API → Jina reader → Internet Archive Wayback.
      * Never uses local Chrome/Playwright.
      *
      * @return array{html:string,source:string,note:string,headers?:array}|null
@@ -2069,7 +2276,42 @@ class DomainChecker
             return $api;
         }
 
+        $jina = $this->fetchViaJinaHtml($liveUrl);
+        if ($jina !== null) {
+            return $jina;
+        }
+
         return $this->fetchWaybackHtml($liveUrl);
+    }
+
+    /**
+     * Free reader proxy used elsewhere for Trustpilot — often bypasses Incapsula/CF walls.
+     * Returns markdown/text that our keyword detectors can still analyze.
+     *
+     * @return array{html:string,source:string,note:string,headers?:array}|null
+     */
+    private function fetchViaJinaHtml(string $liveUrl): ?array
+    {
+        $headers = [];
+        $md = $this->httpGet('https://r.jina.ai/' . $liveUrl, 28, false, $headers, false);
+        if ($md === null || strlen($md) < 400) {
+            return null;
+        }
+        if ($this->isChallengeHtml($md, '', 200)) {
+            return null;
+        }
+        // Require some real page substance, not an error shell.
+        if (!preg_match('/\b(privacy|terms|contact|cookie|about|login|home|product|service)\b/i', $md)
+            && strlen($md) < 1200) {
+            return null;
+        }
+
+        return [
+            'html' => $md,
+            'source' => 'Jina',
+            'note' => 'Live page was bot-blocked; content recovered via Jina reader (not a local browser).',
+            'headers' => $headers,
+        ];
     }
 
     /**

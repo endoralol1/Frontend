@@ -65,14 +65,16 @@ class AiAnalyst
         if (!empty($data['ssl_valid'])) {
             $scoreHint += 2;
         }
+        // Reviews already affect the numeric score via external_score_delta —
+        // only nudge the AI lean lightly here to avoid double-counting.
         if (!empty($data['review_penalty'])) {
-            $scoreHint -= min(10, (int) $data['review_penalty']);
+            $scoreHint -= min(4, (int) floor(((int) $data['review_penalty']) / 4));
             $badBits[] = 'Weak review reputation';
         }
         if (!empty($data['content_incomplete'])) {
             $scoreHint -= 4;
             $badBits[] = 'Content scan incomplete (bot wall)';
-        } elseif (($data['content_source'] ?? '') === 'Wayback' || ($data['content_source'] ?? '') === 'fetch API') {
+        } elseif (in_array((string) ($data['content_source'] ?? ''), ['Wayback', 'fetch API', 'Jina'], true)) {
             $goodBits[] = 'Content recovered via ' . $data['content_source'];
         }
 

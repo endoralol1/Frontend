@@ -41,6 +41,9 @@ class ExternalReputation
         $signals[] = $sj['signal'];
         $reviewPenalty += (int) $sj['penalty'];
         $delta -= (int) $sj['penalty'];
+        if (!empty($sj['bonus'])) {
+            $delta += (int) $sj['bonus'];
+        }
 
         $abuse = $this->abuseBlacklists();
         $signals[] = $abuse['signal'];
@@ -120,6 +123,7 @@ class ExternalReputation
         }
 
         $scamish = (bool) preg_match('/\b(scam|fraud|stolen|nulled|malware|fake|ripoff|rip-off)\b/i', $raw);
+        $negPct = $this->parseTrustpilotNegativeShare($raw);
 
         if ($score === null && $count === null) {
             return [
@@ -137,42 +141,70 @@ class ExternalReputation
 
         $label = ($score !== null ? number_format($score, 1) . '/5' : 'n/a')
             . ($count !== null ? ' · ' . number_format($count) . ' reviews' : '');
+        if ($negPct !== null) {
+            $label .= ' · ' . $negPct . '% negative';
+        }
 
         $penalty = 0;
         $bonus = 0;
         $tone = 'neutral';
         $note = 'Live Trustpilot consumer reviews.';
+        $n = $count ?? 0;
 
-        if ($score !== null && $count !== null && $count >= 3) {
-            if ($score <= 2.0 && $scamish) {
-                $penalty = min(28, 12 + (int) floor($count / 3));
+        // Sample-size confidence: tiny samples matter, but must not dominate the score.
+        $cap = $this->reviewSampleCap($n > 0 ? $n : ($score !== null ? 2 : 0));
+
+        if ($score !== null) {
+            $base = 0;
+            if ($score <= 1.9) {
+                $base = 16;
                 $tone = 'bad';
-                $note = 'Low Trustpilot score with scam/fraud language in reviews.';
+                $note = 'Critical Trustpilot score (≤1.9) — strong negative reputation signal.';
             } elseif ($score <= 2.5) {
-                $penalty = min(16, 6 + (int) floor($count / 8));
-                $tone = 'warn';
-                $note = 'Low Trustpilot score — treat with caution (can also happen on large brands).';
+                $base = 12;
+                $tone = 'bad';
+                $note = 'Very low Trustpilot score (≤2.5) — treat as low-reputation / high risk.';
             } elseif ($score < 3.0) {
-                // e.g. 2.6/5 with a few reviews — mediocre, not neutral
-                $penalty = min(12, 4 + (int) floor($count / 6));
+                $base = 8;
                 $tone = 'warn';
-                $note = 'Below-average Trustpilot score'
-                    . ($count < 10 ? ' (small review sample).' : '.');
-            } elseif ($score < 3.5 && $count >= 5) {
-                $penalty = 3;
+                $note = 'Below 3.0 Trustpilot score — already a serious reputation problem.';
+            } elseif ($score < 3.5) {
+                $base = 4;
                 $tone = 'warn';
-                $note = 'Mediocre Trustpilot score — mixed customer feedback.';
-            } elseif ($score >= 4.0 && $count >= 10) {
-                $bonus = 6;
+                $note = 'Mediocre Trustpilot score — mixed or weak customer feedback.';
+            } elseif ($score >= 4.5 && $n >= 25) {
+                $bonus = min(12, 6 + (int) floor($n / 50));
+                $tone = 'good';
+                $note = 'Excellent Trustpilot score with a meaningful review volume.';
+            } elseif ($score >= 4.0 && $n >= 10) {
+                $bonus = min(9, 4 + (int) floor($n / 40));
                 $tone = 'good';
                 $note = 'Strong Trustpilot score from multiple reviews.';
-            } else {
-                $tone = 'neutral';
             }
-        } elseif ($score !== null && $score <= 2.5) {
-            $penalty = $score <= 2.0 ? 8 : 5;
-            $tone = 'warn';
-            $note = 'Low Trustpilot score (few or unknown review count).';
+
+            // Volume amplifies low scores (hosts with many angry customers).
+            if ($base > 0) {
+                if ($n >= 50) {
+                    $base += 8;
+                } elseif ($n >= 20) {
+                    $base += 5;
+                } elseif ($n >= 8) {
+                    $base += 3;
+                } elseif ($n >= 3) {
+                    $base += 1;
+                }
+                if ($scamish) {
+                    $base += 4;
+                    $note .= ' Scam/fraud language appears in review text.';
+                }
+                if ($negPct !== null && $negPct >= 60) {
+                    $base += 5;
+                    $note .= ' High share of negative reviews (' . $negPct . '%).';
+                } elseif ($negPct !== null && $negPct >= 40) {
+                    $base += 2;
+                }
+                $penalty = min($cap, $base);
+            }
         }
 
         return [
@@ -182,7 +214,7 @@ class ExternalReputation
         ];
     }
 
-    /** @return array{signal:array,penalty:int} */
+    /** @return array{signal:array,penalty:int,bonus:int} */
     private function sitejabber(): array
     {
         $cached = $this->cacheGet('sitejabber');
@@ -203,13 +235,15 @@ class ExternalReputation
                     'neutral'
                 ),
                 'penalty' => 0,
+                'bonus' => 0,
             ];
         }
 
         $reviews = (int) ($cached['review_numbers']['reviews'] ?? 0);
         $sj = isset($cached['sj_score']) ? (float) $cached['sj_score'] : null;
-        $neg = (int) ($cached['reviews_distribution']['negative'] ?? 0);
+        $negRaw = $cached['reviews_distribution']['negative'] ?? 0;
         $pos = (int) ($cached['positive_reviews_number'] ?? 0);
+        $neg = is_numeric($negRaw) ? (float) $negRaw : 0.0;
 
         // Sitejabber sometimes returns 0-100 style scores.
         $sjStars = $sj;
@@ -223,28 +257,116 @@ class ExternalReputation
             }
         }
 
+        // Normalize negative field: absolute count OR percentage-like value.
+        $negCount = 0;
+        $negPct = null;
+        if ($reviews > 0) {
+            if ($neg > 0 && $neg <= 100 && $neg > $reviews) {
+                // Looks like a percentage.
+                $negPct = (int) round($neg);
+                $negCount = (int) round(($negPct / 100) * $reviews);
+            } else {
+                $negCount = (int) round($neg);
+                if ($negCount > 0) {
+                    $negPct = (int) round(($negCount / max(1, $reviews)) * 100);
+                }
+            }
+        }
+
         $penalty = 0;
+        $bonus = 0;
         $tone = 'neutral';
         $value = ($sjLabel ?: 'Profile found') . ' · ' . $reviews . ' reviews';
+        if ($negPct !== null) {
+            $value .= ' · ' . $negPct . '% negative';
+        }
+        $cap = $this->reviewSampleCap($reviews);
 
-        if ($reviews > 0 && $sjStars !== null && $sjStars <= 2.0) {
-            $penalty = min(18, 8 + $neg * 2);
+        if ($reviews === 0 || $sjStars === null) {
+            $note = $reviews === 0 ? 'No Sitejabber reviews yet.' : 'Sitejabber profile found but score missing.';
+        } elseif ($sjStars <= 1.9) {
+            $penalty = min($cap, 14 + ($negPct !== null && $negPct >= 50 ? 6 : 2) + (int) floor($reviews / 15));
             $tone = 'bad';
-            $note = 'Negative Sitejabber/SmartCustomer rating.';
-        } elseif ($reviews === 0) {
-            $note = 'No Sitejabber reviews yet.';
-            $tone = 'neutral';
-        } elseif ($sjStars !== null && $sjStars >= 4.0) {
-            $note = 'Positive Sitejabber rating.';
+            $note = 'Critical Sitejabber score (≤1.9).';
+        } elseif ($sjStars <= 2.5) {
+            $penalty = min($cap, 11 + ($negPct !== null && $negPct >= 40 ? 4 : 1) + (int) floor($reviews / 20));
+            $tone = 'bad';
+            $note = 'Very low Sitejabber score (≤2.5) — low-reputation pattern (common on abusive hosts).';
+        } elseif ($sjStars < 3.0) {
+            $penalty = min($cap, 7 + (int) floor($reviews / 25));
+            $tone = 'warn';
+            $note = 'Below 3.0 Sitejabber score — already a worrying reputation level.';
+        } elseif ($sjStars < 3.5) {
+            $penalty = min($cap, 3);
+            $tone = 'warn';
+            $note = 'Mediocre Sitejabber score — mixed feedback.';
+        } elseif ($sjStars >= 4.5 && $reviews >= 20) {
+            $bonus = min(10, 5 + (int) floor($reviews / 40));
             $tone = 'good';
+            $note = 'Excellent Sitejabber rating with solid review volume.';
+        } elseif ($sjStars >= 4.0 && $reviews >= 8) {
+            $bonus = min(7, 3 + (int) floor($reviews / 50));
+            $tone = 'good';
+            $note = 'Positive Sitejabber rating'
+                . ($pos > 0 ? " ({$pos} positives noted)." : '.');
         } else {
             $note = "Sitejabber reviews: {$pos} positive mentioned in profile metadata.";
+        }
+
+        // Extra push when most reviews are negative even if average is muddy.
+        if ($penalty > 0 && $negPct !== null && $negPct >= 70 && $reviews >= 5) {
+            $penalty = min($cap, $penalty + 4);
+            $note .= ' Majority-negative review mix.';
         }
 
         return [
             'signal' => $this->sig('reputation', 'Sitejabber / SmartCustomer', $value, $note, $tone),
             'penalty' => $penalty,
+            'bonus' => $bonus,
         ];
+    }
+
+    /**
+     * Cap how hard reviews can swing the score based on sample size.
+     * Tiny samples still count, but cannot dominate.
+     */
+    private function reviewSampleCap(int $count): int
+    {
+        if ($count <= 0) {
+            return 4;
+        }
+        if ($count <= 2) {
+            return 5;
+        }
+        if ($count <= 4) {
+            return 9;
+        }
+        if ($count <= 9) {
+            return 14;
+        }
+        if ($count <= 24) {
+            return 20;
+        }
+        if ($count <= 49) {
+            return 26;
+        }
+        return 32;
+    }
+
+    private function parseTrustpilotNegativeShare(string $raw): ?int
+    {
+        // Prefer explicit distribution wording when Jina exposes it.
+        if (preg_match('/\b([0-9]{1,3})\s*%\s*(?:of reviews\s*)?(?:are\s*)?negative\b/i', $raw, $m)) {
+            $n = (int) $m[1];
+            return ($n >= 0 && $n <= 100) ? $n : null;
+        }
+        // Star breakdown: "1-star ... N%" style when present.
+        if (preg_match('/1\s*[-\s]?star[^0-9]{0,40}([0-9]{1,3})\s*%/i', $raw, $m1)
+            && preg_match('/2\s*[-\s]?star[^0-9]{0,40}([0-9]{1,3})\s*%/i', $raw, $m2)) {
+            $sum = (int) $m1[1] + (int) $m2[1];
+            return ($sum >= 0 && $sum <= 100) ? $sum : null;
+        }
+        return null;
     }
 
     /** Public RBL sweep via MXToolbox. */
