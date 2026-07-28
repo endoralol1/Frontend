@@ -462,6 +462,24 @@ class SupportChat
                             $reply = $direct;
                         }
                     }
+                    // Never leave a useless “no opinions” refusal when we have domain data.
+                    if (
+                        preg_match('/\b(don\'t|do not|cannot|can\'t)\b.{0,40}\b(personal )?opinion/i', $reply)
+                        && $lookups
+                    ) {
+                        foreach ($lookups as $item) {
+                            if (!empty($item['found']) && !empty($item['opinion'])) {
+                                $domain = (string) $item['domain'];
+                                $page = (string) ($item['page'] ?? '');
+                                $recheck = (string) ($item['recheck'] ?? $page);
+                                $reply = "{$domain} scores " . (int) $item['score'] . '/100 (' . ($item['label'] ?? '') . ").\n\n"
+                                    . 'My take: ' . $item['opinion']
+                                    . ($page !== '' ? "\nDetails: {$page}" : '')
+                                    . ($recheck !== '' ? "\nRecheck now: {$recheck}" : '');
+                                break;
+                            }
+                        }
+                    }
                     // If the AI still refuses a check it could do, nudge toward pasting a subject.
                     if (preg_match('/\b(cannot|can\'t|unable to)\b.{0,60}\b(check|scan|recheck)\b/i', $reply)) {
                         $reply .= "\n\nPaste a website, phone, crypto address, or IBAN and ask me to check it — I can run the public scan here.";
@@ -540,6 +558,18 @@ class SupportChat
         );
     }
 
+    /** True when they want a risk take / opinion / “what do you think”. */
+    public static function wantsOpinion(string $message): bool
+    {
+        return (bool) preg_match(
+            '/\b(opinion|opinions|what do you think|do you think|your take|your view|'
+            . 'thoughts|tell me about|what is this site|what.?s the (risk|deal)|'
+            . 'how risky|should i (use|trust|visit|avoid)|worth (it|using)|'
+            . 'legit\??|legitimate\??|trustworthy\??)\b/i',
+            $message
+        );
+    }
+
     public static function wantsForceRecheck(string $message): bool
     {
         return (bool) preg_match(
@@ -558,9 +588,10 @@ class SupportChat
     {
         $force = self::wantsForceRecheck($message);
         $wants = self::wantsPublicCheck($message) || $force;
+        $wantOpinion = self::wantsOpinion($message);
 
-        // Soft score questions still trigger a check when the domain is unknown.
-        $softScoreAsk = (bool) preg_match(
+        // Soft score / opinion questions still trigger a check when useful.
+        $softScoreAsk = $wantOpinion || (bool) preg_match(
             '/\b(score|rated|rating|safe|risky|scam|status|trust|what about|how (bad|good))\b/i',
             $message
         );
@@ -568,25 +599,24 @@ class SupportChat
         $domains = self::extractDomainsFromText($message);
         if (!$domains) {
             $ref = self::lastDomainFromHistory($history);
-            if ($ref && ($force || preg_match('/\b(it|this|that|again)\b/i', $message))) {
+            if ($ref && ($force || $wantOpinion || preg_match('/\b(it|this|that|again)\b/i', $message))) {
                 $domains = [$ref];
             }
         }
 
         // Offer help when they ask to check but forgot the subject.
-        if ($wants && !$domains && !self::extractEntitySubject($message)) {
-            if (preg_match('/\b(can you check|check for me|scan for me|scan something|check something)\b/i', $message)
+        if (($wants || $wantOpinion) && !$domains && !self::extractEntitySubject($message)) {
+            if (preg_match('/\b(can you check|check for me|scan for me|scan something|check something|your opinion|what do you think)\b/i', $message)
                 || mb_strlen(trim($message)) < 80
             ) {
                 return [
-                    'reply' => "Yes — I can run the same public ScamGuard checks here.\n"
-                        . "Paste one of these and ask me to check or recheck it:\n"
+                    'reply' => "Yes — I can check something and give you a clear risk take based on ScamGuard’s scan.\n"
+                        . "Paste one of these:\n"
                         . "- Website (example.com)\n"
                         . "- Phone number\n"
                         . "- Crypto address\n"
                         . "- IBAN\n"
-                        . "I’ll reply with the score, status, and detail links. "
-                        . "Community reports still need you signed in on the website.",
+                        . "I’ll reply with the score, what the site/looks like, the main risks, and detail links.",
                     'escalate' => false,
                     'matched' => 'check-prompt',
                     'source' => 'action',
@@ -594,12 +624,12 @@ class SupportChat
             }
         }
 
-        if ($domains && ($wants || $softScoreAsk || $force)) {
+        if ($domains && ($wants || $softScoreAsk || $force || $wantOpinion)) {
             $lines = [];
             $didScan = false;
             foreach (array_slice($domains, 0, 2) as $domain) {
-                $allowScan = $force || $wants || self::shouldAutoScanDomain($domain, $wants, $softScoreAsk);
-                $result = self::runWebsiteCheck($domain, $force, $allowScan);
+                $allowScan = $force || $wants || $wantOpinion || self::shouldAutoScanDomain($domain, $wants || $wantOpinion, $softScoreAsk);
+                $result = self::runWebsiteCheck($domain, $force, $allowScan, true);
                 if ($result === null) {
                     continue;
                 }
@@ -612,7 +642,7 @@ class SupportChat
                 return [
                     'reply' => implode("\n\n", $lines),
                     'escalate' => false,
-                    'matched' => $didScan ? 'website-scan' : 'website-lookup',
+                    'matched' => $wantOpinion ? 'website-opinion' : ($didScan ? 'website-scan' : 'website-lookup'),
                     'source' => $didScan ? 'scan' : 'lookup',
                 ];
             }
@@ -727,7 +757,7 @@ class SupportChat
     }
 
     /** @return array{text:string,scanned:bool}|null */
-    public static function runWebsiteCheck(string $domain, bool $forceRecheck, bool $allowScan = true): ?array
+    public static function runWebsiteCheck(string $domain, bool $forceRecheck, bool $allowScan = true, bool $withOpinion = true): ?array
     {
         require_once __DIR__ . '/DomainRepository.php';
         $repo = new DomainRepository();
@@ -766,11 +796,89 @@ class SupportChat
         if (!empty($row['last_checked'])) {
             $text .= ' Last checked: ' . $row['last_checked'] . '.';
         }
+        if ($withOpinion) {
+            $opinion = self::buildRiskOpinion($row, $domain);
+            if ($opinion !== '') {
+                $text .= "\n\nMy take: {$opinion}";
+            }
+        }
         $text .= "\nDetails: {$page}\nRecheck now: {$recheck}";
         if (!$scanned && !$forceRecheck) {
             $text .= "\nSay “recheck {$domain}” if you want a fresh scan.";
         }
         return ['text' => $text, 'scanned' => $scanned];
+    }
+
+    /**
+     * Plain-language risk opinion grounded in the stored scan (not a legal verdict).
+     *
+     * @param array<string,mixed> $row
+     */
+    public static function buildRiskOpinion(array $row, string $domain): string
+    {
+        $score = (int) ($row['trust_score'] ?? 0);
+        $status = (string) ($row['status'] ?? 'unknown');
+        $verdict = (string) ($row['verdict'] ?? '');
+        $age = $row['domain_age_days'] !== null ? (int) $row['domain_age_days'] : null;
+        $malware = !empty($row['malware_hit']);
+        $phishing = !empty($row['phishing_hit']);
+        $feeds = trim((string) ($row['threat_feed_sources'] ?? ''));
+
+        $reasons = json_decode((string) ($row['verdict_reasons'] ?? '[]'), true);
+        if (!is_array($reasons)) {
+            $reasons = [];
+        }
+        $analyst = '';
+        foreach ($reasons as $reason) {
+            $r = trim((string) $reason);
+            if ($r === '') {
+                continue;
+            }
+            if (stripos($r, 'Analyst:') === 0) {
+                $analyst = trim(substr($r, strlen('Analyst:')));
+                break;
+            }
+        }
+        if ($analyst === '' && !empty($row['analyst_summary'])) {
+            $analyst = trim((string) $row['analyst_summary']);
+        }
+        // Keep first useful clause of analyst text
+        if ($analyst !== '') {
+            $analyst = preg_replace('/\s*\|\s*.*$/u', '', $analyst) ?? $analyst;
+            if (mb_strlen($analyst) > 220) {
+                $analyst = mb_substr($analyst, 0, 217) . '…';
+            }
+        }
+
+        $parts = [];
+        if ($malware || $phishing) {
+            $parts[] = $phishing
+                ? 'It is flagged on phishing/threat lists — I would not log in or enter money details.'
+                : 'It is flagged on malware/threat lists — treat it as unsafe.';
+        } elseif ($score < 35 || in_array($status, ['scam', 'blacklisted'], true) || in_array($verdict, ['likely_scam', 'malware', 'phishing'], true)) {
+            $parts[] = "At {$score}/100 this looks high-risk. I would avoid accounts, payments, or personal data here.";
+        } elseif ($score < 55 || $status === 'risky' || $verdict === 'suspicious') {
+            $parts[] = "At {$score}/100 I’d be cautious — fine to browse carefully, but I wouldn’t trust logins or payments.";
+        } elseif ($score < 80 || in_array($status, ['caution'], true) || $verdict === 'caution') {
+            $parts[] = "At {$score}/100 there isn’t a hard scam hit, but some caution signs remain.";
+        } else {
+            $parts[] = "At {$score}/100 the scan looks comparatively solid — still use normal caution with logins and payments.";
+        }
+
+        if ($analyst !== '') {
+            $parts[] = $analyst;
+        } elseif ($age !== null && $age < 90) {
+            $parts[] = 'The domain is quite new (' . $age . ' days), which raises risk on its own.';
+        } elseif ($age !== null && $age > 365) {
+            $parts[] = 'Domain age is not brand-new (' . number_format($age) . ' days), which is a mild positive.';
+        }
+
+        if ($feeds !== '' && !$malware && !$phishing) {
+            $parts[] = 'Threat-feed notes: ' . mb_strimwidth($feeds, 0, 100, '…');
+        }
+
+        $parts[] = 'This is a ScamGuard risk opinion from the scan data, not legal proof.';
+        return implode(' ', $parts);
     }
 
     /** @return array{text:string}|null */
@@ -851,6 +959,8 @@ class SupportChat
                     'page' => $page,
                     'recheck' => $page . (str_contains($page, '?') ? '&' : '?') . 'refresh=1',
                     'last_checked' => $row['last_checked'] ?? null,
+                    'verdict' => (string) ($row['verdict'] ?? ''),
+                    'opinion' => self::buildRiskOpinion($row, $domain),
                     'notes' => !empty($row['manual_override']) ? 'manual override set' : '',
                 ];
             } else {
@@ -1040,10 +1150,15 @@ class SupportChat
         $system = "You are the {$site} support assistant in a live chat widget.\n"
             . "Help visitors with anything about this website and product: trust checks (website/phone/crypto/IBAN/card), "
             . "how scores work, reporting scams, community forum, announcements, accounts/login/points, browsing flagged domains, and using the site.\n"
-            . "Be accurate, concise (2–5 short sentences), friendly, and practical. Use plain language.\n"
+            . "Be accurate, concise (2–6 short sentences), friendly, and practical. Use plain language.\n"
             . "CAPABILITIES: The chat can itself run public ScamGuard checks/rechecks for websites, phones, crypto, IBAN, and cards, "
             . "and can quote live homepage counters. When a visitor asks you to check something, ask them to paste the subject if missing — "
             . "do NOT say you are unable to check. You cannot post community reports or do admin actions without the visitor using those pages while signed in.\n"
+            . "OPINIONS: When asked for your opinion / take / thoughts / whether a site is legit or risky, you MUST give a clear risk opinion "
+            . "based on ScamGuard score, status, verdict, and any analyst notes in LIVE DOMAIN LOOKUPS. "
+            . "Say what the site appears to be, what the main risks are, and what a careful visitor should/shouldn't do. "
+            . "NEVER refuse with phrases like \"I don't provide personal opinions\" or \"I can't give an opinion\". "
+            . "Frame it as a ScamGuard-based risk take, not legal advice or absolute proof.\n"
             . "CRITICAL: When the user asks for a link, URL, or how to open a page, include the full https:// URL from the Important links list on one line with NO spaces inside the URL.\n"
             . "CRITICAL: When LIVE SITE STATS are provided below, you MUST quote those exact numbers for questions about how many sites/domains are scanned, the homepage counter, totals, likely safe, flagged scams, or checked today. Never say you cannot see or do not have the exact number when LIVE SITE STATS are present.\n"
             . "CRITICAL: When LIVE DOMAIN LOOKUPS are provided below, you MUST use those exact scores/status values to answer. "
