@@ -166,6 +166,17 @@ $ogType = $ogType ?? 'website';
     window.setInterval(paint, 1250);
   };
 
+  // Any navigation that can trigger a scan (a report page or an explicit rescan)
+  // shows the staged loader so slow first-time / full scans never feel frozen.
+  const isReportUrl = (url) => {
+    if (url.origin !== window.location.origin) return false;
+    if (url.searchParams.get('refresh') === '1') return true;
+    const p = url.pathname;
+    return p.includes('/site/')
+      || p.endsWith('/check.php')
+      || p.endsWith('/check-entity.php');
+  };
+
   document.addEventListener('click', (event) => {
     const link = event.target.closest && event.target.closest('a[href]');
     if (!link) return;
@@ -173,19 +184,33 @@ $ogType = $ogType ?? 'website';
     if (link.target && link.target !== '_self') return;
 
     const href = link.getAttribute('href') || '';
+    if (href.startsWith('#')) return;
     let url;
     try {
       url = new URL(href, window.location.href);
     } catch (e) {
       return;
     }
-    if (url.searchParams.get('refresh') !== '1') return;
+    if (!isReportUrl(url)) return;
 
     event.preventDefault();
     showLoading();
     window.setTimeout(() => {
       window.location.href = url.toString();
     }, 90);
+  });
+
+  // Show the loader when a search/check form is submitted too.
+  document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    const action = (form.getAttribute('action') || '').toLowerCase();
+    const isCheck = form.id === 'scam-search'
+      || action.includes('check.php')
+      || action.includes('check-entity.php')
+      || form.hasAttribute('data-scan-form');
+    if (!isCheck) return;
+    showLoading();
   });
 })();
 </script>

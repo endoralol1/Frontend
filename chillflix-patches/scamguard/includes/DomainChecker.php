@@ -497,8 +497,10 @@ class DomainChecker
         $aRecords = @dns_get_record($this->domain, DNS_A) ?: [];
         $aaaa = @dns_get_record($this->domain, DNS_AAAA) ?: [];
         $nsRecords = @dns_get_record($this->domain, DNS_NS) ?: [];
-        $mxRecords = @dns_get_record($this->domain, DNS_MX) ?: [];
-        $txtRecords = @dns_get_record($this->domain, DNS_TXT) ?: [];
+        // Turbo throughput mode skips the email-hygiene DNS lookups (MX/TXT/DMARC):
+        // they are not scored as negatives and the full report re-runs them anyway.
+        $mxRecords = $this->turboFast ? [] : (@dns_get_record($this->domain, DNS_MX) ?: []);
+        $txtRecords = $this->turboFast ? [] : (@dns_get_record($this->domain, DNS_TXT) ?: []);
 
         $ips = [];
         foreach ($aRecords as $r) {
@@ -540,7 +542,7 @@ class DomainChecker
                 $spf = true;
             }
         }
-        $dmarcRecs = @dns_get_record('_dmarc.' . $this->domain, DNS_TXT) ?: [];
+        $dmarcRecs = $this->turboFast ? [] : (@dns_get_record('_dmarc.' . $this->domain, DNS_TXT) ?: []);
         foreach ($dmarcRecs as $r) {
             $txt = is_array($r['txt'] ?? null) ? implode('', $r['txt']) : (string) ($r['txt'] ?? '');
             if (stripos($txt, 'v=dmarc1') !== false) {
