@@ -1,4 +1,4 @@
-import { openViaAnchor } from "@/lib/popup-open"
+import { openViaAnchor, openViaForm } from "@/lib/popup-open"
 
 let guardDepth = 0
 
@@ -49,21 +49,23 @@ function trackAdPopupWindow(popup: Window | null) {
 }
 
 /**
- * Open via native window.open, then <a target=_blank> — never call patched window.open
- * (that used to recurse when mobile/desktop-site blocked popups and killed Monetag).
+ * Open via native window.open (no noopener features), then <a>/form fallbacks.
+ * Never call the patched window.open — that used to recurse when mobile
+ * Desktop-site blocked popups and killed Monetag’s click handler.
  */
 function openDelegatedPopup(url: string) {
     let opened: Window | null = null
     try {
-        opened = nativeOpen
-            ? nativeOpen(url, "_blank", "noopener,noreferrer")
-            : window.open(url, "_blank", "noopener,noreferrer")
+        // No feature string — mobile Chrome Desktop-site often blocks
+        // window.open(..., "noopener,noreferrer").
+        opened = nativeOpen ? nativeOpen(url, "_blank") : window.open(url, "_blank")
     } catch {
         opened = null
     }
 
     if (!opened) {
         openViaAnchor(url, "_blank")
+        openViaForm(url, "_blank")
         markAdPopupDismissGrace()
     } else {
         trackAdPopupWindow(opened)
@@ -84,6 +86,17 @@ function normalizePopupTarget(target?: string) {
         return "_blank"
     }
     return target
+}
+
+/** Strip noopener from feature strings — they make opens return null on mobile. */
+function sanitizeOpenFeatures(features?: string) {
+    if (!features?.trim()) return undefined
+    const cleaned = features
+        .split(",")
+        .map((part) => part.trim())
+        .filter((part) => part && !/^noopener$/i.test(part) && !/^noreferrer$/i.test(part))
+        .join(",")
+    return cleaned || undefined
 }
 
 /** True while an ad popup is open or briefly after it closes — suppress overlay dismiss. */
@@ -109,8 +122,23 @@ export function installSitePlayerAdGuard() {
         features?: string
     ) {
         const href = url?.toString().trim()
+        const safeFeatures = sanitizeOpenFeatures(features)
+
+        // Monetag parks about:blank windows during the user gesture — must succeed.
         if (!href || href === "about:blank") {
-            const blank = nativeOpen!(url, target, features)
+            let blank: Window | null = null
+            try {
+                blank = nativeOpen!(url, target, safeFeatures)
+            } catch {
+                blank = null
+            }
+            if (!blank) {
+                try {
+                    blank = nativeOpen!(url ?? "about:blank", normalizePopupTarget(target))
+                } catch {
+                    blank = null
+                }
+            }
             trackAdPopupWindow(blank)
             return blank
         }
@@ -118,9 +146,16 @@ export function installSitePlayerAdGuard() {
         const safeTarget = normalizePopupTarget(target)
         let opened: Window | null = null
         try {
-            opened = nativeOpen!(href, safeTarget, features)
+            opened = nativeOpen!(href, safeTarget, safeFeatures)
         } catch {
             opened = null
+        }
+        if (!opened) {
+            try {
+                opened = nativeOpen!(href, safeTarget)
+            } catch {
+                opened = null
+            }
         }
 
         if (!opened && isExternalNavigation(href)) {

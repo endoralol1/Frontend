@@ -1,17 +1,25 @@
-# Chillflix patches — mobile desktop-site popunder ads
+# Chillflix patches — player popunder ads on mobile “Desktop site”
 
-## Problem
-On phones using **Request Desktop Site**, Monetag popunders often failed because:
+## Scope
+Ads inject **only while the Watch player is open** (`SitePlayerAds`), not sitewide.
 
-1. Ads scripts only injected after the Watch modal opened (after the gesture was spent).
-2. `site-player-ad-guard` recursed when `window.open` returned `null` (common on mobile), which broke the ad click handler.
-3. Card Watch buttons called `stopPropagation()`, hiding the tap from Monetag’s document listeners.
+## Why Desktop site broke player ads
+Chrome’s **Desktop site** option sends a desktop User-Agent on a phone. Monetag then
+takes the **desktop popunder** path (`window.open` / blank-window parking) instead of
+a mobile interstitial.
 
-## Fix
-- Early-prime Monetag via `SitePlayerAdsPrime` + `prefetchSitePlayerAdsEnabled()` injecting scripts when enabled.
-- Guard uses native `window.open` + `<a target=_blank>` fallback (no recursion).
-- Watch card clicks no longer stop propagation.
-- Embed parent delegate uses the same popup helper.
+Our player ad guard was making that worse:
+
+1. It passed `noopener,noreferrer` as `window.open` features — on mobile Chrome that
+   often returns `null` and breaks Monetag’s parked `about:blank` window.
+2. When `window.open` returned `null`, the guard called itself recursively and killed
+   the ad click handler.
+
+## Fix (player-only)
+- Reverted sitewide `SitePlayerAdsPrime` early injection.
+- Guard uses native `window.open` without noopener feature strings, retries bare
+  `window.open(url, "_blank")`, then `<a target=_blank>` / form submit fallbacks.
+- No recursive patched `window.open` calls.
 
 ## Deploy
 Copy patched files onto `/var/www/chillflix.lol` and rebuild/restart `chillflix` PM2.

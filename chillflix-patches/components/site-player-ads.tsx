@@ -8,14 +8,17 @@ import {
     uninstallSitePlayerAdGuard,
 } from "@/lib/site-player-ad-guard"
 
-/** Loads Monetag zone 11200416 on the first-party site player modal. */
+/** Loads Monetag zone 11200416 only while the first-party site player modal is open. */
 export function SitePlayerAds() {
     useEffect(() => {
         let cancelled = false
 
         installSitePlayerAdGuard()
 
-        void fetch("/api/embed/ads?surface=site-player", { cache: "no-store" })
+        void fetch("/api/embed/ads?surface=site-player", {
+            cache: "no-store",
+            credentials: "include",
+        })
             .then((response) => response.json())
             .then((data) => {
                 if (cancelled) return

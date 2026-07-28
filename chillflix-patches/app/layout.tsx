@@ -14,7 +14,6 @@ import { SiteAccessGuard } from "@/components/site-access-guard"
 import { AuthProvider } from "@/hooks/use-auth"
 import { EmbedAdParentDelegate } from "@/components/embed-ad-parent-delegate"
 import { EmbedAuthParentBridge } from "@/components/embed-auth-parent-bridge"
-import { SitePlayerAdsPrime } from "@/components/site-player-ads-prime"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TrailerProvider } from "@/components/trailer-provider"
 import { UserLibraryProvider } from "@/components/user-library-provider"
@@ -94,7 +93,6 @@ export default async function RootLayout({ children, modal }: RootLayoutProps) {
             <AuthProvider>
               <EmbedAuthParentBridge />
               <EmbedAdParentDelegate />
-              <SitePlayerAdsPrime />
               <UserLibraryProvider>
                 <TrailerProvider>
                   <SiteAccessGuard>
