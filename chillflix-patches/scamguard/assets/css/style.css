@@ -1,11 +1,11 @@
 :root {
-    --bg: #090c11;
-    --bg-2: #0f141c;
-    --card: #141a24;
-    --line: #243041;
-    --text: #eef3f9;
-    --muted: #9aa8ba;
-    --faint: #6b7a8d;
+    --bg: #0c0a09;
+    --bg-2: #14110f;
+    --card: #181410;
+    --line: #3a2a20;
+    --text: #f3ebe3;
+    --muted: #b5a496;
+    --faint: #7d6d60;
     --brand: #b84c0a;
     --brand-2: #d46a1f;
     --safe: #2fbf71;
@@ -14,7 +14,7 @@
     --scam: #ef4d62;
     --radius: 16px;
     --radius-sm: 10px;
-    --shadow: 0 10px 40px rgba(0,0,0,.35);
+    --shadow: 0 10px 40px rgba(0,0,0,.4);
     --font: "Manrope", system-ui, sans-serif;
     --display: "Sora", "Manrope", system-ui, sans-serif;
     --max: 1080px;
@@ -55,7 +55,7 @@ button, input, select, textarea { font: inherit; }
 /* ---------------- Classic nav (PC) + phone dropdown ---------------- */
 .nav {
     border-bottom: 1px solid var(--line);
-    background: rgba(9, 12, 17, 0.94);
+    background: rgba(12, 10, 9, 0.94);
     backdrop-filter: blur(12px);
     position: sticky;
     top: 0;
@@ -152,7 +152,7 @@ button, input, select, textarea { font: inherit; }
     opacity: 0;
     pointer-events: none;
     border-top: 1px solid transparent;
-    background: #0c1118;
+    background: #14110f;
     transition:
         max-height .32s cubic-bezier(.22,.61,.36,1),
         opacity .22s ease,
@@ -591,16 +591,32 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
     justify-content: center;
     gap: 6px;
     border-radius: 12px;
-    border: 1px solid var(--line);
-    background: var(--bg-2);
-    color: var(--text);
+    border: 1px solid rgba(184, 76, 10, .48);
+    background: rgba(184, 76, 10, .12);
+    color: var(--brand-2);
     font-weight: 700;
     padding: 10px 14px;
     cursor: pointer;
+    transition: background .15s ease, border-color .15s ease, color .15s ease, transform .12s ease;
+}
+.btn:hover, .btn-sm:hover {
+    background: rgba(184, 76, 10, .22);
+    border-color: var(--brand);
+    color: #fff;
 }
 .btn-sm { padding: 8px 12px; font-size: .86rem; }
-.btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+.btn-primary {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: #fff;
+}
+.btn-primary:hover {
+    background: #963d08;
+    border-color: #963d08;
+    color: #fff;
+}
 .btn-danger { background: rgba(239,77,98,.12); border-color: rgba(239,77,98,.45); color: #ff8ea0; }
+.btn-danger:hover { background: rgba(239,77,98,.2); color: #ffb0bb; }
 
 .alert {
     padding: 12px 14px;
@@ -624,8 +640,8 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
     border: 1px solid rgba(255,255,255,.06);
     background:
         radial-gradient(120% 80% at 50% -10%, color-mix(in srgb, var(--sg-accent) 22%, transparent), transparent 58%),
-        linear-gradient(180deg, #101722 0%, #0b1018 48%, #090c11 100%);
-    box-shadow: 0 18px 50px rgba(0,0,0,.35);
+        linear-gradient(180deg, #1a1410 0%, #120e0c 48%, #0c0a09 100%);
+    box-shadow: 0 18px 50px rgba(0,0,0,.4);
 }
 .sg-result-hero {
     position: relative;
