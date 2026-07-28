@@ -352,7 +352,12 @@
 
   function formatBody(text) {
     var esc = escapeHtml(text).replace(/\n/g, '<br>');
-    return esc.replace(/(https?:\/\/[^\s<]+)/g, function (url) {
+    // Repair URLs the model may have split with spaces/breaks
+    esc = esc.replace(/https?:\s*\/\s*\//gi, 'https://');
+    esc = esc.replace(/https:\/\/(?:[^\s<]+|\s(?=[a-z0-9/.?&=_%#-]))+/gi, function (url) {
+      return url.replace(/\s+/g, '');
+    });
+    return esc.replace(/(https:\/\/[^\s<]+)/g, function (url) {
       var clean = url.replace(/[),.;!?]+$/g, '');
       var trail = url.slice(clean.length);
       return '<a href="' + clean + '" target="_blank" rel="noopener noreferrer">' + clean + '</a>' + trail;

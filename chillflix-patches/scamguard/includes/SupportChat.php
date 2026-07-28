@@ -388,8 +388,9 @@ class SupportChat
         }
 
         // Prefer AI for free-form questions when configured.
+        $lookups = self::lookupDomainsFromText($message);
         if (self::aiEnabled()) {
-            $ai = self::aiSupportReply($message, $history);
+            $ai = self::aiSupportReply($message, $history, $lookups);
             if ($ai !== null) {
                 if (!empty($ai['escalate'])) {
                     return [
@@ -400,13 +401,36 @@ class SupportChat
                     ];
                 }
                 if (!empty($ai['reply'])) {
+                    $reply = self::sanitizeReply((string) $ai['reply']);
+                    if (
+                        $lookups
+                        && preg_match('/\b(cannot|can\'t|unable to)\b.{0,40}\b(check|look\s*up|tell|provide)\b/i', $reply)
+                    ) {
+                        $direct = self::formatDomainLookups($lookups);
+                        if ($direct !== '') {
+                            $reply = $direct;
+                        }
+                    }
                     return [
-                        'reply' => (string) $ai['reply'],
+                        'reply' => $reply,
                         'escalate' => false,
                         'matched' => 'ai',
                         'source' => 'ai',
                     ];
                 }
+            }
+        }
+
+        // Direct score answer if AI unavailable but we found domains in DB.
+        if ($lookups) {
+            $direct = self::formatDomainLookups($lookups);
+            if ($direct !== '') {
+                return [
+                    'reply' => $direct,
+                    'escalate' => false,
+                    'matched' => 'domain-lookup',
+                    'source' => 'lookup',
+                ];
             }
         }
 
@@ -441,15 +465,6 @@ class SupportChat
             ];
         }
 
-        if (preg_match('/\b([a-z0-9-]+\.)+[a-z]{2,}\b/i', $text)) {
-            return [
-                'reply' => 'To check that domain, paste it on the home page Quick check. I can also explain scores or help you report it — or connect you with an admin.',
-                'escalate' => false,
-                'matched' => 'domain-hint',
-                'source' => 'rule',
-            ];
-        }
-
         return [
             'reply' => "I couldn't answer that confidently. Try rephrasing, or tap “Talk to an admin” and a person will reply here.",
             'escalate' => false,
@@ -459,12 +474,112 @@ class SupportChat
     }
 
     /**
+     * Pull domains mentioned in a message and resolve live ScamGuard records.
+     *
+     * @return list<array{domain:string,found:bool,score:?int,status:?string,label:?string,page:?string,last_checked:?string,notes:string}>
+     */
+    public static function lookupDomainsFromText(string $message): array
+    {
+        if (!preg_match_all('/\b(?:https?:\/\/)?(?:www\.)?([a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?)+)\b/i', $message, $m)) {
+            return [];
+        }
+
+        require_once __DIR__ . '/DomainRepository.php';
+        $repo = new DomainRepository();
+        $out = [];
+        $seen = [];
+        foreach ($m[1] as $raw) {
+            $domain = normalize_domain($raw);
+            if (!$domain || isset($seen[$domain])) {
+                continue;
+            }
+            // Skip generic non-site words that look like domains rarely; keep normal TLDs.
+            $seen[$domain] = true;
+            $row = $repo->find($domain);
+            if (!$row && str_starts_with($domain, 'www.')) {
+                $domain = substr($domain, 4);
+                if (isset($seen[$domain])) {
+                    continue;
+                }
+                $seen[$domain] = true;
+                $row = $repo->find($domain);
+            }
+
+            if ($row) {
+                $badge = status_badge((string) $row['status']);
+                $out[] = [
+                    'domain' => $domain,
+                    'found' => true,
+                    'score' => (int) $row['trust_score'],
+                    'status' => (string) $row['status'],
+                    'label' => (string) ($badge['label'] ?? $row['status']),
+                    'page' => domain_page_url($domain),
+                    'last_checked' => $row['last_checked'] ?? null,
+                    'notes' => !empty($row['manual_override']) ? 'manual override set' : '',
+                ];
+            } else {
+                $out[] = [
+                    'domain' => $domain,
+                    'found' => false,
+                    'score' => null,
+                    'status' => null,
+                    'label' => null,
+                    'page' => absolute_url('/check-entity.php?type=website&q=' . rawurlencode($domain)),
+                    'last_checked' => null,
+                    'notes' => 'not in database yet',
+                ];
+            }
+            if (count($out) >= 3) {
+                break;
+            }
+        }
+        return $out;
+    }
+
+    /** @param list<array<string,mixed>> $lookups */
+    public static function formatDomainLookups(array $lookups): string
+    {
+        if (!$lookups) {
+            return '';
+        }
+        $parts = [];
+        foreach ($lookups as $item) {
+            $domain = (string) $item['domain'];
+            if (!empty($item['found'])) {
+                $parts[] = "{$domain} currently scores " . (int) $item['score'] . '/100 (' . ($item['label'] ?? $item['status']) . ') in ScamGuard.'
+                    . (!empty($item['last_checked']) ? ' Last checked: ' . $item['last_checked'] . '.' : '')
+                    . (!empty($item['page']) ? ' Details: ' . $item['page'] : '');
+            } else {
+                $parts[] = "{$domain} is not in our checked database yet. Run Quick check here: " . ($item['page'] ?? absolute_url('/'));
+            }
+        }
+        return implode("\n\n", $parts);
+    }
+
+    public static function sanitizeReply(string $reply): string
+    {
+        // Fix models that break URLs with spaces/newlines: "ht tps://..." / "chillflix.lol/ scamguard"
+        $reply = preg_replace('/\bhttps?\s*:\s*\/\s*\//i', 'https://', $reply) ?? $reply;
+        $reply = preg_replace_callback(
+            '/https:\/\/[^\s<]+(?:\s+[^\s<]+)*/',
+            static function (array $m): string {
+                $url = preg_replace('/\s+/', '', $m[0]) ?? $m[0];
+                // Stop at common trailing punctuation left attached
+                return rtrim($url, '.,);]');
+            },
+            $reply
+        ) ?? $reply;
+        return trim($reply);
+    }
+
+    /**
      * Free-form AI helper using the same OpenAI-compatible key as domain analysis.
      *
      * @param list<array<string,mixed>> $history
+     * @param list<array<string,mixed>> $lookups
      * @return array{reply:?string,escalate:bool}|null
      */
-    public static function aiSupportReply(string $message, array $history = []): ?array
+    public static function aiSupportReply(string $message, array $history = [], array $lookups = []): ?array
     {
         $key = trim(get_setting('ai_api_key', ''));
         if ($key === '' && defined('AI_API_KEY')) {
@@ -512,7 +627,10 @@ class SupportChat
             . "Help visitors with anything about this website and product: trust checks (website/phone/crypto/IBAN/card), "
             . "how scores work, reporting scams, community forum, announcements, accounts/login/points, browsing flagged domains, and using the site.\n"
             . "Be accurate, concise (2–5 short sentences), friendly, and practical. Use plain language.\n"
-            . "CRITICAL: When the user asks for a link, URL, or how to open a page, include the full https:// URL from the Important links list. Do not only say “look in the navigation”.\n"
+            . "CRITICAL: When the user asks for a link, URL, or how to open a page, include the full https:// URL from the Important links list on one line with NO spaces inside the URL.\n"
+            . "CRITICAL: When LIVE DOMAIN LOOKUPS are provided below, you MUST use those exact scores/status values to answer. "
+            . "Never say you cannot check a domain score if a lookup result is present. Quote score as N/100 and the status label, then optionally add the details URL.\n"
+            . "If a domain is listed as not in the database, say so and give the Quick check URL.\n"
             . "Do not invent admin actions, refunds, legal advice, or features that are not described below.\n"
             . "Scores are risk signals, not legal proof of a scam.\n"
             . "If the user wants a human, set escalate=true.\n"
@@ -525,6 +643,15 @@ class SupportChat
         $messages = [
             ['role' => 'system', 'content' => $system],
         ];
+
+        if ($lookups) {
+            $messages[] = [
+                'role' => 'system',
+                'content' => "LIVE DOMAIN LOOKUPS from ScamGuard database (authoritative — use these numbers):\n"
+                    . json_encode($lookups, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            ];
+        }
+
         // Last few turns for context (skip system/quick noise somewhat)
         $recent = array_slice($history, -12);
         foreach ($recent as $m) {
@@ -539,7 +666,11 @@ class SupportChat
                 $messages[] = ['role' => 'assistant', 'content' => mb_substr($body, 0, 1200)];
             }
         }
-        $messages[] = ['role' => 'user', 'content' => mb_substr(trim($message), 0, 1500)];
+        $userContent = mb_substr(trim($message), 0, 1500);
+        if ($lookups) {
+            $userContent .= "\n\n[System note: live lookups attached. Answer with the real score if asked.]";
+        }
+        $messages[] = ['role' => 'user', 'content' => $userContent];
 
         $payload = json_encode([
             'model' => $model,
