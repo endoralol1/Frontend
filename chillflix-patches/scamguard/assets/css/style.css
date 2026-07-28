@@ -528,6 +528,62 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
 .badge-risky { background: rgba(240,138,75,.14); color: var(--risky); }
 .badge-scam { background: rgba(239,77,98,.14); color: var(--scam); }
 .badge-unknown { background: rgba(155,168,186,.14); color: var(--muted); }
+.badge-sm { padding: 3px 9px; font-size: .68rem; letter-spacing: .02em; }
+
+/* Compact domain result list (no horizontal scroll) */
+.check-card { padding: 4px 0; }
+.check-empty { color: var(--faint); padding: 18px; margin: 0; font-size: .92rem; }
+.check-list { list-style: none; margin: 0; padding: 0; }
+.check-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--line);
+    transition: background .14s ease;
+}
+.check-item:last-child { border-bottom: 0; }
+.check-item:hover { background: rgba(255,255,255,.03); }
+.check-main { min-width: 0; flex: 1 1 auto; display: block; }
+.check-domain {
+    display: block;
+    font-weight: 650;
+    font-size: .92rem;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.check-item:hover .check-domain { color: var(--brand-2); }
+.check-sub {
+    display: block;
+    color: var(--faint);
+    font-size: .72rem;
+    margin-top: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.check-meta { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.check-score {
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    font-size: .95rem;
+    min-width: 30px;
+    text-align: right;
+    color: var(--muted);
+}
+.score-badge-safe, .score-safe { color: var(--safe); }
+.score-badge-caution, .score-caution { color: var(--caution); }
+.score-badge-risky, .score-risky { color: var(--risky); }
+.score-badge-scam, .score-scam { color: var(--scam); }
+@media (max-width: 520px) {
+    .check-item { padding: 10px 13px; gap: 10px; }
+    .check-domain { font-size: .88rem; }
+    .check-meta { gap: 8px; }
+    .badge-sm { padding: 3px 7px; font-size: .64rem; }
+    .check-score { font-size: .9rem; min-width: 26px; }
+}
 
 .btn, .btn-sm {
     display: inline-flex;

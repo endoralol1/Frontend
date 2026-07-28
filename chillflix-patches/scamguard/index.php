@@ -166,25 +166,25 @@ require __DIR__ . '/includes/header.php';
         <p style="color:var(--text-faint); margin:0 0 14px; font-size:14px;">
             Shows a mix of safe and risky results — not only threat-feed hits.
         </p>
-        <div class="card" style="padding:0;">
-            <div class="table-wrap"><table>
-                <thead>
-                    <tr><th>Domain</th><th>Score</th><th>Status</th><th>Last checked</th></tr>
-                </thead>
-                <tbody>
-                <?php if (empty($recent)): ?>
-                    <tr><td colspan="4" style="color:var(--text-faint);">No domains checked yet — be the first to search one above.</td></tr>
-                <?php endif; ?>
-                <?php foreach ($recent as $r): $badge = status_badge($r['status']); ?>
-                    <tr>
-                        <td><a href="<?= h(domain_page_path($r['domain'])) ?>"><?= h($r['domain']) ?></a></td>
-                        <td><?= (int) $r['trust_score'] ?>/100</td>
-                        <td><span class="badge <?= $badge['class'] ?>"><?= $badge['label'] ?></span></td>
-                        <td style="color:var(--text-faint);"><?= h($r['last_checked'] ?? '—') ?></td>
-                    </tr>
+        <div class="card check-card">
+            <?php if (empty($recent)): ?>
+                <p class="check-empty">No domains checked yet — be the first to search one above.</p>
+            <?php else: ?>
+            <ul class="check-list">
+                <?php foreach ($recent as $r): $badge = status_badge($r['status']); $score = (int) $r['trust_score']; ?>
+                    <li class="check-item">
+                        <a class="check-main" href="<?= h(domain_page_path($r['domain'])) ?>">
+                            <span class="check-domain"><?= h($r['domain']) ?></span>
+                            <span class="check-sub"><?= h($r['last_checked'] ?? '—') ?></span>
+                        </a>
+                        <span class="check-meta">
+                            <span class="check-score score-<?= $badge['class'] ?>"><?= $score ?></span>
+                            <span class="badge badge-sm <?= $badge['class'] ?>"><?= $badge['label'] ?></span>
+                        </span>
+                    </li>
                 <?php endforeach; ?>
-                </tbody>
-            </table></div>
+            </ul>
+            <?php endif; ?>
         </div>
     </div>
 </section>

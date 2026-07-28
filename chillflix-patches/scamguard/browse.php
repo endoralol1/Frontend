@@ -43,26 +43,25 @@ $statuses = ['', 'safe', 'caution', 'risky', 'scam', 'unknown'];
         <button class="btn btn-primary" type="submit">Filter</button>
     </form>
 
-    <div class="card" style="padding:0;">
-        <div class="table-wrap"><table>
-            <thead>
-                <tr><th>Domain</th><th>Score</th><th>Status</th><th>Source</th><th>Last checked</th></tr>
-            </thead>
-            <tbody>
-            <?php foreach ($result['rows'] as $r): $badge = status_badge($r['status']); ?>
-                <tr>
-                    <td><a href="<?= h(domain_page_path($r['domain'])) ?>"><?= h($r['domain']) ?></a></td>
-                    <td><?= (int) $r['trust_score'] ?>/100</td>
-                    <td><span class="badge <?= $badge['class'] ?>"><?= $badge['label'] ?></span></td>
-                    <td style="color:var(--text-faint);"><?= h($r['discovered_via'] ?? '—') ?></td>
-                    <td style="color:var(--text-faint);"><?= h($r['last_checked'] ?? '—') ?></td>
-                </tr>
+    <div class="card check-card">
+        <?php if (empty($result['rows'])): ?>
+            <p class="check-empty">No domains match.</p>
+        <?php else: ?>
+        <ul class="check-list">
+            <?php foreach ($result['rows'] as $r): $badge = status_badge($r['status']); $score = (int) $r['trust_score']; ?>
+                <li class="check-item">
+                    <a class="check-main" href="<?= h(domain_page_path($r['domain'])) ?>">
+                        <span class="check-domain"><?= h($r['domain']) ?></span>
+                        <span class="check-sub"><?= h($r['last_checked'] ?? '—') ?><?php if (!empty($r['discovered_via'])): ?> &middot; <?= h($r['discovered_via']) ?><?php endif; ?></span>
+                    </a>
+                    <span class="check-meta">
+                        <span class="check-score score-<?= $badge['class'] ?>"><?= $score ?></span>
+                        <span class="badge badge-sm <?= $badge['class'] ?>"><?= $badge['label'] ?></span>
+                    </span>
+                </li>
             <?php endforeach; ?>
-            <?php if (empty($result['rows'])): ?>
-                <tr><td colspan="5" style="color:var(--text-faint);">No domains match.</td></tr>
-            <?php endif; ?>
-            </tbody>
-        </table></div>
+        </ul>
+        <?php endif; ?>
     </div>
 
     <div style="margin-top:16px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
