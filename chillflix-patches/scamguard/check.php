@@ -224,18 +224,107 @@ function tone_class(string $tone): string
         }
         // Keep only the lead clause for readability.
         $r = preg_replace('/\s*\|\s*.*$/u', '', $r) ?? $r;
+        // Older scans stored a scary-sounding bot-wall reason; present it neutrally.
+        if (stripos($r, 'Real page content was blocked') !== false) {
+            $r = 'Site is behind Cloudflare bot protection — content checks skipped. Normal setup, not a scam signal.';
+        }
         if (mb_strlen($r) > 110) {
             $r = mb_substr($r, 0, 107) . '…';
         }
         $shortReasons[] = $r;
     }
+    // Cloudflare/CDN bot walls hide the page from scanners. That's a normal setup on
+    // legitimate sites, so present it as info — never as a problem.
+    $contentBlocked = false;
+    foreach ($signals as $s) {
+        if (($s['label'] ?? '') === 'Content visibility'
+            && stripos((string) ($s['value'] ?? ''), 'bot wall') !== false) {
+            $contentBlocked = true;
+            break;
+        }
+    }
+    $challengeTitle = false;
+    if (!empty($record['page_title'])) {
+        $challengeTitle = (bool) preg_match(
+            '/attention required|just a moment|checking your browser|access denied|security check|verify you are|cloudflare/i',
+            (string) $record['page_title']
+        );
+        $contentBlocked = $contentBlocked || $challengeTitle;
+    }
+
+    // ScamAdviser-style highlight sentences: friendly line + optional detail.
+    $highlightRow = static function (array $s, bool $positive): array {
+        $label = (string) ($s['label'] ?? '');
+        $value = is_scalar($s['value'] ?? null) ? trim((string) $s['value']) : '';
+        $note = trim((string) ($s['note'] ?? ''));
+
+        $goodMap = [
+            'Domain age' => 'This domain was registered a long time ago',
+            'Valid SSL' => 'A valid SSL certificate was found',
+            'HTTPS / TLS' => 'The connection to this site is encrypted (HTTPS)',
+            'Malware lists' => 'Not flagged by malware blocklists',
+            'Phishing lists' => 'Not flagged by phishing blocklists',
+            'Spam reputation (DNSBL)' => 'Clean spam / blacklist reputation',
+            'HTTP status' => 'The website responds normally',
+            'Content visibility' => 'Page content could be read and inspected',
+            'Contact info' => 'Contact details were found on the site',
+            'Privacy policy' => 'A privacy policy page was found',
+            'Terms page' => 'A terms & conditions page was found',
+            'SPF' => 'Email SPF protection is set up',
+            'DMARC' => 'Email DMARC protection is set up',
+            'Tranco traffic rank' => 'This website gets notable traffic (Tranco ranked)',
+            'AI risk judgment' => 'AI review found no major concerns',
+            'Threat intel summary' => 'No hits across threat intelligence feeds',
+            'Engine verdict' => 'Our scan engine rates this site positively',
+            'User reports (ScamGuard)' => 'No negative community reports',
+            'DNSSEC' => 'DNSSEC is enabled for this domain',
+        ];
+        $badMap = [
+            'Domain age' => 'The domain is relatively new',
+            'Valid SSL' => 'There is a problem with the SSL certificate',
+            'HTTPS / TLS' => 'The secure (HTTPS) connection failed',
+            'Malware lists' => 'Flagged by malware blocklists',
+            'Phishing lists' => 'Flagged by phishing blocklists',
+            'Spam reputation (DNSBL)' => 'Listed on spam blacklists',
+            'HTTP status' => 'The site returned an HTTP error',
+            'Homepage fetch' => 'The homepage could not be loaded',
+            'Contact info' => 'No contact details found on the page',
+            'Privacy policy' => 'No privacy policy was found',
+            'Tranco traffic rank' => 'Low or unranked traffic — small or new audience',
+            'AI risk judgment' => 'AI review suggests some caution',
+            'Engine verdict' => 'Overall verdict is cautious — not fully verified',
+            'User reports (ScamGuard)' => 'Community members reported problems',
+            'Suspicious phrases' => 'Scam-style wording was detected on the page',
+            'Payment language' => 'Commerce / payment wording detected',
+            'Redirects' => 'Many redirects before the final page',
+            'WHOIS / RDAP' => 'Domain registration data is unavailable',
+        ];
+
+        $text = $positive ? ($goodMap[$label] ?? $label) : ($badMap[$label] ?? $label);
+        $sub = $note !== '' ? $note : $value;
+        if (in_array($sub, ['Found', 'Not found', 'Present', 'Missing', 'Clean', 'Listed', 'Valid'], true)) {
+            $sub = '';
+        }
+        if (mb_strlen($sub) > 110) {
+            $sub = mb_substr($sub, 0, 107) . '…';
+        }
+        return ['text' => $text, 'sub' => $sub];
+    };
+
     $goodBits = [];
-    foreach (array_slice($positives, 0, 4) as $p) {
-        $goodBits[] = (string) ($p['label'] ?? '');
+    foreach (array_slice($positives, 0, 5) as $p) {
+        $goodBits[] = $highlightRow($p, true);
     }
     $badBits = [];
-    foreach (array_slice($negatives, 0, 4) as $n) {
-        $badBits[] = (string) ($n['label'] ?? '');
+    foreach ($negatives as $n) {
+        // Behind a bot wall the HTTP status belongs to the challenge page, not the site.
+        if ($contentBlocked && ($n['label'] ?? '') === 'HTTP status') {
+            continue;
+        }
+        if (count($badBits) >= 5) {
+            break;
+        }
+        $badBits[] = $highlightRow($n, false);
     }
     $ageLabel = $record['domain_age_days'] !== null
         ? number_format((int) $record['domain_age_days']) . ' days'
@@ -278,7 +367,9 @@ function tone_class(string $tone): string
                     Phishing <?= !empty($record['phishing_hit']) ? 'hit' : 'clean' ?>
                 </span>
                 <span class="rc-pill"><?= (int) $record['check_count'] ?> scan<?= (int) $record['check_count'] === 1 ? '' : 's' ?></span>
-                <?php if (!empty($record['page_title'])): ?>
+                <?php if ($contentBlocked): ?>
+                    <span class="rc-pill">Cloudflare protected</span>
+                <?php elseif (!empty($record['page_title'])): ?>
                     <span class="rc-pill rc-pill-wide"><?= h(mb_strimwidth((string) $record['page_title'], 0, 42, '…')) ?></span>
                 <?php endif; ?>
             </div>
@@ -289,6 +380,12 @@ function tone_class(string $tone): string
         <?php endif; ?>
         <?php if ($record['manual_override']): ?>
             <div class="rc-alert is-info">Manually reviewed by an admin<?= !empty($record['admin_notes']) ? ': ' . h((string) $record['admin_notes']) : '.' ?></div>
+        <?php endif; ?>
+        <?php if ($contentBlocked): ?>
+            <div class="rc-alert is-neutral">
+                This site uses Cloudflare bot protection, so our scanner couldn't read the page content.
+                That's a normal setup used by millions of legitimate sites — not a red flag by itself.
+            </div>
         <?php endif; ?>
 
         <section class="rc-facts" aria-label="Key facts">
@@ -310,27 +407,49 @@ function tone_class(string $tone): string
             </div>
         </section>
 
-        <section class="rc-signals" aria-label="What stood out">
-            <div class="rc-signal-col is-good">
-                <h3>Looking good</h3>
+        <section class="rc-highlights" aria-label="Report highlights">
+            <div class="rc-hl-group">
+                <header class="rc-hl-head is-good">
+                    <span class="rc-hl-headicon" aria-hidden="true">✓</span>
+                    <h3>Positive highlights</h3>
+                </header>
                 <?php if (!$goodBits): ?>
                     <p class="rc-empty">Nothing strongly positive yet.</p>
                 <?php else: ?>
-                    <ul>
-                        <?php foreach ($goodBits as $bit): if ($bit === '') continue; ?>
-                            <li><span aria-hidden="true">✓</span><?= h($bit) ?></li>
+                    <ul class="rc-hl-list">
+                        <?php foreach ($goodBits as $bit): if ($bit['text'] === '') continue; ?>
+                            <li class="rc-hl-item is-good">
+                                <span class="rc-hl-icon" aria-hidden="true">✓</span>
+                                <div class="rc-hl-body">
+                                    <span class="rc-hl-text"><?= h($bit['text']) ?></span>
+                                    <?php if ($bit['sub'] !== ''): ?>
+                                        <span class="rc-hl-sub"><?= h($bit['sub']) ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            </li>
                         <?php endforeach; ?>
                     </ul>
                 <?php endif; ?>
             </div>
-            <div class="rc-signal-col is-bad">
-                <h3>Watch for</h3>
+            <div class="rc-hl-group">
+                <header class="rc-hl-head is-bad">
+                    <span class="rc-hl-headicon" aria-hidden="true">!</span>
+                    <h3>Negative highlights</h3>
+                </header>
                 <?php if (!$badBits): ?>
                     <p class="rc-empty">No elevated warnings.</p>
                 <?php else: ?>
-                    <ul>
-                        <?php foreach ($badBits as $bit): if ($bit === '') continue; ?>
-                            <li><span aria-hidden="true">!</span><?= h($bit) ?></li>
+                    <ul class="rc-hl-list">
+                        <?php foreach ($badBits as $bit): if ($bit['text'] === '') continue; ?>
+                            <li class="rc-hl-item is-bad">
+                                <span class="rc-hl-icon" aria-hidden="true">!</span>
+                                <div class="rc-hl-body">
+                                    <span class="rc-hl-text"><?= h($bit['text']) ?></span>
+                                    <?php if ($bit['sub'] !== ''): ?>
+                                        <span class="rc-hl-sub"><?= h($bit['sub']) ?></span>
+                                    <?php endif; ?>
+                                </div>
+                            </li>
                         <?php endforeach; ?>
                     </ul>
                 <?php endif; ?>

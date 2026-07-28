@@ -864,6 +864,7 @@ class DomainChecker
         $this->data['page_meta_description'] = $challenge ? '' : $this->extractMetaDescription($html);
 
         $this->data['content_incomplete'] = $challenge ? 1 : 0;
+        $challengePageTitle = '';
         if ($challenge) {
             // We never actually saw the real page, so NOTHING read from the challenge
             // HTML is trustworthy — neither positives nor negatives. Zero them all,
@@ -876,6 +877,10 @@ class DomainChecker
             $this->data['noindex'] = 0;
             $this->data['crypto_only_payment'] = 0;
             $this->data['suspicious_keyword_hits'] = 0;
+            // Don't store/display the challenge page's own title ("Attention Required!
+            // | Cloudflare") as if it were the site's title.
+            $challengePageTitle = (string) ($this->data['page_title'] ?? '');
+            $this->data['page_title'] = '';
             $this->addSignal(
                 'content',
                 'Content visibility',
@@ -890,8 +895,26 @@ class DomainChecker
         $sec = $this->scoreSecurityHeaders($headersOut);
         $this->data['security_headers'] = json_encode($sec);
 
-        $this->addSignal('content', 'HTTP status', (string) ($this->data['http_status'] ?? 'Unknown'), $this->data['final_url'] ?? '', ($this->data['http_status'] ?? 0) >= 400 ? 'bad' : 'good');
-        $this->addSignal('content', 'Page title', $this->data['page_title'] ?: 'None', '', 'neutral');
+        if ($challenge) {
+            // The 403/503 belongs to the CDN bot check, not the origin site — neutral.
+            $this->addSignal(
+                'content',
+                'HTTP status',
+                (string) ($this->data['http_status'] ?? 'Unknown'),
+                'Status comes from the Cloudflare/CDN bot check, not the site itself — normal for protected sites.',
+                'neutral'
+            );
+            $this->addSignal(
+                'content',
+                'Page title',
+                'Hidden by bot check',
+                $challengePageTitle !== '' ? 'Challenge page shows: ' . $challengePageTitle : '',
+                'neutral'
+            );
+        } else {
+            $this->addSignal('content', 'HTTP status', (string) ($this->data['http_status'] ?? 'Unknown'), $this->data['final_url'] ?? '', ($this->data['http_status'] ?? 0) >= 400 ? 'bad' : 'good');
+            $this->addSignal('content', 'Page title', $this->data['page_title'] ?: 'None', '', 'neutral');
+        }
         $this->addSignal('content', 'Redirects', (string) $this->data['redirect_count'], '', $this->data['redirect_count'] > 3 ? 'warn' : 'neutral');
         if (!$challenge) {
             $this->addSignal('content', 'Contact info', $this->data['has_contact_info'] ? 'Found' : 'Not found', '', $this->data['has_contact_info'] ? 'good' : 'warn');
@@ -1585,7 +1608,7 @@ class DomainChecker
                     : 'Elevated risk signals; not confirmed fraud, but be careful.';
             } elseif ($incomplete) {
                 $verdict = 'caution';
-                $reasons[] = 'Real page content was blocked (bot challenge/CDN wall), so this is not a full safety verification.';
+                $reasons[] = 'This site uses Cloudflare/CDN bot protection, so page content could not be inspected. That is a normal setup on legitimate sites — not a scam signal on its own.';
             } elseif ($score >= 78) {
                 $verdict = 'likely_safe';
                 $reasons[] = 'No malware/phishing/feed hits and strong positive signals.';
