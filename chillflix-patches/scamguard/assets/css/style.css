@@ -1381,11 +1381,12 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
     line-height: 1.35; word-break: break-word;
 }
 .forum-main:hover .forum-title { color: var(--brand-2); }
-.forum-flags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.forum-flags { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
 .forum-flag {
-    flex: 0 0 auto; font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
+    flex: 0 0 auto; font-size: 10px; font-weight: 700; letter-spacing: .04em;
     text-transform: uppercase; color: var(--faint);
-    border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px;
+    border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px;
+    line-height: 1.3;
 }
 .forum-meta, .forum-foot {
     display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
@@ -1493,13 +1494,15 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
 .comment-form { padding: 16px; }
 
 @media (max-width: 720px) {
-    .forum-item { gap: 12px; padding: 13px 14px; }
-    .forum-side { flex: 0 0 48px; padding-left: 10px; }
-    .forum-title-row { flex-direction: column; align-items: flex-start; gap: 5px; }
+    .forum-item { gap: 10px; padding: 11px 12px; }
+    .forum-side { flex: 0 0 44px; padding-left: 8px; }
+    .forum-title-row { flex-direction: column; align-items: flex-start; gap: 4px; }
+    .forum-flags { flex-direction: row; flex-wrap: wrap; }
     .forum-title { flex: 1 1 auto; width: 100%; font-size: 14.5px; }
     .forum-toolbar { flex-direction: column; }
     .forum-search input[type="search"] { flex: 1; min-width: 0; }
     .forum-search { width: 100%; }
+    .profile-page .forum-item { padding: 10px 4px; }
 }
 
 /* ---------------- Votes + user profiles ---------------- */
@@ -1710,6 +1713,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
     font-size: 10px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center;
     padding: 0 4px; border: 2px solid var(--bg);
 }
+.sgchat-badge[hidden] { display: none !important; }
 .sgchat-panel {
     position: fixed; right: 16px; bottom: 68px; z-index: 82;
     width: min(380px, calc(100vw - 20px)); height: min(560px, calc(100vh - 110px));
