@@ -1,8 +1,12 @@
 <?php
+require_once __DIR__ . '/UserAuth.php';
+UserAuth::start();
+$navUser = UserAuth::check() ? UserAuth::username() : null;
+
 $siteName = get_setting('site_name', 'ScamGuard');
 $announcementEnabled = get_setting('announcement_enabled', '0') === '1';
 $announcement = get_setting('announcement_banner', '');
-$assetVer = '20260728stats1';
+$assetVer = '20260728forum1';
 
 $pageTitle = $pageTitle ?? $siteName;
 $pageDescription = $pageDescription ?? 'Check websites for scam, phishing, and malware risk signals before you click.';
@@ -52,9 +56,14 @@ $ogType = $ogType ?? 'website';
             <a href="<?= BASE_PATH ?>/">Quick check</a>
             <a href="<?= BASE_PATH ?>/?type=phone">Phone</a>
             <a href="<?= BASE_PATH ?>/?type=crypto">Crypto</a>
-            <a href="<?= BASE_PATH ?>/?type=iban">IBAN</a>
             <a href="<?= BASE_PATH ?>/browse.php">Browse</a>
-            <a href="<?= BASE_PATH ?>/report.php">Report</a>
+            <a href="<?= BASE_PATH ?>/community.php">Community</a>
+            <?php if ($navUser): ?>
+                <a href="<?= BASE_PATH ?>/community.php?filter=mine" class="nav-user" title="My reports">👤 <?= h($navUser) ?></a>
+                <a href="<?= BASE_PATH ?>/logout.php" class="nav-signout">Sign out</a>
+            <?php else: ?>
+                <a href="<?= BASE_PATH ?>/login.php">Sign in</a>
+            <?php endif; ?>
             <a href="<?= BASE_PATH ?>/report.php" class="nav-cta">Report Now</a>
         </div>
 
@@ -70,7 +79,14 @@ $ogType = $ogType ?? 'website';
             <a href="<?= BASE_PATH ?>/?type=crypto">Crypto</a>
             <a href="<?= BASE_PATH ?>/?type=iban">IBAN</a>
             <a href="<?= BASE_PATH ?>/browse.php">Browse</a>
-            <a href="<?= BASE_PATH ?>/report.php">Report</a>
+            <a href="<?= BASE_PATH ?>/community.php">Community</a>
+            <?php if ($navUser): ?>
+                <a href="<?= BASE_PATH ?>/community.php?filter=mine">👤 <?= h($navUser) ?> — my reports</a>
+                <a href="<?= BASE_PATH ?>/logout.php">Sign out</a>
+            <?php else: ?>
+                <a href="<?= BASE_PATH ?>/login.php">Sign in</a>
+                <a href="<?= BASE_PATH ?>/register.php">Create account</a>
+            <?php endif; ?>
             <a href="<?= BASE_PATH ?>/report.php" class="nav-cta">Report Now</a>
         </div>
     </div>

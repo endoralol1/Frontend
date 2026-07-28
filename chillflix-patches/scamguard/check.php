@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/DomainRepository.php';
+require_once __DIR__ . '/includes/UserAuth.php';
 
 $input = trim($_GET['d'] ?? '');
 $domain = $input !== '' ? normalize_domain($input) : null;
@@ -316,6 +317,49 @@ function tone_class(string $tone): string
         </div>
     </div>
     <?php endif; ?>
+
+    <?php
+    $threadStmt = Database::getConnection()->prepare(
+        "SELECT t.id, t.title, t.category, t.comment_count, t.review_status, t.is_sticky, t.is_locked, t.last_activity_at, u.username
+         FROM forum_threads t JOIN users u ON u.id = t.user_id
+         WHERE t.subject_type = 'website' AND t.subject_value = ? AND t.review_status <> 'rejected'
+         ORDER BY t.is_sticky DESC, t.last_activity_at DESC LIMIT 4"
+    );
+    $threadStmt->execute([$record['domain']]);
+    $domainThreads = $threadStmt->fetchAll();
+    ?>
+    <div class="card" style="margin-top:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+            <h3 style="margin:0;">Community reports</h3>
+            <a class="btn btn-sm btn-danger" href="<?= BASE_PATH ?>/report.php?type=website&q=<?= rawurlencode($record['domain']) ?>">Report this site</a>
+        </div>
+        <?php if (!$domainThreads): ?>
+            <p style="color:var(--text-faint); font-size:14px; margin:10px 0 0;">No user reports for this site yet. Had an experience with it? Report it and open a discussion.</p>
+        <?php else: ?>
+            <ul class="forum-list" style="margin-top:8px;">
+                <?php foreach ($domainThreads as $t): $rb = thread_review_badge((string) $t['review_status']); ?>
+                <li class="forum-item" style="padding:11px 2px;">
+                    <a class="forum-main" href="<?= BASE_PATH ?>/thread.php?id=<?= (int) $t['id'] ?>">
+                        <div class="forum-title-row">
+                            <?php if ($t['is_sticky']): ?><span class="forum-pin">📌</span><?php endif; ?>
+                            <?php if ($t['is_locked']): ?><span class="forum-lock">🔒</span><?php endif; ?>
+                            <span class="forum-title"><?= h($t['title']) ?></span>
+                        </div>
+                        <div class="forum-meta">
+                            <span class="forum-chip"><?= h(report_category_label((string) $t['category'])) ?></span>
+                            <span class="badge badge-sm <?= h($rb['class']) ?>"><?= h($rb['label']) ?></span>
+                        </div>
+                    </a>
+                    <div class="forum-side">
+                        <span class="forum-replies">💬 <?= (int) $t['comment_count'] ?></span>
+                        <span class="forum-when">by <?= h($t['username']) ?> · <?= h(time_ago($t['last_activity_at'])) ?></span>
+                    </div>
+                </li>
+                <?php endforeach; ?>
+            </ul>
+            <p style="margin:10px 0 0;"><a href="<?= BASE_PATH ?>/community.php?q=<?= rawurlencode($record['domain']) ?>" style="color:var(--brand-2); font-size:13.5px;">View all discussions →</a></p>
+        <?php endif; ?>
+    </div>
 
     <p style="margin-top:20px; color:var(--text-faint); font-size:13px;">
         Permanent link:

@@ -131,7 +131,7 @@ require __DIR__ . '/includes/header.php';
         <div class="report-cta-card">
             <div class="report-cta-text">
                 <strong>Report a scam</strong>
-                <span>Help protect the community.</span>
+                <span>Opens a public discussion — verified by admins.</span>
             </div>
             <a class="btn btn-danger btn-sm" href="<?= BASE_PATH ?>/report.php">Report</a>
         </div>
