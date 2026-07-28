@@ -6,7 +6,7 @@ $navUser = UserAuth::check() ? UserAuth::username() : null;
 $siteName = get_setting('site_name', 'ScamGuard');
 $announcementEnabled = get_setting('announcement_enabled', '0') === '1';
 $announcement = get_setting('announcement_banner', '');
-$assetVer = '20260728forum3';
+$assetVer = '20260728forum4';
 
 $pageTitle = $pageTitle ?? $siteName;
 $pageDescription = $pageDescription ?? 'Check websites for scam, phishing, and malware risk signals before you click.';
@@ -64,7 +64,7 @@ $ogType = $ogType ?? 'website';
             <?php else: ?>
                 <a href="<?= BASE_PATH ?>/login.php">Sign in</a>
             <?php endif; ?>
-            <a href="<?= BASE_PATH ?>/report.php" class="nav-cta">Report Now</a>
+            <a href="<?= BASE_PATH ?>/community.php?compose=1" class="nav-cta">Report Now</a>
         </div>
 
         <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="nav-dropdown">
@@ -87,7 +87,7 @@ $ogType = $ogType ?? 'website';
                 <a href="<?= BASE_PATH ?>/login.php">Sign in</a>
                 <a href="<?= BASE_PATH ?>/register.php">Create account</a>
             <?php endif; ?>
-            <a href="<?= BASE_PATH ?>/report.php" class="nav-cta">Report Now</a>
+            <a href="<?= BASE_PATH ?>/community.php?compose=1" class="nav-cta">Report Now</a>
         </div>
     </div>
 </nav>

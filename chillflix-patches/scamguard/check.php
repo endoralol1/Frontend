@@ -117,7 +117,7 @@ function tone_class(string $tone): string
         ],
         [
             'label' => 'REPORT',
-            'href' => BASE_PATH . '/report.php?d=' . urlencode($record['domain']),
+            'href' => BASE_PATH . '/community.php?compose=1&type=website&q_prefill=' . urlencode($record['domain']),
             'class' => 'btn btn-sm btn-danger',
         ],
         [
@@ -331,7 +331,7 @@ function tone_class(string $tone): string
     <div class="card" style="margin-top:16px;">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
             <h3 style="margin:0;">Community reports</h3>
-            <a class="btn btn-sm btn-danger" href="<?= BASE_PATH ?>/report.php?type=website&q=<?= rawurlencode($record['domain']) ?>">Report this site</a>
+            <a class="btn btn-sm btn-danger" href="<?= BASE_PATH ?>/community.php?compose=1&type=website&q_prefill=<?= rawurlencode($record['domain']) ?>">Report this site</a>
         </div>
         <?php if (!$domainThreads): ?>
             <p style="color:var(--text-faint); font-size:14px; margin:10px 0 0;">No user reports for this site yet. Had an experience with it? Report it and open a discussion.</p>

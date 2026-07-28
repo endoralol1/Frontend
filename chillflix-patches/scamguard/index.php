@@ -133,7 +133,7 @@ require __DIR__ . '/includes/header.php';
                 <strong>Report a scam</strong>
                 <span>Opens a public discussion — verified by admins.</span>
             </div>
-            <a class="btn btn-danger btn-sm" href="<?= BASE_PATH ?>/report.php">Report</a>
+            <a class="btn btn-danger btn-sm" href="<?= BASE_PATH ?>/community.php?compose=1">Report</a>
         </div>
 
         <div class="stats-strip">

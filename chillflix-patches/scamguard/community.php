@@ -1,9 +1,111 @@
 <?php
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/includes/UserAuth.php';
+require_once __DIR__ . '/includes/DomainRepository.php';
+require_once __DIR__ . '/includes/PhoneChecker.php';
+require_once __DIR__ . '/includes/CryptoChecker.php';
+require_once __DIR__ . '/includes/IbanChecker.php';
+require_once __DIR__ . '/includes/CardChecker.php';
 
 UserAuth::start();
 $db = Database::getConnection();
+
+// ---- Inline report composer -------------------------------------------
+$composeError = null;
+$composeType = strtolower(trim($_GET['type'] ?? $_POST['type'] ?? 'website'));
+if (!in_array($composeType, ['website', 'phone', 'crypto', 'iban', 'card'], true)) {
+    $composeType = 'website';
+}
+$composePrefill = trim($_GET['q_prefill'] ?? $_GET['d'] ?? '');
+$composeOpen = isset($_GET['compose']) || $composePrefill !== '';
+$selfComposeUrl = '/community.php?compose=1' . ($composePrefill !== '' ? '&type=' . rawurlencode($composeType) . '&q_prefill=' . rawurlencode($composePrefill) : '');
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'create_report' && UserAuth::check()) {
+    $composeOpen = true;
+    $composeType = strtolower(trim($_POST['type'] ?? 'website'));
+    $input = trim($_POST['entity'] ?? '');
+    $category = $_POST['category'] ?? 'other';
+    $title = trim($_POST['title'] ?? '');
+    $body = trim($_POST['description'] ?? '');
+    $commentsOpen = isset($_POST['comments_open']) ? 1 : 0;
+    $userId = (int) UserAuth::id();
+
+    if (!UserAuth::verifyCsrf($_POST['csrf'] ?? null)) {
+        $composeError = 'Session expired — please submit again.';
+    } elseif (!in_array($composeType, ['website', 'phone', 'crypto', 'iban', 'card'], true)) {
+        $composeError = 'Please choose what you are reporting.';
+    } elseif (!array_key_exists($category, report_categories())) {
+        $composeError = 'Please choose a valid category.';
+    } elseif (mb_strlen($title) < 8 || mb_strlen($title) > 150) {
+        $composeError = 'Give your report a short title (8–150 characters).';
+    } elseif (mb_strlen($body) < 20) {
+        $composeError = 'Describe what happened in at least 20 characters — it helps others and our reviewers.';
+    } elseif (mb_strlen($body) > 8000) {
+        $composeError = 'Description is too long (max 8000 characters).';
+    } else {
+        $rate = UserAuth::canPostThread($userId);
+        if (!$rate['ok']) {
+            $composeError = $rate['error'];
+        }
+    }
+
+    if ($composeError === null) {
+        if ($composeType === 'website') {
+            $normalized = normalize_domain($input);
+        } else {
+            $normalized = match ($composeType) {
+                'phone' => PhoneChecker::normalize($input),
+                'crypto' => CryptoChecker::normalize($input),
+                'iban' => IbanChecker::normalize($input),
+                'card' => CardChecker::normalize($input),
+                default => null,
+            };
+            if ($composeType === 'card' && $normalized) {
+                $normalized = 'card:' . hash('sha256', $normalized);
+            }
+        }
+
+        if (!$normalized) {
+            $composeError = $composeType === 'website'
+                ? 'Please enter a valid domain (e.g. example.com).'
+                : 'Please enter a valid ' . $composeType . '.';
+        } else {
+            $ipHash = UserAuth::ipHash();
+            $stmt = $db->prepare('SELECT email FROM users WHERE id = ?');
+            $stmt->execute([$userId]);
+            $userEmail = (string) $stmt->fetchColumn();
+
+            $reportId = null;
+            $entityReportId = null;
+            $domainId = null;
+
+            if ($composeType === 'website') {
+                $repo = new DomainRepository();
+                $existing = $repo->find($normalized);
+                $domainId = $existing['id'] ?? null;
+                $reportCategory = in_array($category, ['phishing','fake_shop','crypto_scam','tech_support_scam','identity_theft','other'], true) ? $category : 'other';
+                $stmt = $db->prepare('INSERT INTO reports (domain_id, domain_text, reporter_email, category, description, ip_hash) VALUES (?, ?, ?, ?, ?, ?)');
+                $stmt->execute([$domainId, $normalized, $userEmail, $reportCategory, $body, $ipHash]);
+                $reportId = (int) $db->lastInsertId();
+            } else {
+                $stmt = $db->prepare('INSERT INTO entity_reports (entity_type, entity_value, reporter_email, category, description, ip_hash) VALUES (?, ?, ?, ?, ?, ?)');
+                $stmt->execute([$composeType, $normalized, $userEmail, $category, $body, $ipHash]);
+                $entityReportId = (int) $db->lastInsertId();
+            }
+
+            $stmt = $db->prepare(
+                'INSERT INTO forum_threads
+                    (user_id, subject_type, subject_value, domain_id, report_id, entity_report_id, category, title, body, comments_open)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+            );
+            $stmt->execute([
+                $userId, $composeType, $normalized, $domainId, $reportId, $entityReportId,
+                $category, $title, $body, $commentsOpen,
+            ]);
+            redirect('/thread.php?id=' . (int) $db->lastInsertId() . '&new=1');
+        }
+    }
+}
 
 $q = trim($_GET['q'] ?? '');
 $filter = $_GET['filter'] ?? 'all';
@@ -78,7 +180,67 @@ require __DIR__ . '/includes/header.php';
             <h2 class="section-title" style="margin:0;">Community reports</h2>
             <p style="color:var(--muted); margin:6px 0 0; font-size:14px;">Real reports from real users — verified by admins.</p>
         </div>
-        <a class="btn btn-primary" href="<?= BASE_PATH ?>/report.php">+ New report</a>
+        <button type="button" class="btn btn-primary" id="composer-toggle" aria-expanded="<?= $composeOpen ? 'true' : 'false' ?>" aria-controls="composer">+ New report</button>
+    </div>
+
+    <div class="composer <?= $composeOpen ? 'is-open' : '' ?>" id="composer">
+        <?php if (!UserAuth::check()): ?>
+            <div class="card auth-gate auth-gate-inline" style="margin-top:0;">
+                <p style="margin:0 0 12px; color:var(--muted);"><strong>Sign in to report.</strong> Reports need a free account so the community stays spam-free.</p>
+                <div class="auth-gate-actions">
+                    <a class="btn btn-primary btn-sm" href="<?= BASE_PATH ?>/login.php?next=<?= rawurlencode($selfComposeUrl) ?>">Sign in</a>
+                    <a class="btn btn-sm" href="<?= BASE_PATH ?>/register.php?next=<?= rawurlencode($selfComposeUrl) ?>">Create account</a>
+                </div>
+            </div>
+        <?php else: ?>
+            <?php if ($composeError): ?><div class="alert alert-error"><?= h($composeError) ?></div><?php endif; ?>
+            <form method="post" class="card composer-card" action="<?= BASE_PATH ?>/community.php">
+                <input type="hidden" name="csrf" value="<?= h(UserAuth::csrfToken()) ?>">
+                <input type="hidden" name="action" value="create_report">
+                <div class="composer-grid">
+                    <div class="field">
+                        <label>What are you reporting?</label>
+                        <select name="type" id="report-type">
+                            <option value="website" <?= $composeType === 'website' ? 'selected' : '' ?>>Website</option>
+                            <option value="phone" <?= $composeType === 'phone' ? 'selected' : '' ?>>Phone number</option>
+                            <option value="card" <?= $composeType === 'card' ? 'selected' : '' ?>>Bank card</option>
+                            <option value="crypto" <?= $composeType === 'crypto' ? 'selected' : '' ?>>Crypto address</option>
+                            <option value="iban" <?= $composeType === 'iban' ? 'selected' : '' ?>>IBAN</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label id="entity-label">Value</label>
+                        <input type="text" name="entity" id="entity-input" placeholder="example.com" value="<?= h($_POST['entity'] ?? $composePrefill) ?>" required>
+                    </div>
+                    <div class="field">
+                        <label>Category</label>
+                        <select name="category">
+                            <?php foreach (report_categories() as $key => $label): ?>
+                                <option value="<?= h($key) ?>" <?= ($_POST['category'] ?? '') === $key ? 'selected' : '' ?>><?= h($label) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Title of your report</label>
+                    <input type="text" name="title" placeholder="e.g. Fake shop — took payment, never shipped" value="<?= h($_POST['title'] ?? '') ?>" required minlength="8" maxlength="150">
+                </div>
+                <div class="field">
+                    <label>Describe what happened</label>
+                    <textarea name="description" rows="5" placeholder="What did you see? Did you lose money or data? Include as much detail as possible." required minlength="20"><?= h($_POST['description'] ?? '') ?></textarea>
+                </div>
+                <div class="composer-footer">
+                    <label class="check-toggle" style="margin:0;">
+                        <input type="checkbox" name="comments_open" <?= isset($_POST['comments_open']) || ($_POST['action'] ?? '') !== 'create_report' ? 'checked' : '' ?>>
+                        <span>Let others join the discussion</span>
+                    </label>
+                    <div class="composer-submit">
+                        <span class="composer-as">Posting as <strong><?= h(UserAuth::username()) ?></strong></span>
+                        <button type="submit" class="btn btn-primary">Post report</button>
+                    </div>
+                </div>
+            </form>
+        <?php endif; ?>
     </div>
 
     <form class="forum-toolbar" method="get" action="<?= BASE_PATH ?>/community.php">
@@ -104,7 +266,7 @@ require __DIR__ . '/includes/header.php';
     <div class="card forum-card">
         <?php if (!$threads): ?>
             <p class="check-empty">No reports here yet<?= $q !== '' ? ' matching your search' : '' ?>.
-                <a href="<?= BASE_PATH ?>/report.php" style="color:var(--brand-2);">Be the first to report a scam</a>.</p>
+                <a href="<?= BASE_PATH ?>/community.php?compose=1" style="color:var(--brand-2);">Be the first to report a scam</a>.</p>
         <?php else: ?>
             <ul class="forum-list">
                 <?php foreach ($threads as $t):
@@ -136,6 +298,7 @@ require __DIR__ . '/includes/header.php';
         <?php endif; ?>
     </div>
 
+    <?php /* pager below list */ ?>
     <?php if ($pages > 1): ?>
     <div class="forum-pager">
         <?php for ($p = 1; $p <= min($pages, 12); $p++):
@@ -146,5 +309,43 @@ require __DIR__ . '/includes/header.php';
     </div>
     <?php endif; ?>
 </section>
+
+<script>
+(() => {
+  const toggle = document.getElementById('composer-toggle');
+  const composer = document.getElementById('composer');
+  if (toggle && composer) {
+    toggle.addEventListener('click', () => {
+      const open = !composer.classList.contains('is-open');
+      composer.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) {
+        const first = composer.querySelector('input[name="entity"], a.btn');
+        if (first) first.focus();
+        composer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
+  }
+
+  const type = document.getElementById('report-type');
+  const input = document.getElementById('entity-input');
+  const label = document.getElementById('entity-label');
+  if (!type || !input) return;
+  const map = {
+    website: ['Website domain', 'example.com'],
+    phone: ['Phone number', '+491721094066'],
+    card: ['Card number', '4111 1111 1111 1111'],
+    crypto: ['Crypto address', '0x… or bc1…'],
+    iban: ['IBAN', 'DE89 3704 0044 0532 0130 00'],
+  };
+  const sync = () => {
+    const m = map[type.value] || map.website;
+    label.textContent = m[0];
+    input.placeholder = m[1];
+  };
+  type.addEventListener('change', sync);
+  sync();
+})();
+</script>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>
