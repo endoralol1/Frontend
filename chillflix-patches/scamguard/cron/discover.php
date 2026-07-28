@@ -3,8 +3,9 @@
  * Discovery cron job.
  *
  * Cron ticks every minute; honors discovery_interval_minutes unless --force.
- * Uses FAST checks for newly discovered domains (WHOIS/DNS/SSL/threat feeds only)
- * so we can process thousands/hour. Full reputation runs when a user opens a page.
+ * Uses TURBO checks for newly discovered domains by default (DNS + local threat
+ * feeds + heuristics only) so we can process very large batches/hour. Full
+ * reputation runs when a user opens a page.
  */
 
 require_once __DIR__ . '/../includes/DomainRepository.php';
@@ -29,9 +30,15 @@ function cron_log(string $msg): void
 
 $db = Database::getConnection();
 $repo = new DomainRepository();
-$batchSize = max(1, min(500, (int) get_setting('discovery_batch_size', '100')));
+$startedAt = microtime(true);
+$batchSize = max(1, min(10000, (int) get_setting('discovery_batch_size', '1000')));
 $intervalMinutes = max(1, (int) get_setting('discovery_interval_minutes', '1'));
-$rateLimit = max(10, (int) get_setting('discovery_rate_limit_per_hour', '2000'));
+$rateLimit = max(10, (int) get_setting('discovery_rate_limit_per_hour', '50000'));
+
+if (!$force && get_setting('discovery_auto_enabled', '1') !== '1') {
+    cron_log('Automatic discovery is disabled in Admin — skipping.');
+    exit(0);
+}
 
 $lockFile = __DIR__ . '/../storage/discovery.lock';
 $lockFp = fopen($lockFile, 'c+');
@@ -78,7 +85,11 @@ if ($force) {
 }
 cron_log("Budget this run={$runBudget} (hourly remaining={$remainingBudget}, limit={$rateLimit}).");
 
-$sources = $db->query('SELECT * FROM discovery_sources WHERE enabled = 1')->fetchAll();
+$sources = $db->query(
+    "SELECT * FROM discovery_sources
+     WHERE enabled = 1
+     ORDER BY FIELD(name, 'threat_feeds', 'user_reports', 'ct_logs'), name"
+)->fetchAll();
 $totalQueued = 0;
 
 foreach ($sources as $source) {
@@ -154,12 +165,25 @@ foreach ($sources as $source) {
     cron_log("Source '{$source['name']}' done: found=$found queued=$queued status=$status");
 }
 
-cron_log("Discovery run complete. queued_total={$totalQueued}");
+$elapsed = max(0.001, microtime(true) - $startedAt);
+$perMinute = $totalQueued > 0 ? round(($totalQueued / $elapsed) * 60, 1) : 0;
+$perHour = $totalQueued > 0 ? (int) round(($totalQueued / $elapsed) * 3600) : 0;
+cron_log("Discovery run complete. queued_total={$totalQueued} elapsed=" . round($elapsed, 2) . "s throughput={$perMinute}/min (~{$perHour}/hour)");
 
 
 function discover_from_ct_logs(): array
 {
-    $keywords = ['secure-verify', 'account-update', 'wallet-support', 'login-confirm', 'billing-alert'];
+    $keywords = [
+        // credential / support bait
+        'secure-verify', 'account-update', 'wallet-support', 'login-confirm', 'billing-alert',
+        'verify-login', 'account-verify', 'support-login', 'password-reset', 'security-check',
+        // money / crypto bait
+        'wallet-connect', 'airdrop-claim', 'bonus-claim', 'reward-claim', 'crypto-support',
+        // commerce / shipping bait
+        'delivery-track', 'parcel-update', 'invoice-pay', 'payment-confirm',
+        // gray/high-risk content niches we still want to catalog quickly
+        'streaming', 'movie', 'iptv', 'casino', 'betting',
+    ];
     $domains = [];
 
     foreach ($keywords as $kw) {
@@ -168,7 +192,8 @@ function discover_from_ct_logs(): array
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT => 20,
+            CURLOPT_TIMEOUT => 6,
+            CURLOPT_CONNECTTIMEOUT => 3,
             CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_USERAGENT => 'ScamGuardBot/1.0 (+https://www.chillflix.lol/scamguard)',
         ]);
@@ -200,16 +225,13 @@ function discover_from_ct_logs(): array
 function discover_new_from_threat_feeds(PDO $db, int $want): array
 {
     $feedDir = __DIR__ . '/../storage/feeds';
-    $files = [
-        $feedDir . '/phishing-domains.txt',
-        $feedDir . '/urlhaus-online.txt',
-        $feedDir . '/openphish.txt',
-    ];
+    $files = glob($feedDir . '/*.txt') ?: [];
+    sort($files);
 
     $offset = max(0, (int) get_setting('threat_feed_scan_offset', '0'));
     $domains = [];
     $scanned = 0;
-    $maxScan = max(5000, $want * 40); // lines to read while hunting for unknowns
+    $maxScan = max(20000, $want * 80); // lines to read while hunting for unknowns
 
     // Preload known domains for fast skip (only exact host match).
     // For very large DBs this stays fine at current scale.

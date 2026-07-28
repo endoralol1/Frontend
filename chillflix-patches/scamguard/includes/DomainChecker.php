@@ -14,6 +14,7 @@ class DomainChecker
     private string $domain;
     private array $data = [];
     private array $signals = [];
+    private bool $turboFast = false;
     private ?int $lastRedirectCount = null;
     private ?string $lastFinalUrl = null;
     private ?int $lastHttpStatus = null;
@@ -24,6 +25,10 @@ class DomainChecker
     public function __construct(string $domain, private bool $fast = false)
     {
         $this->domain = $domain;
+        // Discovery mode optimized for maximum throughput. It skips slow external
+        // waits (RDAP/WHOIS, TLS socket, IP metadata) and stores a lightweight row.
+        // User-opened pages still run full scans.
+        $this->turboFast = $fast && get_setting('discovery_turbo_fast', '1') === '1';
     }
 
     public function run(): array
@@ -45,10 +50,15 @@ class DomainChecker
         $this->data['tranco_rank'] = null;
         $this->data['tranco_bonus'] = 0;
         $this->data['review_penalty'] = 0;
-        $this->data['check_mode'] = $this->fast ? 'fast' : 'full';
+        $this->data['check_mode'] = $this->turboFast ? 'turbo' : ($this->fast ? 'fast' : 'full');
 
-        $this->checkWhois();
-        $this->checkSsl();
+        if ($this->turboFast) {
+            $this->setUnknownRegistration();
+            $this->setUnknownSsl();
+        } else {
+            $this->checkWhois();
+            $this->checkSsl();
+        }
         $this->checkDns();
         // Fast discovery skips slow HTML + external reputation (Trustpilot/RBL/URLVoid).
         if (!$this->fast) {
@@ -63,9 +73,27 @@ class DomainChecker
             $this->data['crypto_only_payment'] = 0;
             $this->data['suspicious_keyword_hits'] = 0;
             $this->data['redirect_count'] = 0;
-            $this->addSignal('content', 'Check mode', 'Fast discovery', 'Full page + review engines run when someone opens the report', 'neutral');
+            $this->addSignal(
+                'content',
+                'Check mode',
+                $this->turboFast ? 'Turbo discovery' : 'Fast discovery',
+                $this->turboFast
+                    ? 'Throughput mode: DNS + local feeds + heuristics only. Full scan runs when someone opens the report.'
+                    : 'Full page + review engines run when someone opens the report',
+                'neutral'
+            );
         }
-        $this->checkThreatFeeds();
+        if ($this->turboFast) {
+            $this->addSignal(
+                'threat',
+                'Local threat feeds',
+                'Deferred (turbo)',
+                'Discovery source already supplied the domain; exact feed confirmation runs during the full report.',
+                'neutral'
+            );
+        } else {
+            $this->checkThreatFeeds();
+        }
         $this->checkHeuristics();
         $this->scoreRegistrarReputation();
         if (!$this->fast) {
@@ -97,6 +125,37 @@ class DomainChecker
             'note' => $note,
             'tone' => $tone,
         ];
+    }
+
+    private function setUnknownRegistration(): void
+    {
+        $this->data['whois_registrar'] = null;
+        $this->data['whois_created_at'] = null;
+        $this->data['whois_expires_at'] = null;
+        $this->data['whois_privacy_protected'] = null;
+        $this->data['domain_age_days'] = null;
+        $this->data['registration_length_days'] = null;
+        $this->addSignal(
+            'registration',
+            'WHOIS / RDAP',
+            'Skipped (turbo)',
+            'Discovery throughput mode skips slow registry lookups. Full report refreshes this.',
+            'neutral'
+        );
+    }
+
+    private function setUnknownSsl(): void
+    {
+        $this->data['ssl_valid'] = null;
+        $this->data['ssl_issuer'] = null;
+        $this->data['ssl_expires_at'] = null;
+        $this->addSignal(
+            'ssl',
+            'HTTPS / TLS',
+            'Skipped (turbo)',
+            'Discovery throughput mode skips TLS handshakes. Full report refreshes this.',
+            'neutral'
+        );
     }
 
     // -------------------------------------------------------------
@@ -497,7 +556,7 @@ class DomainChecker
             $this->data['cdn_provider'] = $cdn;
         }
 
-        if ($this->data['ip_address']) {
+        if ($this->data['ip_address'] && !$this->turboFast) {
             $this->lookupIpMeta($this->data['ip_address']);
         }
 
@@ -1745,7 +1804,9 @@ class DomainChecker
             }
         }
 
-        if ($this->data['ssl_valid']) {
+        if ($this->data['ssl_valid'] === null) {
+            // Unknown in turbo discovery; do not reward or punish.
+        } elseif ($this->data['ssl_valid']) {
             $score += $wSsl;
         } else {
             $score -= $wSsl;

@@ -20,6 +20,11 @@ class ThreatFeeds
             $sources[] = 'URLhaus (malware/botnet URLs)';
         }
 
+        if (self::hostInFile(self::FEED_DIR . '/urlhaus-all.txt', $domain)) {
+            $malware = true;
+            $sources[] = 'URLhaus historical malware URLs';
+        }
+
         if (self::hostInFile(self::FEED_DIR . '/openphish.txt', $domain)) {
             $phishing = true;
             $sources[] = 'OpenPhish';
@@ -46,8 +51,10 @@ class ThreatFeeds
     {
         $files = [
             'urlhaus-online.txt' => 'URLhaus malware URLs',
+            'urlhaus-all.txt' => 'URLhaus all URLs',
             'openphish.txt' => 'OpenPhish',
             'phishing-domains.txt' => 'Phishing domains',
+            'phishing-links.txt' => 'Phishing links',
         ];
         $out = [];
         foreach ($files as $file => $label) {
