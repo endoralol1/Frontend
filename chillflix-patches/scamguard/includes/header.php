@@ -2,7 +2,7 @@
 $siteName = get_setting('site_name', 'ScamGuard');
 $announcementEnabled = get_setting('announcement_enabled', '0') === '1';
 $announcement = get_setting('announcement_banner', '');
-$assetVer = '20260728rescan1';
+$assetVer = '20260728rescan2';
 
 $pageTitle = $pageTitle ?? $siteName;
 $pageDescription = $pageDescription ?? 'Check websites for scam, phishing, and malware risk signals before you click.';
@@ -81,12 +81,15 @@ $ogType = $ogType ?? 'website';
         <div class="scan-loading-ring" aria-hidden="true"></div>
         <div class="scan-loading-copy">
             <strong>Rescanning site</strong>
-            <span>Refreshing live signals, reputation checks, and AI review.</span>
+            <span id="scan-loading-current">Preparing a fresh scan…</span>
         </div>
-        <div class="scan-loading-steps" aria-hidden="true">
-            <span>DNS</span>
-            <span>Feeds</span>
-            <span>AI</span>
+        <div class="scan-loading-steps" aria-hidden="true" id="scan-loading-steps">
+            <span data-step="0">DNS</span>
+            <span data-step="1">SSL</span>
+            <span data-step="2">Page</span>
+            <span data-step="3">Feeds</span>
+            <span data-step="4">Reviews</span>
+            <span data-step="5">AI</span>
         </div>
     </div>
 </div>
@@ -131,6 +134,36 @@ $ogType = $ogType ?? 'website';
     overlay.classList.add('is-visible');
     overlay.setAttribute('aria-hidden', 'false');
     document.body.classList.add('scan-loading-open');
+    startScanProgress();
+  };
+
+  const startScanProgress = () => {
+    const current = document.getElementById('scan-loading-current');
+    const stepEls = Array.from(document.querySelectorAll('#scan-loading-steps [data-step]'));
+    if (!current || stepEls.length === 0 || overlay.dataset.progressStarted === '1') return;
+    overlay.dataset.progressStarted = '1';
+
+    const stages = [
+      'Checking DNS, WHOIS, and domain age…',
+      'Verifying SSL and hosting details…',
+      'Fetching page content and security headers…',
+      'Checking malware, phishing, and abuse feeds…',
+      'Looking up reviews and public reputation…',
+      'Running AI purpose and risk review…',
+      'Calculating final trust score…'
+    ];
+    let index = 0;
+    const paint = () => {
+      current.textContent = stages[index] || stages[stages.length - 1];
+      stepEls.forEach((el) => {
+        const step = parseInt(el.getAttribute('data-step'), 10);
+        el.classList.toggle('is-active', step === Math.min(index, stepEls.length - 1));
+        el.classList.toggle('is-done', step < Math.min(index, stepEls.length));
+      });
+      if (index < stages.length - 1) index++;
+    };
+    paint();
+    window.setInterval(paint, 1250);
   };
 
   document.addEventListener('click', (event) => {

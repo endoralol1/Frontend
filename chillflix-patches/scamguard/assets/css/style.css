@@ -675,20 +675,30 @@ th { color: var(--faint); font-size: .75rem; text-transform: uppercase; letter-s
 .scan-loading-steps {
     grid-column: 1 / -1;
     display: flex;
-    gap: 7px;
+    gap: 5px;
     padding-top: 2px;
 }
 .scan-loading-steps span {
     flex: 1;
     text-align: center;
-    padding: 5px 8px;
+    padding: 5px 6px;
     border-radius: 999px;
-    background: rgba(184,76,10,.12);
-    color: var(--brand-2);
-    font-size: .68rem;
+    background: rgba(255,255,255,.045);
+    color: var(--faint);
+    font-size: .62rem;
     font-weight: 800;
-    letter-spacing: .08em;
+    letter-spacing: .05em;
     text-transform: uppercase;
+    transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+}
+.scan-loading-steps span.is-done {
+    background: rgba(184,76,10,.14);
+    color: rgba(212,106,31,.82);
+}
+.scan-loading-steps span.is-active {
+    background: var(--brand);
+    color: #fff;
+    box-shadow: 0 0 20px rgba(184,76,10,.28);
 }
 @keyframes scan-spin {
     to { transform: rotate(360deg); }
