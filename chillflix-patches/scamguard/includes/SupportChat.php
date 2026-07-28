@@ -389,26 +389,10 @@ class SupportChat
 
         $lookups = self::lookupDomainsFromText($message);
 
-        // Prefer factual lookup text for score questions so recheck links are never omitted.
-        if ($lookups && preg_match('/\b(score|rated|rating|safe|risky|scam|status|trust|how (bad|good)|what about)\b/i', $message)) {
+        // Score / domain status questions: always return clean facts + recheck link.
+        if ($lookups && preg_match('/\b(score|rated|rating|safe|risky|scam|status|trust|how (bad|good)|what about|check|lookup|look up)\b/i', $message)) {
             $direct = self::formatDomainLookups($lookups);
             if ($direct !== '') {
-                // Still try AI for a short natural intro, but always append links/facts.
-                if (self::aiEnabled()) {
-                    $ai = self::aiSupportReply($message, $history, $lookups);
-                    if ($ai !== null && empty($ai['escalate']) && !empty($ai['reply'])) {
-                        $reply = self::sanitizeReply((string) $ai['reply']);
-                        if (!str_contains($reply, 'refresh=1') || !str_contains($reply, '/site/')) {
-                            $reply = rtrim($reply) . "\n\n" . $direct;
-                        }
-                        return [
-                            'reply' => $reply,
-                            'escalate' => false,
-                            'matched' => 'ai+lookup',
-                            'source' => 'ai',
-                        ];
-                    }
-                }
                 return [
                     'reply' => $direct,
                     'escalate' => false,
@@ -602,17 +586,20 @@ class SupportChat
 
     public static function sanitizeReply(string $reply): string
     {
-        // Fix models that break URLs with spaces/newlines: "ht tps://..." / "chillflix.lol/ scamguard"
+        // Fix models that break the scheme: "ht tps://"
         $reply = preg_replace('/\bhttps?\s*:\s*\/\s*\//i', 'https://', $reply) ?? $reply;
-        $reply = preg_replace_callback(
-            '/https:\/\/[^\s<]+(?:\s+[^\s<]+)*/',
-            static function (array $m): string {
-                $url = preg_replace('/\s+/', '', $m[0]) ?? $m[0];
-                // Stop at common trailing punctuation left attached
-                return rtrim($url, '.,);]');
-            },
-            $reply
-        ) ?? $reply;
+        // Collapse spaces only inside a URL (between URL-safe characters), not between words.
+        for ($i = 0; $i < 8; $i++) {
+            $next = preg_replace(
+                '/(https:\/\/[^\s<]*?)\s+(?=[\/.?&#%=~@+\-a-z0-9_])/i',
+                '$1',
+                $reply
+            );
+            if ($next === null || $next === $reply) {
+                break;
+            }
+            $reply = $next;
+        }
         return trim($reply);
     }
 
