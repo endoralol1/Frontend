@@ -5,13 +5,15 @@
   if (!root) return;
 
   var apiUrl = root.getAttribute('data-api') || '';
-  var basePath = root.getAttribute('data-base') || '';
   var csrf = '';
   var conversation = null;
   var lastId = 0;
   var pollTimer = null;
   var open = false;
   var busy = false;
+  var loggedIn = false;
+  var username = '';
+  var aiEnabled = false;
 
   var launcher = el('button', {
     className: 'sgchat-launcher',
@@ -25,7 +27,7 @@
     '<div class="sgchat-head">' +
       '<div class="sgchat-head-text">' +
         '<strong>ScamGuard Support</strong>' +
-        '<span class="sgchat-status" id="sgchat-status">Bot helper</span>' +
+        '<span class="sgchat-status" id="sgchat-status">AI helper</span>' +
       '</div>' +
       '<div class="sgchat-head-actions">' +
         '<button type="button" class="sgchat-iconbtn" id="sgchat-human" title="Talk to admin">👤</button>' +
@@ -36,13 +38,16 @@
     '<div class="sgchat-messages" id="sgchat-messages"></div>' +
     '<div class="sgchat-suggestions" id="sgchat-suggestions"></div>' +
     '<form class="sgchat-compose" id="sgchat-form">' +
-      '<textarea id="sgchat-input" rows="1" maxlength="2000" placeholder="Ask a question…" required></textarea>' +
+      '<textarea id="sgchat-input" rows="1" maxlength="2000" placeholder="Ask anything about ScamGuard…" required></textarea>' +
       '<button type="submit" class="sgchat-send" aria-label="Send">➤</button>' +
     '</form>' +
     '<div class="sgchat-prechat" id="sgchat-prechat" hidden>' +
-      '<p>Start a chat with our helper bot. An admin can join if needed.</p>' +
-      '<label>Name <input type="text" id="sgchat-name" maxlength="80" placeholder="Optional"></label>' +
-      '<label>Email <input type="email" id="sgchat-email" maxlength="190" placeholder="Optional"></label>' +
+      '<p>Chat with our AI helper about ScamGuard. An admin can join if needed.</p>' +
+      '<div id="sgchat-guest-fields">' +
+        '<label>Name <input type="text" id="sgchat-name" maxlength="80" placeholder="Optional"></label>' +
+        '<label>Email <input type="email" id="sgchat-email" maxlength="190" placeholder="Optional"></label>' +
+      '</div>' +
+      '<p class="sgchat-signedin" id="sgchat-signedin" hidden></p>' +
       '<button type="button" class="btn btn-primary sgchat-start" id="sgchat-start">Start chat</button>' +
     '</div>';
 
@@ -55,6 +60,8 @@
   var formEl = panel.querySelector('#sgchat-form');
   var inputEl = panel.querySelector('#sgchat-input');
   var prechatEl = panel.querySelector('#sgchat-prechat');
+  var guestFieldsEl = panel.querySelector('#sgchat-guest-fields');
+  var signedInEl = panel.querySelector('#sgchat-signedin');
   var badgeEl = launcher.querySelector('.sgchat-badge');
 
   launcher.addEventListener('click', function () {
@@ -66,10 +73,13 @@
   });
 
   panel.querySelector('#sgchat-human').addEventListener('click', function () {
-    if (!conversation) return;
-    post('request_human', { token: conversation.token }).then(function (data) {
-      if (data.conversation) applyConversation(data.conversation, true);
-    });
+    if (!conversation) {
+      startChat(function () {
+        requestHuman();
+      });
+      return;
+    }
+    requestHuman();
   });
 
   panel.querySelector('#sgchat-close-chat').addEventListener('click', function () {
@@ -84,7 +94,9 @@
     });
   });
 
-  panel.querySelector('#sgchat-start').addEventListener('click', startChat);
+  panel.querySelector('#sgchat-start').addEventListener('click', function () {
+    startChat();
+  });
 
   formEl.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -106,11 +118,20 @@
     panel.setAttribute('aria-hidden', open ? 'false' : 'true');
     launcher.classList.toggle('is-open', open);
     launcher.setAttribute('aria-label', open ? 'Close support chat' : 'Open support chat');
-    if (open) {
-      clearBadge();
-      if (!conversation) showPrechat(true);
-      else { showPrechat(false); scrollBottom(); }
+    if (!open) return;
+    clearBadge();
+    if (conversation) {
+      showPrechat(false);
+      scrollBottom();
+      return;
     }
+    // Logged-in users skip name/email and go straight into chat.
+    if (loggedIn) {
+      showPrechat(false);
+      startChat();
+      return;
+    }
+    showPrechat(true);
   }
 
   function bootstrap() {
@@ -120,10 +141,22 @@
         return;
       }
       csrf = data.csrf || '';
-      if (data.username) {
+      loggedIn = !!data.logged_in;
+      username = data.username || '';
+      aiEnabled = !!data.ai_enabled;
+      statusEl.textContent = aiEnabled ? 'AI helper' : 'Bot helper';
+
+      if (loggedIn) {
+        guestFieldsEl.hidden = true;
+        signedInEl.hidden = false;
+        signedInEl.textContent = 'Signed in as ' + username;
         var nameInput = panel.querySelector('#sgchat-name');
-        if (nameInput && !nameInput.value) nameInput.value = data.username;
+        if (nameInput) nameInput.value = username;
+      } else {
+        guestFieldsEl.hidden = false;
+        signedInEl.hidden = true;
       }
+
       if (data.conversation) {
         applyConversation(data.conversation, true);
         showPrechat(false);
@@ -137,11 +170,16 @@
     });
   }
 
-  function startChat() {
+  function startChat(done) {
     if (busy) return;
+    if (conversation) {
+      showPrechat(false);
+      if (typeof done === 'function') done();
+      return;
+    }
     busy = true;
-    var name = panel.querySelector('#sgchat-name').value || '';
-    var email = panel.querySelector('#sgchat-email').value || '';
+    var name = loggedIn ? username : (panel.querySelector('#sgchat-name').value || '');
+    var email = loggedIn ? '' : (panel.querySelector('#sgchat-email').value || '');
     post('start', {
       name: name,
       email: email,
@@ -152,24 +190,22 @@
       applyConversation(data.conversation, true);
       showPrechat(false);
       inputEl.focus();
+      if (typeof done === 'function') done();
     }).catch(function () { busy = false; });
+  }
+
+  function requestHuman() {
+    if (!conversation) return;
+    post('request_human', { token: conversation.token }).then(function (data) {
+      if (data.conversation) applyConversation(data.conversation, true);
+    });
   }
 
   function sendMessage(text, quickId) {
     text = (text || '').trim();
     if (!text && !quickId) return;
     if (!conversation) {
-      // Auto-start then send
-      post('start', {
-        name: (panel.querySelector('#sgchat-name').value || ''),
-        email: (panel.querySelector('#sgchat-email').value || ''),
-        page_url: location.href
-      }).then(function (data) {
-        if (!data.ok) { alert(data.error || 'Could not start chat'); return; }
-        applyConversation(data.conversation, true);
-        showPrechat(false);
-        sendMessage(text, quickId);
-      });
+      startChat(function () { sendMessage(text, quickId); });
       return;
     }
     if (busy) return;
@@ -178,11 +214,26 @@
     if (quickId) payload.quick = quickId;
     else payload.message = text;
     inputEl.value = '';
+    setTyping(true);
     post('send', payload).then(function (data) {
       busy = false;
+      setTyping(false);
       if (!data.ok) { alert(data.error || 'Could not send'); return; }
       applyConversation(data.conversation, false);
-    }).catch(function () { busy = false; });
+    }).catch(function () {
+      busy = false;
+      setTyping(false);
+    });
+  }
+
+  function setTyping(on) {
+    var existing = messagesEl.querySelector('.sgchat-typing');
+    if (existing) existing.remove();
+    if (!on) return;
+    var row = el('div', { className: 'sgchat-msg sgchat-msg-bot sgchat-typing' });
+    row.innerHTML = '<div class="sgchat-msg-meta">ScamGuard AI</div><div class="sgchat-msg-body">Thinking…</div>';
+    messagesEl.appendChild(row);
+    scrollBottom();
   }
 
   function applyConversation(conv, replace) {
@@ -221,13 +272,8 @@
       btn.textContent = a.label || a.id;
       btn.addEventListener('click', function () {
         if (a.id === 'human') {
-          if (!conversation) {
-            sendMessage('Talk to an admin', 'human');
-          } else {
-            post('request_human', { token: conversation.token }).then(function (data) {
-              if (data.conversation) applyConversation(data.conversation, true);
-            });
-          }
+          if (!conversation) startChat(requestHuman);
+          else requestHuman();
           return;
         }
         sendMessage(a.label || a.id, a.id);
@@ -238,7 +284,7 @@
 
   function updateStatus(status, adminName) {
     var map = {
-      bot: 'Bot helper',
+      bot: aiEnabled ? 'AI helper' : 'Bot helper',
       waiting: 'Waiting for admin',
       active: adminName ? ('Admin · ' + adminName) : 'Admin connected',
       closed: 'Chat closed'

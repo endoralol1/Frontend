@@ -1776,6 +1776,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); }
     padding: 16px; display: flex; flex-direction: column; gap: 10px; overflow: auto;
 }
 .sgchat-prechat p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
+.sgchat-signedin { color: var(--brand-2) !important; font-weight: 700; font-size: 13px !important; }
 .sgchat-prechat label { display: grid; gap: 4px; color: var(--faint); font-size: 12px; font-weight: 600; }
 .sgchat-prechat input {
     border: 1px solid var(--line); border-radius: 10px; background: var(--bg-2);

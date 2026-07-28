@@ -52,6 +52,7 @@ if ($action === 'bootstrap') {
     $payload = [
         'ok' => true,
         'enabled' => SupportChat::enabled(),
+        'ai_enabled' => SupportChat::aiEnabled(),
         'csrf' => UserAuth::csrfToken(),
         'logged_in' => (bool) $userId,
         'username' => $userName,
@@ -88,6 +89,11 @@ if ($action === 'start') {
     $name = trim((string) ($_POST['name'] ?? ($userName ?? '')));
     $email = trim((string) ($_POST['email'] ?? ''));
     $pageUrl = trim((string) ($_POST['page_url'] ?? ''));
+    if ($userId && $email === '') {
+        $stmtEmail = $db->prepare('SELECT email FROM users WHERE id = ? LIMIT 1');
+        $stmtEmail->execute([$userId]);
+        $email = trim((string) ($stmtEmail->fetchColumn() ?: ''));
+    }
     if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         chat_json(['ok' => false, 'error' => 'Please enter a valid email (or leave it blank).'], 422);
     }
@@ -151,25 +157,14 @@ if ($action === 'send') {
     $visitorName = $conv['visitor_name'] ?: ($userName ?: 'Visitor');
     SupportChat::addMessage($db, $convId, 'visitor', $body, $visitorName, $userId);
 
-    $botMessages = [];
     if (($conv['status'] ?? '') === 'bot') {
-        $decision = SupportChat::botReply($body);
+        $history = SupportChat::messages($db, $convId);
+        $decision = SupportChat::botReply($body, $history);
         if (!empty($decision['escalate'])) {
             SupportChat::escalate($db, $conv);
         } elseif (!empty($decision['reply'])) {
-            SupportChat::addMessage($db, $convId, 'bot', (string) $decision['reply'], 'ScamGuard Bot');
-            // Soft prompt for human after a weak/no match
-            if ($decision['matched'] === null) {
-                SupportChat::addMessage(
-                    $db,
-                    $convId,
-                    'bot',
-                    'Tip: tap “Talk to an admin” anytime for a human reply.',
-                    'ScamGuard Bot',
-                    null,
-                    true
-                );
-            }
+            $botName = (($decision['source'] ?? '') === 'ai') ? 'ScamGuard AI' : 'ScamGuard Bot';
+            SupportChat::addMessage($db, $convId, 'bot', (string) $decision['reply'], $botName);
         }
     }
 

@@ -277,15 +277,15 @@ class SupportChat
 
         $greeting = get_setting(
             'support_chat_greeting',
-            'Hi — I\'m the ScamGuard helper. Ask about checks, scores, reports, or accounts. If I can\'t help, you can talk to an admin.'
+            'Hi — I\'m the ScamGuard AI helper. Ask me anything about this site: checks, scores, reports, accounts, community. If I can\'t help, you can talk to an admin.'
         );
-        self::addMessage($db, $id, 'bot', $greeting, 'ScamGuard Bot');
+        self::addMessage($db, $id, 'bot', $greeting, 'ScamGuard AI');
         self::addMessage(
             $db,
             $id,
             'bot',
-            "Quick help:\n• Check a website — paste any domain on the home page\n• Report a scam — Community → + New post\n• Scores — risk signals, not legal proof\n\nOr tap a suggestion below.",
-            'ScamGuard Bot',
+            "Try asking in your own words, or tap a suggestion:\n• How do website checks work?\n• What does a low score mean?\n• How do I report a scam?",
+            'ScamGuard AI',
             null,
             true
         );
@@ -293,19 +293,30 @@ class SupportChat
         return self::getById($db, $id) ?? ['id' => $id, 'public_token' => $public, 'status' => 'bot'];
     }
 
+    public static function aiEnabled(): bool
+    {
+        $key = trim(get_setting('ai_api_key', ''));
+        if ($key === '' && defined('AI_API_KEY')) {
+            $key = trim((string) AI_API_KEY);
+        }
+        return $key !== '';
+    }
+
     /**
-     * @return array{reply:?string,escalate:bool,matched:?string}
+     * @param list<array<string,mixed>> $history
+     * @return array{reply:?string,escalate:bool,matched:?string,source:string}
      */
-    public static function botReply(string $message): array
+    public static function botReply(string $message, array $history = []): array
     {
         $text = mb_strtolower(trim($message));
         $text = preg_replace('/\s+/', ' ', $text) ?? $text;
 
         if ($text === '' || mb_strlen($text) < 2) {
             return [
-                'reply' => 'Tell me a bit more — for example “how do I check a site?” or “I want to report a scam”.',
+                'reply' => 'Tell me a bit more — for example how checks work, what a score means, or how to report a scam.',
                 'escalate' => false,
                 'matched' => null,
+                'source' => 'rule',
             ];
         }
 
@@ -315,6 +326,7 @@ class SupportChat
                 'reply' => null,
                 'escalate' => true,
                 'matched' => 'human',
+                'source' => 'rule',
             ];
         }
 
@@ -326,25 +338,51 @@ class SupportChat
             'human' => 'talk to an admin',
         ];
         if (isset($quickMap[$text])) {
-            return self::botReply($quickMap[$text]);
+            return self::botReply($quickMap[$text], $history);
         }
 
         if (preg_match('/\b(hi|hello|hey|good (morning|afternoon|evening)|hola)\b/i', $text) && mb_strlen($text) < 40) {
             return [
-                'reply' => 'Hello! I can help with website checks, trust scores, reporting scams, or your account. What do you need?',
+                'reply' => 'Hello! Ask me anything about ScamGuard — website/phone/crypto checks, trust scores, reporting, community, or your account. Or tap “Talk to an admin” for a person.',
                 'escalate' => false,
                 'matched' => 'greeting',
+                'source' => 'rule',
             ];
         }
 
         if (preg_match('/\b(thank|thanks|thx|appreciate)\b/i', $text) && mb_strlen($text) < 60) {
             return [
-                'reply' => 'Glad to help. If anything else comes up — checks, reports, or talking to an admin — just ask.',
+                'reply' => 'Glad to help. Ask another question anytime, or request an admin if you need a human.',
                 'escalate' => false,
                 'matched' => 'thanks',
+                'source' => 'rule',
             ];
         }
 
+        // Prefer AI for free-form questions when configured.
+        if (self::aiEnabled()) {
+            $ai = self::aiSupportReply($message, $history);
+            if ($ai !== null) {
+                if (!empty($ai['escalate'])) {
+                    return [
+                        'reply' => null,
+                        'escalate' => true,
+                        'matched' => 'ai-escalate',
+                        'source' => 'ai',
+                    ];
+                }
+                if (!empty($ai['reply'])) {
+                    return [
+                        'reply' => (string) $ai['reply'],
+                        'escalate' => false,
+                        'matched' => 'ai',
+                        'source' => 'ai',
+                    ];
+                }
+            }
+        }
+
+        // FAQ fallback if AI unavailable / failed
         $best = null;
         $bestScore = 0;
         foreach (self::knowledge() as $item) {
@@ -354,7 +392,6 @@ class SupportChat
                     $score += mb_strlen($key) >= 5 ? 3 : 2;
                 }
             }
-            // Soft match on question words
             $qWords = preg_split('/\W+/', mb_strtolower($item['q'])) ?: [];
             foreach ($qWords as $w) {
                 if (mb_strlen($w) >= 4 && str_contains($text, $w)) {
@@ -372,23 +409,155 @@ class SupportChat
                 'reply' => $best['a'] . "\n\nWas that helpful? If not, tap “Talk to an admin”.",
                 'escalate' => false,
                 'matched' => $best['q'],
+                'source' => 'faq',
             ];
         }
 
-        // Domain-looking input → guide to checker
         if (preg_match('/\b([a-z0-9-]+\.)+[a-z]{2,}\b/i', $text)) {
             return [
                 'reply' => 'To check that domain, paste it on the home page Quick check. I can also explain scores or help you report it — or connect you with an admin.',
                 'escalate' => false,
                 'matched' => 'domain-hint',
+                'source' => 'rule',
             ];
         }
 
         return [
-            'reply' => "I'm not sure I can fully answer that. Try asking about checks, scores, reports, or accounts — or request an admin and a person will reply here.",
+            'reply' => "I couldn't answer that confidently. Try rephrasing, or tap “Talk to an admin” and a person will reply here.",
             'escalate' => false,
             'matched' => null,
+            'source' => 'rule',
         ];
+    }
+
+    /**
+     * Free-form AI helper using the same OpenAI-compatible key as domain analysis.
+     *
+     * @param list<array<string,mixed>> $history
+     * @return array{reply:?string,escalate:bool}|null
+     */
+    public static function aiSupportReply(string $message, array $history = []): ?array
+    {
+        $key = trim(get_setting('ai_api_key', ''));
+        if ($key === '' && defined('AI_API_KEY')) {
+            $key = trim((string) AI_API_KEY);
+        }
+        if ($key === '') {
+            return null;
+        }
+
+        $url = trim(get_setting('ai_api_url', ''));
+        if ($url === '' && defined('AI_API_URL')) {
+            $url = trim((string) AI_API_URL);
+        }
+        if ($url === '') {
+            $url = 'https://api.openai.com/v1/chat/completions';
+        }
+
+        $model = trim(get_setting('ai_model', ''));
+        if ($model === '' && defined('AI_MODEL')) {
+            $model = trim((string) AI_MODEL);
+        }
+        if ($model === '') {
+            $model = 'gpt-4o-mini';
+        }
+
+        $site = get_setting('site_name', 'ScamGuard');
+        $facts = [];
+        foreach (self::knowledge() as $item) {
+            $facts[] = '- ' . $item['q'] . ' → ' . $item['a'];
+        }
+        $factBlock = implode("\n", $facts);
+
+        $system = "You are the {$site} support assistant in a live chat widget.\n"
+            . "Help visitors with anything about this website and product: trust checks (website/phone/crypto/IBAN/card), "
+            . "how scores work, reporting scams, community forum, announcements, accounts/login/points, browsing flagged domains, and using the site.\n"
+            . "Be accurate, concise (2–5 short sentences), friendly, and practical. Use plain language.\n"
+            . "Do not invent admin actions, refunds, legal advice, or features that are not described below.\n"
+            . "Scores are risk signals, not legal proof of a scam.\n"
+            . "If the user wants a human, set escalate=true.\n"
+            . "If you truly cannot help from the facts, say so briefly and suggest Talk to an admin (escalate=false unless they asked for a human).\n"
+            . "Never ask for passwords, seed phrases, full card numbers, or OTPs.\n\n"
+            . "Known facts about {$site}:\n{$factBlock}\n\n"
+            . "Respond with ONLY JSON: {\"reply\":\"...\",\"escalate\":false}";
+
+        $messages = [
+            ['role' => 'system', 'content' => $system],
+        ];
+        // Last few turns for context (skip system/quick noise somewhat)
+        $recent = array_slice($history, -12);
+        foreach ($recent as $m) {
+            $type = (string) ($m['sender_type'] ?? '');
+            $body = trim((string) ($m['body'] ?? ''));
+            if ($body === '' || $type === 'system') {
+                continue;
+            }
+            if ($type === 'visitor') {
+                $messages[] = ['role' => 'user', 'content' => mb_substr($body, 0, 1200)];
+            } elseif (in_array($type, ['bot', 'admin'], true)) {
+                $messages[] = ['role' => 'assistant', 'content' => mb_substr($body, 0, 1200)];
+            }
+        }
+        $messages[] = ['role' => 'user', 'content' => mb_substr(trim($message), 0, 1500)];
+
+        $payload = json_encode([
+            'model' => $model,
+            'temperature' => 0.35,
+            'max_tokens' => 320,
+            'messages' => $messages,
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_TIMEOUT => 12,
+            CURLOPT_CONNECTTIMEOUT => 4,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $key,
+            ],
+        ]);
+        $raw = curl_exec($ch);
+        $errno = curl_errno($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($errno || $raw === false || $code >= 400) {
+            return null;
+        }
+
+        $resp = json_decode($raw, true);
+        $textOut = trim((string) ($resp['choices'][0]['message']['content'] ?? ''));
+        if ($textOut === '') {
+            return null;
+        }
+
+        $textOut = trim(preg_replace('/^```(?:json)?\s*|\s*```$/u', '', $textOut) ?? $textOut);
+        $parsed = json_decode($textOut, true);
+        if (!is_array($parsed) && preg_match('/\{.*\}/s', $textOut, $m)) {
+            $parsed = json_decode($m[0], true);
+        }
+
+        if (is_array($parsed)) {
+            $reply = trim((string) ($parsed['reply'] ?? ''));
+            $escalate = !empty($parsed['escalate']);
+            if ($reply === '' && !$escalate) {
+                return null;
+            }
+            if (mb_strlen($reply) > 1800) {
+                $reply = mb_substr($reply, 0, 1800) . '…';
+            }
+            return ['reply' => $reply !== '' ? $reply : null, 'escalate' => $escalate];
+        }
+
+        // Plain-text fallback if model ignored JSON
+        if (mb_strlen($textOut) > 1800) {
+            $textOut = mb_substr($textOut, 0, 1800) . '…';
+        }
+        return ['reply' => $textOut, 'escalate' => false];
     }
 
     public static function escalate(PDO $db, array $conversation): void
@@ -417,7 +586,7 @@ class SupportChat
             (int) $conversation['id'],
             'bot',
             "I've notified the admin team. " . $offline,
-            'ScamGuard Bot'
+            'ScamGuard AI'
         );
     }
 
