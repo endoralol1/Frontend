@@ -110,6 +110,34 @@ class UserAuth
         return $_SESSION['user_username'] ?? null;
     }
 
+    /** Live role lookup (promotions apply without re-login). */
+    public static function role(): string
+    {
+        static $cache = null;
+        $id = self::id();
+        if ($id === null) {
+            return 'user';
+        }
+        if ($cache === null) {
+            $db = Database::getConnection();
+            $stmt = $db->prepare('SELECT role FROM users WHERE id = ?');
+            $stmt->execute([$id]);
+            $cache = (string) ($stmt->fetchColumn() ?: 'user');
+        }
+        return $cache;
+    }
+
+    /** Moderators and admins can moderate the community. */
+    public static function isModerator(): bool
+    {
+        return in_array(self::role(), ['moderator', 'admin'], true);
+    }
+
+    public static function isAdminRole(): bool
+    {
+        return self::role() === 'admin';
+    }
+
     public static function logout(): void
     {
         self::start();
@@ -217,6 +245,16 @@ function report_categories(): array
 function report_category_label(string $key): string
 {
     return report_categories()[$key] ?? ucfirst(str_replace('_', ' ', $key));
+}
+
+/** Small role chip next to usernames (empty for normal users) */
+function role_chip(?string $role): string
+{
+    return match ($role) {
+        'admin' => '<span class="role-chip role-chip-admin">Admin</span>',
+        'moderator' => '<span class="role-chip role-chip-mod">Mod</span>',
+        default => '',
+    };
 }
 
 /** Badge for thread review status */

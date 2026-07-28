@@ -8,14 +8,17 @@ $db = Database::getConnection();
 
 $threadId = (int) ($_GET['id'] ?? 0);
 $userId = UserAuth::id();
-$isAdmin = Auth::check();
+// Moderation works with an admin-panel session OR a community account
+// holding the moderator/admin role — one login for everything.
+$isAdmin = Auth::check() || UserAuth::isModerator();
+$modDetails = Auth::id() === null ? 'via community account ' . (UserAuth::username() ?? '?') : null;
 $flash = null;
 $error = null;
 
 function load_thread(PDO $db, int $id): ?array
 {
     $stmt = $db->prepare(
-        'SELECT t.*, u.username, u.is_banned AS author_banned
+        'SELECT t.*, u.username, u.is_banned AS author_banned, u.role AS author_role
          FROM forum_threads t JOIN users u ON u.id = t.user_id
          WHERE t.id = ?'
     );
@@ -104,7 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'approve' || $action === 'reject') {
             $status = $action === 'approve' ? 'approved' : 'rejected';
             $db->prepare('UPDATE forum_threads SET review_status = ?, reviewed_by = ?, reviewed_at = NOW() WHERE id = ?')
-               ->execute([$status, Auth::id(), $threadId]);
+               ->execute([$status, Auth::id() ?? $userId, $threadId]);
             if (!empty($thread['report_id'])) {
                 $db->prepare('UPDATE reports SET status = ?, admin_id = ?, reviewed_at = NOW() WHERE id = ?')
                    ->execute([$status, Auth::id(), $thread['report_id']]);
@@ -113,18 +116,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $db->prepare('UPDATE entity_reports SET status = ?, admin_id = ?, reviewed_at = NOW() WHERE id = ?')
                    ->execute([$status, Auth::id(), $thread['entity_report_id']]);
             }
-            log_admin_activity(Auth::id(), 'forum_' . $action, 'thread:' . $threadId);
+            log_admin_activity(Auth::id(), 'forum_' . $action, 'thread:' . $threadId, $modDetails);
         } elseif ($action === 'sticky' || $action === 'unsticky') {
             $db->prepare('UPDATE forum_threads SET is_sticky = ? WHERE id = ?')
                ->execute([$action === 'sticky' ? 1 : 0, $threadId]);
-            log_admin_activity(Auth::id(), 'forum_' . $action, 'thread:' . $threadId);
+            log_admin_activity(Auth::id(), 'forum_' . $action, 'thread:' . $threadId, $modDetails);
         } elseif ($action === 'lock' || $action === 'unlock') {
             $db->prepare('UPDATE forum_threads SET is_locked = ? WHERE id = ?')
                ->execute([$action === 'lock' ? 1 : 0, $threadId]);
-            log_admin_activity(Auth::id(), 'forum_' . $action, 'thread:' . $threadId);
+            log_admin_activity(Auth::id(), 'forum_' . $action, 'thread:' . $threadId, $modDetails);
         } elseif ($action === 'delete_thread') {
             $db->prepare('DELETE FROM forum_threads WHERE id = ?')->execute([$threadId]);
-            log_admin_activity(Auth::id(), 'forum_delete_thread', 'thread:' . $threadId);
+            log_admin_activity(Auth::id(), 'forum_delete_thread', 'thread:' . $threadId, $modDetails);
             redirect('/community.php');
         } elseif ($action === 'delete_comment') {
             $commentId = (int) ($_POST['comment_id'] ?? 0);
@@ -132,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                ->execute([$commentId, $threadId]);
             $db->prepare('UPDATE forum_threads SET comment_count = GREATEST(comment_count - 1, 0) WHERE id = ?')
                ->execute([$threadId]);
-            log_admin_activity(Auth::id(), 'forum_delete_comment', 'comment:' . $commentId);
+            log_admin_activity(Auth::id(), 'forum_delete_comment', 'comment:' . $commentId, $modDetails);
         }
         $thread = load_thread($db, $threadId);
         if (!$thread) {
@@ -145,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $stmt = $db->prepare(
-    'SELECT c.*, u.username FROM forum_comments c
+    'SELECT c.*, u.username, u.role AS author_role FROM forum_comments c
      JOIN users u ON u.id = c.user_id
      WHERE c.thread_id = ? ORDER BY c.created_at ASC LIMIT 500'
 );
@@ -225,7 +228,7 @@ require __DIR__ . '/includes/header.php';
 
         <h1 class="thread-title"><?= h($thread['title']) ?></h1>
         <div class="thread-byline">
-            Reported by <a class="user-link" href="<?= h(profile_path((string) $thread['username'])) ?>"><strong><?= h($thread['username']) ?></strong></a> · <?= h(time_ago($thread['created_at'])) ?>
+            Reported by <a class="user-link" href="<?= h(profile_path((string) $thread['username'])) ?>"><strong><?= h($thread['username']) ?></strong></a><?= role_chip($thread['author_role'] ?? null) ?> · <?= h(time_ago($thread['created_at'])) ?>
         </div>
 
         <?php if ($thread['subject_type'] !== 'card'): ?>
@@ -265,7 +268,7 @@ require __DIR__ . '/includes/header.php';
             </form>
             <?php endif; ?>
             <?php if ($isAdmin): ?>
-                <span class="thread-admin-label">Admin:</span>
+                <span class="thread-admin-label">Moderation:</span>
                 <?php
                 $adminActions = [];
                 $adminActions[] = $thread['review_status'] !== 'approved' ? ['approve', '✓ Approve'] : null;
@@ -305,6 +308,7 @@ require __DIR__ . '/includes/header.php';
                     <div class="comment-content">
                         <div class="comment-head">
                             <a class="comment-author user-link" href="<?= h(profile_path((string) $c['username'])) ?>"><?= h($c['username']) ?></a>
+                            <?= role_chip($c['author_role'] ?? null) ?>
                             <?php if ((int) $c['user_id'] === (int) $thread['user_id']): ?><span class="comment-op">Reporter</span><?php endif; ?>
                             <span class="comment-when"><?= h(time_ago($c['created_at'])) ?></span>
                             <?php if ($isAdmin && !$c['is_deleted']): ?>

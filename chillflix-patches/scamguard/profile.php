@@ -5,7 +5,7 @@ require_once __DIR__ . '/includes/Auth.php';
 
 UserAuth::start();
 $db = Database::getConnection();
-$isAdmin = Auth::check();
+$isAdmin = Auth::check() || UserAuth::isModerator();
 $viewerId = UserAuth::id();
 
 $username = trim($_GET['u'] ?? '');
@@ -93,6 +93,7 @@ require __DIR__ . '/includes/header.php';
         <div class="profile-avatar" aria-hidden="true"><?= h(mb_strtoupper(mb_substr((string) $user['username'], 0, 1))) ?></div>
         <div class="profile-id">
             <h1 class="profile-name"><?= h($user['username']) ?>
+                <?= role_chip($user['role'] ?? null) ?>
                 <?php if ($user['is_banned']): ?><span class="badge badge-sm badge-scam">Banned</span><?php endif; ?>
                 <?php if ($isSelf): ?><span class="badge badge-sm badge-unknown">You</span><?php endif; ?>
             </h1>

@@ -48,6 +48,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && Auth::verifyCsrf($_POST['csrf'] ?? 
             log_admin_activity(Auth::id(), $action, 'user:' . $targetUser);
             $flash = 'User #' . $targetUser . ($action === 'ban_user' ? ' banned.' : ' unbanned.');
         }
+    } elseif ($action === 'set_role') {
+        $targetUser = (int) ($_POST['user_id'] ?? 0);
+        $newRole = $_POST['role'] ?? 'user';
+        if ($targetUser && in_array($newRole, ['user', 'moderator', 'admin'], true)) {
+            $db->prepare('UPDATE users SET role = ? WHERE id = ?')->execute([$newRole, $targetUser]);
+            log_admin_activity(Auth::id(), 'set_community_role', 'user:' . $targetUser, $newRole);
+            $flash = 'User #' . $targetUser . ' role set to ' . $newRole . '.';
+        }
     }
 }
 
@@ -66,11 +74,18 @@ $totalUsers = (int) $db->query('SELECT COUNT(*) FROM users')->fetchColumn();
 $bannedUsers = (int) $db->query('SELECT COUNT(*) FROM users WHERE is_banned = 1')->fetchColumn();
 
 $threads = $db->query(
-    "SELECT t.*, u.username, u.is_banned
+    "SELECT t.*, u.username, u.is_banned, u.role AS user_role
      FROM forum_threads t JOIN users u ON u.id = t.user_id
      $whereSql
      ORDER BY t.is_sticky DESC, t.created_at DESC
      LIMIT 100"
+)->fetchAll();
+
+$allUsers = $db->query(
+    "SELECT u.id, u.username, u.email, u.role, u.is_banned, u.created_at, u.last_login_at,
+            (SELECT COUNT(*) FROM forum_threads WHERE user_id = u.id) AS thread_count,
+            (SELECT COUNT(*) FROM forum_comments WHERE user_id = u.id AND is_deleted = 0) AS comment_count
+     FROM users u ORDER BY u.created_at DESC LIMIT 200"
 )->fetchAll();
 
 require __DIR__ . '/includes/layout_top.php';
@@ -120,13 +135,8 @@ require __DIR__ . '/includes/layout_top.php';
                     <?= $t['subject_type'] === 'card' ? '<em>hidden</em>' : h(mb_substr((string) $t['subject_value'], 0, 36)) ?>
                 </td>
                 <td style="padding:8px;">
-                    <?= h($t['username']) ?><?= $t['is_banned'] ? ' <span style="color:var(--scam);">(banned)</span>' : '' ?>
-                    <form method="post" style="display:inline;" onsubmit="return confirm('<?= $t['is_banned'] ? 'Unban' : 'Ban' ?> this user?');">
-                        <input type="hidden" name="csrf" value="<?= h(Auth::csrfToken()) ?>">
-                        <input type="hidden" name="action" value="<?= $t['is_banned'] ? 'unban_user' : 'ban_user' ?>">
-                        <input type="hidden" name="user_id" value="<?= (int) $t['user_id'] ?>">
-                        <button type="submit" class="btn btn-sm" style="padding:2px 8px; font-size:11px;"><?= $t['is_banned'] ? 'Unban' : 'Ban' ?></button>
-                    </form>
+                    <a href="<?= BASE_PATH ?>/profile.php?u=<?= rawurlencode((string) $t['username']) ?>" target="_blank" style="color:var(--brand-2);"><?= h($t['username']) ?></a>
+                    <?= role_chip($t['user_role'] ?? null) ?><?= $t['is_banned'] ? ' <span style="color:var(--scam);">(banned)</span>' : '' ?>
                 </td>
                 <td style="padding:8px;"><?= (int) $t['comment_count'] ?></td>
                 <td style="padding:8px;"><span class="badge badge-sm <?= h($review['class']) ?>"><?= h($review['label']) ?></span></td>
@@ -147,6 +157,65 @@ require __DIR__ . '/includes/layout_top.php';
                         <button type="submit" class="btn btn-sm" title="<?= h($title) ?>" style="padding:3px 9px;"><?= h($label) ?></button>
                     </form>
                     <?php endforeach; ?>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+    <?php endif; ?>
+</div>
+
+<h2 style="margin:26px 0 10px; font-size:1.1rem;">Users &amp; roles</h2>
+<p style="color:var(--text-faint); font-size:13px; margin:0 0 12px;">
+    Moderators and admins are normal community accounts with a role — no separate login needed.
+    <strong>Moderator</strong> can approve/reject, pin, lock, and delete in the forum.
+    <strong>Admin</strong> can additionally log into this admin panel with their community credentials.
+</p>
+<div class="card" style="overflow-x:auto;">
+    <?php if (!$allUsers): ?>
+        <p style="color:var(--text-faint); margin:6px 0;">No community users yet.</p>
+    <?php else: ?>
+    <table class="admin-table" style="width:100%; border-collapse:collapse; font-size:13.5px;">
+        <thead>
+            <tr style="text-align:left; color:var(--text-faint);">
+                <th style="padding:8px;">User</th>
+                <th style="padding:8px;">Email</th>
+                <th style="padding:8px;">Reports / Comments</th>
+                <th style="padding:8px;">Joined</th>
+                <th style="padding:8px;">Role</th>
+                <th style="padding:8px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+        <?php foreach ($allUsers as $u): ?>
+            <tr style="border-top:1px solid var(--line);">
+                <td style="padding:8px;">
+                    <a href="<?= BASE_PATH ?>/profile.php?u=<?= rawurlencode((string) $u['username']) ?>" target="_blank" style="color:var(--brand-2); font-weight:600;"><?= h($u['username']) ?></a>
+                    <?= $u['is_banned'] ? ' <span style="color:var(--scam);">(banned)</span>' : '' ?>
+                </td>
+                <td style="padding:8px; color:var(--text-faint);"><?= h($u['email']) ?></td>
+                <td style="padding:8px;"><?= (int) $u['thread_count'] ?> / <?= (int) $u['comment_count'] ?></td>
+                <td style="padding:8px; color:var(--text-faint);"><?= h(time_ago($u['created_at'])) ?></td>
+                <td style="padding:8px;">
+                    <form method="post" style="display:flex; gap:6px; align-items:center;">
+                        <input type="hidden" name="csrf" value="<?= h(Auth::csrfToken()) ?>">
+                        <input type="hidden" name="action" value="set_role">
+                        <input type="hidden" name="user_id" value="<?= (int) $u['id'] ?>">
+                        <select name="role" style="padding:4px 8px; font-size:12.5px;">
+                            <?php foreach (['user' => 'User', 'moderator' => 'Moderator', 'admin' => 'Admin'] as $rk => $rl): ?>
+                                <option value="<?= $rk ?>" <?= ($u['role'] ?? 'user') === $rk ? 'selected' : '' ?>><?= $rl ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <button type="submit" class="btn btn-sm" style="padding:3px 10px;">Set</button>
+                    </form>
+                </td>
+                <td style="padding:8px;">
+                    <form method="post" style="display:inline;" onsubmit="return confirm('<?= $u['is_banned'] ? 'Unban' : 'Ban' ?> this user?');">
+                        <input type="hidden" name="csrf" value="<?= h(Auth::csrfToken()) ?>">
+                        <input type="hidden" name="action" value="<?= $u['is_banned'] ? 'unban_user' : 'ban_user' ?>">
+                        <input type="hidden" name="user_id" value="<?= (int) $u['id'] ?>">
+                        <button type="submit" class="btn btn-sm" style="padding:3px 10px;"><?= $u['is_banned'] ? 'Unban' : 'Ban' ?></button>
+                    </form>
                 </td>
             </tr>
         <?php endforeach; ?>
