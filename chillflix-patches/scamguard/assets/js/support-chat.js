@@ -20,7 +20,12 @@
     type: 'button',
     'aria-label': 'Open support chat'
   });
-  launcher.innerHTML = '<span class="sgchat-launcher-icon" aria-hidden="true">💬</span><span class="sgchat-badge" hidden>0</span>';
+  launcher.innerHTML =
+    '<svg class="sgchat-launcher-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+      '<path d="M21 12a8.5 8.5 0 0 1-8.5 8.5H7l-4 2.2V12A8.5 8.5 0 1 1 21 12z"/>' +
+      '<path d="M8 11h8M8 14h5"/>' +
+    '</svg>' +
+    '<span class="sgchat-badge" hidden>0</span>';
 
   var panel = el('div', { className: 'sgchat-panel', role: 'dialog', 'aria-label': 'Support chat', 'aria-hidden': 'true' });
   panel.innerHTML =
@@ -30,16 +35,28 @@
         '<span class="sgchat-status" id="sgchat-status">AI helper</span>' +
       '</div>' +
       '<div class="sgchat-head-actions">' +
-        '<button type="button" class="sgchat-iconbtn" id="sgchat-human" title="Talk to admin">👤</button>' +
-        '<button type="button" class="sgchat-iconbtn" id="sgchat-close-chat" title="End chat">✕</button>' +
-        '<button type="button" class="sgchat-iconbtn" id="sgchat-minimize" title="Minimize">–</button>' +
+        '<button type="button" class="sgchat-iconbtn" id="sgchat-human" title="Talk to admin" aria-label="Talk to admin">' +
+          '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 19v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1"/><circle cx="10" cy="8" r="3"/><path d="M19 8v4M17 10h4"/></svg>' +
+        '</button>' +
+        '<button type="button" class="sgchat-iconbtn" id="sgchat-close-chat" title="End chat" aria-label="End chat">' +
+          '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>' +
+        '</button>' +
+        '<button type="button" class="sgchat-iconbtn" id="sgchat-minimize" title="Minimize" aria-label="Minimize">' +
+          '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 12h12"/></svg>' +
+        '</button>' +
       '</div>' +
     '</div>' +
     '<div class="sgchat-messages" id="sgchat-messages"></div>' +
     '<div class="sgchat-suggestions" id="sgchat-suggestions"></div>' +
+    '<div class="sgchat-restart" id="sgchat-restart" hidden>' +
+      '<p>This chat ended. Start a new one to ask again.</p>' +
+      '<button type="button" class="btn btn-primary" id="sgchat-new">New chat</button>' +
+    '</div>' +
     '<form class="sgchat-compose" id="sgchat-form">' +
       '<textarea id="sgchat-input" rows="1" maxlength="2000" placeholder="Ask anything about ScamGuard…" required></textarea>' +
-      '<button type="submit" class="sgchat-send" aria-label="Send">➤</button>' +
+      '<button type="submit" class="sgchat-send" aria-label="Send">' +
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h12"/><path d="M13 6l6 6-6 6"/></svg>' +
+      '</button>' +
     '</form>' +
     '<div class="sgchat-prechat" id="sgchat-prechat">' +
       '<p>Chat with our AI helper about ScamGuard. An admin can join if needed.</p>' +
@@ -60,11 +77,13 @@
   var inputEl = panel.querySelector('#sgchat-input');
   var prechatEl = panel.querySelector('#sgchat-prechat');
   var guestFieldsEl = panel.querySelector('#sgchat-guest-fields');
+  var restartEl = panel.querySelector('#sgchat-restart');
   var badgeEl = launcher.querySelector('.sgchat-badge');
 
   // Start in chat mode UI hidden until opened; prechat only for guests.
   showChatUi(false);
   showPrechat(false);
+  showRestart(false);
 
   launcher.addEventListener('click', function () {
     setOpen(!open);
@@ -75,17 +94,15 @@
   });
 
   panel.querySelector('#sgchat-human').addEventListener('click', function () {
-    if (!conversation) {
-      startChat(function () {
-        requestHuman();
-      });
+    if (!conversation || isClosed()) {
+      beginFreshChat(function () { requestHuman(); });
       return;
     }
     requestHuman();
   });
 
   panel.querySelector('#sgchat-close-chat').addEventListener('click', function () {
-    if (!conversation) {
+    if (!conversation || isClosed()) {
       setOpen(false);
       return;
     }
@@ -93,11 +110,16 @@
     post('close', { token: conversation.token }).then(function (data) {
       if (data.conversation) applyConversation(data.conversation, true);
       maybeAskRating();
+      showClosedState();
     });
   });
 
   panel.querySelector('#sgchat-start').addEventListener('click', function () {
-    startChat();
+    beginFreshChat();
+  });
+
+  panel.querySelector('#sgchat-new').addEventListener('click', function () {
+    beginFreshChat();
   });
 
   formEl.addEventListener('submit', function (e) {
@@ -114,6 +136,27 @@
 
   bootstrap();
 
+  function isClosed() {
+    return !!(conversation && conversation.status === 'closed');
+  }
+
+  function beginFreshChat(done) {
+    conversation = null;
+    lastId = 0;
+    messagesEl.innerHTML = '';
+    showRestart(false);
+    showPrechat(false);
+    showChatUi(true);
+    startChat(done);
+  }
+
+  function showClosedState() {
+    showRestart(true);
+    formEl.hidden = true;
+    suggestionsEl.hidden = true;
+    setTyping(false);
+  }
+
   function setOpen(next) {
     open = !!next;
     panel.classList.toggle('is-open', open);
@@ -122,19 +165,26 @@
     launcher.setAttribute('aria-label', open ? 'Close support chat' : 'Open support chat');
     if (!open) return;
     clearBadge();
-    if (conversation) {
+    if (conversation && !isClosed()) {
       showPrechat(false);
+      showRestart(false);
       showChatUi(true);
       scrollBottom();
       return;
     }
-    if (loggedIn) {
+    if (conversation && isClosed()) {
       showPrechat(false);
       showChatUi(true);
-      startChat();
+      showClosedState();
+      scrollBottom();
+      return;
+    }
+    if (loggedIn) {
+      beginFreshChat();
       return;
     }
     showChatUi(false);
+    showRestart(false);
     showPrechat(true);
   }
 
@@ -161,7 +211,13 @@
       if (data.conversation) {
         applyConversation(data.conversation, true);
         showPrechat(false);
-        showChatUi(true);
+        if (data.conversation.status === 'closed') {
+          showChatUi(true);
+          showClosedState();
+        } else {
+          showRestart(false);
+          showChatUi(true);
+        }
         if ((data.conversation.unread_visitor || 0) > 0) setBadge(data.conversation.unread_visitor);
       } else {
         renderSuggestions(data.quick_actions || []);
@@ -174,12 +230,15 @@
 
   function startChat(done) {
     if (busy) return;
-    if (conversation) {
+    if (conversation && !isClosed()) {
       showPrechat(false);
+      showRestart(false);
+      showChatUi(true);
       if (typeof done === 'function') done();
       return;
     }
     busy = true;
+    conversation = null;
     var name = loggedIn ? username : (panel.querySelector('#sgchat-name').value || '');
     var email = loggedIn ? '' : (panel.querySelector('#sgchat-email').value || '');
     post('start', {
@@ -188,9 +247,13 @@
       page_url: location.href
     }).then(function (data) {
       busy = false;
-      if (!data.ok) { alert(data.error || 'Could not start chat'); return; }
+      if (!data.ok) {
+        softError(data.error || 'Could not start chat');
+        return;
+      }
       applyConversation(data.conversation, true);
       showPrechat(false);
+      showRestart(false);
       showChatUi(true);
       inputEl.focus();
       if (typeof done === 'function') done();
@@ -198,7 +261,7 @@
   }
 
   function requestHuman() {
-    if (!conversation) return;
+    if (!conversation || isClosed()) return;
     post('request_human', { token: conversation.token }).then(function (data) {
       if (data.conversation) applyConversation(data.conversation, true);
     });
@@ -207,8 +270,8 @@
   function sendMessage(text, quickId) {
     text = (text || '').trim();
     if (!text && !quickId) return;
-    if (!conversation) {
-      startChat(function () { sendMessage(text, quickId); });
+    if (!conversation || isClosed()) {
+      beginFreshChat(function () { sendMessage(text, quickId); });
       return;
     }
     if (busy) return;
@@ -221,12 +284,28 @@
     post('send', payload).then(function (data) {
       busy = false;
       setTyping(false);
-      if (!data.ok) { alert(data.error || 'Could not send'); return; }
+      if (!data.ok) {
+        if ((data.error || '').toLowerCase().indexOf('closed') !== -1) {
+          if (conversation) conversation.status = 'closed';
+          showClosedState();
+          beginFreshChat(function () { sendMessage(text, quickId); });
+          return;
+        }
+        softError(data.error || 'Could not send');
+        return;
+      }
       applyConversation(data.conversation, false);
     }).catch(function () {
       busy = false;
       setTyping(false);
     });
+  }
+
+  function softError(msg) {
+    var row = el('div', { className: 'sgchat-msg sgchat-msg-system' });
+    row.innerHTML = '<div class="sgchat-msg-body">' + escapeHtml(msg) + '</div>';
+    messagesEl.appendChild(row);
+    scrollBottom();
   }
 
   function setTyping(on) {
@@ -242,12 +321,20 @@
   function applyConversation(conv, replace) {
     conversation = conv;
     updateStatus(conv.status, conv.assigned_admin_name);
+    setTyping(false);
     if (replace) {
       messagesEl.innerHTML = '';
       lastId = 0;
     }
     (conv.messages || []).forEach(appendMessage);
-    renderSuggestions(conv.status === 'bot' ? (conv.quick_actions || []) : []);
+    if (conv.status === 'closed') {
+      suggestionsEl.hidden = true;
+      showClosedState();
+    } else {
+      showRestart(false);
+      formEl.hidden = false;
+      renderSuggestions(conv.status === 'bot' ? (conv.quick_actions || []) : []);
+    }
     scrollBottom();
   }
 
@@ -284,7 +371,7 @@
       btn.textContent = a.label || a.id;
       btn.addEventListener('click', function () {
         if (a.id === 'human') {
-          if (!conversation) startChat(requestHuman);
+          if (!conversation || isClosed()) beginFreshChat(requestHuman);
           else requestHuman();
           return;
         }
@@ -313,7 +400,14 @@
   function showChatUi(show) {
     formEl.hidden = !show;
     messagesEl.hidden = !show;
-    if (!show) suggestionsEl.hidden = true;
+    if (!show) {
+      suggestionsEl.hidden = true;
+      showRestart(false);
+    }
+  }
+
+  function showRestart(show) {
+    restartEl.hidden = !show;
   }
 
   function startPolling() {
