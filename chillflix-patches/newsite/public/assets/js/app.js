@@ -291,12 +291,12 @@
     apply();
   }
 
-  // Keep filter dropdown open when clicking inside (noclose)
+  // Keep filter dropdown open when clicking inside (noclose) — legacy
   $(document).on('click', '#site-filters .noclose', function (e) {
     e.stopPropagation();
   });
 
-  // Filter dropdowns (works with BS4 data-toggle or as fallback)
+  // Filter dropdowns (works with BS4 data-toggle or as fallback) — legacy
   $(document).on('click', '#site-filters .dropdown-toggle', function (e) {
     if ($(this).hasClass('reset-filters')) return;
     e.preventDefault();
@@ -316,6 +316,7 @@
 
   function updateFilterLabel($input) {
     var $btn = $input.closest('.dropdown').find('.site-filter .value');
+    if (!$btn.length) return;
     var ph = $btn.data('placeholder') || 'Select';
     var $menu = $input.closest('.dropdown-menu, .noclose');
     var checked = $menu.find('input:checked').filter(function () {
@@ -329,9 +330,45 @@
       var n = checked.length;
       $btn.text(n + (ph.toLowerCase().indexOf('genre') >= 0 ? ' Genre(s)' : ' selected'));
     } else {
-      $btn.text($.trim(checked.first().next('label').text()));
+      $btn.text($.trim(checked.first().next('label').text()) || $.trim(checked.first().closest('label').find('span').text()));
     }
   }
+
+  function openFiltersSheet() {
+    var $sheet = $('#filters-sheet');
+    if (!$sheet.length) return;
+    closeBrowseSheet();
+    closeSearchSheet();
+    $sheet.removeAttr('hidden').addClass('is-open');
+    $('body').addClass('filters-open');
+    $('#filters-open').attr('aria-expanded', 'true');
+  }
+
+  function closeFiltersSheet() {
+    var $sheet = $('#filters-sheet');
+    if (!$sheet.length) return;
+    $sheet.removeClass('is-open').attr('hidden', true);
+    $('body').removeClass('filters-open');
+    $('#filters-open').attr('aria-expanded', 'false');
+  }
+
+  $(document).on('click', '#filters-open', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if ($('#filters-sheet').hasClass('is-open')) closeFiltersSheet();
+    else openFiltersSheet();
+  });
+
+  $(document).on('click', '.filters-sheet-backdrop, .filters-sheet-close', function (e) {
+    e.preventDefault();
+    closeFiltersSheet();
+  });
+
+  $(document).on('keydown', function (e) {
+    if (e.key === 'Escape' && $('#filters-sheet').hasClass('is-open')) {
+      closeFiltersSheet();
+    }
+  });
 
   var filterSubmitTimer = null;
   function submitFiltersSoon(delay) {
@@ -343,6 +380,7 @@
       $form.find('input[name="type[]"]').prop('disabled', true);
       // Reset to page 1 when filters change
       $form.find('input[name="page"]').remove();
+      closeFiltersSheet();
       $form.trigger('submit');
     }, delay || 280);
   }
@@ -359,13 +397,22 @@
       return;
     }
     updateFilterLabel($input);
-    // Close dropdown after radio pick; keep open for multi genre checkboxes
+    // While the sheet is open, let the user pick multiple filters and hit Apply
+    if ($('#filters-sheet').hasClass('is-open')) {
+      return;
+    }
+    // Legacy dropdown mode: auto-submit
     if ($input.attr('type') === 'radio') {
       $('#site-filters .dropdown').removeClass('show').find('.dropdown-menu').removeClass('show');
       submitFiltersSoon(120);
     } else {
       submitFiltersSoon(650);
     }
+  });
+
+  $(document).on('submit', '#site-filters', function () {
+    $(this).find('input[name="type[]"]').prop('disabled', true);
+    closeFiltersSheet();
   });
 
   // Discover view switcher — update class + persist via query
@@ -845,6 +892,7 @@
 
   function openBrowseSheet() {
     closeSearchSheet();
+    closeFiltersSheet();
     var $sheet = $('#browse-sheet');
     if (!$sheet.length) return;
     $sheet.removeAttr('hidden').addClass('is-open');
@@ -862,6 +910,7 @@
 
   function openSearchSheet() {
     closeBrowseSheet();
+    closeFiltersSheet();
     var $sheet = $('#search-sheet');
     if (!$sheet.length) return;
     $sheet.removeAttr('hidden').addClass('is-open');
