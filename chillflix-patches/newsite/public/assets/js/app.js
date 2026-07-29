@@ -231,7 +231,13 @@
   // Featured swiper (Swiper 5 uses .swiper-container)
   function initSwiper() {
     if (!window.Swiper || !$('#featured').length) return;
-    new Swiper('#featured', {
+    if (window.__featuredSwiper) {
+      try {
+        window.__featuredSwiper.destroy(true, true);
+      } catch (e) {}
+      window.__featuredSwiper = null;
+    }
+    window.__featuredSwiper = new Swiper('#featured', {
       loop: true,
       autoplay: { delay: 5500, disableOnInteraction: false },
       pagination: { el: '#featured .swiper-pagination', clickable: true },
@@ -484,29 +490,6 @@
     renderFavoritesPage();
   });
 
-  $(function () {
-    updateFavCounter();
-    initSwiper();
-    initRecentlyUpdated();
-    initMediaTips();
-    renderFavoritesPage();
-    if (window.lazysizes) {
-      document.addEventListener('lazybeforeunveil', function (e) {
-        var bg = e.target.getAttribute('data-bgset');
-        if (bg) e.target.style.backgroundImage = 'url(' + bg + ')';
-      });
-    } else {
-      $('[data-bgset]').each(function () {
-        this.style.backgroundImage = 'url(' + this.getAttribute('data-bgset') + ')';
-        $(this).addClass('lazyloaded');
-      });
-      $('img.lazyload[data-src]').each(function () {
-        this.src = this.getAttribute('data-src');
-        $(this).addClass('lazyloaded');
-      });
-    }
-  });
-
   var tipCache = {};
 
   function esc(s) {
@@ -591,4 +574,208 @@
       }
     });
   }
+
+  // Instant Home / Movies / TV switching (prefetch + soft navigation)
+  var pageCache = Object.create(null);
+  var pageInflight = Object.create(null);
+  var softNavBusy = false;
+
+  function absoluteUrl(href) {
+    try {
+      return new URL(href, window.location.href).href;
+    } catch (e) {
+      return href;
+    }
+  }
+
+  function samePage(a, b) {
+    try {
+      var ua = new URL(absoluteUrl(a));
+      var ub = new URL(absoluteUrl(b));
+      return ua.pathname.replace(/\/$/, '') === ub.pathname.replace(/\/$/, '') && ua.search === ub.search;
+    } catch (e) {
+      return absoluteUrl(a) === absoluteUrl(b);
+    }
+  }
+
+  function prefetchPage(url) {
+    url = absoluteUrl(url);
+    if (pageCache[url]) return Promise.resolve(pageCache[url]);
+    if (pageInflight[url]) return pageInflight[url];
+    pageInflight[url] = fetch(url, {
+      credentials: 'same-origin',
+      headers: { Accept: 'text/html' }
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('prefetch failed');
+        return res.text();
+      })
+      .then(function (html) {
+        pageCache[url] = html;
+        delete pageInflight[url];
+        return html;
+      })
+      .catch(function () {
+        delete pageInflight[url];
+        return null;
+      });
+    return pageInflight[url];
+  }
+
+  function prefetchBottomNavTargets() {
+    $('.bottom-nav-item').each(function () {
+      prefetchPage(this.href);
+    });
+  }
+
+  function refreshLazyMedia() {
+    if (window.lazySizes && lazySizes.loader && typeof lazySizes.loader.checkElems === 'function') {
+      lazySizes.loader.checkElems();
+    }
+    $('[data-bgset]').each(function () {
+      if (!this.style.backgroundImage) {
+        this.style.backgroundImage = 'url(' + this.getAttribute('data-bgset') + ')';
+      }
+      $(this).addClass('lazyloaded');
+    });
+    $('img.lazyload[data-src]').each(function () {
+      if (!this.getAttribute('src') || this.getAttribute('src').indexOf('data:image') === 0) {
+        this.src = this.getAttribute('data-src');
+      }
+      $(this).addClass('lazyloaded');
+    });
+  }
+
+  function afterSoftNav() {
+    updateFavCounter();
+    initSwiper();
+    initRecentlyUpdated();
+    if ($.fn.tooltipster) {
+      try {
+        $('.tooltipstered').tooltipster('destroy');
+      } catch (e) {}
+    }
+    initMediaTips();
+    renderFavoritesPage();
+    $('.section-top10 .top10-items').each(function () {
+      syncTop10Nav($(this));
+    });
+    refreshLazyMedia();
+    prefetchBottomNavTargets();
+  }
+
+  function applySoftNavHtml(html, url, push) {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var nextWrapper = doc.querySelector('.wrapper');
+    var curWrapper = document.querySelector('.wrapper');
+    if (!nextWrapper || !curWrapper) {
+      window.location.href = url;
+      return;
+    }
+    if ($.fn.tooltipster) {
+      try {
+        $('.tooltipstered').tooltipster('destroy');
+      } catch (e) {}
+    }
+    if (window.__featuredSwiper) {
+      try {
+        window.__featuredSwiper.destroy(true, true);
+      } catch (e) {}
+      window.__featuredSwiper = null;
+    }
+    document.title = doc.title || document.title;
+    if (doc.body && doc.body.className != null) {
+      document.body.className = doc.body.className;
+    }
+    curWrapper.innerHTML = nextWrapper.innerHTML;
+    if (push) {
+      history.pushState({ softnav: 1 }, '', url);
+    }
+    window.scrollTo(0, 0);
+    afterSoftNav();
+  }
+
+  function softNavigate(url, push) {
+    url = absoluteUrl(url);
+    if (softNavBusy) return;
+    softNavBusy = true;
+
+    function done(html) {
+      softNavBusy = false;
+      if (!html) {
+        window.location.href = url;
+        return;
+      }
+      applySoftNavHtml(html, url, push);
+    }
+
+    if (pageCache[url]) {
+      done(pageCache[url]);
+      // Refresh cache in background
+      delete pageCache[url];
+      prefetchPage(url);
+      return;
+    }
+
+    prefetchPage(url).then(done);
+  }
+
+  $(document).on('pointerdown', '.bottom-nav-item', function () {
+    prefetchPage(this.href);
+  });
+
+  $(document).on('click', '.bottom-nav-item', function (e) {
+    var href = this.href;
+    if (!href) return;
+    try {
+      if (new URL(absoluteUrl(href)).origin !== window.location.origin) return;
+    } catch (err) {
+      return;
+    }
+    e.preventDefault();
+    if (samePage(href, window.location.href)) return;
+
+    $('.bottom-nav-item').removeClass('active').removeAttr('aria-current');
+    $(this).addClass('active').attr('aria-current', 'page');
+
+    softNavigate(href, true);
+  });
+
+  window.addEventListener('popstate', function () {
+    softNavigate(window.location.href, false);
+  });
+
+  $(function () {
+    updateFavCounter();
+    initSwiper();
+    initRecentlyUpdated();
+    initMediaTips();
+    renderFavoritesPage();
+    if (window.lazysizes) {
+      document.addEventListener('lazybeforeunveil', function (e) {
+        var bg = e.target.getAttribute('data-bgset');
+        if (bg) e.target.style.backgroundImage = 'url(' + bg + ')';
+      });
+    } else {
+      $('[data-bgset]').each(function () {
+        this.style.backgroundImage = 'url(' + this.getAttribute('data-bgset') + ')';
+        $(this).addClass('lazyloaded');
+      });
+      $('img.lazyload[data-src]').each(function () {
+        this.src = this.getAttribute('data-src');
+        $(this).addClass('lazyloaded');
+      });
+    }
+    try {
+      history.replaceState({ softnav: 1 }, '', window.location.href);
+    } catch (e) {}
+    // Warm Home / Movies / TV so the first tap is instant
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(function () {
+        prefetchBottomNavTargets();
+      }, { timeout: 800 });
+    } else {
+      setTimeout(prefetchBottomNavTargets, 120);
+    }
+  });
 })(jQuery);

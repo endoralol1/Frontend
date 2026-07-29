@@ -1088,7 +1088,9 @@ body {
     border-radius: 1.05rem;
     color: rgba(255, 255, 255, 0.62);
     text-decoration: none;
-    transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    transition: color 0.08s ease, background 0.08s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   .bottom-nav-item:hover,
@@ -1105,7 +1107,7 @@ body {
     width: 1.85rem;
     height: 1.85rem;
     border-radius: 0.7rem;
-    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    transition: background 0.08s ease, color 0.08s ease, box-shadow 0.08s ease;
   }
 
   .bottom-nav-icon i {
