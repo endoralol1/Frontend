@@ -207,35 +207,42 @@
     $wrap.find('> .tab-content, .tab-content').hide().filter('[data-name="' + name + '"]').show();
     // recommended section structure
     $tab.closest('.section').find('.tab-content').hide().filter('[data-name="' + name + '"]').show();
+    setTimeout(syncAllRails, 0);
   });
 
-  // Top 10 horizontal rail arrows
-  function syncTop10Nav($rail) {
+  // Horizontal rails (Top 10 + homepage Recommended/Movies/TV)
+  function syncRailNav($rail) {
     if (!$rail || !$rail.length) return;
     var el = $rail.get(0);
-    var $wrap = $rail.closest('.top10-rail-wrap');
+    var $wrap = $rail.closest('.top10-rail-wrap, .media-rail-wrap');
+    if (!$wrap.length) return;
     var max = el.scrollWidth - el.clientWidth - 2;
-    $wrap.find('.top10-nav-prev').prop('disabled', el.scrollLeft <= 2);
-    $wrap.find('.top10-nav-next').prop('disabled', el.scrollLeft >= max);
+    $wrap.find('.top10-nav-prev, .media-rail-nav-prev').prop('disabled', el.scrollLeft <= 2);
+    $wrap.find('.top10-nav-next, .media-rail-nav-next').prop('disabled', el.scrollLeft >= max);
   }
 
-  $(document).on('click', '.top10-nav', function (e) {
+  function syncAllRails() {
+    $('.top10-items, .media-rail-items').each(function () {
+      syncRailNav($(this));
+    });
+  }
+
+  $(document).on('click', '.top10-nav, .media-rail-nav', function (e) {
     e.preventDefault();
     var $btn = $(this);
-    var $wrap = $btn.closest('.top10-rail-wrap');
-    var $rail = $wrap.find('.top10-items').first();
+    var $wrap = $btn.closest('.top10-rail-wrap, .media-rail-wrap');
+    var $rail = $wrap.find('.top10-items, .media-rail-items').first();
     if (!$rail.length) return;
     var step = Math.max($rail.width() * 0.85, 220);
-    $rail.get(0).scrollBy({ left: $btn.hasClass('top10-nav-next') ? step : -step, behavior: 'smooth' });
+    var goingNext = $btn.hasClass('top10-nav-next') || $btn.hasClass('media-rail-nav-next');
+    $rail.get(0).scrollBy({ left: goingNext ? step : -step, behavior: 'smooth' });
   });
 
-  $(document).on('scroll', '.top10-items', function () {
-    syncTop10Nav($(this));
+  $(document).on('scroll', '.top10-items, .media-rail-items', function () {
+    syncRailNav($(this));
   });
 
-  $('.section-top10 .top10-items').each(function () {
-    syncTop10Nav($(this));
-  });
+  syncAllRails();
 
   // Favorites buttons
   $(document).on('click', '.user-bookmark-toggle', function (e) {
@@ -950,9 +957,7 @@
     }
     initMediaTips();
     renderFavoritesPage();
-    $('.section-top10 .top10-items').each(function () {
-      syncTop10Nav($(this));
-    });
+    syncAllRails();
     refreshLazyMedia();
     prefetchBottomNavTargets();
     bindMediaPrefetchObserver();

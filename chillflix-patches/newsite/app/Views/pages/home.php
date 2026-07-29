@@ -89,7 +89,7 @@
                     </div>
                 </div>
 
-                <div class="section">
+                <div class="section section-rail">
                     <div class="head">
                         <div class="start">
                             <h1 class="title gardiently">Recommended</h1>
@@ -99,39 +99,51 @@
                             </div>
                         </div>
                     </div>
-                    <div class="tab-content" data-name="movies">
-                        <div class="scaff movies items">
+                    <div class="tab-content media-rail-wrap" data-name="movies">
+                        <button type="button" class="media-rail-nav media-rail-nav-prev" aria-label="Scroll left"><i class="uil uil-angle-left"></i></button>
+                        <div class="scaff movies items media-rail-items">
                             <?php foreach ($recommendedMovies as $item) { $type = 'movie'; $rank = null; require __DIR__ . '/../partials/movie-card.php'; } ?>
                         </div>
+                        <button type="button" class="media-rail-nav media-rail-nav-next" aria-label="Scroll right"><i class="uil uil-angle-right"></i></button>
                     </div>
-                    <div class="tab-content" data-name="tv" style="display:none">
-                        <div class="scaff movies items">
+                    <div class="tab-content media-rail-wrap" data-name="tv" style="display:none">
+                        <button type="button" class="media-rail-nav media-rail-nav-prev" aria-label="Scroll left"><i class="uil uil-angle-left"></i></button>
+                        <div class="scaff movies items media-rail-items">
                             <?php foreach ($recommendedTv as $item) { $type = 'tv'; $rank = null; require __DIR__ . '/../partials/movie-card.php'; } ?>
                         </div>
+                        <button type="button" class="media-rail-nav media-rail-nav-next" aria-label="Scroll right"><i class="uil uil-angle-right"></i></button>
                     </div>
                 </div>
 
-                <div class="section">
+                <div class="section section-rail">
                     <div class="head">
                         <div class="start">
                             <h2 class="title gardiently">Latest Movies</h2>
                             <a class="more" href="<?= e(url('/movies')) ?>"><span>View All</span> <i class="uil uil-arrow-right"></i></a>
                         </div>
                     </div>
-                    <div class="scaff movies items">
-                        <?php foreach ($latestMovies as $item) { $type = 'movie'; $rank = null; require __DIR__ . '/../partials/movie-card.php'; } ?>
+                    <div class="media-rail-wrap">
+                        <button type="button" class="media-rail-nav media-rail-nav-prev" aria-label="Scroll left"><i class="uil uil-angle-left"></i></button>
+                        <div class="scaff movies items media-rail-items">
+                            <?php foreach ($latestMovies as $item) { $type = 'movie'; $rank = null; require __DIR__ . '/../partials/movie-card.php'; } ?>
+                        </div>
+                        <button type="button" class="media-rail-nav media-rail-nav-next" aria-label="Scroll right"><i class="uil uil-angle-right"></i></button>
                     </div>
                 </div>
 
-                <div class="section">
+                <div class="section section-rail">
                     <div class="head">
                         <div class="start">
                             <h2 class="title gardiently">Latest TV Shows</h2>
                             <a class="more" href="<?= e(url('/tv-series')) ?>"><span>View All</span> <i class="uil uil-arrow-right"></i></a>
                         </div>
                     </div>
-                    <div class="scaff movies items">
-                        <?php foreach ($latestTv as $item) { $type = 'tv'; $rank = null; require __DIR__ . '/../partials/movie-card.php'; } ?>
+                    <div class="media-rail-wrap">
+                        <button type="button" class="media-rail-nav media-rail-nav-prev" aria-label="Scroll left"><i class="uil uil-angle-left"></i></button>
+                        <div class="scaff movies items media-rail-items">
+                            <?php foreach ($latestTv as $item) { $type = 'tv'; $rank = null; require __DIR__ . '/../partials/movie-card.php'; } ?>
+                        </div>
+                        <button type="button" class="media-rail-nav media-rail-nav-next" aria-label="Scroll right"><i class="uil uil-angle-right"></i></button>
                     </div>
                 </div>
             </aside>
