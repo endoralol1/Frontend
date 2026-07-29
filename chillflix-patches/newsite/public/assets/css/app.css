@@ -370,7 +370,7 @@ body {
 
 #featured .swiper-wrapper .swiper-slide {
   background-color: #0a0c12 !important;
-  background-position: center 22%;
+  background-position: center center;
   background-size: cover;
   overflow: hidden;
 }
@@ -382,7 +382,7 @@ body {
 }
 
 @keyframes cfHeroKen {
-  from { background-size: 108%; }
+  from { background-size: 104%; }
   to { background-size: 100%; }
 }
 
@@ -398,9 +398,9 @@ body.index > .wrapper .index-head:before {
   top: 0 !important;
   z-index: 1 !important;
   background:
-    linear-gradient(90deg, rgba(8, 10, 16, 0.88) 0%, rgba(8, 10, 16, 0.42) 42%, rgba(8, 10, 16, 0.08) 68%, transparent 100%),
-    linear-gradient(180deg, rgba(8, 10, 16, 0.72) 0%, transparent 38%),
-    linear-gradient(0deg, rgba(8, 10, 16, 0.96) 0%, rgba(8, 10, 16, 0.55) 28%, transparent 58%) !important;
+    linear-gradient(90deg, rgba(8, 10, 16, 0.72) 0%, rgba(8, 10, 16, 0.28) 38%, rgba(8, 10, 16, 0.05) 62%, transparent 100%),
+    linear-gradient(180deg, rgba(8, 10, 16, 0.45) 0%, transparent 34%),
+    linear-gradient(0deg, rgba(8, 10, 16, 0.94) 0%, rgba(8, 10, 16, 0.42) 32%, transparent 62%) !important;
   pointer-events: none;
 }
 
@@ -421,13 +421,14 @@ body.index > .wrapper .index-head:before {
   align-items: flex-end !important;
   justify-content: flex-start !important;
   height: 100%;
-  margin-left: auto !important;
-  margin-right: auto !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
   max-width: 1800px;
   width: 100%;
-  padding: 0 2.5rem 4.75rem;
-  box-sizing: border-box;
+  padding: 0 max(1.5rem, env(safe-area-inset-right, 0px)) 4.75rem max(1.5rem, env(safe-area-inset-left, 0px)) !important;
+  box-sizing: border-box !important;
   text-align: left !important;
+  overflow: visible;
 }
 
 #featured .swiper-wrapper .swiper-slide .wrapper .info {
@@ -436,6 +437,22 @@ body.index > .wrapper .index-head:before {
   width: 100%;
   z-index: 2;
   animation: cfHeroCopyIn 0.7s ease both;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+#featured .swiper-wrapper .swiper-slide .wrapper .info .action,
+#featured .swiper-wrapper .swiper-slide .wrapper .info .action div {
+  overflow: visible;
+  margin: 0 !important;
+  max-width: 100%;
+}
+
+#featured .swiper-wrapper .swiper-slide .wrapper .info .action div .btn,
+#featured .hero-watch-btn {
+  margin: 0 !important;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 @keyframes cfHeroCopyIn {
@@ -603,7 +620,7 @@ body.index > .wrapper .index-head:before {
   }
 
   #featured .swiper-wrapper .swiper-slide .wrapper {
-    padding: 0 1.15rem 4.2rem;
+    padding: 0 max(1.15rem, env(safe-area-inset-right, 0px)) 4.2rem max(1.15rem, env(safe-area-inset-left, 0px)) !important;
   }
 
   #featured .swiper-button-next,
@@ -613,6 +630,8 @@ body.index > .wrapper .index-head:before {
 
   #featured .swiper-pagination {
     left: 50% !important;
+    right: auto !important;
+    width: auto !important;
     transform: translateX(-50%);
     text-align: center !important;
   }
@@ -624,6 +643,10 @@ body.index > .wrapper .index-head:before {
     min-height: 22rem;
   }
 
+  #featured .swiper-wrapper .swiper-slide .wrapper {
+    padding: 0 max(1rem, env(safe-area-inset-right, 0px)) 3.9rem max(1rem, env(safe-area-inset-left, 0px)) !important;
+  }
+
   #featured .swiper-wrapper .swiper-slide .wrapper .info .desc {
     -webkit-line-clamp: 2;
     font-size: 0.9rem !important;
@@ -633,6 +656,14 @@ body.index > .wrapper .index-head:before {
     font-size: 0.66rem;
     margin-bottom: 0.65rem;
   }
+}
+
+/* Keep homepage content off the screen edges (theme .container has no side padding) */
+main > .container,
+body .wrapper > .container {
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
 }
 
 .section .head {
