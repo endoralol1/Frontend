@@ -2389,14 +2389,174 @@ header.absolute {
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.filter-pill input:checked + span {
+.filters-chip.is-exclude {
+  background: rgba(220, 53, 69, 0.16);
+  border-color: rgba(220, 53, 69, 0.4);
+  color: #ffb4b8;
+}
+
+.filters-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  color: rgba(233, 236, 239, 0.48);
+}
+
+.filter-pill.filter-tri {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.filter-pill.filter-tri span {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.42rem 0.72rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(241, 243, 245, 0.88);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.2;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.filter-pill.filter-tri.is-in span {
   background: rgba(219, 105, 55, 0.22);
   border-color: rgba(219, 105, 55, 0.55);
   color: #ffd2b8;
 }
 
-.filter-pill:hover span {
+.filter-pill.filter-tri.is-out span {
+  background: rgba(220, 53, 69, 0.18);
+  border-color: rgba(220, 53, 69, 0.5);
+  color: #ffb4b8;
+  text-decoration: line-through;
+  text-decoration-thickness: 1.5px;
+}
+
+.filter-pill.filter-tri:hover span {
   border-color: rgba(255, 255, 255, 0.22);
+}
+
+.year-timeline {
+  padding: 0.15rem 0.15rem 0.35rem;
+}
+
+.year-timeline-values {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-bottom: 0.85rem;
+  color: rgba(233, 236, 239, 0.55);
+  font-size: 0.82rem;
+}
+
+.year-timeline-values strong {
+  color: #ffd2b8;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.year-timeline-track {
+  position: relative;
+  height: 2.4rem;
+  display: flex;
+  align-items: center;
+}
+
+.year-timeline-rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.year-timeline-range {
+  position: absolute;
+  height: 0.28rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #db6937 0%, #c43c2e 100%);
+  pointer-events: none;
+}
+
+.year-timeline-thumb {
+  position: absolute;
+  left: 0;
+  right: 0;
+  width: 100%;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  pointer-events: none;
+  height: 2.4rem;
+}
+
+.year-timeline-thumb::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  pointer-events: auto;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  border: 2px solid #ffd2b8;
+  background: #1c1f28;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  cursor: grab;
+  position: relative;
+  z-index: 2;
+}
+
+.year-timeline-thumb::-moz-range-thumb {
+  pointer-events: auto;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  border: 2px solid #ffd2b8;
+  background: #1c1f28;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  cursor: grab;
+}
+
+.year-timeline-thumb::-webkit-slider-runnable-track {
+  height: 0.28rem;
+  background: transparent;
+}
+
+.year-timeline-thumb::-moz-range-track {
+  height: 0.28rem;
+  background: transparent;
+  border: 0;
+}
+
+.year-timeline-thumb-from {
+  z-index: 3;
+}
+
+.year-timeline-thumb-to {
+  z-index: 4;
+}
+
+.year-timeline-ticks {
+  position: relative;
+  height: 1.1rem;
+  margin-top: 0.15rem;
+}
+
+.year-timeline-ticks span {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  color: rgba(233, 236, 239, 0.4);
+  font-variant-numeric: tabular-nums;
 }
 
 .filter-check-row {

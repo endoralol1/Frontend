@@ -415,17 +415,74 @@
     closeFiltersSheet();
   });
 
-  $(document).on('change', '#year-from, #year-to', function () {
-    var $from = $('#year-from');
-    var $to = $('#year-to');
-    if (!$from.length || !$to.length) return;
+  function syncTriInputs() {
+    var $box = $('#filter-tri-inputs');
+    if (!$box.length) return;
+    $box.empty();
+    $('.filter-tri').each(function () {
+      var $btn = $(this);
+      var state = $btn.hasClass('is-in') ? 'in' : ($btn.hasClass('is-out') ? 'out' : 'off');
+      if (state === 'off') return;
+      var name = state === 'in' ? $btn.data('include') : $btn.data('exclude');
+      var val = $btn.data('value');
+      if (!name) return;
+      $('<input>', { type: 'hidden', name: String(name), value: String(val) }).appendTo($box);
+    });
+  }
+
+  function setTriState($btn, state) {
+    $btn.removeClass('is-off is-in is-out').addClass('is-' + state);
+    $btn.attr('aria-pressed', state === 'off' ? 'false' : 'true');
+    syncTriInputs();
+  }
+
+  $(document).on('click', '.filter-tri', function (e) {
+    e.preventDefault();
+    var $btn = $(this);
+    var state = $btn.hasClass('is-in') ? 'in' : ($btn.hasClass('is-out') ? 'out' : 'off');
+    var next = state === 'off' ? 'in' : (state === 'in' ? 'out' : 'off');
+    setTriState($btn, next);
+  });
+
+  syncTriInputs();
+
+  function syncYearTimeline() {
+    var $wrap = $('#year-timeline');
+    if (!$wrap.length) return;
+    var min = parseInt($wrap.data('min'), 10);
+    var max = parseInt($wrap.data('max'), 10);
+    var $from = $('#year-from-range');
+    var $to = $('#year-to-range');
     var from = parseInt($from.val(), 10);
     var to = parseInt($to.val(), 10);
-    if (!isNaN(from) && !isNaN(to) && from > to) {
-      if (this.id === 'year-from') $to.val(String(from));
-      else $from.val(String(to));
+    if (isNaN(from) || isNaN(to)) return;
+    if (from > to) {
+      if (document.activeElement === $from[0]) {
+        to = from;
+        $to.val(String(to));
+      } else {
+        from = to;
+        $from.val(String(from));
+      }
     }
-  });
+    var span = Math.max(1, max - min);
+    var left = ((from - min) / span) * 100;
+    var right = ((to - min) / span) * 100;
+    $('#year-timeline-range').css({ left: left + '%', width: Math.max(0, right - left) + '%' });
+    $('#year-timeline-from-label').text(String(from));
+    $('#year-timeline-to-label').text(String(to));
+    // Full range = no year filter
+    if (from <= min && to >= max) {
+      $('#year-from').val('');
+      $('#year-to').val('');
+    } else {
+      $('#year-from').val(String(from));
+      $('#year-to').val(String(to));
+    }
+  }
+
+  $(document).on('input change', '#year-from-range, #year-to-range', syncYearTimeline);
+  syncYearTimeline();
 
   // Discover view switcher — update class + persist via query
   $(document).on('click', '.btn-view-switcher', function () {
@@ -799,6 +856,8 @@
     refreshLazyMedia();
     prefetchBottomNavTargets();
     bindMediaPrefetchObserver();
+    syncTriInputs();
+    syncYearTimeline();
   }
 
   function applySoftNavHtml(html, url, push) {

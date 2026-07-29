@@ -356,12 +356,40 @@ function discover_page(Tmdb $tmdb, string $type, bool $filtersPage = false): voi
     $countriesIn = isset($_GET['with_origin_country'])
         ? $parseList($_GET['with_origin_country'])
         : [];
+    $countriesOut = isset($_GET['without_origin_country'])
+        ? $parseList($_GET['without_origin_country'])
+        : [];
     $providersIn = isset($_GET['with_watch_providers'])
         ? $parseList($_GET['with_watch_providers'])
+        : [];
+    $providersOut = isset($_GET['without_watch_providers'])
+        ? $parseList($_GET['without_watch_providers'])
         : [];
     $networksIn = isset($_GET['with_networks'])
         ? $parseList($_GET['with_networks'])
         : [];
+    $networksOut = isset($_GET['without_networks'])
+        ? $parseList($_GET['without_networks'])
+        : [];
+
+    $genresOut = $_GET['without_genres'] ?? [];
+    if (!is_array($genresOut)) {
+        $genresOut = $genresOut !== '' && $genresOut !== null ? [(int) $genresOut] : [];
+    }
+    $genresOut = array_values(array_filter(array_map('intval', $genresOut)));
+    // Avoid include+exclude clash on same id
+    if ($genresIn && $genresOut) {
+        $genresIn = array_values(array_diff($genresIn, $genresOut));
+    }
+    if ($providersIn && $providersOut) {
+        $providersIn = array_values(array_diff($providersIn, $providersOut));
+    }
+    if ($networksIn && $networksOut) {
+        $networksIn = array_values(array_diff($networksIn, $networksOut));
+    }
+    if ($countriesIn && $countriesOut) {
+        $countriesIn = array_values(array_diff($countriesIn, $countriesOut));
+    }
 
     $ratingMin = trim((string) ($_GET['vote_average_gte'] ?? $_GET['vote_average.gte'] ?? $_GET['rating'] ?? ''));
     $genreMode = (string) ($_GET['genre_mode'] ?? '');
@@ -390,6 +418,9 @@ function discover_page(Tmdb $tmdb, string $type, bool $filtersPage = false): voi
         // TMDB: comma = AND, pipe = OR
         $params['with_genres'] = implode($genreMode === 'and' ? ',' : '|', $genresIn);
     }
+    if ($genresOut) {
+        $params['without_genres'] = implode(',', $genresOut);
+    }
 
     if ($yearFrom !== '' || $yearTo !== '') {
         $gte = ($yearFrom !== '' ? $yearFrom : '1900') . '-01-01';
@@ -406,6 +437,10 @@ function discover_page(Tmdb $tmdb, string $type, bool $filtersPage = false): voi
     if ($countriesIn) {
         $params['with_origin_country'] = implode('|', $countriesIn);
     }
+    // TMDB has no official without_origin_country — best-effort; ignored if unsupported
+    if ($countriesOut) {
+        $params['without_origin_country'] = implode('|', $countriesOut);
+    }
     if ($ratingMin !== '' && is_numeric($ratingMin)) {
         $params['vote_average.gte'] = $ratingMin;
     }
@@ -413,8 +448,15 @@ function discover_page(Tmdb $tmdb, string $type, bool $filtersPage = false): voi
         $params['with_watch_providers'] = implode('|', $providersIn);
         $params['watch_region'] = 'US';
     }
+    if ($providersOut) {
+        $params['without_watch_providers'] = implode('|', $providersOut);
+        $params['watch_region'] = 'US';
+    }
     if ($networksIn) {
         $params['with_networks'] = implode('|', $networksIn);
+    }
+    if ($networksOut) {
+        $params['without_networks'] = implode('|', $networksOut);
     }
 
     $data = $tmdb->discover($type, $params);
@@ -433,9 +475,14 @@ function discover_page(Tmdb $tmdb, string $type, bool $filtersPage = false): voi
         'yearFrom' => $yearFrom,
         'yearTo' => $yearTo,
         'genre' => $genre,
+        'selectedGenres' => $genresIn,
+        'excludedGenres' => $genresOut,
         'selectedCountries' => $countriesIn,
+        'excludedCountries' => $countriesOut,
         'selectedProviders' => $providersIn,
+        'excludedProviders' => $providersOut,
         'selectedNetworks' => $networksIn,
+        'excludedNetworks' => $networksOut,
         'data' => $data,
         'filtersPage' => $filtersPage,
         'genres' => $isMovie ? config('genres_movie') : config('genres_tv'),

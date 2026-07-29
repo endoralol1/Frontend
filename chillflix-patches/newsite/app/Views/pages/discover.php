@@ -4,36 +4,22 @@ $label = $isMovie ? 'Movies' : 'TV Shows';
 $results = $data['results'] ?? [];
 $totalPages = max(1, (int) ($data['total_pages'] ?? 1));
 $path = $isMovie ? '/movies' : '/tv-series';
-$selectedGenres = array_filter(array_map('intval', (array) ($_GET['with_genres'] ?? ($genre ? [$genre] : []))));
+$selectedGenres = array_values(array_filter(array_map('intval', (array) ($selectedGenres ?? ($_GET['with_genres'] ?? ($genre ? [$genre] : []))))));
+$excludedGenres = array_values(array_filter(array_map('intval', (array) ($excludedGenres ?? ($_GET['without_genres'] ?? [])))));
 $selectedYearFrom = (string) ($yearFrom ?? '');
 $selectedYearTo = (string) ($yearTo ?? '');
-if ($selectedYearFrom === '' && $selectedYearTo === '' && $year !== '') {
+if ($selectedYearFrom === '' && $selectedYearTo === '' && !empty($year)) {
     $selectedYearFrom = (string) $year;
     $selectedYearTo = (string) $year;
 }
 $selectedSort = $sort;
 $selectedCountries = array_values(array_map('strval', (array) ($selectedCountries ?? [])));
-if (!$selectedCountries) {
-    $legacyCountry = trim((string) ($_GET['with_origin_country'] ?? ''));
-    if ($legacyCountry !== '' && !is_array($_GET['with_origin_country'] ?? null)) {
-        $selectedCountries = [$legacyCountry];
-    }
-}
+$excludedCountries = array_values(array_map('strval', (array) ($excludedCountries ?? ($_GET['without_origin_country'] ?? []))));
 $selectedRating = (string) ($_GET['vote_average_gte'] ?? $_GET['vote_average.gte'] ?? $_GET['rating'] ?? '');
 $selectedProviders = array_values(array_map('strval', (array) ($selectedProviders ?? [])));
-if (!$selectedProviders) {
-    $legacyProvider = trim((string) ($_GET['with_watch_providers'] ?? ''));
-    if ($legacyProvider !== '' && !is_array($_GET['with_watch_providers'] ?? null)) {
-        $selectedProviders = [$legacyProvider];
-    }
-}
+$excludedProviders = array_values(array_map('strval', (array) ($excludedProviders ?? ($_GET['without_watch_providers'] ?? []))));
 $selectedNetworks = array_values(array_map('strval', (array) ($selectedNetworks ?? [])));
-if (!$selectedNetworks) {
-    $legacyNetwork = trim((string) ($_GET['with_networks'] ?? ''));
-    if ($legacyNetwork !== '' && !is_array($_GET['with_networks'] ?? null)) {
-        $selectedNetworks = [$legacyNetwork];
-    }
-}
+$excludedNetworks = array_values(array_map('strval', (array) ($excludedNetworks ?? ($_GET['without_networks'] ?? []))));
 $genreMode = (string) ($_GET['genre_mode'] ?? '') === 'and' ? 'and' : '';
 $sortChosen = isset($_GET['sort_by']);
 $viewMode = (($_GET['view'] ?? 'grid') === 'list') ? 'list' : 'grid';
@@ -48,9 +34,11 @@ $providers = [
     '8' => 'Netflix', '9' => 'Amazon Prime', '337' => 'Disney+', '15' => 'Hulu',
     '384' => 'HBO Max', '350' => 'Apple TV+', '531' => 'Paramount+', '386' => 'Peacock',
 ];
+// TV broadcast networks only — streaming apps live under Provider (no duplicates)
 $networks = [
-    '213' => 'Netflix', '49' => 'HBO', '67' => 'Fox', '56' => 'Cartoon Network',
-    '6' => 'NBC', '2' => 'ABC', '16' => 'CBS', '453' => 'Hulu', '318' => 'Marvel Studios',
+    '49' => 'HBO', '67' => 'Fox', '56' => 'Cartoon Network',
+    '6' => 'NBC', '2' => 'ABC', '16' => 'CBS', '318' => 'Marvel Studios',
+    '174' => 'AMC', '88' => 'FX', '54' => 'Disney Channel',
 ];
 $sorts = $isMovie
     ? [
@@ -72,6 +60,26 @@ $ratings = ['9' => '9+', '8' => '8+', '7' => '7+', '6' => '6+', '5' => '5+', '4'
 $sidebarItems = $sidebarItems ?? [];
 $yearMax = (int) date('Y') + 1;
 $yearMin = 1970;
+$timelineFrom = $selectedYearFrom !== '' ? (int) $selectedYearFrom : $yearMin;
+$timelineTo = $selectedYearTo !== '' ? (int) $selectedYearTo : $yearMax;
+if ($timelineFrom > $timelineTo) {
+    [$timelineFrom, $timelineTo] = [$timelineTo, $timelineFrom];
+}
+
+$triState = static function ($value, array $included, array $excluded): string {
+    $v = (string) $value;
+    foreach ($excluded as $x) {
+        if ((string) $x === $v) {
+            return 'out';
+        }
+    }
+    foreach ($included as $x) {
+        if ((string) $x === $v) {
+            return 'in';
+        }
+    }
+    return 'off';
+};
 
 $filterChips = [];
 if ($selectedGenres) {
@@ -81,7 +89,16 @@ if ($selectedGenres) {
             $names[] = $genres[$gid];
         }
     }
-    $filterChips[] = ['key' => 'genres', 'label' => $names ? implode(', ', array_slice($names, 0, 2)) . (count($names) > 2 ? ' +' . (count($names) - 2) : '') : (count($selectedGenres) . ' genres'), 'clear' => ['with_genres', 'genre_mode']];
+    $filterChips[] = ['key' => 'genres', 'label' => $names ? implode(', ', array_slice($names, 0, 2)) . (count($names) > 2 ? ' +' . (count($names) - 2) : '') : (count($selectedGenres) . ' genres'), 'clear' => ['with_genres', 'genre_mode'], 'tone' => 'in'];
+}
+if ($excludedGenres) {
+    $names = [];
+    foreach ($excludedGenres as $gid) {
+        if (isset($genres[$gid])) {
+            $names[] = '−' . $genres[$gid];
+        }
+    }
+    $filterChips[] = ['key' => 'genres-out', 'label' => $names ? implode(', ', array_slice($names, 0, 2)) . (count($names) > 2 ? ' +' . (count($names) - 2) : '') : ('−' . count($excludedGenres) . ' genres'), 'clear' => ['without_genres'], 'tone' => 'out'];
 }
 if ($selectedNetworks) {
     $nnames = [];
@@ -90,7 +107,16 @@ if ($selectedNetworks) {
             $nnames[] = $networks[$nid];
         }
     }
-    $filterChips[] = ['key' => 'network', 'label' => $nnames ? implode(', ', array_slice($nnames, 0, 2)) . (count($nnames) > 2 ? ' +' . (count($nnames) - 2) : '') : (count($selectedNetworks) . ' networks'), 'clear' => ['with_networks']];
+    $filterChips[] = ['key' => 'network', 'label' => $nnames ? implode(', ', array_slice($nnames, 0, 2)) . (count($nnames) > 2 ? ' +' . (count($nnames) - 2) : '') : (count($selectedNetworks) . ' networks'), 'clear' => ['with_networks'], 'tone' => 'in'];
+}
+if ($excludedNetworks) {
+    $nnames = [];
+    foreach ($excludedNetworks as $nid) {
+        if (isset($networks[$nid])) {
+            $nnames[] = '−' . $networks[$nid];
+        }
+    }
+    $filterChips[] = ['key' => 'network-out', 'label' => $nnames ? implode(', ', array_slice($nnames, 0, 2)) : ('−' . count($excludedNetworks)), 'clear' => ['without_networks'], 'tone' => 'out'];
 }
 if ($selectedCountries) {
     $cnames = [];
@@ -99,13 +125,22 @@ if ($selectedCountries) {
             $cnames[] = $countries[$code];
         }
     }
-    $filterChips[] = ['key' => 'country', 'label' => $cnames ? implode(', ', array_slice($cnames, 0, 2)) . (count($cnames) > 2 ? ' +' . (count($cnames) - 2) : '') : (count($selectedCountries) . ' countries'), 'clear' => ['with_origin_country']];
+    $filterChips[] = ['key' => 'country', 'label' => $cnames ? implode(', ', array_slice($cnames, 0, 2)) . (count($cnames) > 2 ? ' +' . (count($cnames) - 2) : '') : (count($selectedCountries) . ' countries'), 'clear' => ['with_origin_country'], 'tone' => 'in'];
+}
+if ($excludedCountries) {
+    $cnames = [];
+    foreach ($excludedCountries as $code) {
+        if (isset($countries[$code])) {
+            $cnames[] = '−' . $countries[$code];
+        }
+    }
+    $filterChips[] = ['key' => 'country-out', 'label' => $cnames ? implode(', ', array_slice($cnames, 0, 2)) : ('−' . count($excludedCountries)), 'clear' => ['without_origin_country'], 'tone' => 'out'];
 }
 if ($selectedYearFrom !== '' || $selectedYearTo !== '') {
     $yearLabel = ($selectedYearFrom !== '' && $selectedYearTo !== '' && $selectedYearFrom === $selectedYearTo)
         ? $selectedYearFrom
-        : (($selectedYearFrom !== '' ? $selectedYearFrom : '…') . '–' . ($selectedYearTo !== '' ? $selectedYearTo : '…'));
-    $filterChips[] = ['key' => 'year', 'label' => $yearLabel, 'clear' => ['year', 'year_from', 'year_to']];
+        : (($selectedYearFrom !== '' ? $selectedYearFrom : (string) $yearMin) . '–' . ($selectedYearTo !== '' ? $selectedYearTo : (string) $yearMax));
+    $filterChips[] = ['key' => 'year', 'label' => $yearLabel, 'clear' => ['year', 'year_from', 'year_to'], 'tone' => 'in'];
 }
 if ($selectedProviders) {
     $pnames = [];
@@ -114,13 +149,22 @@ if ($selectedProviders) {
             $pnames[] = $providers[$pid];
         }
     }
-    $filterChips[] = ['key' => 'provider', 'label' => $pnames ? implode(', ', array_slice($pnames, 0, 2)) . (count($pnames) > 2 ? ' +' . (count($pnames) - 2) : '') : (count($selectedProviders) . ' providers'), 'clear' => ['with_watch_providers']];
+    $filterChips[] = ['key' => 'provider', 'label' => $pnames ? implode(', ', array_slice($pnames, 0, 2)) . (count($pnames) > 2 ? ' +' . (count($pnames) - 2) : '') : (count($selectedProviders) . ' providers'), 'clear' => ['with_watch_providers'], 'tone' => 'in'];
+}
+if ($excludedProviders) {
+    $pnames = [];
+    foreach ($excludedProviders as $pid) {
+        if (isset($providers[$pid])) {
+            $pnames[] = '−' . $providers[$pid];
+        }
+    }
+    $filterChips[] = ['key' => 'provider-out', 'label' => $pnames ? implode(', ', array_slice($pnames, 0, 2)) : ('−' . count($excludedProviders)), 'clear' => ['without_watch_providers'], 'tone' => 'out'];
 }
 if ($selectedRating !== '') {
-    $filterChips[] = ['key' => 'rating', 'label' => $selectedRating . '+', 'clear' => ['rating', 'vote_average_gte', 'vote_average.gte']];
+    $filterChips[] = ['key' => 'rating', 'label' => $selectedRating . '+', 'clear' => ['rating', 'vote_average_gte', 'vote_average.gte'], 'tone' => 'in'];
 }
 if ($sortChosen) {
-    $filterChips[] = ['key' => 'sort', 'label' => $sorts[$selectedSort] ?? 'Sorted', 'clear' => ['sort_by']];
+    $filterChips[] = ['key' => 'sort', 'label' => $sorts[$selectedSort] ?? 'Sorted', 'clear' => ['sort_by'], 'tone' => 'in'];
 }
 $activeFilterCount = count($filterChips);
 
@@ -130,8 +174,7 @@ $chipUrl = static function (array $clearKeys) use ($path): string {
     foreach ($clearKeys as $k) {
         unset($qs[$k], $qs[$k . '[]']);
     }
-    // also clear array genre/network/country/provider param variants
-    foreach (['with_genres', 'with_networks', 'with_origin_country', 'with_watch_providers'] as $arrKey) {
+    foreach (['with_genres', 'without_genres', 'with_networks', 'without_networks', 'with_origin_country', 'without_origin_country', 'with_watch_providers', 'without_watch_providers'] as $arrKey) {
         if (in_array($arrKey, $clearKeys, true)) {
             unset($qs[$arrKey], $qs[$arrKey . '[]']);
         }
@@ -176,7 +219,7 @@ $chipUrl = static function (array $clearKeys) use ($path): string {
                             <?php if ($filterChips): ?>
                             <div class="filters-chips" aria-label="Active filters">
                                 <?php foreach ($filterChips as $chip): ?>
-                                <a class="filters-chip" href="<?= e($chipUrl($chip['clear'])) ?>">
+                                <a class="filters-chip<?= ($chip['tone'] ?? '') === 'out' ? ' is-exclude' : '' ?>" href="<?= e($chipUrl($chip['clear'])) ?>">
                                     <span><?= e($chip['label']) ?></span>
                                     <i class="uil uil-times" aria-hidden="true"></i>
                                 </a>
@@ -202,93 +245,86 @@ $chipUrl = static function (array $clearKeys) use ($path): string {
                                 </div>
 
                                 <div class="filters-sheet-body">
-                                    <section class="filter-section">
-                                        <h3 class="filter-section-title">Type</h3>
-                                        <div class="filter-pills">
-                                            <label class="filter-pill">
-                                                <input type="checkbox" id="type-movie" name="type[]" value="movie" data-href="<?= e(url('/movies')) ?>" <?= $isMovie ? 'checked' : '' ?>>
-                                                <span>Movies</span>
-                                            </label>
-                                            <label class="filter-pill">
-                                                <input type="checkbox" id="type-tv" name="type[]" value="tv" data-href="<?= e(url('/tv-series')) ?>" <?= !$isMovie ? 'checked' : '' ?>>
-                                                <span>TV Shows</span>
-                                            </label>
-                                        </div>
-                                    </section>
+                                    <p class="filters-hint">Tap once to include · twice to exclude · thrice to clear</p>
 
                                     <section class="filter-section">
                                         <h3 class="filter-section-title">Genre</h3>
-                                        <div class="filter-pills filter-pills-wrap">
-                                            <?php foreach ($genres as $gid => $gname): ?>
-                                            <label class="filter-pill">
-                                                <input type="checkbox" id="genre-<?= (int) $gid ?>" name="with_genres[]" value="<?= (int) $gid ?>" <?= in_array((int) $gid, $selectedGenres, true) ? 'checked' : '' ?>>
+                                        <div class="filter-pills filter-pills-wrap" data-tri-group>
+                                            <?php foreach ($genres as $gid => $gname):
+                                                $st = $triState((string) $gid, $selectedGenres, $excludedGenres);
+                                            ?>
+                                            <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= (int) $gid ?>" data-include="with_genres[]" data-exclude="without_genres[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
                                                 <span><?= e($gname) ?></span>
-                                            </label>
+                                            </button>
                                             <?php endforeach; ?>
                                         </div>
                                         <label class="filter-check-row">
                                             <input type="checkbox" id="genre_mode" name="genre_mode" value="and" <?= $genreMode === 'and' ? 'checked' : '' ?>>
-                                            <span>Must have all selected genres</span>
+                                            <span>Must have all included genres</span>
                                         </label>
                                     </section>
 
+                                    <?php if (!$isMovie): ?>
                                     <section class="filter-section">
                                         <h3 class="filter-section-title">Network</h3>
-                                        <div class="filter-pills filter-pills-wrap">
-                                            <?php foreach ($networks as $nid => $nname): ?>
-                                            <label class="filter-pill">
-                                                <input type="checkbox" id="net-<?= e($nid) ?>" name="with_networks[]" value="<?= e($nid) ?>" <?= in_array((string) $nid, $selectedNetworks, true) ? 'checked' : '' ?>>
+                                        <div class="filter-pills filter-pills-wrap" data-tri-group>
+                                            <?php foreach ($networks as $nid => $nname):
+                                                $st = $triState((string) $nid, $selectedNetworks, $excludedNetworks);
+                                            ?>
+                                            <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= e($nid) ?>" data-include="with_networks[]" data-exclude="without_networks[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
                                                 <span><?= e($nname) ?></span>
-                                            </label>
+                                            </button>
                                             <?php endforeach; ?>
                                         </div>
                                     </section>
+                                    <?php endif; ?>
 
                                     <section class="filter-section">
                                         <h3 class="filter-section-title">Country</h3>
-                                        <div class="filter-pills filter-pills-wrap filter-pills-scroll">
-                                            <?php foreach ($countries as $code => $cname): ?>
-                                            <label class="filter-pill">
-                                                <input type="checkbox" id="country-<?= e($code) ?>" name="with_origin_country[]" value="<?= e($code) ?>" <?= in_array($code, $selectedCountries, true) ? 'checked' : '' ?>>
+                                        <div class="filter-pills filter-pills-wrap filter-pills-scroll" data-tri-group>
+                                            <?php foreach ($countries as $code => $cname):
+                                                $st = $triState($code, $selectedCountries, $excludedCountries);
+                                            ?>
+                                            <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= e($code) ?>" data-include="with_origin_country[]" data-exclude="without_origin_country[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
                                                 <span><?= e($cname) ?></span>
-                                            </label>
+                                            </button>
                                             <?php endforeach; ?>
                                         </div>
                                     </section>
 
                                     <section class="filter-section">
                                         <h3 class="filter-section-title">Year</h3>
-                                        <div class="filter-year-range">
-                                            <label class="filter-year-field">
-                                                <span class="filter-year-label">From</span>
-                                                <select name="year_from" id="year-from" aria-label="Year from">
-                                                    <option value="">Any</option>
-                                                    <?php for ($y = $yearMax; $y >= $yearMin; $y--): ?>
-                                                    <option value="<?= $y ?>" <?= $selectedYearFrom === (string) $y ? 'selected' : '' ?>><?= $y ?></option>
-                                                    <?php endfor; ?>
-                                                </select>
-                                            </label>
-                                            <span class="filter-year-sep" aria-hidden="true">to</span>
-                                            <label class="filter-year-field">
-                                                <span class="filter-year-label">To</span>
-                                                <select name="year_to" id="year-to" aria-label="Year to">
-                                                    <option value="">Any</option>
-                                                    <?php for ($y = $yearMax; $y >= $yearMin; $y--): ?>
-                                                    <option value="<?= $y ?>" <?= $selectedYearTo === (string) $y ? 'selected' : '' ?>><?= $y ?></option>
-                                                    <?php endfor; ?>
-                                                </select>
-                                            </label>
+                                        <div class="year-timeline" id="year-timeline" data-min="<?= (int) $yearMin ?>" data-max="<?= (int) $yearMax ?>">
+                                            <div class="year-timeline-values">
+                                                <strong id="year-timeline-from-label"><?= (int) $timelineFrom ?></strong>
+                                                <span>to</span>
+                                                <strong id="year-timeline-to-label"><?= (int) $timelineTo ?></strong>
+                                            </div>
+                                            <div class="year-timeline-track">
+                                                <div class="year-timeline-rail" aria-hidden="true"></div>
+                                                <div class="year-timeline-range" id="year-timeline-range" aria-hidden="true"></div>
+                                                <input type="range" class="year-timeline-thumb year-timeline-thumb-from" id="year-from-range" min="<?= (int) $yearMin ?>" max="<?= (int) $yearMax ?>" value="<?= (int) $timelineFrom ?>" step="1" aria-label="From year">
+                                                <input type="range" class="year-timeline-thumb year-timeline-thumb-to" id="year-to-range" min="<?= (int) $yearMin ?>" max="<?= (int) $yearMax ?>" value="<?= (int) $timelineTo ?>" step="1" aria-label="To year">
+                                            </div>
+                                            <div class="year-timeline-ticks" aria-hidden="true">
+                                                <?php for ($y = $yearMin; $y <= $yearMax; $y += 10): ?>
+                                                <span style="left: <?= (($y - $yearMin) / max(1, $yearMax - $yearMin)) * 100 ?>%"><?= $y ?></span>
+                                                <?php endfor; ?>
+                                            </div>
+                                            <input type="hidden" name="year_from" id="year-from" value="<?= e($selectedYearFrom) ?>">
+                                            <input type="hidden" name="year_to" id="year-to" value="<?= e($selectedYearTo) ?>">
                                         </div>
                                     </section>
 
                                     <section class="filter-section">
                                         <h3 class="filter-section-title">Provider</h3>
-                                        <div class="filter-pills filter-pills-wrap">
-                                            <?php foreach ($providers as $pid => $pname): ?>
-                                            <label class="filter-pill">
-                                                <input type="checkbox" id="prov-<?= e($pid) ?>" name="with_watch_providers[]" value="<?= e($pid) ?>" <?= in_array((string) $pid, $selectedProviders, true) ? 'checked' : '' ?>>
+                                        <div class="filter-pills filter-pills-wrap" data-tri-group>
+                                            <?php foreach ($providers as $pid => $pname):
+                                                $st = $triState((string) $pid, $selectedProviders, $excludedProviders);
+                                            ?>
+                                            <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= e($pid) ?>" data-include="with_watch_providers[]" data-exclude="without_watch_providers[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
                                                 <span><?= e($pname) ?></span>
-                                            </label>
+                                            </button>
                                             <?php endforeach; ?>
                                         </div>
                                     </section>
@@ -316,6 +352,8 @@ $chipUrl = static function (array $clearKeys) use ($path): string {
                                             <?php endforeach; ?>
                                         </div>
                                     </section>
+
+                                    <div id="filter-tri-inputs" hidden></div>
                                 </div>
 
                                 <div class="filters-sheet-foot">
