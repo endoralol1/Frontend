@@ -643,29 +643,13 @@
     playTrailer();
   });
 
-  $(document).on('click', '#btn-light', function () {
-    $('#movie-player').toggleClass('light-off');
-  });
-
   $(document).on('click', '#btn-share', function () {
     var url = location.href;
     if (navigator.clipboard) navigator.clipboard.writeText(url);
     else prompt('Copy link', url);
   });
 
-  $(document).on('change', '#serverGroupSwitch', function () {
-    var backup = this.checked;
-    $('.server-group-container').hide();
-    $('.server-group-container[data-group="' + (backup ? '2' : '1') + '"]').show();
-  });
-
-  $(document).on('click', '.movie-cloud', function () {
-    $(this).addClass('active').siblings().removeClass('active');
-    // Visual server switch — playback uses official trailer
-    playTrailer();
-  });
-
-  // Watch: season dropdown + comment scroll + episode play
+  // Watch: season dropdown + episode play
   $(document).on('click', '#movie-episode .dropdown-toggle', function (e) {
     e.preventDefault();
     e.stopPropagation();
@@ -675,14 +659,6 @@
   $(document).on('click', function (e) {
     if (!$(e.target).closest('#movie-episode .dropdown').length) {
       $('#movie-episode .dropdown').removeClass('show').find('.dropdown-menu').removeClass('show');
-    }
-  });
-  $(document).on('click', '.movie-manager.comment, .movie-manager[data-scroll]', function (e) {
-    var sel = $(this).data('scroll') || '#comment';
-    var el = document.querySelector(sel);
-    if (el) {
-      e.preventDefault();
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   });
   $(document).on('click', '#btn-ep-play, .horizontal-episode-play-btn', function (e) {

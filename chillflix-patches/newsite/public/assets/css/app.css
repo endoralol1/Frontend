@@ -243,49 +243,29 @@ header #menu.header-nav ul {
   z-index: 31;
 }
 
-.server-toggle-compact {
-  display: flex;
-  align-items: center;
-  gap: .6rem;
-  margin-top: .75rem;
+/* Watch managers: keep Auto Play / Favorite / Share only; force Auto Play visible on mobile */
+#movie-managers {
+  justify-content: flex-start;
 }
 
-.server-toggle-switch {
-  position: relative;
-  width: 42px;
-  height: 22px;
-  display: inline-block;
+#movie-managers .movie-managers-wrap .auto-play,
+#movie-managers .movie-managers-wrap .auto-next {
+  display: inline-flex !important;
 }
 
-.server-toggle-switch input { display: none; }
-
-.server-toggle-slider {
-  position: absolute;
-  inset: 0;
-  background: #3e4555;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: .2s;
+#movie-clouds,
+.server-toggle-compact,
+.movie-cloud-notice,
+#movie-episode.movie {
+  display: none !important;
 }
 
-.server-toggle-slider:before {
-  content: "";
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  left: 3px;
-  top: 3px;
-  background: #fff;
-  border-radius: 50%;
-  transition: .2s;
-}
-
-.server-toggle-switch input:checked + .server-toggle-slider {
-  background: #dc3545;
-}
-
-.server-toggle-switch input:checked + .server-toggle-slider:before {
-  transform: translateX(20px);
+/* Movies watch: no server/files sidebar — let player use full width */
+body.page-watch .watch-p .aside-wrapper.swap:not(:has(> .sidebar)) .main,
+body.page-watch .watch-p .aside-wrapper.swap .main:only-child {
+  width: 100%;
+  max-width: 100%;
+  flex: 1 1 100%;
 }
 
 .pagination-wrap .btn.disabled {
