@@ -391,7 +391,25 @@ function discover_page(Tmdb $tmdb, string $type, bool $filtersPage = false): voi
         $countriesIn = array_values(array_diff($countriesIn, $countriesOut));
     }
 
-    $ratingMin = trim((string) ($_GET['vote_average_gte'] ?? $_GET['vote_average.gte'] ?? $_GET['rating'] ?? ''));
+    $ratingFrom = trim((string) ($_GET['rating_from'] ?? ''));
+    $ratingTo = trim((string) ($_GET['rating_to'] ?? ''));
+    $ratingMinLegacy = trim((string) ($_GET['vote_average_gte'] ?? $_GET['vote_average.gte'] ?? $_GET['rating'] ?? ''));
+    $ratingMaxLegacy = trim((string) ($_GET['vote_average_lte'] ?? $_GET['vote_average.lte'] ?? ''));
+    if ($ratingFrom === '' && $ratingMinLegacy !== '') {
+        $ratingFrom = $ratingMinLegacy;
+    }
+    if ($ratingTo === '' && $ratingMaxLegacy !== '') {
+        $ratingTo = $ratingMaxLegacy;
+    }
+    if ($ratingFrom !== '' && !is_numeric($ratingFrom)) {
+        $ratingFrom = '';
+    }
+    if ($ratingTo !== '' && !is_numeric($ratingTo)) {
+        $ratingTo = '';
+    }
+    if ($ratingFrom !== '' && $ratingTo !== '' && (float) $ratingFrom > (float) $ratingTo) {
+        [$ratingFrom, $ratingTo] = [$ratingTo, $ratingFrom];
+    }
     $genreMode = (string) ($_GET['genre_mode'] ?? '');
 
     // Legacy single year → treat as from=to
@@ -441,8 +459,11 @@ function discover_page(Tmdb $tmdb, string $type, bool $filtersPage = false): voi
     if ($countriesOut) {
         $params['without_origin_country'] = implode('|', $countriesOut);
     }
-    if ($ratingMin !== '' && is_numeric($ratingMin)) {
-        $params['vote_average.gte'] = $ratingMin;
+    if ($ratingFrom !== '' && is_numeric($ratingFrom)) {
+        $params['vote_average.gte'] = (float) $ratingFrom;
+    }
+    if ($ratingTo !== '' && is_numeric($ratingTo)) {
+        $params['vote_average.lte'] = (float) $ratingTo;
     }
     if ($providersIn) {
         $params['with_watch_providers'] = implode('|', $providersIn);
@@ -474,6 +495,8 @@ function discover_page(Tmdb $tmdb, string $type, bool $filtersPage = false): voi
         'year' => $year,
         'yearFrom' => $yearFrom,
         'yearTo' => $yearTo,
+        'ratingFrom' => $ratingFrom,
+        'ratingTo' => $ratingTo,
         'genre' => $genre,
         'selectedGenres' => $genresIn,
         'excludedGenres' => $genresOut,

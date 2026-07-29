@@ -15,7 +15,13 @@ if ($selectedYearFrom === '' && $selectedYearTo === '' && !empty($year)) {
 $selectedSort = $sort;
 $selectedCountries = array_values(array_map('strval', (array) ($selectedCountries ?? [])));
 $excludedCountries = array_values(array_map('strval', (array) ($excludedCountries ?? ($_GET['without_origin_country'] ?? []))));
-$selectedRating = (string) ($_GET['vote_average_gte'] ?? $_GET['vote_average.gte'] ?? $_GET['rating'] ?? '');
+$selectedRatingFrom = (string) ($ratingFrom ?? ($_GET['rating_from'] ?? ''));
+$selectedRatingTo = (string) ($ratingTo ?? ($_GET['rating_to'] ?? ''));
+$legacyRating = (string) ($_GET['vote_average_gte'] ?? $_GET['vote_average.gte'] ?? $_GET['rating'] ?? '');
+if ($selectedRatingFrom === '' && $selectedRatingTo === '' && $legacyRating !== '') {
+    $selectedRatingFrom = $legacyRating;
+}
+$selectedRating = $selectedRatingFrom; // legacy chip helper alias
 $selectedProviders = array_values(array_map('strval', (array) ($selectedProviders ?? [])));
 $excludedProviders = array_values(array_map('strval', (array) ($excludedProviders ?? ($_GET['without_watch_providers'] ?? []))));
 $selectedNetworks = array_values(array_map('strval', (array) ($selectedNetworks ?? [])));
@@ -64,6 +70,14 @@ $timelineFrom = $selectedYearFrom !== '' ? (int) $selectedYearFrom : $yearMin;
 $timelineTo = $selectedYearTo !== '' ? (int) $selectedYearTo : $yearMax;
 if ($timelineFrom > $timelineTo) {
     [$timelineFrom, $timelineTo] = [$timelineTo, $timelineFrom];
+}
+$ratingMin = 0;
+$ratingMax = 10;
+$ratingStep = 0.5;
+$ratingTimelineFrom = $selectedRatingFrom !== '' && is_numeric($selectedRatingFrom) ? (float) $selectedRatingFrom : $ratingMin;
+$ratingTimelineTo = $selectedRatingTo !== '' && is_numeric($selectedRatingTo) ? (float) $selectedRatingTo : $ratingMax;
+if ($ratingTimelineFrom > $ratingTimelineTo) {
+    [$ratingTimelineFrom, $ratingTimelineTo] = [$ratingTimelineTo, $ratingTimelineFrom];
 }
 
 $triState = static function ($value, array $included, array $excluded): string {
@@ -160,8 +174,13 @@ if ($excludedProviders) {
     }
     $filterChips[] = ['key' => 'provider-out', 'label' => $pnames ? implode(', ', array_slice($pnames, 0, 2)) : ('−' . count($excludedProviders)), 'clear' => ['without_watch_providers'], 'tone' => 'out'];
 }
-if ($selectedRating !== '') {
-    $filterChips[] = ['key' => 'rating', 'label' => $selectedRating . '+', 'clear' => ['rating', 'vote_average_gte', 'vote_average.gte'], 'tone' => 'in'];
+if ($selectedRatingFrom !== '' || $selectedRatingTo !== '') {
+    $rFromLabel = $selectedRatingFrom !== '' ? rtrim(rtrim(number_format((float) $selectedRatingFrom, 1, '.', ''), '0'), '.') : '0';
+    $rToLabel = $selectedRatingTo !== '' ? rtrim(rtrim(number_format((float) $selectedRatingTo, 1, '.', ''), '0'), '.') : '10';
+    $ratingLabel = ($selectedRatingFrom !== '' && $selectedRatingTo !== '' && (float) $selectedRatingFrom === (float) $selectedRatingTo)
+        ? ('★ ' . $rFromLabel)
+        : ('★ ' . $rFromLabel . '–' . $rToLabel);
+    $filterChips[] = ['key' => 'rating', 'label' => $ratingLabel, 'clear' => ['rating', 'rating_from', 'rating_to', 'vote_average_gte', 'vote_average.gte', 'vote_average_lte', 'vote_average.lte'], 'tone' => 'in'];
 }
 if ($sortChosen) {
     $filterChips[] = ['key' => 'sort', 'label' => $sorts[$selectedSort] ?? 'Sorted', 'clear' => ['sort_by'], 'tone' => 'in'];
@@ -294,19 +313,19 @@ $chipUrl = static function (array $clearKeys) use ($path): string {
 
                                     <section class="filter-section">
                                         <h3 class="filter-section-title">Year</h3>
-                                        <div class="year-timeline" id="year-timeline" data-min="<?= (int) $yearMin ?>" data-max="<?= (int) $yearMax ?>">
-                                            <div class="year-timeline-values">
+                                        <div class="range-timeline year-timeline" id="year-timeline" data-min="<?= (int) $yearMin ?>" data-max="<?= (int) $yearMax ?>" data-step="1">
+                                            <div class="range-timeline-values">
                                                 <strong id="year-timeline-from-label"><?= (int) $timelineFrom ?></strong>
                                                 <span>to</span>
                                                 <strong id="year-timeline-to-label"><?= (int) $timelineTo ?></strong>
                                             </div>
-                                            <div class="year-timeline-track">
-                                                <div class="year-timeline-rail" aria-hidden="true"></div>
-                                                <div class="year-timeline-range" id="year-timeline-range" aria-hidden="true"></div>
-                                                <input type="range" class="year-timeline-thumb year-timeline-thumb-from" id="year-from-range" min="<?= (int) $yearMin ?>" max="<?= (int) $yearMax ?>" value="<?= (int) $timelineFrom ?>" step="1" aria-label="From year">
-                                                <input type="range" class="year-timeline-thumb year-timeline-thumb-to" id="year-to-range" min="<?= (int) $yearMin ?>" max="<?= (int) $yearMax ?>" value="<?= (int) $timelineTo ?>" step="1" aria-label="To year">
+                                            <div class="range-timeline-track">
+                                                <div class="range-timeline-rail" aria-hidden="true"></div>
+                                                <div class="range-timeline-fill" id="year-timeline-range" aria-hidden="true"></div>
+                                                <input type="range" class="range-timeline-thumb range-timeline-thumb-from" id="year-from-range" min="<?= (int) $yearMin ?>" max="<?= (int) $yearMax ?>" value="<?= (int) $timelineFrom ?>" step="1" aria-label="From year">
+                                                <input type="range" class="range-timeline-thumb range-timeline-thumb-to" id="year-to-range" min="<?= (int) $yearMin ?>" max="<?= (int) $yearMax ?>" value="<?= (int) $timelineTo ?>" step="1" aria-label="To year">
                                             </div>
-                                            <div class="year-timeline-ticks" aria-hidden="true">
+                                            <div class="range-timeline-ticks" aria-hidden="true">
                                                 <?php for ($y = $yearMin; $y <= $yearMax; $y += 10): ?>
                                                 <span style="left: <?= (($y - $yearMin) / max(1, $yearMax - $yearMin)) * 100 ?>%"><?= $y ?></span>
                                                 <?php endfor; ?>
@@ -331,13 +350,25 @@ $chipUrl = static function (array $clearKeys) use ($path): string {
 
                                     <section class="filter-section">
                                         <h3 class="filter-section-title">Rating</h3>
-                                        <div class="filter-pills">
-                                            <?php foreach ($ratings as $rval => $rlabel): ?>
-                                            <label class="filter-pill">
-                                                <input type="radio" id="rating-<?= e($rval) ?>" name="rating" value="<?= e($rval) ?>" <?= $selectedRating === (string) $rval ? 'checked' : '' ?>>
-                                                <span><?= e($rlabel) ?></span>
-                                            </label>
-                                            <?php endforeach; ?>
+                                        <div class="range-timeline rating-timeline" id="rating-timeline" data-min="<?= (float) $ratingMin ?>" data-max="<?= (float) $ratingMax ?>" data-step="<?= (float) $ratingStep ?>">
+                                            <div class="range-timeline-values">
+                                                <strong id="rating-timeline-from-label"><?= e(rtrim(rtrim(number_format($ratingTimelineFrom, 1, '.', ''), '0'), '.') ?: '0') ?></strong>
+                                                <span>to</span>
+                                                <strong id="rating-timeline-to-label"><?= e(rtrim(rtrim(number_format($ratingTimelineTo, 1, '.', ''), '0'), '.') ?: '0') ?></strong>
+                                            </div>
+                                            <div class="range-timeline-track">
+                                                <div class="range-timeline-rail" aria-hidden="true"></div>
+                                                <div class="range-timeline-fill" id="rating-timeline-range" aria-hidden="true"></div>
+                                                <input type="range" class="range-timeline-thumb range-timeline-thumb-from" id="rating-from-range" min="<?= (float) $ratingMin ?>" max="<?= (float) $ratingMax ?>" value="<?= (float) $ratingTimelineFrom ?>" step="<?= (float) $ratingStep ?>" aria-label="Minimum rating">
+                                                <input type="range" class="range-timeline-thumb range-timeline-thumb-to" id="rating-to-range" min="<?= (float) $ratingMin ?>" max="<?= (float) $ratingMax ?>" value="<?= (float) $ratingTimelineTo ?>" step="<?= (float) $ratingStep ?>" aria-label="Maximum rating">
+                                            </div>
+                                            <div class="range-timeline-ticks" aria-hidden="true">
+                                                <?php for ($r = 0; $r <= 10; $r += 2): ?>
+                                                <span style="left: <?= ($r / 10) * 100 ?>%"><?= $r ?></span>
+                                                <?php endfor; ?>
+                                            </div>
+                                            <input type="hidden" name="rating_from" id="rating-from" value="<?= e($selectedRatingFrom) ?>">
+                                            <input type="hidden" name="rating_to" id="rating-to" value="<?= e($selectedRatingTo) ?>">
                                         </div>
                                     </section>
 

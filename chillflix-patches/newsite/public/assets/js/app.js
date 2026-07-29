@@ -339,17 +339,28 @@
     if (!$sheet.length) return;
     closeBrowseSheet();
     closeSearchSheet();
-    $sheet.removeAttr('hidden').addClass('is-open');
+    clearTimeout(window.__filtersCloseTimer);
+    $sheet.removeClass('is-closing').removeAttr('hidden');
+    // Force reflow so enter transition plays
+    void $sheet[0].offsetWidth;
+    $sheet.addClass('is-open');
     $('body').addClass('filters-open');
     $('#filters-open').attr('aria-expanded', 'true');
+    syncTriInputs();
+    syncYearTimeline();
+    syncRatingTimeline();
   }
 
   function closeFiltersSheet() {
     var $sheet = $('#filters-sheet');
-    if (!$sheet.length) return;
-    $sheet.removeClass('is-open').attr('hidden', true);
-    $('body').removeClass('filters-open');
+    if (!$sheet.length || (!$sheet.hasClass('is-open') && !$sheet.hasClass('is-closing'))) return;
+    $sheet.removeClass('is-open').addClass('is-closing');
     $('#filters-open').attr('aria-expanded', 'false');
+    $('body').removeClass('filters-open');
+    clearTimeout(window.__filtersCloseTimer);
+    window.__filtersCloseTimer = setTimeout(function () {
+      $sheet.removeClass('is-closing').attr('hidden', true);
+    }, 380);
   }
 
   $(document).on('click', '#filters-open', function (e) {
@@ -446,15 +457,24 @@
 
   syncTriInputs();
 
-  function syncYearTimeline() {
-    var $wrap = $('#year-timeline');
+  function formatTimelineValue(n, step) {
+    if (step < 1) {
+      var s = (Math.round(n * 10) / 10).toFixed(1);
+      return s.replace(/\.0$/, '');
+    }
+    return String(Math.round(n));
+  }
+
+  function syncRangeTimeline(opts) {
+    var $wrap = $(opts.wrap);
     if (!$wrap.length) return;
-    var min = parseInt($wrap.data('min'), 10);
-    var max = parseInt($wrap.data('max'), 10);
-    var $from = $('#year-from-range');
-    var $to = $('#year-to-range');
-    var from = parseInt($from.val(), 10);
-    var to = parseInt($to.val(), 10);
+    var min = parseFloat($wrap.data('min'));
+    var max = parseFloat($wrap.data('max'));
+    var step = parseFloat($wrap.data('step')) || 1;
+    var $from = $(opts.fromRange);
+    var $to = $(opts.toRange);
+    var from = parseFloat($from.val());
+    var to = parseFloat($to.val());
     if (isNaN(from) || isNaN(to)) return;
     if (from > to) {
       if (document.activeElement === $from[0]) {
@@ -465,24 +485,51 @@
         $from.val(String(from));
       }
     }
-    var span = Math.max(1, max - min);
+    var span = Math.max(step, max - min);
     var left = ((from - min) / span) * 100;
     var right = ((to - min) / span) * 100;
-    $('#year-timeline-range').css({ left: left + '%', width: Math.max(0, right - left) + '%' });
-    $('#year-timeline-from-label').text(String(from));
-    $('#year-timeline-to-label').text(String(to));
-    // Full range = no year filter
+    $(opts.fill).css({ left: left + '%', width: Math.max(0, right - left) + '%' });
+    $(opts.fromLabel).text(formatTimelineValue(from, step));
+    $(opts.toLabel).text(formatTimelineValue(to, step));
     if (from <= min && to >= max) {
-      $('#year-from').val('');
-      $('#year-to').val('');
+      $(opts.fromHidden).val('');
+      $(opts.toHidden).val('');
     } else {
-      $('#year-from').val(String(from));
-      $('#year-to').val(String(to));
+      $(opts.fromHidden).val(formatTimelineValue(from, step));
+      $(opts.toHidden).val(formatTimelineValue(to, step));
     }
   }
 
+  function syncYearTimeline() {
+    syncRangeTimeline({
+      wrap: '#year-timeline',
+      fromRange: '#year-from-range',
+      toRange: '#year-to-range',
+      fill: '#year-timeline-range',
+      fromLabel: '#year-timeline-from-label',
+      toLabel: '#year-timeline-to-label',
+      fromHidden: '#year-from',
+      toHidden: '#year-to'
+    });
+  }
+
+  function syncRatingTimeline() {
+    syncRangeTimeline({
+      wrap: '#rating-timeline',
+      fromRange: '#rating-from-range',
+      toRange: '#rating-to-range',
+      fill: '#rating-timeline-range',
+      fromLabel: '#rating-timeline-from-label',
+      toLabel: '#rating-timeline-to-label',
+      fromHidden: '#rating-from',
+      toHidden: '#rating-to'
+    });
+  }
+
   $(document).on('input change', '#year-from-range, #year-to-range', syncYearTimeline);
+  $(document).on('input change', '#rating-from-range, #rating-to-range', syncRatingTimeline);
   syncYearTimeline();
+  syncRatingTimeline();
 
   // Discover view switcher — update class + persist via query
   $(document).on('click', '.btn-view-switcher', function () {
@@ -858,6 +905,7 @@
     bindMediaPrefetchObserver();
     syncTriInputs();
     syncYearTimeline();
+    syncRatingTimeline();
   }
 
   function applySoftNavHtml(html, url, push) {
