@@ -5,7 +5,7 @@ return [
     'site_name'    => 'Chillflix',
     'site_tagline' => 'Watch Movies & TV Series Online Free',
     'base_url'     => 'https://www.chillflix.lol/newsite', // auto-detected if empty
-    'theme_color'  => '#141619',
+    'theme_color'  => '#12151c',
     'locale'       => 'en_US',
     'lang'         => 'en',
 
