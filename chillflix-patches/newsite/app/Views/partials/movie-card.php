@@ -27,7 +27,7 @@ $ranked = $rank !== null;
         <a class="item-poster" href="<?= e($href) ?>" data-tip="<?= (int) $item['id'] ?>" data-media-type="<?= e($type) ?>" aria-label="<?= e($title) ?>">
             <?php if ($ranked): ?>
             <span class="card-rank" aria-label="Top <?= (int) $rank ?>">
-                <span class="card-rank-label">TOP</span>
+                <span class="card-rank-label">Top</span>
                 <span class="card-rank-num"><?= str_pad((string) $rank, 2, '0', STR_PAD_LEFT) ?></span>
             </span>
             <?php endif; ?>

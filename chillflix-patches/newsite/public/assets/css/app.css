@@ -790,7 +790,7 @@ body {
   object-fit: cover !important;
 }
 
-/* Red TOP / 01 ribbon hanging from top-left — only Top 10 difference */
+/* Red TOP / 01 ribbon — match cineby clip-path badge */
 .section-top10 .top10-items .movie-item.media-card--ranked .card-rank {
   position: absolute !important;
   top: 0 !important;
@@ -802,45 +802,47 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.08rem;
-  width: 2.05rem;
-  min-width: 2.05rem;
-  height: auto;
-  min-height: 2.55rem;
-  padding: 0.35rem 0.2rem 0.42rem;
+  gap: 0;
+  width: 30px;
+  min-width: 30px;
+  height: 38px;
+  min-height: 38px;
+  padding: 5px 2px 7px;
   margin: 0;
   border: 0;
-  border-radius: 0 0 0.35rem 0;
-  background: #e50914 !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
+  border-radius: 0;
+  overflow: hidden;
+  background: #dc2626 !important;
+  box-shadow: 0 4px 10px #dc262659 !important;
   color: #fff !important;
   -webkit-text-stroke: 0 !important;
   text-shadow: none !important;
   transform: none !important;
   pointer-events: none;
   line-height: 1;
+  font-weight: 700;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 85%, 0 100%);
 }
 
 .section-top10 .top10-items .movie-item.media-card--ranked .card-rank-label {
   display: block;
-  font-size: 0.48rem;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  line-height: 1;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
   text-transform: uppercase;
-  opacity: 0.95;
+  opacity: 1;
 }
 
 .section-top10 .top10-items .movie-item.media-card--ranked .card-rank-num {
   display: block;
-  font-size: 0.92rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  margin-top: -2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
-
-/* Keep same bottom caption as normal media cards — do not restyle */
 
 .section-top10 .top10-nav {
   position: absolute;
@@ -912,17 +914,6 @@ body {
   .section-top10 .top10-items .movie-item.media-card--ranked {
     flex-basis: 50%;
     width: 50% !important;
-  }
-
-  .section-top10 .top10-items .movie-item.media-card--ranked .card-rank {
-    width: 1.85rem;
-    min-width: 1.85rem;
-    min-height: 2.3rem;
-    padding: 0.28rem 0.15rem 0.35rem;
-  }
-
-  .section-top10 .top10-items .movie-item.media-card--ranked .card-rank-num {
-    font-size: 0.82rem;
   }
 }
 
