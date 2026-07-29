@@ -835,6 +835,25 @@ class DomainChecker
         }
 
         $httpStatus = (int) ($this->data['http_status'] ?? 0);
+        $trimmedBody = trim((string) $html);
+
+        // Homepage missing / empty — not a testable website (e.g. bare 404 from Kestrel).
+        if (in_array($httpStatus, [404, 410], true)) {
+            $this->markSiteUnavailable(
+                'down',
+                'Homepage returned HTTP ' . $httpStatus . ' (page not found). There is no live site content to evaluate.'
+            );
+            return;
+        }
+        if ($trimmedBody === '' || strlen($trimmedBody) < 40) {
+            $this->markSiteUnavailable(
+                'down',
+                'Homepage returned an empty or near-empty response'
+                . ($httpStatus ? (' (HTTP ' . $httpStatus . ')') : '') . ', so we cannot test the site.'
+            );
+            return;
+        }
+
         // Origin / CDN "site is down" pages are not analyzable business content.
         if ($this->isDownHtml($html, (string) ($this->data['page_title'] ?? ''), $httpStatus)) {
             $this->markSiteUnavailable(

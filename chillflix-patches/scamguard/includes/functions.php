@@ -350,6 +350,26 @@ function render_status_banner(string $status, int $score, string $subject, array
             'icon' => 'unknown',
         ];
         $score = 0;
+    } elseif ($status === 'scam') {
+        $t = rating_score_theme(min($score, 18));
+        $t['label'] = 'Likely Scam';
+    } elseif ($status === 'risky') {
+        $t = rating_score_theme(min(max($score, 21), 40));
+        $t['label'] = 'Risky';
+        $t['tone'] = 'risky';
+        $t['icon'] = 'warn';
+    } elseif ($status === 'caution') {
+        // Don't show "Likely Safe" just because the numeric band is mid/high.
+        $t['label'] = 'Use Caution';
+        $t['tone'] = 'caution';
+        $t['accent'] = '#ff8a00';
+        $t['bar'] = 'progress-bar-orange';
+        $t['icon'] = 'warn';
+        $t['why'] = 'a mixed';
+    } elseif ($status === 'safe') {
+        $t['label'] = $score > 80 ? 'Very Likely Safe' : 'Likely Safe';
+        $t['tone'] = 'safe';
+        $t['icon'] = 'check';
     }
 
     $brand = get_setting('site_name', 'ScamGuard');
