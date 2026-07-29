@@ -2433,6 +2433,12 @@ header.absolute {
   line-height: 1;
 }
 
+.filter-row-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
 .filter-row-copy {
   flex: 1 1 auto;
   min-width: 0;
@@ -2447,13 +2453,70 @@ header.absolute {
   line-height: 1.2;
 }
 
-.filter-row-summary {
+.filter-row-hint {
   font-style: normal;
-  font-size: 0.74rem;
-  color: rgba(233, 236, 239, 0.55);
-  white-space: nowrap;
+  font-size: 0.72rem;
+  color: rgba(233, 236, 239, 0.42);
+}
+
+.filter-row-block:has(.filter-bubble) .filter-row-hint {
+  display: none;
+}
+
+.filter-row-bubbles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  padding: 0 0.15rem 0.15rem 2.85rem;
+}
+
+.filter-row-bubbles[hidden] {
+  display: none !important;
+}
+
+.filter-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  max-width: 100%;
+  border: 1px solid rgba(219, 105, 55, 0.35);
+  background: rgba(219, 105, 55, 0.16);
+  color: #ffd2b8;
+  border-radius: 999px;
+  padding: 0.22rem 0.4rem 0.22rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.15;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.filter-bubble span {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-bubble i {
+  font-size: 0.78rem;
+  opacity: 0.8;
+  line-height: 1;
+}
+
+.filter-bubble.is-out {
+  background: rgba(220, 53, 69, 0.16);
+  border-color: rgba(220, 53, 69, 0.4);
+  color: #ffb4b8;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.filter-bubble:hover {
+  background: rgba(220, 53, 69, 0.22);
+  border-color: rgba(220, 53, 69, 0.5);
+  color: #fff;
+  text-decoration: none;
+  transform: translateY(-1px);
 }
 
 .filter-row-chevron {

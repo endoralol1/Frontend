@@ -430,21 +430,34 @@
 
   function updatePickerSummary(pickerId) {
     var $group = $('#' + pickerId + ' [data-summary-target]');
-    if (!$group.length) return;
-    var parts = [];
+    var $box = $('[data-summary-for="' + pickerId + '"]');
+    if (!$group.length || !$box.length) return;
+    var html = '';
     $group.find('.filter-tri').each(function () {
       var $btn = $(this);
       var label = $.trim($btn.find('span').first().text());
+      var val = String($btn.data('value'));
       if (!label) return;
-      if ($btn.hasClass('is-in')) parts.push(label);
-      else if ($btn.hasClass('is-out')) parts.push('−' + label);
+      var tone = $btn.hasClass('is-in') ? 'in' : ($btn.hasClass('is-out') ? 'out' : '');
+      if (!tone) return;
+      html += '<button type="button" class="filter-bubble is-' + tone + '" data-picker="' + pickerId + '" data-value="' + $('<div>').text(val).html() + '" title="Clear">' +
+        '<span>' + $('<div>').text(label).html() + '</span><i class="uil uil-times" aria-hidden="true"></i></button>';
     });
-    var text = 'Any';
-    if (parts.length) {
-      text = parts.slice(0, 2).join(', ') + (parts.length > 2 ? (' +' + (parts.length - 2)) : '');
-    }
-    $('[data-summary-for="' + pickerId + '"]').text(text);
+    $box.html(html);
+    if (html) $box.removeAttr('hidden');
+    else $box.attr('hidden', true);
   }
+
+  $(document).on('click', '.filter-bubble', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var pickerId = String($(this).data('picker') || '');
+    var value = String($(this).data('value'));
+    var $tri = $('#' + pickerId + ' .filter-tri').filter(function () {
+      return String($(this).data('value')) === value;
+    }).first();
+    if ($tri.length) setTriState($tri, 'off');
+  });
 
   function openFilterPicker(id) {
     var $picker = $('#' + id);
