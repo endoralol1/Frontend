@@ -57,7 +57,7 @@ $extraJs = $extraJs ?? [];
     <link rel="stylesheet" href="<?= e(asset('vendor/tooltipster.bundle.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/swiper.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/episode-carousel.css')) ?>">
-    <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=20260729-top10-clip">
+    <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=20260729-bottom-nav">
     <?php foreach ($extraCss as $css): ?>
         <link rel="stylesheet" href="<?= e($css) ?>">
     <?php endforeach; ?>
@@ -123,6 +123,7 @@ $extraJs = $extraJs ?? [];
     <?php require __DIR__ . '/../partials/header.php'; ?>
     <?php require $content; ?>
     <?php require __DIR__ . '/../partials/footer.php'; ?>
+    <?php require __DIR__ . '/../partials/bottom-nav.php'; ?>
 </div>
 
 <script src="<?= e(asset('vendor/lazysizes.min.js')) ?>" async></script>
@@ -130,7 +131,7 @@ $extraJs = $extraJs ?? [];
 <script src="<?= e(asset('vendor/bootstrap.bundle.min.js')) ?>" defer></script>
 <script src="<?= e(asset('vendor/tooltipster.bundle.min.js')) ?>" defer></script>
 <script src="<?= e(asset('vendor/swiper.min.js')) ?>" defer></script>
-<script src="<?= e(asset('js/app.js')) ?>?v=20260729-top10-clip" defer></script>
+<script src="<?= e(asset('js/app.js')) ?>?v=20260729-bottom-nav" defer></script>
 <?php foreach ($extraJs as $js): ?>
     <script src="<?= e($js) ?>" defer></script>
 <?php endforeach; ?>
