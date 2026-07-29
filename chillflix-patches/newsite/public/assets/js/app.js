@@ -262,7 +262,10 @@
     }
     window.__featuredSwiper = new Swiper('#featured', {
       loop: true,
-      autoplay: { delay: 5500, disableOnInteraction: false },
+      effect: 'fade',
+      fadeEffect: { crossFade: true },
+      speed: 900,
+      autoplay: { delay: 6500, disableOnInteraction: false },
       pagination: { el: '#featured .swiper-pagination', clickable: true },
       navigation: {
         nextEl: '#featured .swiper-button-next',

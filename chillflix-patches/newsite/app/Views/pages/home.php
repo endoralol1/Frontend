@@ -7,22 +7,23 @@
                 $href = media_url('movie', (int) $slide['id'], $t);
                 $bg = img_url($slide['backdrop_path'] ?? $slide['poster_path'] ?? null, 'original');
                 $rating = isset($slide['vote_average']) ? round((float) $slide['vote_average'], 1) : null;
-                $desc = truncate((string) ($slide['overview'] ?? ''), 180);
+                $desc = truncate((string) ($slide['overview'] ?? ''), 140);
             ?>
-            <div class="swiper-slide lazyload" data-bgset="<?= e($bg) ?>" style="background-color:#14171f;">
-                <div class="wrapper justify-content-center">
+            <div class="swiper-slide lazyload" data-bgset="<?= e($bg) ?>" style="background-color:#0a0c12;">
+                <div class="wrapper">
                     <div class="info">
+                        <div class="hero-kicker">Now Featured</div>
                         <div class="name"><?= e($t) ?></div>
                         <div class="meta">
                             <span class="rating status-icon">Movie</span>
-                            <?php if ($rating): ?><span><i class="uil uil-star"></i> <?= e((string) $rating) ?></span><?php endif; ?>
-                            <?php if ($y): ?><span><i class="uil uil-calender"></i> <?= e($y) ?></span><?php endif; ?>
+                            <?php if ($rating): ?><span class="hero-chip"><i class="uil uil-star"></i> <?= e((string) $rating) ?></span><?php endif; ?>
+                            <?php if ($y): ?><span class="hero-chip"><i class="uil uil-calender"></i> <?= e($y) ?></span><?php endif; ?>
                         </div>
                         <div class="desc"><?= e($desc) ?></div>
                         <div class="action">
                             <div>
-                                <a href="<?= e($href) ?>" class="btn btn-primary btn-lg rounded-pill px-4">
-                                    Watch Now <i class="uil uil-play"></i>
+                                <a href="<?= e($href) ?>" class="btn btn-primary btn-lg hero-watch-btn">
+                                    <i class="uil uil-play"></i><span>Watch Now</span>
                                 </a>
                             </div>
                         </div>
