@@ -667,7 +667,8 @@
     '#featured a.btn[href]',
     '.search-suggest a.suggest-item[href]',
     '.movie-sidebar .movie-item a[href]',
-    '.browse-sheet a[href]'
+    '.browse-sheet a[href]',
+    'header #menu a[href]'
   ].join(', ');
 
   function prefetchVisibleMediaLinks() {

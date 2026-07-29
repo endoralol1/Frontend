@@ -486,6 +486,93 @@ header.absolute {
   background: linear-gradient(180deg, rgba(8, 10, 14, 0.72) 0%, rgba(8, 10, 14, 0.18) 70%, transparent 100%) !important;
 }
 
+/* Header: EN closer to logo; desktop nav top-right */
+header .wrapper .start {
+  gap: 0.35rem;
+  min-width: auto;
+}
+
+header .wrapper .start .logo {
+  margin-right: 0;
+}
+
+header .wrapper .start #language-toggler {
+  margin-left: 0.35rem !important;
+  margin-right: 0 !important;
+}
+
+header .wrapper .start #language-toggler .lang-code {
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
+header .wrapper {
+  gap: 1rem;
+}
+
+/* Desktop horizontal menu on the right (before search) */
+@media (min-width: 992px) {
+  header .wrapper .start #menu-toggler {
+    display: none !important;
+  }
+
+  header #menu.header-nav,
+  header .wrapper #menu {
+    display: flex !important;
+    position: static !important;
+    top: auto !important;
+    margin-left: auto;
+    margin-right: 0.35rem;
+    align-items: center;
+  }
+
+  header #menu.header-nav > ul,
+  header .wrapper #menu > ul {
+    display: flex !important;
+    align-items: center;
+    gap: 0.15rem;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: auto !important;
+    overflow: visible !important;
+    list-style: none;
+  }
+
+  header #menu.header-nav > ul > li > a,
+  header .wrapper #menu > ul > li > a {
+    display: inline-flex !important;
+    align-items: center;
+    padding: 0.45rem 0.85rem !important;
+    border-radius: 999px;
+    color: rgba(233, 236, 239, 0.82);
+    font-weight: 600;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    justify-content: center;
+  }
+
+  header #menu.header-nav > ul > li > a:hover,
+  header #menu.header-nav > ul > li > a.active,
+  header .wrapper #menu > ul > li > a:hover,
+  header .wrapper #menu > ul > li > a.active {
+    background: rgba(219, 105, 55, 0.16) !important;
+    color: #ffd2b8 !important;
+  }
+
+  header .wrapper .step {
+    margin-left: 0;
+    flex: 0 0 auto;
+  }
+
+  header .wrapper .end {
+    display: none;
+  }
+}
+
+
 .footer {
   border-top: 1px solid var(--cf-line);
   margin-top: 1rem;
@@ -1320,7 +1407,8 @@ header.absolute {
 
   /* Replace hamburger with bottom nav on mobile */
   header .wrapper .start #menu-toggler,
-  header .wrapper .start #menu {
+  header #menu,
+  header .wrapper #menu {
     display: none !important;
   }
 
