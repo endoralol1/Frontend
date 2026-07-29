@@ -21,12 +21,12 @@ $poster = img_url($item['poster_path'] ?? null);
 $label = $type === 'tv' ? 'TV' : 'Movie';
 $rating = isset($item['vote_average']) ? round((float) $item['vote_average'], 1) : null;
 ?>
-<div class="movie-item media-card" data-id="<?= (int) $item['id'] ?>" data-type="<?= e($type) ?>">
+<div class="movie-item media-card<?= $rank !== null ? ' media-card--ranked' : '' ?>" data-id="<?= (int) $item['id'] ?>" data-type="<?= e($type) ?>"<?= $rank !== null ? ' data-rank="' . (int) $rank . '"' : '' ?>>
     <div class="inner">
+        <?php if ($rank !== null): ?>
+        <span class="card-rank" aria-label="Rank <?= (int) $rank ?>"><?= (int) $rank ?></span>
+        <?php endif; ?>
         <a class="item-poster" href="<?= e($href) ?>" data-tip="<?= (int) $item['id'] ?>" data-media-type="<?= e($type) ?>" aria-label="<?= e($title) ?>">
-            <?php if ($rank !== null): ?>
-            <span class="card-rank" aria-label="Rank <?= (int) $rank ?>"><?= (int) $rank ?></span>
-            <?php endif; ?>
             <div class="poster-media">
                 <img class="lazyload" data-src="<?= e($poster) ?>" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='100%25' height='100%25' fill='%231a1c23'/%3E%3C/svg%3E" alt="<?= e($title) ?>" width="300" height="450" loading="lazy">
             </div>

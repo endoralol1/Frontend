@@ -666,7 +666,150 @@ body {
   background: linear-gradient(0deg, rgba(219, 105, 55, 0.28) 0%, transparent 58%);
 }
 
-/* Small rank badge — top-left (Top 10 cards) */
+/* ——— Top 10: single horizontal row, ranks 1→10 left to right ——— */
+.section-top10 .top10-items {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: flex-end;
+  gap: 0.15rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  padding: 0.35rem 0.15rem 0.85rem;
+  margin: 0 -0.15rem;
+  float: none !important;
+  width: auto !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(219, 105, 55, 0.55) transparent;
+}
+
+.section-top10 .top10-items::after {
+  display: none !important;
+  content: none !important;
+}
+
+.section-top10 .top10-items .movie-item.media-card--ranked {
+  float: none !important;
+  flex: 0 0 auto;
+  width: 8.6rem !important;
+  max-width: 8.6rem;
+  margin: 0 !important;
+  padding: 0 0.15rem !important;
+  scroll-snap-align: start;
+  overflow: visible !important;
+}
+
+.section-top10 .top10-items .movie-item.media-card--ranked .inner {
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  padding: 0 0 0 1.55rem;
+  box-shadow: none;
+  transform: none;
+}
+
+.section-top10 .top10-items .movie-item.media-card--ranked .inner:hover {
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.section-top10 .top10-items .movie-item.media-card--ranked .inner .item-poster {
+  border-radius: 0.85rem;
+  z-index: 2;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+
+.section-top10 .top10-items .movie-item.media-card--ranked .inner:hover .item-poster {
+  outline: 1px solid rgba(219, 105, 55, 0.7);
+}
+
+/* Big rank sits behind / peeks left of poster */
+.section-top10 .top10-items .movie-item.media-card--ranked .card-rank {
+  position: absolute !important;
+  left: -0.1rem !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: -0.15rem !important;
+  z-index: 1;
+  display: block;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
+  font-size: 5.4rem;
+  font-weight: 800;
+  line-height: 0.8;
+  letter-spacing: -0.06em;
+  color: transparent;
+  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.88);
+  text-shadow: 0 0 18px rgba(0, 0, 0, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+
+.section-top10 .top10-items .movie-item.media-card--ranked[data-rank="10"] {
+  width: 9.4rem !important;
+  max-width: 9.4rem;
+}
+
+.section-top10 .top10-items .movie-item.media-card--ranked[data-rank="10"] .inner {
+  padding-left: 2.35rem;
+}
+
+.section-top10 .top10-items .movie-item.media-card--ranked[data-rank="10"] .card-rank {
+  font-size: 4.4rem;
+  left: -0.25rem !important;
+}
+
+.section-top10 .top10-items .movie-item.media-card--ranked .card-caption {
+  padding: 1.8rem 0.55rem 0.5rem !important;
+}
+
+.section-top10 .top10-items .movie-item.media-card--ranked .card-title {
+  font-size: 0.78rem;
+  -webkit-line-clamp: 1;
+}
+
+.section-top10 .top10-items .movie-item.media-card--ranked .card-kicker > span {
+  font-size: 0.52rem;
+  padding: 0.08rem 0.32rem;
+}
+
+@media (min-width: 992px) {
+  .section-top10 .top10-items .movie-item.media-card--ranked {
+    width: 10rem !important;
+    max-width: 10rem;
+  }
+
+  .section-top10 .top10-items .movie-item.media-card--ranked[data-rank="10"] {
+    width: 11rem !important;
+    max-width: 11rem;
+  }
+
+  .section-top10 .top10-items .movie-item.media-card--ranked .card-rank {
+    font-size: 6.4rem;
+  }
+
+  .section-top10 .top10-items .movie-item.media-card--ranked[data-rank="10"] .card-rank {
+    font-size: 5.2rem;
+  }
+
+  .section-top10 .top10-items .movie-item.media-card--ranked .inner {
+    padding-left: 1.9rem;
+  }
+
+  .section-top10 .top10-items .movie-item.media-card--ranked[data-rank="10"] .inner {
+    padding-left: 2.8rem;
+  }
+}
+
+/* Fallback tiny badge if ranked card appears outside Top 10 row */
 .movies.items .movie-item.media-card .card-rank {
   position: absolute !important;
   top: 0.4rem !important;
