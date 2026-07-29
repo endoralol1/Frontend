@@ -623,7 +623,7 @@
   }
 
   function prefetchBottomNavTargets() {
-    $('.bottom-nav-item').each(function () {
+    $('.bottom-nav-item[href]').each(function () {
       prefetchPage(this.href);
     });
   }
@@ -720,11 +720,11 @@
     prefetchPage(url).then(done);
   }
 
-  $(document).on('pointerdown', '.bottom-nav-item', function () {
+  $(document).on('pointerdown', '.bottom-nav-item[href]', function () {
     prefetchPage(this.href);
   });
 
-  $(document).on('click', '.bottom-nav-item', function (e) {
+  $(document).on('click', '.bottom-nav-item[href]', function (e) {
     var href = this.href;
     if (!href) return;
     try {
@@ -733,12 +733,70 @@
       return;
     }
     e.preventDefault();
+    closeBrowseSheet();
     if (samePage(href, window.location.href)) return;
 
     $('.bottom-nav-item').removeClass('active').removeAttr('aria-current');
     $(this).addClass('active').attr('aria-current', 'page');
 
     softNavigate(href, true);
+  });
+
+  function openBrowseSheet() {
+    var $sheet = $('#browse-sheet');
+    if (!$sheet.length) return;
+    $sheet.removeAttr('hidden').addClass('is-open');
+    $('body').addClass('browse-open');
+    $('.bottom-nav-browse').addClass('is-open').attr('aria-expanded', 'true');
+  }
+
+  function closeBrowseSheet() {
+    var $sheet = $('#browse-sheet');
+    if (!$sheet.length) return;
+    $sheet.removeClass('is-open').attr('hidden', true);
+    $('body').removeClass('browse-open');
+    $('.bottom-nav-browse').removeClass('is-open').attr('aria-expanded', 'false');
+  }
+
+  $(document).on('click', '.bottom-nav-browse', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if ($('#browse-sheet').hasClass('is-open')) closeBrowseSheet();
+    else openBrowseSheet();
+  });
+
+  $(document).on('click', '.browse-sheet-backdrop, .browse-sheet-close', function (e) {
+    e.preventDefault();
+    closeBrowseSheet();
+  });
+
+  $(document).on('click', '.browse-sheet-panel a', function () {
+    closeBrowseSheet();
+  });
+
+  $(document).on('click', '[data-browse-mock]', function (e) {
+    e.preventDefault();
+    var label = $.trim($(this).find('.browse-tile-label, .browse-card-copy strong, span').first().text()) || 'This';
+    var $note = $('#browse-mock-toast');
+    if (!$note.length) {
+      $note = $('<div id="browse-mock-toast" class="browse-mock-toast" role="status"></div>').appendTo('body');
+    }
+    $note.text(label + ' is mock data for now').addClass('is-visible');
+    clearTimeout(window.__browseMockToastTimer);
+    window.__browseMockToastTimer = setTimeout(function () {
+      $note.removeClass('is-visible');
+    }, 1600);
+  });
+
+  $(document).on('click', '[data-browse-ads]', function (e) {
+    e.preventDefault();
+    var $btn = $(this);
+    var on = !$btn.hasClass('is-on');
+    $btn.toggleClass('is-on', on).attr('aria-pressed', on ? 'true' : 'false').text(on ? 'ON' : 'OFF');
+  });
+
+  $(document).on('keydown', function (e) {
+    if (e.key === 'Escape') closeBrowseSheet();
   });
 
   window.addEventListener('popstate', function () {
