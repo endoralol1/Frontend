@@ -146,6 +146,26 @@
                         <button type="button" class="media-rail-nav media-rail-nav-next" aria-label="Scroll right"><i class="uil uil-angle-right"></i></button>
                     </div>
                 </div>
+
+                <?php if (!empty($latestEpisodes)): ?>
+                <div class="section section-rail section-episodes">
+                    <div class="head">
+                        <div class="start">
+                            <h2 class="title gardiently">Latest Episodes</h2>
+                            <a class="more" href="<?= e(url('/tv-series')) ?>"><span>View All</span> <i class="uil uil-arrow-right"></i></a>
+                        </div>
+                    </div>
+                    <div class="media-rail-wrap">
+                        <button type="button" class="media-rail-nav media-rail-nav-prev" aria-label="Scroll left"><i class="uil uil-angle-left"></i></button>
+                        <div class="episode-rail-items media-rail-items">
+                            <?php foreach ($latestEpisodes as $epItem) {
+                                require __DIR__ . '/../partials/episode-card.php';
+                            } ?>
+                        </div>
+                        <button type="button" class="media-rail-nav media-rail-nav-next" aria-label="Scroll right"><i class="uil uil-angle-right"></i></button>
+                    </div>
+                </div>
+                <?php endif; ?>
             </aside>
 
             <aside class="sidebar">
@@ -201,7 +221,7 @@
                 <div class="section">
                     <div class="head">
                         <div class="start">
-                            <h2 class="title gardiently">Recently Updated</h2>
+                            <h2 class="title gardiently">Latest Episodes</h2>
                         </div>
                         <div class="end">
                             <div class="btn-group pagination-control sidebar-slider-control" role="group">
@@ -217,10 +237,17 @@
                     <div class="body recently-updated-scrollable">
                         <div class="scaff movie-sidebar items" id="recently-updated-list" data-template="sidebar">
                             <?php
-                            foreach ($recentlyUpdated as $item) {
-                                if (($item['media_type'] ?? '') === 'person') continue;
-                                $type = (($item['media_type'] ?? 'movie') === 'tv') ? 'tv' : 'movie';
-                                require __DIR__ . '/../partials/sidebar-item.php';
+                            $episodeSidebar = !empty($latestEpisodes) ? $latestEpisodes : [];
+                            if ($episodeSidebar) {
+                                foreach ($episodeSidebar as $epItem) {
+                                    require __DIR__ . '/../partials/episode-list-item.php';
+                                }
+                            } else {
+                                foreach ($recentlyUpdated as $item) {
+                                    if (($item['media_type'] ?? '') === 'person') continue;
+                                    $type = (($item['media_type'] ?? 'movie') === 'tv') ? 'tv' : 'movie';
+                                    require __DIR__ . '/../partials/sidebar-item.php';
+                                }
                             }
                             ?>
                         </div>

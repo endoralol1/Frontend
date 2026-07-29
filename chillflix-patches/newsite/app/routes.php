@@ -301,6 +301,7 @@ function home(Tmdb $tmdb): void
     ])['results'] ?? [];
     $mostCommented = array_slice($tmdb->trending('all', 'day'), 0, 10);
     $recentlyUpdated = array_slice($tmdb->trending('all', 'week'), 0, 12);
+    $latestEpisodes = $tmdb->latestEpisodes(12);
 
     view('pages/home', [
         'featured' => $featured,
@@ -310,6 +311,7 @@ function home(Tmdb $tmdb): void
         'recommendedTv' => array_slice($recommendedTv, 0, 14),
         'latestMovies' => array_slice($latestMovies, 0, 14),
         'latestTv' => array_slice($latestTv, 0, 14),
+        'latestEpisodes' => $latestEpisodes,
         'mostCommented' => $mostCommented,
         'recentlyUpdated' => $recentlyUpdated,
         'seo' => [
