@@ -1877,12 +1877,17 @@ class DomainChecker
             // being branded outright scams.
             $overwhelmingSoft = $penalty >= 45 || ($penalty >= 26 && $aiDelta <= -12);
 
+            // Noisy public RBLs alone should not override a strongly positive finished scan.
+            $aiLeanPositive = ((string) ($this->data['analyst_lean'] ?? '') === 'positive');
+            $spamForcesSuspicious = !empty($this->data['spam_hit'])
+                && !($aiLeanPositive && $score >= 70 && $penalty < 14 && $aiDelta >= 0);
+
             if ($overwhelmingSoft) {
                 $verdict = 'likely_scam';
                 $reasons[] = 'Multiple strong scam heuristics point to fraud (no feed hit, but high-risk pattern).';
-            } elseif ($penalty >= 14 || $score < 45 || $aiDelta <= -10 || !empty($this->data['spam_hit'])) {
+            } elseif ($penalty >= 14 || $score < 45 || $aiDelta <= -10 || $spamForcesSuspicious) {
                 $verdict = 'suspicious';
-                $reasons[] = !empty($this->data['spam_hit'])
+                $reasons[] = !empty($this->data['spam_hit']) && $spamForcesSuspicious
                     ? 'Spam / blacklist reputation signals were found — treat with caution.'
                     : 'Elevated risk signals; not confirmed fraud, but be careful.';
             } elseif ($provisional) {
@@ -2374,6 +2379,13 @@ class DomainChecker
         $this->data['page_meta_description'] = '';
 
         $label = $kind === 'unreachable' ? 'Unreachable' : 'Website down';
+        $this->addSignal(
+            'content',
+            'Scan depth',
+            'Full check attempted',
+            'Live homepage fetch failed — site appears down/unreachable, so content signals are unavailable.',
+            'warn'
+        );
         $this->addSignal(
             'content',
             'Site availability',

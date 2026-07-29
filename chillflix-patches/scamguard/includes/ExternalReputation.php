@@ -901,6 +901,35 @@ class ExternalReputation
         }
 
         $raw = (string) $cached['raw'];
+
+        // Guard against bad Jina/MXToolbox captures that probe loopback test IPs
+        // (e.g. "Checking 127.0.0.2 against 60 known blacklists") — those are not
+        // this domain and produce huge false-positive "listed" counts.
+        $checkedLoopback = (bool) preg_match(
+            '/Checking\s+\*{0,2}127\.\d+\.\d+\.\d+\*{0,2}\s+against/i',
+            $raw
+        );
+        $mentionsDomain = (bool) preg_match(
+            '/(?:blacklist:|Checking\s+\*{0,2})' . preg_quote($this->domain, '/') . '/i',
+            $raw
+        );
+        if ($checkedLoopback || !$mentionsDomain) {
+            return [
+                'signal' => $this->sig(
+                    'threat',
+                    'Abuse / spam blacklists',
+                    'Unavailable',
+                    $checkedLoopback
+                        ? 'Public RBL sweep returned a loopback test probe — ignored as unreliable.'
+                        : 'Public RBL sweep did not clearly target this domain — ignored.',
+                    'neutral'
+                ),
+                'hit' => 0,
+                'penalty' => 0,
+                'bonus' => 0,
+            ];
+        }
+
         $listed = 0;
         if (preg_match('/Listed\s+\*\*?(\d+)\*\*?\s+times/i', $raw, $m)) {
             $listed = (int) $m[1];
