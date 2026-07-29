@@ -609,3 +609,152 @@ body {
   font-family: unicons-line;
 }
 
+/* ——— Media cards: bottom-left caption overlay ——— */
+.movies.items .movie-item.media-card .inner {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 1.1rem;
+  padding: 0;
+  overflow: hidden;
+}
+
+.movies.items .movie-item.media-card .inner:hover {
+  border-color: rgba(219, 105, 55, 0.65);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+
+.movies.items .movie-item.media-card .inner .item-poster {
+  display: block;
+  position: relative;
+  border-radius: 1.1rem;
+  overflow: hidden;
+  aspect-ratio: 2 / 3;
+  background: #1a1c23;
+}
+
+.movies.items .movie-item.media-card .inner .item-poster > div:not(.card-caption) {
+  height: 100%;
+}
+
+.movies.items .movie-item.media-card .inner .item-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.45s ease;
+}
+
+.movies.items .movie-item.media-card .inner:hover .item-poster img {
+  transform: scale(1.04);
+}
+
+/* Keep original play icon (:before) + hover tint (:after); soften after for polish */
+.movies.items .movie-item.media-card .inner .item-poster:after {
+  background: linear-gradient(0deg, rgba(219, 105, 55, 0.28) 0%, transparent 58%);
+}
+
+.movies.items .movie-item.media-card .card-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  padding: 2.4rem 0.8rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.28rem;
+  text-align: left;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(10, 12, 18, 0.2) 22%,
+    rgba(10, 12, 18, 0.78) 62%,
+    rgba(8, 10, 14, 0.96) 100%
+  );
+}
+
+.movies.items .movie-item.media-card .card-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.movies.items .movie-item.media-card .card-kicker > span {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 0.12rem 0.45rem;
+  line-height: 1.2;
+}
+
+.movies.items .movie-item.media-card .card-kicker > span:first-child {
+  color: #ffd2b8;
+  background: rgba(219, 105, 55, 0.22);
+  border-color: rgba(219, 105, 55, 0.4);
+}
+
+.movies.items .movie-item.media-card .card-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  color: #fff;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  max-width: 100%;
+}
+
+.movies.items .movie-item.media-card .inner .quality {
+  top: 0.55rem;
+  right: 0.55rem;
+  left: auto;
+  background: rgba(12, 14, 20, 0.72);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.45rem;
+  font-weight: 600;
+  font-size: 0.72rem;
+  height: auto;
+  line-height: 1;
+  padding: 0.28rem 0.42rem;
+}
+
+/* Hide the old below-poster meta on polished grid cards */
+.movies.items .movie-item.media-card .inner > .meta {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 768px) {
+  .movies.items .movie-item.media-card .card-caption {
+    padding: 2rem 0.65rem 0.6rem;
+  }
+
+  .movies.items .movie-item.media-card .card-title {
+    font-size: 0.82rem;
+  }
+
+  .movies.items .movie-item.media-card .card-kicker > span {
+    font-size: 0.58rem;
+    padding: 0.1rem 0.38rem;
+  }
+}
