@@ -1336,11 +1336,27 @@ header .wrapper {
 }
 
 aside.sidebar .section .head {
-  margin-bottom: 0.55rem;
+  margin-bottom: 0.65rem;
 }
 
-aside.sidebar .title {
-  font-size: 1.05rem;
+aside.sidebar .section .head .start {
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  gap: 0.45rem 0.55rem;
+}
+
+aside.sidebar .section .head .start .title {
+  flex: 1 1 100% !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  font-size: 1.15rem !important;
+  line-height: 1.2;
+  margin: 0 !important;
+}
+
+aside.sidebar .section .head .start .tabs {
+  flex: 0 0 auto;
 }
 
 .movie-sidebar.items .movie-item:hover {
