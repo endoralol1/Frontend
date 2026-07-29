@@ -18,22 +18,19 @@ $rating = isset($item['vote_average']) ? round((float) $item['vote_average'], 1)
 ?>
 <div class="movie-item media-card" data-id="<?= (int) $item['id'] ?>" data-type="<?= e($type) ?>">
     <div class="inner">
-        <?php if ($rating !== null && $rating > 0): ?>
-        <span class="quality" title="Rating"><?= e((string) $rating) ?></span>
-        <?php endif; ?>
         <a class="item-poster" href="<?= e($href) ?>" data-tip="<?= (int) $item['id'] ?>" data-media-type="<?= e($type) ?>" aria-label="<?= e($title) ?>">
-            <div>
+            <div class="poster-media">
                 <img class="lazyload" data-src="<?= e($poster) ?>" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='100%25' height='100%25' fill='%231a1c23'/%3E%3C/svg%3E" alt="<?= e($title) ?>" width="300" height="450" loading="lazy">
             </div>
             <div class="card-caption">
                 <span class="card-kicker">
                     <span><?= e($label) ?></span>
                     <?php if ($year): ?><span><?= e($year) ?></span><?php endif; ?>
+                    <?php if ($rating !== null && $rating > 0): ?><span class="card-rating">★ <?= e((string) $rating) ?></span><?php endif; ?>
                 </span>
                 <span class="card-title"><?= e($title) ?></span>
             </div>
         </a>
-        <!-- Keep for accessibility / older layouts; visually hidden by CSS on grid cards -->
         <div class="meta">
             <div class="meta-bg">
                 <span class="dot"><?= e($label) ?></span>
