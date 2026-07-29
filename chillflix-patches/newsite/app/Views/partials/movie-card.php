@@ -34,7 +34,6 @@ $ranked = $rank !== null;
             <div class="poster-media">
                 <img class="lazyload" data-src="<?= e($poster) ?>" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='100%25' height='100%25' fill='%231a1c23'/%3E%3C/svg%3E" alt="<?= e($title) ?>" width="300" height="450" loading="lazy">
             </div>
-            <?php if (!$ranked): ?>
             <div class="card-caption">
                 <span class="card-kicker">
                     <span><?= e($label) ?></span>
@@ -43,20 +42,7 @@ $ranked = $rank !== null;
                 </span>
                 <span class="card-title"><?= e($title) ?></span>
             </div>
-            <?php endif; ?>
         </a>
-        <?php if ($ranked): ?>
-        <div class="card-meta-below">
-            <a class="card-meta-title" href="<?= e($href) ?>"><?= e($title) ?></a>
-            <div class="card-meta-line">
-                <?php if ($rating !== null && $rating > 0): ?>
-                <span class="card-meta-rating"><i class="uil uil-star"></i> <?= e((string) $rating) ?></span>
-                <?php endif; ?>
-                <?php if ($year): ?><span><?= e($year) ?></span><?php endif; ?>
-                <span><?= e($label) ?></span>
-            </div>
-        </div>
-        <?php else: ?>
         <div class="meta">
             <div class="meta-bg">
                 <span class="dot"><?= e($label) ?></span>
@@ -64,6 +50,5 @@ $ranked = $rank !== null;
             </div>
             <a class="name" href="<?= e($href) ?>"><?= e($title) ?></a>
         </div>
-        <?php endif; ?>
     </div>
 </div>
