@@ -80,6 +80,10 @@
   $(document).on('click', '#show-search', function (e) {
     e.preventDefault();
     e.stopPropagation();
+    if (window.matchMedia('(max-width: 991.98px)').matches && $('#search-sheet').length) {
+      openSearchSheet();
+      return;
+    }
     var $search = $('#search');
     var $wrap = $('#search-wrapper');
     // Mobile CSS expects .active on #search-wrapper (not .show).
@@ -135,9 +139,7 @@
     return html;
   }
 
-  $(document).on('input', '#search-wrapper input[name=keyword]', function () {
-    var q = $.trim(this.value || '');
-    var $box = $('#search-wrapper .search-suggest');
+  function runLiveSearch(q, $box, $sheet) {
     clearTimeout(suggestTimer);
     if (suggestReq && suggestReq.abort) {
       try {
@@ -145,17 +147,21 @@
       } catch (err) {}
       suggestReq = null;
     }
+    q = $.trim(q || '');
     if (q.length < 2) {
       $box.removeClass('open').empty();
+      if ($sheet) $sheet.removeClass('has-results');
       return;
     }
     suggestTimer = setTimeout(function () {
       $box.html('<div class="suggest-empty">Searching movies &amp; TV…</div>').addClass('open');
+      if ($sheet) $sheet.addClass('has-results');
       suggestReq = $.getJSON((window.APP && APP.baseUrl ? APP.baseUrl : '') + '/api/search', {
         q: q,
       })
         .done(function (res) {
           $box.html(renderSearchSuggest(res && res.results)).addClass('open');
+          if ($sheet) $sheet.addClass('has-results');
         })
         .fail(function (xhr, status) {
           if (status === 'abort') return;
@@ -163,17 +169,27 @@
             .html('<div class="suggest-empty">Search failed — try again</div>')
             .addClass('open');
         });
-    }, 180);
+    }, 160);
+  }
+
+  $(document).on('input', '#search-wrapper input[name=keyword]', function () {
+    runLiveSearch(this.value, $('#search-wrapper .search-suggest'), null);
+  });
+
+  $(document).on('input', '#search-sheet-input', function () {
+    runLiveSearch(this.value, $('#search-sheet .search-sheet-suggest'), $('#search-sheet'));
   });
 
   $(document).on('click', function (e) {
-    if ($(e.target).closest('#search').length) return;
+    if ($(e.target).closest('#search, #search-sheet').length) return;
     $('#search-wrapper .search-suggest').removeClass('open').empty();
   });
 
   $(document).on('keydown', function (e) {
     if (e.key === 'Escape') {
       $('#search-wrapper .search-suggest').removeClass('open').empty();
+      closeSearchSheet();
+      closeBrowseSheet();
     }
   });
 
@@ -733,6 +749,7 @@
       return;
     }
     e.preventDefault();
+    closeSearchSheet();
     closeBrowseSheet();
     if (samePage(href, window.location.href)) return;
 
@@ -743,6 +760,7 @@
   });
 
   function openBrowseSheet() {
+    closeSearchSheet();
     var $sheet = $('#browse-sheet');
     if (!$sheet.length) return;
     $sheet.removeAttr('hidden').addClass('is-open');
@@ -758,6 +776,27 @@
     $('.bottom-nav-browse').removeClass('is-open').attr('aria-expanded', 'false');
   }
 
+  function openSearchSheet() {
+    closeBrowseSheet();
+    var $sheet = $('#search-sheet');
+    if (!$sheet.length) return;
+    $sheet.removeAttr('hidden').addClass('is-open');
+    $('body').addClass('search-open');
+    $('.bottom-nav-search').addClass('is-open').attr('aria-expanded', 'true');
+    setTimeout(function () {
+      $('#search-sheet-input').trigger('focus');
+    }, 80);
+  }
+
+  function closeSearchSheet() {
+    var $sheet = $('#search-sheet');
+    if (!$sheet.length) return;
+    $sheet.removeClass('is-open has-results').attr('hidden', true);
+    $('body').removeClass('search-open');
+    $('.bottom-nav-search').removeClass('is-open').attr('aria-expanded', 'false');
+    $('#search-sheet .search-sheet-suggest').removeClass('open').empty();
+  }
+
   $(document).on('click', '.bottom-nav-browse', function (e) {
     e.preventDefault();
     e.stopPropagation();
@@ -765,13 +804,33 @@
     else openBrowseSheet();
   });
 
+  $(document).on('click', '.bottom-nav-search', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if ($('#search-sheet').hasClass('is-open')) closeSearchSheet();
+    else openSearchSheet();
+  });
+
   $(document).on('click', '.browse-sheet-backdrop, .browse-sheet-close', function (e) {
     e.preventDefault();
     closeBrowseSheet();
   });
 
-  $(document).on('click', '.browse-sheet-panel a', function () {
+  $(document).on('click', '.search-sheet-backdrop, .search-sheet-close', function (e) {
+    e.preventDefault();
+    closeSearchSheet();
+  });
+
+  $(document).on('click', '.browse-sheet-panel a, .search-sheet-panel a', function () {
     closeBrowseSheet();
+    closeSearchSheet();
+  });
+
+  $(document).on('click', '[data-search-chip]', function (e) {
+    e.preventDefault();
+    var q = String($(this).data('search-chip') || '');
+    var $input = $('#search-sheet-input');
+    $input.val(q).trigger('input').trigger('focus');
   });
 
   $(document).on('click', '[data-browse-mock]', function (e) {
@@ -793,10 +852,6 @@
     var $btn = $(this);
     var on = !$btn.hasClass('is-on');
     $btn.toggleClass('is-on', on).attr('aria-pressed', on ? 'true' : 'false').text(on ? 'ON' : 'OFF');
-  });
-
-  $(document).on('keydown', function (e) {
-    if (e.key === 'Escape') closeBrowseSheet();
   });
 
   window.addEventListener('popstate', function () {

@@ -304,9 +304,10 @@ body {
   font-family: Poppins, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   color: var(--cf-muted);
   background:
-    radial-gradient(900px 520px at 15% -5%, rgba(219, 105, 55, 0.14), transparent 55%),
-    radial-gradient(760px 460px at 100% 0%, rgba(220, 53, 69, 0.08), transparent 50%),
-    linear-gradient(180deg, #171b24 0%, var(--cf-bg) 38%, var(--cf-bg-deep) 100%) !important;
+    radial-gradient(980px 560px at 12% -8%, rgba(219, 105, 55, 0.18), transparent 56%),
+    radial-gradient(820px 480px at 100% 0%, rgba(220, 53, 69, 0.1), transparent 52%),
+    radial-gradient(700px 420px at 50% 120%, rgba(219, 105, 55, 0.07), transparent 60%),
+    linear-gradient(180deg, #191d27 0%, var(--cf-bg) 36%, var(--cf-bg-deep) 100%) !important;
   background-attachment: fixed;
   background-color: var(--cf-bg) !important;
   min-height: 100%;
@@ -368,8 +369,20 @@ body.index > .wrapper .index-head:before {
   z-index: 1;
 }
 
+#featured .swiper-wrapper .swiper-slide .wrapper .info .action div .btn {
+  border-radius: 999px;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  box-shadow: 0 8px 22px rgba(220, 53, 69, 0.25);
+}
+
 #featured .swiper-wrapper .swiper-slide .wrapper .info .name {
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  text-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+.container > .aside-wrapper {
+  margin-top: 0.25rem;
 }
 
 #featured .swiper-wrapper .swiper-slide .wrapper .info .desc {
@@ -1184,10 +1197,10 @@ header.absolute {
   .bottom-nav-inner {
     pointer-events: auto;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     align-items: center;
-    gap: 0.15rem;
-    max-width: 26rem;
+    gap: 0.1rem;
+    max-width: 28rem;
     margin: 0 auto;
     padding: 0.35rem;
     border-radius: 1.35rem;
@@ -1243,7 +1256,7 @@ header.absolute {
   }
 
   .bottom-nav-label {
-    font-size: 0.68rem;
+    font-size: 0.62rem;
     font-weight: 600;
     letter-spacing: 0.01em;
     line-height: 1;
@@ -1284,6 +1297,275 @@ header.absolute {
   }
 
   .browse-sheet {
+    display: none !important;
+  }
+}
+
+/* ——— Search popup sheet ——— */
+.search-sheet {
+  display: none;
+}
+
+@media (max-width: 991.98px) {
+  .search-sheet {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 145;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+  }
+
+  .search-sheet.is-open {
+    pointer-events: auto;
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .search-sheet[hidden] {
+    display: none !important;
+  }
+
+  .search-sheet.is-open[hidden] {
+    display: block !important;
+  }
+
+  .search-sheet-backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background:
+      radial-gradient(700px 420px at 50% 15%, rgba(219, 105, 55, 0.22), transparent 60%),
+      rgba(4, 6, 10, 0.72);
+    backdrop-filter: blur(14px) saturate(1.15);
+    -webkit-backdrop-filter: blur(14px) saturate(1.15);
+    cursor: pointer;
+  }
+
+  .search-sheet-panel {
+    position: absolute;
+    left: 0.75rem;
+    right: 0.75rem;
+    top: max(0.85rem, env(safe-area-inset-top));
+    bottom: calc(4.85rem + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 1.45rem;
+    background: linear-gradient(180deg, rgba(28, 32, 42, 0.94) 0%, rgba(16, 19, 26, 0.96) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+    transform: translateY(28px) scale(0.96);
+    opacity: 0;
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
+  }
+
+  .search-sheet.is-open .search-sheet-panel {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+
+  .search-sheet-glow {
+    position: absolute;
+    inset: auto -20% -30% -20%;
+    height: 55%;
+    background: radial-gradient(circle at 50% 0%, rgba(219, 105, 55, 0.28), transparent 55%);
+    pointer-events: none;
+    filter: blur(8px);
+  }
+
+  .search-sheet-head {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1.05rem 1rem 0.55rem;
+  }
+
+  .search-sheet-kicker {
+    margin: 0 0 0.2rem;
+    color: rgba(255, 210, 184, 0.75);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .search-sheet-head h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.55rem;
+    font-weight: 750;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+
+  .search-sheet-close {
+    width: 2.2rem;
+    height: 2.2rem;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .search-sheet-close i {
+    font-size: 1.2rem;
+  }
+
+  .search-sheet-form {
+    position: relative;
+    z-index: 1;
+    padding: 0.35rem 1rem 0.55rem;
+  }
+
+  .search-sheet-field {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 3.15rem;
+    padding: 0.35rem 0.35rem 0.35rem 0.85rem;
+    border-radius: 1.1rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .search-sheet-field:focus-within {
+    border-color: rgba(219, 105, 55, 0.65);
+    box-shadow: 0 0 0 3px rgba(219, 105, 55, 0.18);
+  }
+
+  .search-sheet-field > i {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 1.2rem;
+  }
+
+  .search-sheet-field input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 500;
+    outline: none;
+  }
+
+  .search-sheet-field input::placeholder {
+    color: rgba(255, 255, 255, 0.38);
+  }
+
+  .search-sheet-go {
+    border: 0;
+    border-radius: 0.85rem;
+    min-width: 3rem;
+    height: 2.4rem;
+    padding: 0 0.85rem;
+    background: linear-gradient(135deg, #db6937 0%, #dc3545 100%);
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+
+  .search-sheet-chips {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    gap: 0.4rem;
+    overflow-x: auto;
+    padding: 0.15rem 1rem 0.65rem;
+    scrollbar-width: none;
+  }
+
+  .search-sheet-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .search-chip {
+    flex: 0 0 auto;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.82);
+    border-radius: 999px;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+
+  .search-sheet-suggest {
+    position: relative !important;
+    z-index: 1;
+    flex: 1;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    margin: 0 0.75rem 0.75rem !important;
+    max-height: none !important;
+    border-radius: 1rem !important;
+    background: rgba(10, 12, 18, 0.45) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    display: none;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .search-sheet-suggest.open {
+    display: block !important;
+  }
+
+  .search-sheet-empty-hint {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 1.4rem 1rem 1.6rem;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.82rem;
+    font-weight: 500;
+  }
+
+  .search-sheet.has-results .search-sheet-empty-hint {
+    display: none;
+  }
+
+  .search-sheet-empty-hint i {
+    color: #db6937;
+    font-size: 1.1rem;
+  }
+
+  .bottom-nav-item.bottom-nav-search.is-open {
+    color: #fff;
+  }
+
+  .bottom-nav-item.bottom-nav-search.is-open .bottom-nav-icon {
+    color: #fff;
+    background: linear-gradient(180deg, rgba(219, 105, 55, 0.95) 0%, rgba(220, 53, 69, 0.92) 100%);
+    box-shadow: 0 6px 16px rgba(220, 53, 69, 0.35);
+  }
+
+  body.search-open {
+    overflow: hidden;
+  }
+
+  /* Hide header search button on mobile — use bottom nav popup instead */
+  header .wrapper .step #search #show-search {
+    display: none !important;
+  }
+}
+
+@media (min-width: 992px) {
+  .search-sheet {
     display: none !important;
   }
 }

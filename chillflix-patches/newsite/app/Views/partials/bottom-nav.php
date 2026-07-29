@@ -18,12 +18,49 @@ $navTv = is_active('/tv-series') || (bool) preg_match('#^/tv(/|$)#', $path);
             <span class="bottom-nav-icon"><i class="uil uil-tv-retro" aria-hidden="true"></i></span>
             <span class="bottom-nav-label">TV</span>
         </a>
+        <button type="button" class="bottom-nav-item bottom-nav-search" aria-haspopup="dialog" aria-controls="search-sheet" aria-expanded="false">
+            <span class="bottom-nav-icon"><i class="uil uil-search" aria-hidden="true"></i></span>
+            <span class="bottom-nav-label">Search</span>
+        </button>
         <button type="button" class="bottom-nav-item bottom-nav-browse" aria-haspopup="dialog" aria-controls="browse-sheet" aria-expanded="false">
             <span class="bottom-nav-icon"><i class="uil uil-apps" aria-hidden="true"></i></span>
             <span class="bottom-nav-label">Browse</span>
         </button>
     </div>
 </nav>
+
+<div class="search-sheet" id="search-sheet" hidden>
+    <button type="button" class="search-sheet-backdrop" aria-label="Close search"></button>
+    <div class="search-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="search-sheet-title">
+        <div class="search-sheet-glow" aria-hidden="true"></div>
+        <div class="search-sheet-head">
+            <div>
+                <p class="search-sheet-kicker">Find something to watch</p>
+                <h2 id="search-sheet-title">Search</h2>
+            </div>
+            <button type="button" class="search-sheet-close" aria-label="Close search"><i class="uil uil-times"></i></button>
+        </div>
+        <form class="search-sheet-form" action="<?= e(url('/search')) ?>" method="get" autocomplete="off" role="search">
+            <div class="search-sheet-field">
+                <i class="uil uil-search" aria-hidden="true"></i>
+                <input id="search-sheet-input" type="search" name="keyword" placeholder="Movies, TV shows, anime…" aria-label="Search movies and TV shows" enterkeyhint="search">
+                <button type="submit" class="search-sheet-go">Go</button>
+            </div>
+        </form>
+        <div class="search-sheet-chips" aria-label="Quick searches">
+            <button type="button" class="search-chip" data-search-chip="action">Action</button>
+            <button type="button" class="search-chip" data-search-chip="comedy">Comedy</button>
+            <button type="button" class="search-chip" data-search-chip="horror">Horror</button>
+            <button type="button" class="search-chip" data-search-chip="anime">Anime</button>
+            <button type="button" class="search-chip" data-search-chip="marvel">Marvel</button>
+        </div>
+        <div class="search-sheet-suggest search-suggest" role="listbox" aria-label="Search suggestions"></div>
+        <div class="search-sheet-empty-hint">
+            <i class="uil uil-bolt-alt"></i>
+            <span>Start typing — results show up instantly</span>
+        </div>
+    </div>
+</div>
 
 <div class="browse-sheet" id="browse-sheet" hidden>
     <button type="button" class="browse-sheet-backdrop" aria-label="Close browse"></button>
