@@ -421,10 +421,19 @@ body.index > .wrapper .index-head:before {
   border-color: transparent;
 }
 
-.movies.items .movie-item.media-card .inner:hover {
-  border-color: rgba(219, 105, 55, 0.55);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+.movies.items .movie-item.media-card.is-opening .inner,
+.movies.items .movie-item.is-opening .inner {
+  opacity: 0.72;
+  transform: scale(0.985);
+  transition: opacity 0.12s ease, transform 0.12s ease;
 }
+
+.movies.items .movie-item a.item-poster,
+.movies.items .movie-item a.name {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
 
 .movie-sidebar.items .movie-item {
   background: linear-gradient(90deg, rgba(34, 38, 50, 0.92) 0%, rgba(20, 23, 31, 0.92) 100%);

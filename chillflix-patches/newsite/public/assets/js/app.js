@@ -595,6 +595,7 @@
   var pageCache = Object.create(null);
   var pageInflight = Object.create(null);
   var softNavBusy = false;
+  var softNavToken = 0;
 
   function absoluteUrl(href) {
     try {
@@ -644,6 +645,64 @@
     });
   }
 
+  function isInternalSoftUrl(href) {
+    try {
+      var u = new URL(absoluteUrl(href));
+      if (u.origin !== window.location.origin) return false;
+      var path = u.pathname || '';
+      // Stay inside newsite app routes only
+      return /\/(home|movies|tv-series|movie\/|tv\/|search|favorites|top-imdb|filters|contact|request)(\/|$|\?)/.test(path)
+        || /\/newsite\/?$/.test(path)
+        || path.endsWith('/newsite')
+        || path.endsWith('/newsite/');
+    } catch (e) {
+      return false;
+    }
+  }
+
+  var mediaSoftLinkSelector = [
+    '.movie-item a.item-poster[href]',
+    '.movie-item a.name[href]',
+    '.media-card a.card-meta-title[href]',
+    '#featured a.btn[href]',
+    '.search-suggest a.suggest-item[href]',
+    '.movie-sidebar .movie-item a[href]',
+    '.browse-sheet a[href]'
+  ].join(', ');
+
+  function prefetchVisibleMediaLinks() {
+    $(mediaSoftLinkSelector).each(function () {
+      if (this.href && isInternalSoftUrl(this.href)) prefetchPage(this.href);
+    });
+  }
+
+  function bindMediaPrefetchObserver() {
+    if (!('IntersectionObserver' in window)) {
+      prefetchVisibleMediaLinks();
+      return;
+    }
+    if (window.__mediaPrefetchObs) {
+      try {
+        window.__mediaPrefetchObs.disconnect();
+      } catch (e) {}
+    }
+    window.__mediaPrefetchObs = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          var a = entry.target.closest('a[href]');
+          if (a && a.href && isInternalSoftUrl(a.href)) prefetchPage(a.href);
+          window.__mediaPrefetchObs.unobserve(entry.target);
+        });
+      },
+      { rootMargin: '240px 0px', threshold: 0.01 }
+    );
+    $(mediaSoftLinkSelector).each(function () {
+      window.__mediaPrefetchObs.observe(this);
+    });
+  }
+
+
   function refreshLazyMedia() {
     if (window.lazySizes && lazySizes.loader && typeof lazySizes.loader.checkElems === 'function') {
       lazySizes.loader.checkElems();
@@ -663,6 +722,7 @@
   }
 
   function afterSoftNav() {
+    $('.movie-item.is-opening').removeClass('is-opening');
     updateFavCounter();
     initSwiper();
     initRecentlyUpdated();
@@ -678,6 +738,7 @@
     });
     refreshLazyMedia();
     prefetchBottomNavTargets();
+    bindMediaPrefetchObserver();
   }
 
   function applySoftNavHtml(html, url, push) {
@@ -713,10 +774,10 @@
 
   function softNavigate(url, push) {
     url = absoluteUrl(url);
-    if (softNavBusy) return;
-    softNavBusy = true;
+    var token = ++softNavToken;
 
     function done(html) {
+      if (token !== softNavToken) return;
       softNavBusy = false;
       if (!html) {
         window.location.href = url;
@@ -725,9 +786,10 @@
       applySoftNavHtml(html, url, push);
     }
 
+    softNavBusy = true;
     if (pageCache[url]) {
       done(pageCache[url]);
-      // Refresh cache in background
+      // Refresh cache in background for next time
       delete pageCache[url];
       prefetchPage(url);
       return;
@@ -738,6 +800,10 @@
 
   $(document).on('pointerdown', '.bottom-nav-item[href]', function () {
     prefetchPage(this.href);
+  });
+
+  $(document).on('pointerdown', mediaSoftLinkSelector, function () {
+    if (this.href && isInternalSoftUrl(this.href)) prefetchPage(this.href);
   });
 
   $(document).on('click', '.bottom-nav-item[href]', function (e) {
@@ -755,6 +821,23 @@
 
     $('.bottom-nav-item').removeClass('active').removeAttr('aria-current');
     $(this).addClass('active').attr('aria-current', 'page');
+
+    softNavigate(href, true);
+  });
+
+  $(document).on('click', mediaSoftLinkSelector, function (e) {
+    var href = this.href;
+    if (!href || !isInternalSoftUrl(href)) return;
+    // Let modified clicks behave normally
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.which === 2) return;
+    e.preventDefault();
+    closeSearchSheet();
+    closeBrowseSheet();
+    if (samePage(href, window.location.href)) return;
+
+    var $card = $(this).closest('.movie-item');
+    $('.movie-item.is-opening').removeClass('is-opening');
+    if ($card.length) $card.addClass('is-opening');
 
     softNavigate(href, true);
   });
@@ -886,9 +969,13 @@
     if ('requestIdleCallback' in window) {
       requestIdleCallback(function () {
         prefetchBottomNavTargets();
+        bindMediaPrefetchObserver();
       }, { timeout: 800 });
     } else {
-      setTimeout(prefetchBottomNavTargets, 120);
+      setTimeout(function () {
+        prefetchBottomNavTargets();
+        bindMediaPrefetchObserver();
+      }, 120);
     }
   });
 })(jQuery);
