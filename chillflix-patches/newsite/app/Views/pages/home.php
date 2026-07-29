@@ -1,5 +1,6 @@
 <main>
     <div class="swiper swiper-container" id="featured">
+        <div class="hero-toplift" aria-hidden="true"></div>
         <div class="swiper-wrapper">
             <?php foreach ($featured as $slide):
                 $t = title_of($slide);

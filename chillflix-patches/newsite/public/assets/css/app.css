@@ -376,18 +376,21 @@ body {
 
 #featured .swiper-wrapper .swiper-slide {
   background-color: #0a0c12 !important;
-  /* Bias crop toward mid/lower art so the logo sits on brighter image, not dark sky */
-  background-position: center 68% !important;
+  background-position: center 58% !important;
   background-size: cover !important;
   background-repeat: no-repeat !important;
   overflow: hidden;
-  /* Kill theme full-bleed .swiper-slide::after wash (#0000004d → #000000b3) */
   -webkit-box-shadow: none !important;
   box-shadow: none !important;
   filter: none !important;
 }
 
-/* Absolutely no top/left/full-bleed overlays over the hero art */
+/*
+ * Theme ships a FULL-HEIGHT `.swiper-slide::after` dark wash
+ * (linear-gradient(#0000004d, #000000b3) with top:0). That is what darkened
+ * the logo zone. Disable every slide pseudo on #featured, then paint only a
+ * small bottom-left text scrim (never touches the header/logo).
+ */
 #featured .swiper-slide:before,
 #featured .swiper-slide::before,
 #featured .swiper-wrapper .swiper-slide:before,
@@ -399,15 +402,8 @@ body.index > .wrapper .index-head:before {
   background-image: none !important;
   box-shadow: none !important;
   opacity: 0 !important;
-  height: 0 !important;
-  width: 0 !important;
 }
 
-/*
- * Theme ships `.swiper-slide::after { top:0; bottom:0; linear-gradient(#0000004d,#000000b3) }`
- * which paints a full-height dark wash (including behind the logo). Replace with a
- * compact bottom-left text scrim only — top of hero stays pure image.
- */
 #featured .swiper-slide:after,
 #featured .swiper-slide::after,
 #featured .swiper-wrapper .swiper-slide:after,
@@ -419,20 +415,36 @@ body.index > .wrapper .index-head:before {
   right: auto !important;
   bottom: 0 !important;
   top: auto !important;
-  width: min(40rem, 58%) !important;
-  height: min(48%, 17rem) !important;
-  max-height: 17rem;
+  width: min(38rem, 52%) !important;
+  height: min(42%, 15rem) !important;
   background: linear-gradient(
-    105deg,
-    rgba(8, 10, 16, 0.88) 0%,
-    rgba(8, 10, 16, 0.45) 55%,
+    115deg,
+    rgba(8, 10, 16, 0.82) 0%,
+    rgba(8, 10, 16, 0.35) 58%,
     transparent 100%
   ) !important;
   box-shadow: none !important;
   filter: none !important;
-  opacity: 1 !important;
   pointer-events: none;
   z-index: 1;
+}
+
+/* Soft lift under the header so cinematic dark skies don't read as a CSS wash */
+#featured > .hero-toplift,
+#featured .hero-toplift {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5.5rem;
+  z-index: 3;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.14) 0%,
+    rgba(255, 255, 255, 0.05) 45%,
+    transparent 100%
+  );
 }
 
 /* Text stays DOWN in the hero; image is full-bleed under logo */
