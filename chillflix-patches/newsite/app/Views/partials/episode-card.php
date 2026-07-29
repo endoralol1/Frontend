@@ -1,6 +1,6 @@
 <?php
 /**
- * Landscape latest-episode card for homepage rail.
+ * Landscape latest-episode card — still fills the card; title sits on the image.
  * @var array $epItem
  */
 $id = (int) ($epItem['id'] ?? 0);
@@ -26,13 +26,13 @@ $badge = 'S' . $season . ' · E' . $episode;
              alt="<?= e($title . ' - ' . $badge) ?>"
              loading="lazy">
         <span class="episode-card-badge"><?= e($badge) ?></span>
-    </div>
-    <div class="episode-card-meta">
-        <div class="episode-card-show"><?= e($title) ?></div>
-        <div class="episode-card-ep"><?= e($epName) ?></div>
-        <div class="episode-card-sub">
-            <?php if ($airLabel !== ''): ?><span><?= e($airLabel) ?></span><?php endif; ?>
-            <?php if ($rating !== null): ?><span><i class="uil uil-star"></i> <?= e((string) $rating) ?></span><?php endif; ?>
+        <div class="episode-card-meta">
+            <div class="episode-card-show"><?= e($title) ?></div>
+            <div class="episode-card-ep"><?= e($epName) ?></div>
+            <div class="episode-card-sub">
+                <?php if ($airLabel !== ''): ?><span><?= e($airLabel) ?></span><?php endif; ?>
+                <?php if ($rating !== null): ?><span><i class="uil uil-star"></i> <?= e((string) $rating) ?></span><?php endif; ?>
+            </div>
         </div>
     </div>
 </a>

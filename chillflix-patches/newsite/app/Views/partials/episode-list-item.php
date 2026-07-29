@@ -8,7 +8,10 @@ $title = (string) ($epItem['title'] ?? 'Untitled');
 $season = (int) ($epItem['season'] ?? 1);
 $episode = (int) ($epItem['episode'] ?? 1);
 $epName = (string) ($epItem['episode_name'] ?? ('Episode ' . $episode));
-$poster = img_url($epItem['poster_path'] ?? $epItem['still_path'] ?? null, 'w185');
+$poster = img_url(
+    $epItem['still_path'] ?? $epItem['poster_path'] ?? $epItem['backdrop_path'] ?? null,
+    'w300'
+);
 $href = media_url('tv', $id, $title) . '?s=' . $season . '&e=' . $episode;
 $badge = 'S' . $season . 'E' . $episode;
 ?>
