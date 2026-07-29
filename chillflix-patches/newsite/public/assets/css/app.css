@@ -433,78 +433,109 @@ body.index > .wrapper .index-head:before {
 }
 
 .section .head .start {
-  gap: 0.55rem 0.85rem;
+  gap: 0.55rem 0.75rem;
   flex-direction: row !important;
   align-items: center !important;
-  flex-wrap: nowrap;
+  flex-wrap: nowrap !important;
   width: 100%;
   min-width: 0;
 }
 
 .section .head .start .title {
   letter-spacing: -0.02em;
-  margin-right: 0.35rem;
+  margin-right: 0 !important;
   margin-bottom: 0 !important;
   display: inline-flex;
   align-items: center;
-  gap: 0.8rem;
-  flex: 0 1 auto;
+  gap: 0.7rem;
+  flex: 1 1 auto;
   min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .section .head .start .title::before {
   content: "";
   display: inline-block;
   width: 0.22rem;
-  height: 1.15em;
+  height: 1.05em;
   border-radius: 999px;
   background: var(--cf-orange, #db6937);
   flex-shrink: 0;
 }
 
+/* Shared right-side header control size (toggle + View All) */
 .section .head .start .tabs,
-.tabs {
-  gap: 0.35rem;
+.section .head .start a.more {
   flex: 0 0 auto;
+  margin-left: auto;
+  height: 2.05rem;
+  box-sizing: border-box;
+}
+
+/* Segmented Movies / TV (and Day/Week/Month) toggle */
+.section .head .start .tabs {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.18rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .section .head .start .tabs .tab,
 .tabs .tab {
-  border-radius: 999px;
-  padding: 0.32rem 0.8rem;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 0.35rem 0.78rem !important;
+  font-size: 0.74rem !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  color: rgba(233, 236, 239, 0.58) !important;
+  background: transparent !important;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
 }
 
 .section .head .start .tabs .tab.active,
-.tabs .tab.active {
-  background: rgba(219, 105, 55, 0.18);
-  color: #ffd2b8;
-  border-color: rgba(219, 105, 55, 0.28);
+.section .head .start .tabs .tab:hover,
+.tabs .tab.active,
+.tabs .tab:hover {
+  background: linear-gradient(135deg, #db6937 0%, #c43c2e 100%) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px rgba(196, 60, 46, 0.32);
 }
 
 .tabs .tab + .tab {
-  margin-left: 0;
+  margin-left: 0 !important;
 }
 
-/* View All — same row as title, sleek pill aligned right */
+/* View All — same height/row as toggle, quiet but clear */
 .section .head .start a.more {
-  margin-left: auto;
-  flex: 0 0 auto;
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
+  justify-content: center;
   gap: 0.28rem;
-  padding: 0.32rem 0.75rem 0.32rem 0.85rem;
+  padding: 0 0.85rem 0 0.95rem;
   border-radius: 999px;
-  border: 1px solid rgba(219, 105, 55, 0.28);
-  background: rgba(219, 105, 55, 0.12);
-  color: #ffd2b8;
-  font-size: 0.78rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.82) !important;
+  font-size: 0.74rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1;
-  text-decoration: none;
+  text-decoration: none !important;
   white-space: nowrap;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
 }
 
 .section .head .start a.more span {
@@ -514,42 +545,74 @@ body.index > .wrapper .index-head:before {
 .section .head .start a.more i {
   font-size: 0.95rem;
   line-height: 1;
-  opacity: 0.9;
-  transition: transform 0.15s ease;
+  color: #ffd2b8;
+  transition: transform 0.16s ease;
 }
 
 .section .head .start a.more:hover {
-  background: rgba(219, 105, 55, 0.22);
-  border-color: rgba(219, 105, 55, 0.45);
-  color: #ffe0cc;
+  background: rgba(219, 105, 55, 0.18);
+  border-color: rgba(219, 105, 55, 0.42);
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(196, 60, 46, 0.22);
   transform: translateY(-1px);
 }
 
 .section .head .start a.more:hover i {
   transform: translateX(2px);
+  color: #ffe0cc;
 }
 
 @media (max-width: 991.98px) {
   .section .head .start {
-    gap: 0.45rem 0.65rem;
+    gap: 0.4rem 0.55rem;
   }
 
   .section .head .start .title {
-    margin-right: 0;
-    font-size: 1.2rem;
+    font-size: 1.15rem;
+  }
+
+  .section .head .start .tabs,
+  .section .head .start a.more {
+    height: 1.9rem;
+  }
+
+  .section .head .start .tabs .tab,
+  .tabs .tab {
+    padding: 0.3rem 0.62rem !important;
+    font-size: 0.68rem !important;
   }
 
   .section .head .start a.more {
-    padding: 0.28rem 0.65rem 0.28rem 0.72rem;
-    font-size: 0.72rem;
+    padding: 0 0.7rem 0 0.78rem;
+    font-size: 0.68rem;
   }
 }
 
 @media (max-width: 479.98px) {
-  .section .head .start .tabs .tab,
-  .tabs .tab {
-    padding: 0.28rem 0.62rem;
-    font-size: 0.82rem;
+  /* Compact labels so title + toggle always fit one line */
+  .section .head .start .tabs .tab[data-name="tv"] {
+    font-size: 0 !important;
+  }
+
+  .section .head .start .tabs .tab[data-name="tv"]::after {
+    content: "TV";
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .section .head .start a.more {
+    padding: 0 0.58rem 0 0.68rem;
+  }
+
+  .section .head .start a.more span {
+    font-size: 0;
+  }
+
+  .section .head .start a.more span::after {
+    content: "All";
+    font-size: 0.68rem;
+    font-weight: 600;
   }
 }
 
