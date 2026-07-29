@@ -392,9 +392,9 @@ body.index > .wrapper .index-head:before {
   width: 100% !important;
   top: 0 !important;
   z-index: 1 !important;
+  /* No top vignette — that read as a shadow behind the logo */
   background:
-    linear-gradient(90deg, rgba(8, 10, 16, 0.78) 0%, rgba(8, 10, 16, 0.32) 40%, transparent 72%),
-    linear-gradient(180deg, rgba(8, 10, 16, 0.55) 0%, transparent 40%),
+    linear-gradient(90deg, rgba(8, 10, 16, 0.72) 0%, rgba(8, 10, 16, 0.28) 38%, transparent 70%),
     linear-gradient(0deg, rgba(8, 10, 16, 0.92) 0%, rgba(8, 10, 16, 0.4) 34%, transparent 62%) !important;
   pointer-events: none;
 }
@@ -610,9 +610,34 @@ body.index > .wrapper .index-head:before {
   background: linear-gradient(90deg, #db6937, #c43c2e);
 }
 
-/* Transparent header over full-bleed hero */
-header.absolute {
+/* Kill every header wash/shadow over the hero (theme uses #000c gradient) */
+header.absolute,
+header.absolute.absolute {
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+header.absolute::before,
+header.absolute::after {
+  content: none !important;
+  display: none !important;
+}
+
+header.absolute .wrapper,
+header.absolute .container,
+header.absolute .logo,
+header.absolute .logo a,
+header.absolute .logo img {
   background: transparent !important;
+  box-shadow: none !important;
+  filter: none !important;
+  text-shadow: none !important;
 }
 
 .container > .aside-wrapper {
@@ -916,10 +941,14 @@ body .wrapper > .container {
   border-color: var(--cf-line);
 }
 
-header.absolute {
-  background: transparent !important;
+header.absolute,
+header.absolute.absolute {
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
   margin-bottom: 0 !important;
   border: 0 !important;
+  box-shadow: none !important;
 }
 
 /* Header: EN tight to logo; desktop nav top-right */
