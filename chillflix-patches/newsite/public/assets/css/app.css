@@ -1712,10 +1712,27 @@ aside.sidebar .section .head .start .tabs {
 }
 
 @media (max-width: 991.98px) {
+  /* Phone/tablet: big cards — only ~2.5 visible, scroll for more */
+  .section-top10 .top10-items {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    gap: 0;
+    scroll-snap-type: x mandatory;
+    padding: 0.25rem 1rem 0.85rem 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
   .section-top10 .top10-items .movie-item.media-card--ranked {
-    flex: 0 0 9rem;
-    width: 9rem !important;
-    max-width: 9rem;
+    flex: 0 0 calc((100% - 0.75rem) / 2.35) !important;
+    width: calc((100% - 0.75rem) / 2.35) !important;
+    max-width: none !important;
+    min-width: 9.5rem;
+    padding: 0 0.35rem 0 0 !important;
+    margin: 0 !important;
+    scroll-snap-align: start;
   }
 
   .section-top10 .top10-nav {
@@ -1725,13 +1742,15 @@ aside.sidebar .section .head .start .tabs {
 
 @media (max-width: 479.98px) {
   .section-top10 .top10-items {
-    padding-right: 1.25rem;
+    padding-right: 1.25rem !important;
   }
 
   .section-top10 .top10-items .movie-item.media-card--ranked {
-    flex: 0 0 8rem;
-    width: 8rem !important;
-    max-width: 8rem;
+    /* ~2 cards + peek of the next */
+    flex: 0 0 calc((100% - 0.55rem) / 2.15) !important;
+    width: calc((100% - 0.55rem) / 2.15) !important;
+    min-width: 10.25rem;
+    padding: 0 0.28rem 0 0 !important;
   }
 }
 
@@ -1830,10 +1849,26 @@ aside.sidebar .section .head .start .tabs {
 }
 
 @media (max-width: 991.98px) {
+  .section-rail .media-rail-items {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    gap: 0;
+    scroll-snap-type: x mandatory;
+    padding: 0.15rem 1rem 0.55rem 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
   .section-rail .media-rail-items .movie-item {
-    flex: 0 0 9rem;
-    width: 9rem !important;
-    max-width: 9rem;
+    flex: 0 0 calc((100% - 0.75rem) / 2.35) !important;
+    width: calc((100% - 0.75rem) / 2.35) !important;
+    max-width: none !important;
+    min-width: 9.5rem;
+    padding: 0 0.35rem 0 0 !important;
+    margin: 0 !important;
+    scroll-snap-align: start;
   }
 
   .section-rail .media-rail-nav {
@@ -1843,13 +1878,14 @@ aside.sidebar .section .head .start .tabs {
 
 @media (max-width: 479.98px) {
   .section-rail .media-rail-items {
-    padding-right: 1.25rem;
+    padding-right: 1.25rem !important;
   }
 
   .section-rail .media-rail-items .movie-item {
-    flex: 0 0 8rem;
-    width: 8rem !important;
-    max-width: 8rem;
+    flex: 0 0 calc((100% - 0.55rem) / 2.15) !important;
+    width: calc((100% - 0.55rem) / 2.15) !important;
+    min-width: 10.25rem;
+    padding: 0 0.28rem 0 0 !important;
   }
 }
 
@@ -2146,11 +2182,15 @@ aside.sidebar .section .head .start .tabs {
 
 @media (max-width: 768px) {
   .movies.items .movie-item.media-card .card-caption {
-    padding: 2.1rem 0.65rem 0.55rem !important;
+    padding: 2.35rem 0.75rem 0.65rem !important;
   }
 
   .movies.items .movie-item.media-card .card-title {
-    font-size: 0.8rem;
+    font-size: 0.95rem;
+  }
+
+  .movies.items .movie-item.media-card .card-meta {
+    font-size: 0.72rem;
   }
 }
 
