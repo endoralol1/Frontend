@@ -1006,6 +1006,12 @@ class DomainChecker
         ) ? 1 : 0;
 
         $hasLogin = detect_login_ui($html);
+        $loginViaProbe = false;
+        // Jina/archive fallbacks often strip SPA auth chrome — probe common auth routes.
+        if (!$hasLogin && !$challenge) {
+            $loginViaProbe = $this->probeAuthPages();
+            $hasLogin = $loginViaProbe;
+        }
         $hasPayment = detect_payment_ui($html);
         $hasCryptoPay = (bool) preg_match(
             '/\b(bitcoin|btc|ethereum|eth|usdt|usdc|crypto(currency)?|wallet address|send (btc|eth)|coinpayments?|binance pay)\b/i',
@@ -1016,6 +1022,7 @@ class DomainChecker
             $html
         );
         $this->data['has_login'] = $hasLogin ? 1 : 0;
+        $this->data['login_via_probe'] = $loginViaProbe ? 1 : 0;
         $this->data['has_payment'] = $hasPayment ? 1 : 0;
         $this->data['crypto_only_payment'] = ($hasCryptoPay && !$hasCardPay) ? 1 : 0;
 
@@ -1249,13 +1256,17 @@ class DomainChecker
                     : 'No robots noindex directive detected on the homepage.',
                 $this->data['noindex'] ? 'warn' : 'good'
             );
+            $loginNote = 'No clear login/account UI cues on the inspected page (absence is not automatically bad).';
+            if ($hasLogin) {
+                $loginNote = !empty($this->data['login_via_probe'])
+                    ? 'Login/account UI confirmed via a common auth path probe (/login, /register, etc.).'
+                    : 'Login / account / password UI cues were found on the page.';
+            }
             $this->addSignal(
                 'content',
                 'Login / account UI',
                 $hasLogin ? 'Present' : 'Not detected',
-                $hasLogin
-                    ? 'Login / account / password UI cues were found on the page.'
-                    : 'No clear login/account UI cues on the inspected page (absence is not automatically bad).',
+                $loginNote,
                 'neutral'
             );
             $payTone = 'neutral';
@@ -2706,6 +2717,49 @@ class DomainChecker
      *
      * @return array{privacy:bool,terms:bool,cookies:bool,contact:bool}
      */
+    /**
+     * Probe a few common auth routes when homepage/fallback text missed login UI.
+     * Requires stronger cues than generic site chrome (password field or auth copy).
+     */
+    private function probeAuthPages(): bool
+    {
+        $paths = [
+            '/login',
+            '/register',
+            '/signin',
+            '/sign-in',
+            '/signup',
+            '/auth/login',
+            '/account/login',
+        ];
+
+        foreach ($paths as $path) {
+            $headers = [];
+            $body = $this->httpGet('https://' . $this->domain . $path, 4, false, $headers, true);
+            if ($body === null || strlen($body) < 400) {
+                continue;
+            }
+            if ($this->isChallengeHtml($body, '', 200)) {
+                continue;
+            }
+            // Soft 404 shells often still include global "Sign in" i18n strings.
+            if (preg_match('/\b(404|page not found|this page could not be found|does not exist)\b/i', $body)
+                && !preg_match('/type\s*=\s*[\'"]password[\'"]/i', $body)) {
+                continue;
+            }
+            $strong = (
+                preg_match('/type\s*=\s*[\'"]password[\'"]/i', $body)
+                || preg_match('/\b(welcome back|forgot(?:\s+your)?\s+password|create your account|sign in to|log in to)\b/i', $body)
+                || preg_match('/["\']signInTitle["\']\s*:/i', $body)
+            );
+            if ($strong && detect_login_ui($body)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function probeCommonLegalPages(): array
     {
         $out = ['privacy' => false, 'terms' => false, 'cookies' => false, 'contact' => false];

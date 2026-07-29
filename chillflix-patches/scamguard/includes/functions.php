@@ -304,6 +304,15 @@ function detect_login_ui(string $html): bool
     if (preg_match('/type\s*=\s*[\'"]password[\'"]/i', $html)) {
         return true;
     }
+    // JSON i18n / Next.js dictionaries often encode auth copy as "signIn":"Sign in".
+    if (preg_match('/["\']signIn["\']\s*:\s*["\'][^"\']*sign\s*in/i', $html)
+        || preg_match('/["\']signInTitle["\']\s*:/i', $html)) {
+        return true;
+    }
+    // Markdown / plain fallbacks (Jina reader).
+    if (preg_match('/\[(?:log\s*in|sign\s*in|sign\s*up|register|create account|my account)\]\([^)]+\)/i', $html)) {
+        return true;
+    }
     if (preg_match('/\b(log[\s-]?in|sign[\s-]?in|sign[\s-]?up|create account|register|my account)\b/i', $html)) {
         return true;
     }
