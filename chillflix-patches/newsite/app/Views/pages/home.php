@@ -25,14 +25,6 @@
                                     Watch Now <i class="uil uil-play"></i>
                                 </a>
                             </div>
-                            <div>
-                                <button type="button" class="btn px-4 rounded-pill btn-lg user-bookmark-toggle"
-                                    data-id="<?= (int) $slide['id'] ?>" data-media-type="movie"
-                                    data-title="<?= e($t) ?>" data-poster="<?= e(img_url($slide['poster_path'] ?? null, 'w185')) ?>"
-                                    data-year="<?= e($y) ?>">
-                                    <i class="uil uil-plus-circle"></i> Favorite
-                                </button>
-                            </div>
                         </div>
                     </div>
                 </div>
