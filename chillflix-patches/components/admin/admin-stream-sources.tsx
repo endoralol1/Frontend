@@ -42,7 +42,7 @@ import { invalidateStreamSourcesConfigCache } from "@/hooks/useStreamSourcesConf
 import { notifyStreamSourcesConfigChanged } from "@/lib/stream-sources-client"
 import { getTemplateHelpText } from "@/lib/custom-players"
 import {
-    DEFAULT_PROVIDER_WAIT_SECONDS,
+    DEFAULT_PROVIDER_PLAY_WAIT_SECONDS,
     MAX_PROVIDER_WAIT_SECONDS,
     MIN_PROVIDER_WAIT_SECONDS,
     clampProviderWaitSeconds,
@@ -355,14 +355,7 @@ export function AdminStreamSources() {
                         <CardHeader>
                             <CardTitle>CinePro providers</CardTitle>
                             <CardDescription>
-                                Enable providers and drag to set failover order. Top = tried first.
-                                Preferred providers from Settings skip ahead when available.{" "}
-                                <span className="text-foreground/80">Wait (sec)</span> is how long
-                                the player waits for that provider before moving on (link resolve +
-                                first playback). Leave blank for defaults (~45s fetch, ~15–18s
-                                first play). Raise it if a source often fails on the first try but
-                                works on retry — values only add time, they never cut below the
-                                built-in minimums.
+                                Enable providers and set failover order. Top = tried first.
                             </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
@@ -433,32 +426,41 @@ export function AdminStreamSources() {
                                                 </p>
                                             </div>
 
-                                            <label className="flex min-w-[7.5rem] flex-col gap-1 text-[11px] text-muted-foreground">
-                                                <span>Wait (sec)</span>
-                                                <Input
-                                                    type="number"
-                                                    min={MIN_PROVIDER_WAIT_SECONDS}
-                                                    max={MAX_PROVIDER_WAIT_SECONDS}
-                                                    step={1}
-                                                    className="h-8 rounded-lg px-2"
-                                                    placeholder={String(DEFAULT_PROVIDER_WAIT_SECONDS)}
-                                                    value={entry.timeoutSeconds ?? ""}
-                                                    onChange={(event) =>
-                                                        setSourceTimeoutSeconds(
-                                                            index,
-                                                            event.target.value
-                                                        )
-                                                    }
-                                                    title={`Seconds to wait for this provider’s links + first playback before fallback. Blank = default ${DEFAULT_PROVIDER_WAIT_SECONDS}s fetch / ~15–18s playback. Setting a value only adds time (never cuts below built-in minimums). Range ${MIN_PROVIDER_WAIT_SECONDS}–${MAX_PROVIDER_WAIT_SECONDS}.`}
-                                                />
-                                            </label>
+                                            <div className="flex items-center gap-2">
+                                                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                    <span className="whitespace-nowrap">Play wait</span>
+                                                    <span className="relative inline-flex items-center">
+                                                        <Input
+                                                            type="number"
+                                                            min={MIN_PROVIDER_WAIT_SECONDS}
+                                                            max={MAX_PROVIDER_WAIT_SECONDS}
+                                                            step={1}
+                                                            inputMode="numeric"
+                                                            className="h-8 w-[4.25rem] rounded-lg border-border/60 bg-background/80 px-2 pr-6 text-center tabular-nums"
+                                                            placeholder="auto"
+                                                            value={entry.timeoutSeconds ?? ""}
+                                                            onChange={(event) =>
+                                                                setSourceTimeoutSeconds(
+                                                                    index,
+                                                                    event.target.value
+                                                                )
+                                                            }
+                                                            aria-label={`Play wait for ${entry.name}`}
+                                                            title={`First-play budget before fallback. Blank = auto (~${DEFAULT_PROVIDER_PLAY_WAIT_SECONDS}s). Raise if cold starts fail once then work. Does not change the 0.8s #1 head-start. ${MIN_PROVIDER_WAIT_SECONDS}–${MAX_PROVIDER_WAIT_SECONDS}s.`}
+                                                        />
+                                                        <span className="pointer-events-none absolute right-2 text-[10px] text-muted-foreground/80">
+                                                            s
+                                                        </span>
+                                                    </span>
+                                                </label>
 
-                                            <Switch
-                                                checked={entry.enabled}
-                                                onCheckedChange={(checked) =>
-                                                    toggleSource(index, checked)
-                                                }
-                                            />
+                                                <Switch
+                                                    checked={entry.enabled}
+                                                    onCheckedChange={(checked) =>
+                                                        toggleSource(index, checked)
+                                                    }
+                                                />
+                                            </div>
 
                                             {!entry.builtin ? (
                                                 <Button
@@ -473,6 +475,11 @@ export function AdminStreamSources() {
                                             ) : null}
                                         </div>
                                     ))}
+                                    <p className="px-1 pt-1 text-xs text-muted-foreground">
+                                        Play wait blank = auto (~{DEFAULT_PROVIDER_PLAY_WAIT_SECONDS}s
+                                        first play). Link fetch already allows up to 45s. #1 head-start
+                                        stays 0.8s.
+                                    </p>
                                 </div>
                             )}
 

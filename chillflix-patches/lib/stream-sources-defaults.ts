@@ -114,16 +114,24 @@ export type StreamSourceEntry = {
     /** Only the site owner can enable or receive streams from this provider. */
     ownerOnly?: boolean
     /**
-     * Optional per-provider wait budget in seconds.
-     * Applies to link fetch + first playback before auto-fallback.
-     * Omit / blank = use global defaults (45s fetch, ~15–18s playback).
-     * When set, raises those budgets (never shortens below code defaults).
+     * Optional per-provider play-wait budget in seconds.
+     * Raises first-playback (+ link-fetch) budgets before auto-fallback.
+     * Omit / blank = code defaults (~15s first play, 45s link fetch max).
+     * Values only raise budgets; they never cut below built-in minimums.
+     * Does not change the #1 provider head-start (0.8s).
      */
     timeoutSeconds?: number
 }
 
-/** Default provider wait when admin leaves the field blank. */
-export const DEFAULT_PROVIDER_WAIT_SECONDS = 45
+/**
+ * Typical first-play budget when Wait is left blank (proxied HLS ~12–15s).
+ * Shown as the admin hint — not the 45s link-fetch ceiling.
+ */
+export const DEFAULT_PROVIDER_PLAY_WAIT_SECONDS = 15
+/** Link-fetch race ceiling when Wait is blank (separate from first-play). */
+export const DEFAULT_PROVIDER_FETCH_WAIT_SECONDS = 45
+/** @deprecated Prefer DEFAULT_PROVIDER_PLAY_WAIT_SECONDS for UI hints. */
+export const DEFAULT_PROVIDER_WAIT_SECONDS = DEFAULT_PROVIDER_PLAY_WAIT_SECONDS
 export const MIN_PROVIDER_WAIT_SECONDS = 5
 export const MAX_PROVIDER_WAIT_SECONDS = 120
 
