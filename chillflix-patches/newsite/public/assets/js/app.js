@@ -193,6 +193,34 @@
     $tab.closest('.section').find('.tab-content').hide().filter('[data-name="' + name + '"]').show();
   });
 
+  // Top 10 horizontal rail arrows
+  function syncTop10Nav($rail) {
+    if (!$rail || !$rail.length) return;
+    var el = $rail.get(0);
+    var $wrap = $rail.closest('.top10-rail-wrap');
+    var max = el.scrollWidth - el.clientWidth - 2;
+    $wrap.find('.top10-nav-prev').prop('disabled', el.scrollLeft <= 2);
+    $wrap.find('.top10-nav-next').prop('disabled', el.scrollLeft >= max);
+  }
+
+  $(document).on('click', '.top10-nav', function (e) {
+    e.preventDefault();
+    var $btn = $(this);
+    var $wrap = $btn.closest('.top10-rail-wrap');
+    var $rail = $wrap.find('.top10-items').first();
+    if (!$rail.length) return;
+    var step = Math.max($rail.width() * 0.85, 220);
+    $rail.get(0).scrollBy({ left: $btn.hasClass('top10-nav-next') ? step : -step, behavior: 'smooth' });
+  });
+
+  $(document).on('scroll', '.top10-items', function () {
+    syncTop10Nav($(this));
+  });
+
+  $('.section-top10 .top10-items').each(function () {
+    syncTop10Nav($(this));
+  });
+
   // Favorites buttons
   $(document).on('click', '.user-bookmark-toggle', function (e) {
     e.preventDefault();

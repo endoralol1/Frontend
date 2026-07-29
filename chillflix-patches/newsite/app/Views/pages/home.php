@@ -50,14 +50,15 @@
                 <div class="section section-top10">
                     <div class="head">
                         <div class="start">
-                            <h2 class="title gardiently">Top 10</h2>
+                            <h2 class="title top10-heading">TOP 10 Today</h2>
                             <div class="tabs" data-tabs data-id="top10" data-persist="true">
                                 <span class="tab active" data-name="movies">Movies</span>
                                 <span class="tab" data-name="tv">TV Shows</span>
                             </div>
                         </div>
                     </div>
-                    <div class="tab-content" data-name="movies">
+                    <div class="tab-content top10-rail-wrap" data-name="movies">
+                        <button type="button" class="top10-nav top10-nav-prev" aria-label="Scroll left"><i class="uil uil-angle-left"></i></button>
                         <div class="scaff movies items top10-items">
                             <?php
                             $rank = 0;
@@ -69,8 +70,10 @@
                             unset($rank);
                             ?>
                         </div>
+                        <button type="button" class="top10-nav top10-nav-next" aria-label="Scroll right"><i class="uil uil-angle-right"></i></button>
                     </div>
-                    <div class="tab-content" data-name="tv" style="display:none">
+                    <div class="tab-content top10-rail-wrap" data-name="tv" style="display:none">
+                        <button type="button" class="top10-nav top10-nav-prev" aria-label="Scroll left"><i class="uil uil-angle-left"></i></button>
                         <div class="scaff movies items top10-items">
                             <?php
                             $rank = 0;
@@ -82,6 +85,7 @@
                             unset($rank);
                             ?>
                         </div>
+                        <button type="button" class="top10-nav top10-nav-next" aria-label="Scroll right"><i class="uil uil-angle-right"></i></button>
                     </div>
                 </div>
 

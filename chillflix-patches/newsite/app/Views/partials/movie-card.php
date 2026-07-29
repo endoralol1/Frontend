@@ -2,7 +2,7 @@
 /**
  * @var array $item
  * @var string $type movie|tv
- * @var int|null $rank optional 1–10 badge (top-left)
+ * @var int|null $rank optional 1–10 badge (top-left ribbon)
  */
 $rank = isset($rank) ? (int) $rank : null;
 if ($rank !== null && ($rank < 1 || $rank > 99)) {
@@ -20,16 +20,21 @@ $href = media_url($type, (int) $item['id'], $title);
 $poster = img_url($item['poster_path'] ?? null);
 $label = $type === 'tv' ? 'TV' : 'Movie';
 $rating = isset($item['vote_average']) ? round((float) $item['vote_average'], 1) : null;
+$ranked = $rank !== null;
 ?>
-<div class="movie-item media-card<?= $rank !== null ? ' media-card--ranked' : '' ?>" data-id="<?= (int) $item['id'] ?>" data-type="<?= e($type) ?>"<?= $rank !== null ? ' data-rank="' . (int) $rank . '"' : '' ?>>
+<div class="movie-item media-card<?= $ranked ? ' media-card--ranked' : '' ?>" data-id="<?= (int) $item['id'] ?>" data-type="<?= e($type) ?>"<?= $ranked ? ' data-rank="' . (int) $rank . '"' : '' ?>>
     <div class="inner">
-        <?php if ($rank !== null): ?>
-        <span class="card-rank" aria-label="Rank <?= (int) $rank ?>"><?= (int) $rank ?></span>
-        <?php endif; ?>
         <a class="item-poster" href="<?= e($href) ?>" data-tip="<?= (int) $item['id'] ?>" data-media-type="<?= e($type) ?>" aria-label="<?= e($title) ?>">
+            <?php if ($ranked): ?>
+            <span class="card-rank" aria-label="Top <?= (int) $rank ?>">
+                <span class="card-rank-label">TOP</span>
+                <span class="card-rank-num"><?= str_pad((string) $rank, 2, '0', STR_PAD_LEFT) ?></span>
+            </span>
+            <?php endif; ?>
             <div class="poster-media">
                 <img class="lazyload" data-src="<?= e($poster) ?>" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='100%25' height='100%25' fill='%231a1c23'/%3E%3C/svg%3E" alt="<?= e($title) ?>" width="300" height="450" loading="lazy">
             </div>
+            <?php if (!$ranked): ?>
             <div class="card-caption">
                 <span class="card-kicker">
                     <span><?= e($label) ?></span>
@@ -38,7 +43,20 @@ $rating = isset($item['vote_average']) ? round((float) $item['vote_average'], 1)
                 </span>
                 <span class="card-title"><?= e($title) ?></span>
             </div>
+            <?php endif; ?>
         </a>
+        <?php if ($ranked): ?>
+        <div class="card-meta-below">
+            <a class="card-meta-title" href="<?= e($href) ?>"><?= e($title) ?></a>
+            <div class="card-meta-line">
+                <?php if ($rating !== null && $rating > 0): ?>
+                <span class="card-meta-rating"><i class="uil uil-star"></i> <?= e((string) $rating) ?></span>
+                <?php endif; ?>
+                <?php if ($year): ?><span><?= e($year) ?></span><?php endif; ?>
+                <span><?= e($label) ?></span>
+            </div>
+        </div>
+        <?php else: ?>
         <div class="meta">
             <div class="meta-bg">
                 <span class="dot"><?= e($label) ?></span>
@@ -46,5 +64,6 @@ $rating = isset($item['vote_average']) ? round((float) $item['vote_average'], 1)
             </div>
             <a class="name" href="<?= e($href) ?>"><?= e($title) ?></a>
         </div>
+        <?php endif; ?>
     </div>
 </div>
