@@ -5,13 +5,35 @@ $results = $data['results'] ?? [];
 $totalPages = max(1, (int) ($data['total_pages'] ?? 1));
 $path = $isMovie ? '/movies' : '/tv-series';
 $selectedGenres = array_filter(array_map('intval', (array) ($_GET['with_genres'] ?? ($genre ? [$genre] : []))));
-$selectedYear = $year;
+$selectedYearFrom = (string) ($yearFrom ?? '');
+$selectedYearTo = (string) ($yearTo ?? '');
+if ($selectedYearFrom === '' && $selectedYearTo === '' && $year !== '') {
+    $selectedYearFrom = (string) $year;
+    $selectedYearTo = (string) $year;
+}
 $selectedSort = $sort;
-$selectedCountry = (string) ($_GET['with_origin_country'] ?? '');
-// PHP converts dots in query keys to underscores
+$selectedCountries = array_values(array_map('strval', (array) ($selectedCountries ?? [])));
+if (!$selectedCountries) {
+    $legacyCountry = trim((string) ($_GET['with_origin_country'] ?? ''));
+    if ($legacyCountry !== '' && !is_array($_GET['with_origin_country'] ?? null)) {
+        $selectedCountries = [$legacyCountry];
+    }
+}
 $selectedRating = (string) ($_GET['vote_average_gte'] ?? $_GET['vote_average.gte'] ?? $_GET['rating'] ?? '');
-$selectedProvider = (string) ($_GET['with_watch_providers'] ?? '');
-$selectedNetwork = (string) ($_GET['with_networks'] ?? '');
+$selectedProviders = array_values(array_map('strval', (array) ($selectedProviders ?? [])));
+if (!$selectedProviders) {
+    $legacyProvider = trim((string) ($_GET['with_watch_providers'] ?? ''));
+    if ($legacyProvider !== '' && !is_array($_GET['with_watch_providers'] ?? null)) {
+        $selectedProviders = [$legacyProvider];
+    }
+}
+$selectedNetworks = array_values(array_map('strval', (array) ($selectedNetworks ?? [])));
+if (!$selectedNetworks) {
+    $legacyNetwork = trim((string) ($_GET['with_networks'] ?? ''));
+    if ($legacyNetwork !== '' && !is_array($_GET['with_networks'] ?? null)) {
+        $selectedNetworks = [$legacyNetwork];
+    }
+}
 $genreMode = (string) ($_GET['genre_mode'] ?? '') === 'and' ? 'and' : '';
 $sortChosen = isset($_GET['sort_by']);
 $viewMode = (($_GET['view'] ?? 'grid') === 'list') ? 'list' : 'grid';
@@ -48,6 +70,8 @@ $sorts = $isMovie
     ];
 $ratings = ['9' => '9+', '8' => '8+', '7' => '7+', '6' => '6+', '5' => '5+', '4' => '4+'];
 $sidebarItems = $sidebarItems ?? [];
+$yearMax = (int) date('Y') + 1;
+$yearMin = 1970;
 
 $filterChips = [];
 if ($selectedGenres) {
@@ -59,17 +83,38 @@ if ($selectedGenres) {
     }
     $filterChips[] = ['key' => 'genres', 'label' => $names ? implode(', ', array_slice($names, 0, 2)) . (count($names) > 2 ? ' +' . (count($names) - 2) : '') : (count($selectedGenres) . ' genres'), 'clear' => ['with_genres', 'genre_mode']];
 }
-if ($selectedNetwork !== '' && isset($networks[$selectedNetwork])) {
-    $filterChips[] = ['key' => 'network', 'label' => $networks[$selectedNetwork], 'clear' => ['with_networks']];
+if ($selectedNetworks) {
+    $nnames = [];
+    foreach ($selectedNetworks as $nid) {
+        if (isset($networks[$nid])) {
+            $nnames[] = $networks[$nid];
+        }
+    }
+    $filterChips[] = ['key' => 'network', 'label' => $nnames ? implode(', ', array_slice($nnames, 0, 2)) . (count($nnames) > 2 ? ' +' . (count($nnames) - 2) : '') : (count($selectedNetworks) . ' networks'), 'clear' => ['with_networks']];
 }
-if ($selectedCountry !== '' && isset($countries[$selectedCountry])) {
-    $filterChips[] = ['key' => 'country', 'label' => $countries[$selectedCountry], 'clear' => ['with_origin_country']];
+if ($selectedCountries) {
+    $cnames = [];
+    foreach ($selectedCountries as $code) {
+        if (isset($countries[$code])) {
+            $cnames[] = $countries[$code];
+        }
+    }
+    $filterChips[] = ['key' => 'country', 'label' => $cnames ? implode(', ', array_slice($cnames, 0, 2)) . (count($cnames) > 2 ? ' +' . (count($cnames) - 2) : '') : (count($selectedCountries) . ' countries'), 'clear' => ['with_origin_country']];
 }
-if ($selectedYear !== '') {
-    $filterChips[] = ['key' => 'year', 'label' => (string) $selectedYear, 'clear' => ['year']];
+if ($selectedYearFrom !== '' || $selectedYearTo !== '') {
+    $yearLabel = ($selectedYearFrom !== '' && $selectedYearTo !== '' && $selectedYearFrom === $selectedYearTo)
+        ? $selectedYearFrom
+        : (($selectedYearFrom !== '' ? $selectedYearFrom : '…') . '–' . ($selectedYearTo !== '' ? $selectedYearTo : '…'));
+    $filterChips[] = ['key' => 'year', 'label' => $yearLabel, 'clear' => ['year', 'year_from', 'year_to']];
 }
-if ($selectedProvider !== '' && isset($providers[$selectedProvider])) {
-    $filterChips[] = ['key' => 'provider', 'label' => $providers[$selectedProvider], 'clear' => ['with_watch_providers']];
+if ($selectedProviders) {
+    $pnames = [];
+    foreach ($selectedProviders as $pid) {
+        if (isset($providers[$pid])) {
+            $pnames[] = $providers[$pid];
+        }
+    }
+    $filterChips[] = ['key' => 'provider', 'label' => $pnames ? implode(', ', array_slice($pnames, 0, 2)) . (count($pnames) > 2 ? ' +' . (count($pnames) - 2) : '') : (count($selectedProviders) . ' providers'), 'clear' => ['with_watch_providers']];
 }
 if ($selectedRating !== '') {
     $filterChips[] = ['key' => 'rating', 'label' => $selectedRating . '+', 'clear' => ['rating', 'vote_average_gte', 'vote_average.gte']];
@@ -85,9 +130,11 @@ $chipUrl = static function (array $clearKeys) use ($path): string {
     foreach ($clearKeys as $k) {
         unset($qs[$k], $qs[$k . '[]']);
     }
-    // also clear array genre param variants
-    if (in_array('with_genres', $clearKeys, true)) {
-        unset($qs['with_genres'], $qs['with_genres[]']);
+    // also clear array genre/network/country/provider param variants
+    foreach (['with_genres', 'with_networks', 'with_origin_country', 'with_watch_providers'] as $arrKey) {
+        if (in_array($arrKey, $clearKeys, true)) {
+            unset($qs[$arrKey], $qs[$arrKey . '[]']);
+        }
     }
     $q = http_build_query($qs);
     return url($path) . ($q !== '' ? ('?' . $q) : '');
@@ -190,7 +237,7 @@ $chipUrl = static function (array $clearKeys) use ($path): string {
                                         <div class="filter-pills filter-pills-wrap">
                                             <?php foreach ($networks as $nid => $nname): ?>
                                             <label class="filter-pill">
-                                                <input type="radio" id="net-<?= e($nid) ?>" name="with_networks" value="<?= e($nid) ?>" <?= $selectedNetwork === (string) $nid ? 'checked' : '' ?>>
+                                                <input type="checkbox" id="net-<?= e($nid) ?>" name="with_networks[]" value="<?= e($nid) ?>" <?= in_array((string) $nid, $selectedNetworks, true) ? 'checked' : '' ?>>
                                                 <span><?= e($nname) ?></span>
                                             </label>
                                             <?php endforeach; ?>
@@ -202,7 +249,7 @@ $chipUrl = static function (array $clearKeys) use ($path): string {
                                         <div class="filter-pills filter-pills-wrap filter-pills-scroll">
                                             <?php foreach ($countries as $code => $cname): ?>
                                             <label class="filter-pill">
-                                                <input type="radio" id="country-<?= e($code) ?>" name="with_origin_country" value="<?= e($code) ?>" <?= $selectedCountry === $code ? 'checked' : '' ?>>
+                                                <input type="checkbox" id="country-<?= e($code) ?>" name="with_origin_country[]" value="<?= e($code) ?>" <?= in_array($code, $selectedCountries, true) ? 'checked' : '' ?>>
                                                 <span><?= e($cname) ?></span>
                                             </label>
                                             <?php endforeach; ?>
@@ -211,13 +258,26 @@ $chipUrl = static function (array $clearKeys) use ($path): string {
 
                                     <section class="filter-section">
                                         <h3 class="filter-section-title">Year</h3>
-                                        <div class="filter-pills filter-pills-wrap filter-pills-scroll">
-                                            <?php for ($y = (int) date('Y') + 1; $y >= 1970; $y--): ?>
-                                            <label class="filter-pill">
-                                                <input type="radio" id="year-<?= $y ?>" name="year" value="<?= $y ?>" <?= $selectedYear === (string) $y ? 'checked' : '' ?>>
-                                                <span><?= $y ?></span>
+                                        <div class="filter-year-range">
+                                            <label class="filter-year-field">
+                                                <span class="filter-year-label">From</span>
+                                                <select name="year_from" id="year-from" aria-label="Year from">
+                                                    <option value="">Any</option>
+                                                    <?php for ($y = $yearMax; $y >= $yearMin; $y--): ?>
+                                                    <option value="<?= $y ?>" <?= $selectedYearFrom === (string) $y ? 'selected' : '' ?>><?= $y ?></option>
+                                                    <?php endfor; ?>
+                                                </select>
                                             </label>
-                                            <?php endfor; ?>
+                                            <span class="filter-year-sep" aria-hidden="true">to</span>
+                                            <label class="filter-year-field">
+                                                <span class="filter-year-label">To</span>
+                                                <select name="year_to" id="year-to" aria-label="Year to">
+                                                    <option value="">Any</option>
+                                                    <?php for ($y = $yearMax; $y >= $yearMin; $y--): ?>
+                                                    <option value="<?= $y ?>" <?= $selectedYearTo === (string) $y ? 'selected' : '' ?>><?= $y ?></option>
+                                                    <?php endfor; ?>
+                                                </select>
+                                            </label>
                                         </div>
                                     </section>
 
@@ -226,7 +286,7 @@ $chipUrl = static function (array $clearKeys) use ($path): string {
                                         <div class="filter-pills filter-pills-wrap">
                                             <?php foreach ($providers as $pid => $pname): ?>
                                             <label class="filter-pill">
-                                                <input type="radio" id="prov-<?= e($pid) ?>" name="with_watch_providers" value="<?= e($pid) ?>" <?= $selectedProvider === (string) $pid ? 'checked' : '' ?>>
+                                                <input type="checkbox" id="prov-<?= e($pid) ?>" name="with_watch_providers[]" value="<?= e($pid) ?>" <?= in_array((string) $pid, $selectedProviders, true) ? 'checked' : '' ?>>
                                                 <span><?= e($pname) ?></span>
                                             </label>
                                             <?php endforeach; ?>

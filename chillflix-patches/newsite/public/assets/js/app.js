@@ -415,6 +415,18 @@
     closeFiltersSheet();
   });
 
+  $(document).on('change', '#year-from, #year-to', function () {
+    var $from = $('#year-from');
+    var $to = $('#year-to');
+    if (!$from.length || !$to.length) return;
+    var from = parseInt($from.val(), 10);
+    var to = parseInt($to.val(), 10);
+    if (!isNaN(from) && !isNaN(to) && from > to) {
+      if (this.id === 'year-from') $to.val(String(from));
+      else $from.val(String(to));
+    }
+  });
+
   // Discover view switcher — update class + persist via query
   $(document).on('click', '.btn-view-switcher', function () {
     var view = $(this).data('view');

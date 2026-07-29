@@ -327,17 +327,59 @@ function discover_page(Tmdb $tmdb, string $type, bool $filtersPage = false): voi
     $page = max(1, (int) ($_GET['page'] ?? 1));
     $sort = (string) ($_GET['sort_by'] ?? 'popularity.desc');
     $year = trim((string) ($_GET['year'] ?? ''));
+    $yearFrom = trim((string) ($_GET['year_from'] ?? ''));
+    $yearTo = trim((string) ($_GET['year_to'] ?? ''));
     $genresIn = $_GET['with_genres'] ?? [];
     if (!is_array($genresIn)) {
         $genresIn = $genresIn !== '' && $genresIn !== null ? [(int) $genresIn] : [];
     }
     $genresIn = array_values(array_filter(array_map('intval', $genresIn)));
     $genre = $genresIn[0] ?? 0;
-    $country = trim((string) ($_GET['with_origin_country'] ?? ''));
+
+    $parseList = static function ($raw): array {
+        if (is_array($raw)) {
+            return array_values(array_filter(array_map(static fn ($v) => trim((string) $v), $raw), static fn ($v) => $v !== ''));
+        }
+        $s = trim((string) ($raw ?? ''));
+        if ($s === '') {
+            return [];
+        }
+        if (str_contains($s, '|')) {
+            return array_values(array_filter(array_map('trim', explode('|', $s))));
+        }
+        if (str_contains($s, ',')) {
+            return array_values(array_filter(array_map('trim', explode(',', $s))));
+        }
+        return [$s];
+    };
+
+    $countriesIn = isset($_GET['with_origin_country'])
+        ? $parseList($_GET['with_origin_country'])
+        : [];
+    $providersIn = isset($_GET['with_watch_providers'])
+        ? $parseList($_GET['with_watch_providers'])
+        : [];
+    $networksIn = isset($_GET['with_networks'])
+        ? $parseList($_GET['with_networks'])
+        : [];
+
     $ratingMin = trim((string) ($_GET['vote_average_gte'] ?? $_GET['vote_average.gte'] ?? $_GET['rating'] ?? ''));
-    $provider = trim((string) ($_GET['with_watch_providers'] ?? ''));
-    $network = trim((string) ($_GET['with_networks'] ?? ''));
     $genreMode = (string) ($_GET['genre_mode'] ?? '');
+
+    // Legacy single year → treat as from=to
+    if ($yearFrom === '' && $yearTo === '' && $year !== '' && preg_match('/^\d{4}$/', $year)) {
+        $yearFrom = $year;
+        $yearTo = $year;
+    }
+    if ($yearFrom !== '' && !preg_match('/^\d{4}$/', $yearFrom)) {
+        $yearFrom = '';
+    }
+    if ($yearTo !== '' && !preg_match('/^\d{4}$/', $yearTo)) {
+        $yearTo = '';
+    }
+    if ($yearFrom !== '' && $yearTo !== '' && (int) $yearFrom > (int) $yearTo) {
+        [$yearFrom, $yearTo] = [$yearTo, $yearFrom];
+    }
 
     $params = [
         'page' => $page,
@@ -348,25 +390,31 @@ function discover_page(Tmdb $tmdb, string $type, bool $filtersPage = false): voi
         // TMDB: comma = AND, pipe = OR
         $params['with_genres'] = implode($genreMode === 'and' ? ',' : '|', $genresIn);
     }
-    if ($year !== '' && preg_match('/^\d{4}$/', $year)) {
+
+    if ($yearFrom !== '' || $yearTo !== '') {
+        $gte = ($yearFrom !== '' ? $yearFrom : '1900') . '-01-01';
+        $lte = ($yearTo !== '' ? $yearTo : (string) ((int) date('Y') + 1)) . '-12-31';
         if ($type === 'tv') {
-            $params['first_air_date_year'] = $year;
+            $params['first_air_date.gte'] = $gte;
+            $params['first_air_date.lte'] = $lte;
         } else {
-            $params['primary_release_year'] = $year;
+            $params['primary_release_date.gte'] = $gte;
+            $params['primary_release_date.lte'] = $lte;
         }
     }
-    if ($country !== '') {
-        $params['with_origin_country'] = $country;
+
+    if ($countriesIn) {
+        $params['with_origin_country'] = implode('|', $countriesIn);
     }
     if ($ratingMin !== '' && is_numeric($ratingMin)) {
         $params['vote_average.gte'] = $ratingMin;
     }
-    if ($provider !== '' && ctype_digit($provider)) {
-        $params['with_watch_providers'] = $provider;
+    if ($providersIn) {
+        $params['with_watch_providers'] = implode('|', $providersIn);
         $params['watch_region'] = 'US';
     }
-    if ($network !== '' && ctype_digit($network)) {
-        $params['with_networks'] = $network;
+    if ($networksIn) {
+        $params['with_networks'] = implode('|', $networksIn);
     }
 
     $data = $tmdb->discover($type, $params);
@@ -382,7 +430,12 @@ function discover_page(Tmdb $tmdb, string $type, bool $filtersPage = false): voi
         'page' => $page,
         'sort' => $sort,
         'year' => $year,
+        'yearFrom' => $yearFrom,
+        'yearTo' => $yearTo,
         'genre' => $genre,
+        'selectedCountries' => $countriesIn,
+        'selectedProviders' => $providersIn,
+        'selectedNetworks' => $networksIn,
         'data' => $data,
         'filtersPage' => $filtersPage,
         'genres' => $isMovie ? config('genres_movie') : config('genres_tv'),

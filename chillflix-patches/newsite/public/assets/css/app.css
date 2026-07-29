@@ -2413,6 +2413,66 @@ header.absolute {
   accent-color: #db6937;
 }
 
+.filter-year-range {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.filter-year-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1 1 7.5rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.filter-year-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: rgba(233, 236, 239, 0.5);
+}
+
+.filter-year-field select {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23a0a6ae' d='M1.2 1.5L6 6.1l4.8-4.6' stroke='%23a0a6ae' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 0.85rem center;
+  background-size: 0.7rem;
+  color: #f1f3f5;
+  border-radius: 0.85rem;
+  padding: 0.7rem 2rem 0.7rem 0.9rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filter-year-field select:focus {
+  outline: none;
+  border-color: rgba(219, 105, 55, 0.55);
+  box-shadow: 0 0 0 2px rgba(219, 105, 55, 0.2);
+}
+
+.filter-year-field select option {
+  background: #1c1f28;
+  color: #f1f3f5;
+}
+
+.filter-year-sep {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: 0.75rem;
+  color: rgba(233, 236, 239, 0.45);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
 .filters-sheet-foot {
   display: flex;
   align-items: center;
