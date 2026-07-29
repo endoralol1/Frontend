@@ -59,9 +59,10 @@ import {
 } from "@/lib/player-subtitle-prefs"
 import { readSafeAreaInsets, type SafeAreaInsets } from "@/lib/safe-area-insets"
 import {
-  SOURCE_PROBE_TIMEOUT_MS,
+  SOURCE_METADATA_TIMEOUT_MS,
   STARTUP_PLAYBACK_FAIL_MS,
 } from "@/lib/source-probe-constants"
+import { getProviderWaitMs } from "@/hooks/useStreamSourcesConfig"
 import {
   isTransientPlaybackStatusMessage,
   shouldShowPlaybackRetryButton,
@@ -1146,11 +1147,31 @@ export function MediaPlayer({
     const isFourKHls = playbackUrl.includes("/api/4k/hls/")
     const isFourKHlsTranscode = isFourKHlsTranscodeUrl(playbackUrl)
     const fourKStartupTimeoutMs = fourKHlsStartupTimeoutMs(playbackUrl)
-    const sourceLoadTimeoutMs = isFourKHls
+    const isProxiedCinepro = playbackUrl.includes("/api/cinepro/proxy")
+    const sourceMeta = sources?.find((entry) => entry.id === source.id)
+    const providerKey =
+      sourceMeta?.providerId?.trim() ||
+      sourceMeta?.provider?.trim() ||
+      ""
+    const defaultMetadataTimeoutMs = isFourKHls
       ? fourKStartupTimeoutMs
       : isVidLinkSource
       ? 20_000
-      : SOURCE_PROBE_TIMEOUT_MS
+      : isProxiedCinepro
+      ? Math.max(SOURCE_METADATA_TIMEOUT_MS, 14_000)
+      : SOURCE_METADATA_TIMEOUT_MS
+    const defaultStartupFailMs = isVidLinkSource
+      ? 20_000
+      : isProxiedCinepro
+      ? Math.max(STARTUP_PLAYBACK_FAIL_MS, 18_000)
+      : STARTUP_PLAYBACK_FAIL_MS
+    // Admin per-provider wait can raise (or lower) both budgets when set.
+    const sourceLoadTimeoutMs = providerKey
+      ? getProviderWaitMs(providerKey, defaultMetadataTimeoutMs)
+      : defaultMetadataTimeoutMs
+    const startupFailMs = providerKey
+      ? getProviderWaitMs(providerKey, defaultStartupFailMs)
+      : defaultStartupFailMs
 
     sourceTimeoutRef.current = window.setTimeout(() => {
       if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
@@ -1165,10 +1186,10 @@ export function MediaPlayer({
     }, sourceLoadTimeoutMs)
 
     // Separate from metadata probe: a dead HLS manifest can clear the probe
-    // above while the first segment never starts. Fail cold starts so the modal
-    // can auto-fallback off a flaky primary (often VAPlayer).
+    // above while the first segment never starts. Give proxied CDNs (VAPlayer)
+    // enough time for 429 backoff + first fragment before auto-fallback.
     if (!isFourKHls && preservedTime < 0.5) {
-      startupProgressTimeoutRef.current = window.setTimeout(() => {
+      const failColdStartIfStuck = (allowGrace: boolean) => {
         const videoEl = videoRef.current
         if (!videoEl) return
         if (skipPlaybackTimeRef.current >= 0.5 || videoEl.currentTime >= 0.25) {
@@ -1180,8 +1201,23 @@ export function MediaPlayer({
         ) {
           return
         }
+        // Still downloading / already buffered some media — one grace window.
+        if (
+          allowGrace &&
+          (videoEl.buffered.length > 0 ||
+            videoEl.networkState === HTMLMediaElement.NETWORK_LOADING)
+        ) {
+          startupProgressTimeoutRef.current = window.setTimeout(() => {
+            failColdStartIfStuck(false)
+          }, 6_000)
+          return
+        }
         reportPlaybackError(t("player.errors.sourceTimedOut"))
-      }, isVidLinkSource ? 20_000 : STARTUP_PLAYBACK_FAIL_MS)
+      }
+
+      startupProgressTimeoutRef.current = window.setTimeout(() => {
+        failColdStartIfStuck(true)
+      }, startupFailMs)
     }
 
     let directFileCancelled = false
@@ -1690,6 +1726,7 @@ export function MediaPlayer({
     source.id,
     source.type,
     source.url,
+    sources,
     playbackToken,
     t,
     trackLabel,
@@ -2000,7 +2037,12 @@ export function MediaPlayer({
       // reportPlaybackError so auto-fallback can leave a dead primary.
       if (!isColdStart && !onBufferStallRef.current) return
       if (stallRecoveryTimerRef.current != null) return
-      const delayMs = isColdStart ? STARTUP_PLAYBACK_FAIL_MS : 2200
+      const delayMs = isColdStart
+        ? Math.max(
+            STARTUP_PLAYBACK_FAIL_MS,
+            sourcePropsRef.current.url.includes("/api/cinepro/proxy") ? 18_000 : 0
+          )
+        : 2200
       stallRecoveryTimerRef.current = window.setTimeout(() => {
         stallRecoveryTimerRef.current = null
         const videoEl = videoRef.current
@@ -2014,9 +2056,8 @@ export function MediaPlayer({
           return
         }
         if (isColdStart || skipPlaybackTimeRef.current < 0.5) {
-          // Metadata can arrive while the first segment never plays — the old
-          // SOURCE_PROBE timeout only covers "no metadata". Fail the source so
-          // the modal can auto-switch providers (VAPlayer etc.).
+          // Metadata can arrive while the first segment never plays. Give
+          // proxied sources a real window before auto-fallback.
           reportPlaybackError(t("player.errors.sourceTimedOut"))
           return
         }
@@ -2726,9 +2767,18 @@ export function MediaPlayer({
         failover / “finding a server” happens. Always show chrome until first frames.
       */}
       {isLoading && !isPlaying && currentTime < 0.25 ? (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-black/60 px-4">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/25 border-t-white" />
-          <p className="text-center text-xs text-white/85 sm:text-sm">
+        <div className="pointer-events-none absolute inset-0 z-10 bg-black/60">
+          {/*
+            Keep the ring at true geometric center so it lines up with the play
+            control. Status text sits below — do not center spinner+text as a column
+            or the ring floats above the play icon.
+          */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="relative flex size-11 items-center justify-center">
+              <div className="absolute inset-0 animate-spin rounded-full border-2 border-white/25 border-t-white" />
+            </div>
+          </div>
+          <p className="absolute inset-x-0 top-[calc(50%+2.75rem)] px-4 text-center text-xs text-white/85 sm:text-sm">
             {sourcesLoadingMore || activeTestingProviderId
               ? t("player.status.findingStream")
               : t("player.loading.startingPlayback")}
@@ -2823,6 +2873,7 @@ export function MediaPlayer({
         isPlaying={
           watchPartyGuest ? Boolean(syncPlayback?.isPlaying) : isPlaying
         }
+        isLoading={isLoading}
         watchPartyGuest={watchPartyGuest}
         onDoubleClick={toggleFullscreen}
         onWheel={(e: React.WheelEvent<HTMLDivElement>) => {

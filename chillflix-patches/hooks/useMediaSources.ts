@@ -29,6 +29,7 @@ import {
 import {
     ensureStreamSourcesConfigReady,
     getEnabledProviderIds,
+    getProviderWaitMs,
     isStreamSourcesConfigReady,
 } from "@/hooks/useStreamSourcesConfig"
 import {
@@ -165,9 +166,12 @@ function fetchSourcesWithTimeout(
     preserveNativeVidlink?: boolean
   }
 ) {
+  const raceTimeoutMs = options?.provider
+    ? getProviderWaitMs(options.provider, PROVIDER_FETCH_TIMEOUT_MS)
+    : PROVIDER_FETCH_TIMEOUT_MS
   return Promise.race([
     fetchSources(options),
-    sleep(PROVIDER_FETCH_TIMEOUT_MS).then(() => {
+    sleep(raceTimeoutMs).then(() => {
       throw new Error("Provider scan timed out")
     }),
   ])
@@ -659,7 +663,7 @@ export function useMediaSources({
       let lastError: Error | undefined
 
       const fetchTimeoutMs = options?.provider
-        ? PROVIDER_FETCH_TIMEOUT_MS
+        ? getProviderWaitMs(options.provider, PROVIDER_FETCH_TIMEOUT_MS)
         : options?.retry
           ? FETCH_TIMEOUT_MS
           : INITIAL_SOURCES_FETCH_TIMEOUT_MS

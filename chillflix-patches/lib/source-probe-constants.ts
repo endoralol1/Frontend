@@ -1,5 +1,20 @@
-/** Per-stream health probe; try the next source after this. */
-export const SOURCE_PROBE_TIMEOUT_MS = 3_000
+/**
+ * Per-stream health probe budget for one upstream fetch.
+ * CDN + stream-proxy cold paths often need >3s under load / 429 backoff.
+ */
+export const SOURCE_PROBE_TIMEOUT_MS = 8_000
+
+/**
+ * Client abort for /api/cinepro/probe. Server probes can nest
+ * (manifest → variant → first segment), so this must outlast SOURCE_PROBE_TIMEOUT_MS.
+ */
+export const CLIENT_SOURCE_PROBE_TIMEOUT_MS = 20_000
+
+/**
+ * Wait for HAVE_METADATA on a newly selected source before declaring it dead.
+ * Proxied HLS (VAPlayer via /api/cinepro/proxy) regularly exceeds 3s on first hit.
+ */
+export const SOURCE_METADATA_TIMEOUT_MS = 12_000
 
 /** Cold 4K remux manifest (ffmpeg startup on VPS) can take 30–90s. */
 export const FOUR_K_HLS_STARTUP_TIMEOUT_MS = 120_000
@@ -43,5 +58,6 @@ export const PRIMARY_PROVIDER_RETRY_MS = 6_000
 /**
  * Cold start: if the selected source never advances past metadata / keeps waiting
  * with almost no progress, fail it so auto-fallback can try the next provider.
+ * Must outlast proxy 429 backoff + first HLS segment under CDN pressure.
  */
-export const STARTUP_PLAYBACK_FAIL_MS = 4_500
+export const STARTUP_PLAYBACK_FAIL_MS = 15_000
