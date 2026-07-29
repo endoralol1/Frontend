@@ -54,6 +54,11 @@ class DomainRepository
 
     public function isIncomplete(array $record): bool
     {
+        // Discovery shortcuts are drafts — always upgrade to a full live check on open.
+        if (function_exists('record_is_provisional') && record_is_provisional($record)) {
+            return true;
+        }
+
         // Missing both WHOIS age and ASN usually means checks timed out / failed.
         $noWhois = empty($record['whois_registrar']) && $record['domain_age_days'] === null;
         $noHost = empty($record['asn_org']) && empty($record['host_country']);
@@ -203,9 +208,11 @@ class DomainRepository
     public function recentlyCheckedMixed(int $limit = 12): array
     {
         $half = max(1, (int) floor($limit / 2));
+        // Prefer finished full checks in the homepage mix (exclude provisional drafts).
         $safe = $this->db->prepare(
             "SELECT domain, trust_score, status, last_checked FROM domains
              WHERE status IN ('safe','caution','whitelisted','risky','unknown')
+               AND (signals_json IS NULL OR signals_json NOT LIKE '%Provisional discovery%')
              ORDER BY last_checked DESC LIMIT ?"
         );
         $safe->bindValue(1, $half, PDO::PARAM_INT);

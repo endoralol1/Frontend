@@ -173,6 +173,24 @@ function status_badge(string $status): array
 }
 
 /**
+ * True when the stored report is a discovery shortcut (DNS/lists only), not a finished live check.
+ */
+function record_is_provisional(array $record): bool
+{
+    $signals = json_decode((string) ($record['signals_json'] ?? ''), true);
+    if (!is_array($signals)) {
+        return false;
+    }
+    foreach ($signals as $s) {
+        if (($s['label'] ?? '') === 'Scan depth'
+            && stripos((string) ($s['value'] ?? ''), 'provisional') !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * Trust-band theme for modern ScamGuard result hero.
  *
  * @return array{tone:string,accent:string,bar:string,label:string,why:string,hint:string,icon:string}

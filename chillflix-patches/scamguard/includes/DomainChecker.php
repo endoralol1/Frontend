@@ -3,6 +3,7 @@ require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/ThreatFeeds.php';
 require_once __DIR__ . '/ExternalReputation.php';
 require_once __DIR__ . '/AiAnalyst.php';
+require_once __DIR__ . '/ScamBehaviorAnalyzer.php';
 
 /**
  * DomainChecker — multi-source trust signals (curl only; no headless browser).
@@ -60,7 +61,11 @@ class DomainChecker
         $this->data['tranco_rank'] = null;
         $this->data['tranco_bonus'] = 0;
         $this->data['review_penalty'] = 0;
+        $this->data['behavior_flags'] = [];
+        $this->data['ai_evidence'] = null;
         $this->data['check_mode'] = $this->turboFast ? 'turbo' : ($this->fast ? 'fast' : 'full');
+        // Provisional = discovery shortcut. Full = live homepage + reputation path.
+        $this->data['scan_depth'] = $this->fast ? 'provisional' : 'full';
 
         if ($this->turboFast) {
             $this->setUnknownRegistration();
@@ -83,6 +88,13 @@ class DomainChecker
             $this->data['crypto_only_payment'] = 0;
             $this->data['suspicious_keyword_hits'] = 0;
             $this->data['redirect_count'] = 0;
+            $this->addSignal(
+                'content',
+                'Scan depth',
+                'Provisional discovery',
+                'Quick discovery only (DNS + local lists). Not a finished live-site trust test — open/rescan for the full check.',
+                'warn'
+            );
             $this->addSignal(
                 'content',
                 'Check mode',
@@ -112,6 +124,16 @@ class DomainChecker
         }
 
         $score = $this->calculateScore();
+        // Discovery shortcuts must never look like finished "likely safe" reports.
+        if (($this->data['scan_depth'] ?? '') === 'provisional') {
+            if (!empty($this->data['malware_hit']) || !empty($this->data['phishing_hit']) || !empty($this->data['threat_feed_hit'])) {
+                // Hard list hits may still finalize as scam/malware.
+            } elseif (!empty($this->data['popular_verified'])) {
+                $score = max(55, min(72, $score));
+            } else {
+                $score = min($score, 55);
+            }
+        }
         $this->data['trust_score'] = $score;
         $this->buildVerdict($score);
         $this->data['status'] = $this->mapVerdictToStatus((string) $this->data['verdict'], $score);
@@ -1009,7 +1031,39 @@ class DomainChecker
         $this->data['page_excerpt'] = $challenge ? '' : $this->extractPageExcerpt($html);
         $this->data['page_meta_description'] = $challenge ? '' : $this->extractMetaDescription($html);
 
+        // High-signal scam behavior analysis (forms, brand mismatch, investment/fake-shop).
+        $this->data['behavior_flags'] = [];
+        $this->data['ai_evidence'] = null;
+        if (!$challenge && $html !== '') {
+            $behavior = ScamBehaviorAnalyzer::analyze(
+                $this->domain,
+                $html,
+                (string) ($this->data['page_title'] ?? ''),
+                (string) ($this->data['page_excerpt'] ?? '')
+            );
+            $this->data['behavior_flags'] = $behavior['flags'] ?? [];
+            $this->data['ai_evidence'] = $behavior['evidence'] ?? null;
+            foreach ($behavior['signals'] ?? [] as $bs) {
+                $this->addSignal(
+                    (string) ($bs['group'] ?? 'heuristics'),
+                    (string) ($bs['label'] ?? 'Behavior'),
+                    (string) ($bs['value'] ?? ''),
+                    (string) ($bs['note'] ?? ''),
+                    (string) ($bs['tone'] ?? 'neutral')
+                );
+            }
+        }
+
         $this->data['content_incomplete'] = $challenge ? 1 : 0;
+        if (!$challenge) {
+            $this->addSignal(
+                'content',
+                'Scan depth',
+                'Full live check',
+                'Homepage was fetched and scored with live content + reputation signals.',
+                'good'
+            );
+        }
         $challengePageTitle = '';
         if ($challenge) {
             // We never actually saw the real page, so NOTHING read from the challenge
@@ -1450,21 +1504,16 @@ class DomainChecker
                 $this->addSignal('threat', 'Threat feeds', 'Listed (phishing)', 'Domain is on an active phishing feed.', 'bad');
                 break;
             case 'popular_strong':
-                // Tranco is hardened against manipulation; membership + resolving DNS
-                // is a strong legitimacy signal for a quick pass.
+                // Tranco-only fast pass — still provisional until a full live check.
                 if ($hasIp) {
                     $this->data['popular_verified'] = 1;
                 }
-                $this->addSignal('reputation', 'Traffic ranking', 'Top-ranked site', 'Listed on the Tranco top sites ranking (high global traffic).', $hasIp ? 'good' : 'neutral');
+                $this->addSignal('reputation', 'Traffic ranking', 'Top-ranked site (provisional)', 'Listed on Tranco. This is a discovery shortcut, not a finished live-site verdict.', $hasIp ? 'good' : 'neutral');
                 break;
             case 'popular':
-                // Cisco Umbrella / Majestic / DomCop top lists — if it resolves, treat
-                // as a presumed-legit baseline so discovery reflects real safe sites.
-                // A full scan on open still re-verifies and can downgrade it.
-                if ($hasIp) {
-                    $this->data['popular_verified'] = 1;
-                }
-                $this->addSignal('reputation', 'Traffic ranking', 'On a top-domains list', 'Appears on a major top-domains ranking (presumed legitimate; re-verified on full scan).', $hasIp ? 'good' : 'neutral');
+                // Umbrella / Majestic / DomCop are weaker than Tranco — do NOT auto-verify as safe.
+                $this->data['popular_verified'] = 0;
+                $this->addSignal('reputation', 'Traffic ranking', 'On a top-domains list (weak)', 'Appears on a broad popularity list. Not enough alone for a safe verdict — full scan required.', 'neutral');
                 break;
             default:
                 $this->addSignal('threat', 'Threat feeds', 'Deferred (turbo)', 'Exact feed confirmation runs during the full report.', 'neutral');
@@ -1739,16 +1788,54 @@ class DomainChecker
             ];
         }
 
+        // Merge corroborated behavior flags from live HTML analysis.
+        foreach ($this->data['behavior_flags'] ?? [] as $bf) {
+            if (!is_array($bf) || empty($bf['code'])) {
+                continue;
+            }
+            $flags[] = [
+                'code' => (string) $bf['code'],
+                'label' => (string) ($bf['label'] ?? $bf['code']),
+                'detail' => (string) ($bf['detail'] ?? ''),
+                'penalty' => max(0, min(32, (int) ($bf['penalty'] ?? 0))),
+            ];
+        }
+
+        // Deduplicate by code keeping higher penalty.
+        $dedup = [];
+        foreach ($flags as $f) {
+            $code = (string) ($f['code'] ?? '');
+            if ($code === '') {
+                continue;
+            }
+            if (!isset($dedup[$code]) || (int) $f['penalty'] > (int) $dedup[$code]['penalty']) {
+                $dedup[$code] = $f;
+            }
+        }
+        $flags = array_values($dedup);
+
         $this->data['heuristic_flags'] = $flags ? json_encode($flags) : null;
         $penalty = array_sum(array_column($flags, 'penalty'));
 
+        // Behavior analyzer already emitted descriptive signals for its flags — don't duplicate.
+        $behaviorCodes = [];
+        foreach ($this->data['behavior_flags'] ?? [] as $bf) {
+            if (!empty($bf['code'])) {
+                $behaviorCodes[(string) $bf['code']] = true;
+            }
+        }
+
         if ($flags) {
             foreach ($flags as $flag) {
+                $code = (string) ($flag['code'] ?? '');
+                if ($code !== '' && isset($behaviorCodes[$code])) {
+                    continue;
+                }
                 $this->addSignal('heuristics', $flag['label'], 'Flagged', $flag['detail'], 'bad');
             }
             $this->addSignal('heuristics', 'Heuristic risk total', (string) $penalty . ' pts', count($flags) . ' rule(s) matched', 'bad');
         } else {
-            $this->addSignal('heuristics', 'Scam heuristics', 'No high-risk patterns', 'Brand lookalike, urgency+age, phishing naming checks', 'good');
+            $this->addSignal('heuristics', 'Scam heuristics', 'No high-risk patterns', 'Brand lookalike, urgency+age, phishing naming, shop/investment behavior checks', 'good');
         }
     }
 
@@ -1781,6 +1868,7 @@ class DomainChecker
             $penalty = array_sum(array_map(static fn($f) => (int) ($f['penalty'] ?? 0), $flags));
             $incomplete = !empty($this->data['content_incomplete']);
             $aiDelta = (int) ($this->data['ai_score_delta'] ?? 0);
+            $provisional = (($this->data['scan_depth'] ?? '') === 'provisional');
 
             // Without a malware/phishing/feed hit we have NO hard proof of fraud.
             // Only call it a scam when soft evidence is overwhelming AND corroborated —
@@ -1797,6 +1885,15 @@ class DomainChecker
                 $reasons[] = !empty($this->data['spam_hit'])
                     ? 'Spam / blacklist reputation signals were found — treat with caution.'
                     : 'Elevated risk signals; not confirmed fraud, but be careful.';
+            } elseif ($provisional) {
+                // Discovery turbo/fast must never finalize as "likely safe".
+                $verdict = 'caution';
+                $reasons[] = 'Provisional discovery only — DNS + local lists shortcut, not a finished live-site trust test. Open or rescan for the proper report.';
+                if (!empty($this->data['popular_verified'])) {
+                    $reasons[] = 'Strong traffic ranking helps, but popularity alone is not a finished safe verdict.';
+                } else {
+                    $reasons[] = 'No finished homepage/reputation pass yet — treat any score as a draft.';
+                }
             } elseif ($incomplete) {
                 $verdict = 'caution';
                 $reasons[] = 'This site uses Cloudflare/CDN bot protection, so page content could not be inspected. That is a normal setup on legitimate sites — not a scam signal on its own.';
@@ -2216,10 +2313,14 @@ class DomainChecker
             || !empty($this->data['phishing_hit'])
             || !empty($this->data['threat_feed_hit']);
 
-        // Research-grade top-list membership (Tranco) that resolves is a reliable
-        // fast-pass to "likely safe" during automatic discovery.
+        // Tranco membership that resolves is a strong legitimacy hint — but during
+        // provisional discovery it must not mint a finished "likely safe" score band.
         if (!$hardEvidence && !empty($this->data['popular_verified'])) {
-            $score = max($score, 82);
+            if (($this->data['scan_depth'] ?? '') === 'provisional') {
+                $score = max($score, 62);
+            } else {
+                $score = max($score, 82);
+            }
         }
 
         if (!$hardEvidence) {

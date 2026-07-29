@@ -51,6 +51,16 @@ class AiAnalyst
             ];
         }
 
+        if (($data['scan_depth'] ?? '') === 'provisional') {
+            return [
+                'lean' => 'mixed',
+                'label' => 'Provisional — full check needed',
+                'summary' => $domain . ' only has a discovery shortcut so far (DNS + local lists). Do not treat this as a finished trust verdict until a full live check runs.',
+                'tone' => 'warn',
+                'score_hint' => 0,
+            ];
+        }
+
         $age = $data['domain_age_days'] ?? null;
         $ageScope = (string) ($data['domain_age_scope'] ?? 'exact');
         $scoreHint = 0;
@@ -170,6 +180,36 @@ class AiAnalyst
         $excerpt = (string) ($data['page_excerpt'] ?? '');
         $meta = (string) ($data['page_meta_description'] ?? '');
         $incomplete = !empty($data['content_incomplete']);
+        $evidence = is_array($data['ai_evidence'] ?? null) ? $data['ai_evidence'] : null;
+        $behaviorFlags = [];
+        foreach ($data['behavior_flags'] ?? [] as $bf) {
+            if (!is_array($bf)) {
+                continue;
+            }
+            $behaviorFlags[] = [
+                'code' => (string) ($bf['code'] ?? ''),
+                'label' => (string) ($bf['label'] ?? ''),
+                'detail' => mb_substr((string) ($bf['detail'] ?? ''), 0, 160),
+                'penalty' => (int) ($bf['penalty'] ?? 0),
+            ];
+        }
+
+        $evidencePack = null;
+        if (is_array($evidence)) {
+            $evidencePack = [
+                'brands_mentioned' => array_slice((array) ($evidence['brands_mentioned'] ?? []), 0, 8),
+                'sensitive_forms' => array_slice((array) ($evidence['sensitive_forms'] ?? []), 0, 6),
+                'offsite_form_actions' => array_slice((array) ($evidence['offsite_form_actions'] ?? []), 0, 6),
+                'investment_cues' => array_slice((array) ($evidence['investment_cues'] ?? []), 0, 8),
+                'fake_shop_cues' => array_slice((array) ($evidence['fake_shop_cues'] ?? []), 0, 8),
+                'identity' => [
+                    'emails' => array_slice((array) (($evidence['identity']['emails'] ?? [])), 0, 6),
+                    'phones' => array_slice((array) (($evidence['identity']['phones'] ?? [])), 0, 4),
+                    'org_names' => array_slice((array) (($evidence['identity']['org_names'] ?? [])), 0, 4),
+                ],
+                'quotes' => array_slice((array) ($evidence['quotes'] ?? []), 0, 8),
+            ];
+        }
 
         $payloadFacts = [
             'domain' => $domain,
@@ -180,24 +220,29 @@ class AiAnalyst
             'content_source' => $data['content_source'] ?? 'live',
             'http_status' => $data['http_status'] ?? null,
             'domain_age_days' => $data['domain_age_days'] ?? null,
+            'domain_age_scope' => $data['domain_age_scope'] ?? null,
             'ssl_valid' => !empty($data['ssl_valid']),
             'cdn' => $data['cdn_provider'] ?? null,
             'spam_hit' => !empty($data['spam_hit']),
             'review_penalty' => (int) ($data['review_penalty'] ?? 0),
             'suspicious_keyword_hits' => (int) ($data['suspicious_keyword_hits'] ?? 0),
             'crypto_only_payment' => !empty($data['crypto_only_payment']),
+            'behavior_flags' => $behaviorFlags,
+            'evidence_pack' => $evidencePack,
             'rule_brief_lean' => $ruleBrief['lean'] ?? 'mixed',
             'signals' => $compactSignals,
-            'task' => 'Investigate what this website/domain is about from title, meta, and page text. '
+            'task' => 'Investigate what this website/domain is about from title, meta, page text, AND evidence_pack. '
+                . 'Only judge from provided evidence — do not invent forms, brands, or quotes. '
                 . 'Decide if that purpose is trustworthy or risky/scammy for average users (money, logins, downloads). '
                 . 'Then set lean + score_delta that should move the trust score.',
         ];
 
         $system = 'You are ScamGuard’s website investigator. Your job is to judge whether a site will HARM a normal visitor, not to police content legality. '
-            . 'First figure out WHAT the site is (shop, forum, streaming, SaaS, blog, bank-phishing page, nulled-software downloads, casino, etc.) from page_title, meta_description, and page_text_excerpt. '
+            . 'First figure out WHAT the site is (shop, forum, streaming, SaaS, blog, bank-phishing page, nulled-software downloads, casino, etc.) from page_title, meta_description, page_text_excerpt, and evidence_pack. '
             . 'Separate two different things: (A) VISITOR HARM = scam/fraud, phishing/credential theft, fake shop that takes money and never delivers, malware or virus pop-ups, forced downloads, wallet-drainers. (B) GRAY / legality = piracy, unofficial movie/TV streaming, ROMs, or similar. '
             . 'Scoring rules: real VISITOR HARM → negative, strong penalty. GRAY-but-not-harmful sites (e.g. an unofficial streaming site with ads but no fraud/malware signs) are only MILDLY risky, NOT scams → lean mixed with a small penalty (about -3 to -8); do not treat piracy alone as fraud. Clearly legitimate sites → positive. '
             . 'CDN/Cloudflare, a bot challenge page, or missing SPF/DMARC/MX are NOT scam signals — ignore them as fraud evidence. '
+            . 'Treat evidence_pack as machine-checked facts: off-site credential/payment forms, brand↔domain mismatch, investment ROI cues, fake-shop cue packs, and identity conflicts are high-signal when present. Prefer corroborated multi-cue patterns over a single keyword. '
             . 'Do not invent page facts — if content_incomplete is true or the excerpt is empty, say you could not fully read the site and stay mixed with a small delta unless there is hard evidence (feed/blacklist) of harm. '
             . 'score_delta guidance: confirmed fraud/phishing/malware → -14 to -22; clearly risky commercial behaviour → -8 to -13; gray/piracy or minor concerns → -3 to -8; unclear/mixed → -3 to +3; solid legit → +5 to +16. Scale magnitude by your confidence. '
             . 'Respond with ONLY JSON: '

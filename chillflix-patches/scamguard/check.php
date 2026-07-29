@@ -101,12 +101,20 @@ $unchecked = array_values(array_filter($signals, static fn($s) => ($s['value'] ?
 $score = (int) $record['trust_score'];
 $statusLabel = $badge['label'];
 $siteUnavailable = (($record['status'] ?? '') === 'unavailable' || ($record['verdict'] ?? '') === 'unavailable');
+$isProvisional = record_is_provisional($record);
 $siteName = get_setting('site_name', 'ScamGuard');
 // Lead with the exact domain so brand queries like "chillflix.lol" can match this report.
 if ($siteUnavailable) {
     $pageTitle = $domain . ' Scam Check (Website Down · score N/A) | ' . $siteName;
     $pageDescription = $domain . ' looks down or unreachable right now, so ' . $siteName
         . ' could not finish a live trust test. Try again later.';
+} elseif ($isProvisional) {
+    // Never SEO-claim a finished safe score for discovery drafts.
+    $pageTitle = $domain . ' Scam Check (Provisional · unfinished) | ' . $siteName;
+    $pageDescription = $domain . ' has only a provisional discovery scan so far. '
+        . $siteName . ' has not finished a full live trust test yet — open/rescan for the proper report.';
+    $robotsMeta = 'noindex,follow';
+    $statusLabel = 'Provisional';
 } else {
     $pageTitle = $domain . ' Scam Check (' . $score . '/100 · ' . $statusLabel . ') | ' . $siteName;
     $pageDescription = $domain . ' scam check by ' . $siteName . ': trust score ' . $score . '/100 (' . $statusLabel . '). '
@@ -141,7 +149,9 @@ $jsonLd = json_encode([
                 'name' => $domain,
                 'description' => $siteUnavailable
                     ? 'Website down — live trust score unavailable'
-                    : ($statusLabel . ' — trust score ' . $score . '/100'),
+                    : ($isProvisional
+                        ? 'Provisional discovery only — full live trust test unfinished'
+                        : ($statusLabel . ' — trust score ' . $score . '/100')),
             ],
         ],
         [
@@ -178,8 +188,11 @@ $jsonLd = json_encode([
                         'text' => $siteUnavailable
                             ? ($siteName . ' could not finish a live check of ' . $domain
                                 . ' because the website appears down or unreachable. Try again later.')
-                            : ($siteName . ' rates ' . $domain . ' at ' . $score . '/100 (' . $statusLabel . '). '
-                                . 'This is a risk signal based on threat feeds, registration data, SSL, hosting, and community reports — not a legal verdict.'),
+                            : ($isProvisional
+                                ? ($siteName . ' only has a provisional discovery scan for ' . $domain
+                                    . ' so far. That is not a finished safe/scam verdict — run a full rescan.')
+                                : ($siteName . ' rates ' . $domain . ' at ' . $score . '/100 (' . $statusLabel . '). '
+                                    . 'This is a risk signal based on threat feeds, registration data, SSL, hosting, and community reports — not a legal verdict.')),
                     ],
                 ],
                 [
@@ -189,7 +202,9 @@ $jsonLd = json_encode([
                         '@type' => 'Answer',
                         'text' => $siteUnavailable
                             ? ('No trust score is available for ' . $domain . ' right now because the live website could not be tested.')
-                            : ('The current ' . $siteName . ' trust score for ' . $domain . ' is ' . $score . ' out of 100 (' . $statusLabel . ').'),
+                            : ($isProvisional
+                                ? ('The score for ' . $domain . ' is provisional/unfinished until a full live check completes.')
+                                : ('The current ' . $siteName . ' trust score for ' . $domain . ' is ' . $score . ' out of 100 (' . $statusLabel . ').')),
                     ],
                 ],
             ],
@@ -235,6 +250,15 @@ function tone_class(string $tone): string
     ]);
     ?>
 
+    <?php if ($isProvisional): ?>
+        <div class="alert alert-info" style="margin-top:1rem">
+            <strong>Provisional discovery only.</strong>
+            This row came from a quick DNS/lists shortcut — not a finished live-site trust test.
+            <a href="<?= h(domain_page_path($record['domain']) . '?refresh=1') ?>">Run a full rescan</a>
+            for the proper report before trusting any score.
+        </div>
+    <?php endif; ?>
+
     <?php
     // ---- Compact report body (user-facing) --------------------------------
     $analystSignals = array_values(array_filter($signals, static function ($s) {
@@ -252,6 +276,8 @@ function tone_class(string $tone): string
     $plainSummary = match (true) {
         $siteUnavailable
             => 'This website looks down or unreachable right now, so we can’t finish a live trust test. Try again later.',
+        $isProvisional
+            => 'This is only a provisional discovery draft (DNS + local lists). It is not a finished safe/scam verdict — rescan for the proper live check.',
         !empty($record['malware_hit']) || !empty($record['phishing_hit']) || ($record['status'] ?? '') === 'blacklisted'
             => 'Strong warning signals were found. Avoid logging in or sending money until you verify the site another way.',
         ($record['status'] ?? '') === 'scam' || $score < 25
@@ -334,6 +360,10 @@ function tone_class(string $tone): string
             'Engine verdict' => 'Our scan engine rates this site positively',
             'User reports (ScamGuard)' => 'No negative community reports',
             'DNSSEC' => 'DNSSEC is enabled for this domain',
+            'Scan depth' => 'Full live check completed',
+            'Brand match' => 'Brand mentions align with the domain',
+            'Form destinations' => 'Sensitive forms stay on this domain',
+            'Identity consistency' => 'Identity cues look consistent',
         ];
         $badMap = [
             'Domain age' => 'The domain is relatively new',
@@ -362,6 +392,18 @@ function tone_class(string $tone): string
             'Yelp reviews' => 'Yelp reviews raise concerns',
             'Redirects' => 'Many redirects before the final page',
             'WHOIS / RDAP' => 'Domain registration data is unavailable',
+            'Scan depth' => 'Only a provisional discovery scan so far',
+            'Brand match' => 'Page brand content does not match this domain',
+            'Form destinations' => 'Sensitive forms post data off-site',
+            'Investment risk language' => 'Investment / high-ROI scam-style language found',
+            'Shop risk pattern' => 'Fake-shop style marketing pattern detected',
+            'Identity consistency' => 'Identity cues look inconsistent',
+            'Login/password form posts off-site' => 'Login form sends credentials to another domain',
+            'Payment form posts off-site' => 'Payment form posts to another domain',
+            'Brand content does not match domain' => 'Brand wording does not match the domain',
+            'Investment / crypto scam language' => 'Investment / crypto scam-style language found',
+            'Fake-shop risk pattern' => 'Fake-shop risk pattern detected',
+            'Conflicting company names on page' => 'Conflicting company names appear on the page',
         ];
 
         $text = $positive ? ($goodMap[$label] ?? $label) : ($badMap[$label] ?? $label);
@@ -423,15 +465,20 @@ function tone_class(string $tone): string
     </p>
 
     <div class="report-compact">
-        <section class="rc-card rc-summary <?= h(tone_class(($score >= 80) ? 'good' : (($score >= 50) ? 'warn' : 'bad'))) ?>">
+        <section class="rc-card rc-summary <?= h(tone_class($isProvisional ? 'warn' : (($score >= 80) ? 'good' : (($score >= 50) ? 'warn' : 'bad')))) ?>">
             <div class="rc-summary-top">
                 <div>
                     <p class="rc-kicker">In plain words</p>
                     <h2 class="rc-title"><?= h($statusLabel) ?></h2>
                 </div>
-                <div class="rc-scorechip" aria-label="Trust score <?= (int) $score ?> out of 100">
-                    <span class="rc-scorechip-num"><?= (int) $score ?></span>
-                    <span class="rc-scorechip-den">/100</span>
+                <div class="rc-scorechip" aria-label="<?= $isProvisional ? 'Provisional unfinished score' : ('Trust score ' . (int) $score . ' out of 100') ?>">
+                    <?php if ($isProvisional): ?>
+                        <span class="rc-scorechip-num">—</span>
+                        <span class="rc-scorechip-den">draft</span>
+                    <?php else: ?>
+                        <span class="rc-scorechip-num"><?= (int) $score ?></span>
+                        <span class="rc-scorechip-den">/100</span>
+                    <?php endif; ?>
                 </div>
             </div>
             <p class="rc-plain"><?= h($plainSummary) ?></p>
