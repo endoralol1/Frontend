@@ -140,21 +140,21 @@
 }
 
 /*
- * #menu sits outside .start (desktop top-right layout), so theme rules
- * `header .wrapper .start #menu { display:none }` no longer apply.
- * Mobile-first: always hide raw nav / hamburger; bottom nav replaces them.
- * Desktop (>=992) re-enables the horizontal header nav below.
+ * Phone: hide top #menu + hamburger (bottom nav replaces them).
+ * Desktop: show the same simple text links beside the logo — not a different UI.
  */
 header #menu,
 header #menu.header-nav,
 header .wrapper #menu,
+header .wrapper .start #menu,
 #menu-toggler,
 header .wrapper .start #menu-toggler {
   display: none !important;
 }
 
 header #menu ul,
-header #menu.header-nav ul {
+header #menu.header-nav ul,
+header .wrapper .start #menu > ul {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -319,8 +319,12 @@ body {
 
 .movie-sidebar.items .movie-item {
   display: flex !important;
-  align-items: center;
+  flex-direction: row !important;
+  align-items: center !important;
   text-decoration: none;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
 }
 
 #featured .swiper-button-next,
@@ -679,6 +683,37 @@ header.absolute .logo img {
   margin-top: 0.25rem;
 }
 
+/*
+ * Homepage columns: main rails must NOT force width:100% and shove the
+ * Most Commented sidebar off-screen (only a sliver was visible).
+ */
+@media (min-width: 1200px) {
+  main .aside-wrapper {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start;
+    gap: 1.25rem;
+    width: 100%;
+  }
+
+  main .aside-wrapper > .main {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    margin-right: 0 !important;
+    overflow: hidden;
+  }
+
+  main .aside-wrapper > .sidebar {
+    flex: 0 0 18.5rem !important;
+    width: 18.5rem !important;
+    min-width: 18.5rem !important;
+    max-width: 18.5rem !important;
+    flex-grow: 0 !important;
+  }
+}
+
 @media (max-width: 991.98px) {
   #featured {
     height: min(78vh, 40rem) !important;
@@ -986,10 +1021,11 @@ header.absolute.absolute {
   box-shadow: none !important;
 }
 
-/* Header: EN tight to logo; desktop nav top-right */
+/* Header: EN tight to logo; classic text links beside logo on desktop */
 header .wrapper .start {
-  gap: 0.1rem;
+  gap: 0.15rem;
   min-width: auto;
+  flex-wrap: nowrap;
 }
 
 header .wrapper .start .logo {
@@ -1020,18 +1056,18 @@ header .wrapper {
   gap: 0.5rem;
 }
 
-/* Desktop: logo+EN left · search · nav pinned top-right */
+/* Desktop: Logo + EN + same simple links · search on the right */
 @media (min-width: 992px) {
   header .wrapper {
     justify-content: flex-start !important;
     align-items: center;
     height: 4.75rem;
-    gap: 0.35rem;
+    gap: 0.5rem;
   }
 
   header .wrapper .start {
-    order: 1;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-width: 0;
   }
 
   header .wrapper .start #menu-toggler,
@@ -1039,32 +1075,20 @@ header .wrapper {
     display: none !important;
   }
 
-  header .wrapper .step {
-    order: 2;
-    margin-left: auto;
-    flex: 0 0 auto;
-    max-width: none;
-  }
-
-  header #menu.header-nav,
-  header .wrapper #menu,
-  header #menu.header-nav.open,
-  header .wrapper #menu.open {
-    display: flex !important;
+  header .wrapper .start #menu,
+  header .wrapper .start #menu.header-nav,
+  header .wrapper .start #menu.open {
+    display: block !important;
     position: static !important;
     top: auto !important;
-    order: 3;
-    margin-left: 0.15rem;
-    margin-right: 0;
-    align-items: center;
-    flex: 0 0 auto;
+    margin: 0 0 0 0.35rem !important;
   }
 
-  header #menu.header-nav > ul,
-  header .wrapper #menu > ul {
+  header .wrapper .start #menu > ul {
     display: flex !important;
     align-items: center;
-    gap: 0.05rem;
+    flex-wrap: nowrap;
+    gap: 0;
     background: transparent !important;
     border: 0 !important;
     border-radius: 0 !important;
@@ -1075,25 +1099,29 @@ header .wrapper {
     list-style: none;
   }
 
-  header #menu.header-nav > ul > li > a,
-  header .wrapper #menu > ul > li > a {
-    display: inline-flex !important;
+  header .wrapper .start #menu > ul > li > a {
+    display: flex !important;
     align-items: center;
-    padding: 0.4rem 0.7rem !important;
-    border-radius: 999px;
-    color: rgba(233, 236, 239, 0.82);
-    font-weight: 600;
-    font-size: 0.88rem;
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 0.35rem;
+    color: rgba(233, 236, 239, 0.9);
+    font-weight: 500;
+    font-size: 0.92rem;
     white-space: nowrap;
-    justify-content: center;
+    background: transparent !important;
   }
 
-  header #menu.header-nav > ul > li > a:hover,
-  header #menu.header-nav > ul > li > a.active,
-  header .wrapper #menu > ul > li > a:hover,
-  header .wrapper #menu > ul > li > a.active {
-    background: rgba(219, 105, 55, 0.16) !important;
-    color: #ffd2b8 !important;
+  header .wrapper .start #menu > ul > li > a:hover,
+  header .wrapper .start #menu > ul > li > a.active {
+    background: #242832 !important;
+    color: #db6937 !important;
+  }
+
+  header .wrapper .step {
+    margin-left: auto;
+    flex: 0 1 28rem;
+    max-width: 32rem;
+    min-width: 14rem;
   }
 
   header .wrapper .end {
@@ -1339,45 +1367,66 @@ header .wrapper {
 }
 
 
-/* Modern sidebar media rows */
+/* Compact sidebar rows (Most Commented) — not stretched */
 .movie-sidebar.items .movie-item {
-  background: linear-gradient(90deg, #222632 0%, #1a1c23 100%);
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 0.9rem;
-  padding: 0.5rem 0.55rem;
-  gap: 0.15rem;
-  transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s ease;
+  background: #1a1c23;
+  border: 0.5px solid transparent;
+  border-radius: 0.75rem;
+  padding: 0.35rem 0.4rem;
+  gap: 0;
+  margin: 0.35rem 0;
+  transition: border-color 0.25s ease, background 0.25s ease;
 }
 
 .movie-sidebar.items .movie-item:hover {
   background: #242832;
-  border-color: rgba(219, 105, 55, 0.35);
-  transform: translateX(2px);
+  border-color: rgba(219, 105, 55, 0.45);
+  transform: none;
 }
 
 .movie-sidebar.items .movie-item .item-poster {
-  width: 3.25rem;
-  border-radius: 0.55rem;
-  flex-shrink: 0;
+  width: 2.45rem !important;
+  min-width: 2.45rem;
+  max-width: 2.45rem;
+  border-radius: 0.45rem;
+  flex-shrink: 0 !important;
   overflow: hidden;
   aspect-ratio: 2 / 3;
+  margin: 0 !important;
   background: #15171d;
 }
 
+.movie-sidebar.items .movie-item .item-poster > div,
 .movie-sidebar.items .movie-item .item-poster img {
-  width: 100%;
-  height: 100%;
+  width: 100% !important;
+  height: 100% !important;
   object-fit: cover;
+  display: block;
+}
+
+.movie-sidebar.items .movie-item .info {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 0 0.55rem !important;
+  overflow: hidden;
+}
+
+.movie-sidebar.items .movie-item .info > div {
+  font-size: 0.72rem;
+  gap: 0.25rem;
+  flex-wrap: wrap;
 }
 
 .movie-sidebar.items .movie-item .info .name {
   font-weight: 600;
+  font-size: 0.86rem !important;
   color: #f1f3f5;
   line-height: 1.25;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   overflow: hidden;
+  display: block;
+  -webkit-line-clamp: unset;
 }
 
 /* Watch page polish */
@@ -1516,9 +1565,9 @@ header .wrapper {
 
 .section-top10 .top10-items .movie-item.media-card--ranked {
   float: none !important;
-  flex: 0 0 14.2857142857%;
-  width: 14.2857142857% !important;
-  max-width: none;
+  flex: 0 0 9.75rem;
+  width: 9.75rem !important;
+  max-width: 9.75rem;
   margin: 0 0 0.35rem !important;
   padding: 0 0.4rem !important;
   scroll-snap-align: start;
@@ -1674,28 +1723,15 @@ header .wrapper {
   pointer-events: none;
 }
 
-@media (max-width: 1399.98px) {
-  .section-top10 .top10-items .movie-item.media-card--ranked {
-    flex-basis: 20%;
-    width: 20% !important;
-  }
-}
-
 @media (max-width: 991.98px) {
   .section-top10 .top10-items .movie-item.media-card--ranked {
-    flex-basis: 28%;
-    width: 28% !important;
+    flex: 0 0 8.5rem;
+    width: 8.5rem !important;
+    max-width: 8.5rem;
   }
 
   .section-top10 .top10-nav {
     display: none;
-  }
-}
-
-@media (min-width: 480px) and (max-width: 767.9px) {
-  .section-top10 .top10-items .movie-item.media-card--ranked {
-    flex-basis: 32%;
-    width: 32% !important;
   }
 }
 
@@ -1705,9 +1741,9 @@ header .wrapper {
   }
 
   .section-top10 .top10-items .movie-item.media-card--ranked {
-    flex-basis: 40%;
-    width: 40% !important;
-    max-width: 40% !important;
+    flex: 0 0 7.75rem;
+    width: 7.75rem !important;
+    max-width: 7.75rem;
   }
 }
 
@@ -1749,9 +1785,9 @@ header .wrapper {
 
 .section-rail .media-rail-items .movie-item {
   float: none !important;
-  flex: 0 0 14.2857142857%;
-  width: 14.2857142857% !important;
-  max-width: none;
+  flex: 0 0 9.75rem;
+  width: 9.75rem !important;
+  max-width: 9.75rem;
   margin: 0 0 0.35rem !important;
   padding: 0 0.4rem !important;
   scroll-snap-align: start;
@@ -1798,30 +1834,15 @@ header .wrapper {
   pointer-events: none;
 }
 
-@media (max-width: 1399.98px) {
-  .section-rail .media-rail-items .movie-item {
-    flex-basis: 20%;
-    width: 20% !important;
-  }
-}
-
 @media (max-width: 991.98px) {
   .section-rail .media-rail-items .movie-item {
-    flex-basis: 28%;
-    width: 28% !important;
-    max-width: 28% !important;
+    flex: 0 0 8.5rem;
+    width: 8.5rem !important;
+    max-width: 8.5rem;
   }
 
   .section-rail .media-rail-nav {
     display: none;
-  }
-}
-
-@media (min-width: 480px) and (max-width: 767.9px) {
-  .section-rail .media-rail-items .movie-item {
-    flex-basis: 32%;
-    width: 32% !important;
-    max-width: 32% !important;
   }
 }
 
@@ -1831,9 +1852,9 @@ header .wrapper {
   }
 
   .section-rail .media-rail-items .movie-item {
-    flex-basis: 40%;
-    width: 40% !important;
-    max-width: 40% !important;
+    flex: 0 0 7.75rem;
+    width: 7.75rem !important;
+    max-width: 7.75rem;
   }
 }
 
@@ -2237,10 +2258,11 @@ header .wrapper {
     color: #ffd2b8;
   }
 
-  /* Replace hamburger with bottom nav on mobile */
+  /* Replace hamburger / top links with bottom nav on phone */
   header .wrapper .start #menu-toggler,
   header #menu,
-  header .wrapper #menu {
+  header .wrapper #menu,
+  header .wrapper .start #menu {
     display: none !important;
   }
 
