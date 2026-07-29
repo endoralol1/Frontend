@@ -80,13 +80,13 @@
   $(document).on('click', '#show-search', function (e) {
     e.preventDefault();
     e.stopPropagation();
-    if (window.matchMedia('(max-width: 991.98px)').matches && $('#search-sheet').length) {
+    // Same search sheet as phone (desktop header bar is hidden).
+    if ($('#search-sheet').length) {
       openSearchSheet();
       return;
     }
     var $search = $('#search');
     var $wrap = $('#search-wrapper');
-    // Mobile CSS expects .active on #search-wrapper (not .show).
     $search.toggleClass('active');
     $wrap.toggleClass('active show');
     if ($wrap.hasClass('active')) {

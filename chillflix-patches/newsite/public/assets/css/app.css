@@ -692,7 +692,7 @@ header.absolute .logo img {
     display: flex !important;
     flex-direction: row !important;
     align-items: flex-start;
-    gap: 1.25rem;
+    gap: 1.5rem;
     width: 100%;
   }
 
@@ -706,10 +706,10 @@ header.absolute .logo img {
   }
 
   main .aside-wrapper > .sidebar {
-    flex: 0 0 18.5rem !important;
-    width: 18.5rem !important;
-    min-width: 18.5rem !important;
-    max-width: 18.5rem !important;
+    flex: 0 0 24rem !important;
+    width: 24rem !important;
+    min-width: 24rem !important;
+    max-width: 24rem !important;
     flex-grow: 0 !important;
   }
 }
@@ -1056,7 +1056,7 @@ header .wrapper {
   gap: 0.5rem;
 }
 
-/* Desktop: Logo + EN + same simple links · search on the right */
+/* Desktop: logo left only — phone-style nav pill sits top-right (same as phone) */
 @media (min-width: 992px) {
   header .wrapper {
     justify-content: flex-start !important;
@@ -1071,61 +1071,17 @@ header .wrapper {
   }
 
   header .wrapper .start #menu-toggler,
-  #menu-toggler {
+  #menu-toggler,
+  header .wrapper .start #menu,
+  header .wrapper .start #menu.header-nav,
+  header #menu {
     display: none !important;
   }
 
-  header .wrapper .start #menu,
-  header .wrapper .start #menu.header-nav,
-  header .wrapper .start #menu.open {
-    display: block !important;
-    position: static !important;
-    top: auto !important;
-    margin: 0 0 0 0.35rem !important;
-  }
-
-  header .wrapper .start #menu > ul {
-    display: flex !important;
-    align-items: center;
-    flex-wrap: nowrap;
-    gap: 0;
-    background: transparent !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    width: auto !important;
-    overflow: visible !important;
-    list-style: none;
-  }
-
-  header .wrapper .start #menu > ul > li > a {
-    display: flex !important;
-    align-items: center;
-    padding: 0.45rem 0.55rem !important;
-    border-radius: 0.35rem;
-    color: rgba(233, 236, 239, 0.9);
-    font-weight: 500;
-    font-size: 0.86rem;
-    white-space: nowrap;
-    background: transparent !important;
-  }
-
-  header .wrapper .start #menu > ul > li > a:hover,
-  header .wrapper .start #menu > ul > li > a.active {
-    background: #242832 !important;
-    color: #db6937 !important;
-  }
-
-  header .wrapper .step {
-    margin-left: auto;
-    flex: 0 1 22rem;
-    max-width: 24rem;
-    min-width: 12rem;
-  }
-
+  /* No desktop search input bar — Search opens the same sheet as phone */
+  header .wrapper .step,
   header .wrapper .end {
-    display: none;
+    display: none !important;
   }
 }
 
@@ -1394,15 +1350,25 @@ aside.sidebar .title {
 }
 
 .movie-sidebar.items .movie-item .item-poster {
-  width: 2.45rem !important;
-  min-width: 2.45rem;
-  max-width: 2.45rem;
+  width: 3.1rem !important;
+  min-width: 3.1rem;
+  max-width: 3.1rem;
   border-radius: 0.45rem;
   flex-shrink: 0 !important;
   overflow: hidden;
   aspect-ratio: 2 / 3;
   margin: 0 !important;
   background: #15171d;
+}
+
+@media (min-width: 1200px) {
+  .movie-sidebar.items .movie-item .info .name {
+    font-size: 0.92rem !important;
+  }
+
+  .movie-sidebar.items .movie-item .info > div {
+    font-size: 0.78rem;
+  }
 }
 
 .movie-sidebar.items .movie-item .item-poster > div,
@@ -1560,11 +1526,18 @@ aside.sidebar .title {
   margin: 0 -0.4rem;
   float: none !important;
   width: auto !important;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(219, 105, 55, 0.55) transparent;
+  cursor: grab;
 }
 
 .section-top10 .top10-items::-webkit-scrollbar {
-  display: none;
+  height: 6px;
+}
+
+.section-top10 .top10-items::-webkit-scrollbar-thumb {
+  background: rgba(219, 105, 55, 0.45);
+  border-radius: 999px;
 }
 
 .section-top10 .top10-items::after {
@@ -1574,11 +1547,11 @@ aside.sidebar .title {
 
 .section-top10 .top10-items .movie-item.media-card--ranked {
   float: none !important;
-  flex: 0 0 9.75rem;
-  width: 9.75rem !important;
-  max-width: 9.75rem;
+  flex: 0 0 12.75rem;
+  width: 12.75rem !important;
+  max-width: 12.75rem;
   margin: 0 0 0.35rem !important;
-  padding: 0 0.4rem !important;
+  padding: 0 0.45rem !important;
   scroll-snap-align: start;
   overflow: visible !important;
 }
@@ -1734,9 +1707,9 @@ aside.sidebar .title {
 
 @media (max-width: 991.98px) {
   .section-top10 .top10-items .movie-item.media-card--ranked {
-    flex: 0 0 8.5rem;
-    width: 8.5rem !important;
-    max-width: 8.5rem;
+    flex: 0 0 9rem;
+    width: 9rem !important;
+    max-width: 9rem;
   }
 
   .section-top10 .top10-nav {
@@ -1750,9 +1723,9 @@ aside.sidebar .title {
   }
 
   .section-top10 .top10-items .movie-item.media-card--ranked {
-    flex: 0 0 7.75rem;
-    width: 7.75rem !important;
-    max-width: 7.75rem;
+    flex: 0 0 8rem;
+    width: 8rem !important;
+    max-width: 8rem;
   }
 }
 
@@ -1780,11 +1753,18 @@ aside.sidebar .title {
   margin: 0 -0.4rem;
   float: none !important;
   width: auto !important;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(219, 105, 55, 0.55) transparent;
+  cursor: grab;
 }
 
 .section-rail .media-rail-items::-webkit-scrollbar {
-  display: none;
+  height: 6px;
+}
+
+.section-rail .media-rail-items::-webkit-scrollbar-thumb {
+  background: rgba(219, 105, 55, 0.45);
+  border-radius: 999px;
 }
 
 .section-rail .media-rail-items::after {
@@ -1794,11 +1774,11 @@ aside.sidebar .title {
 
 .section-rail .media-rail-items .movie-item {
   float: none !important;
-  flex: 0 0 9.75rem;
-  width: 9.75rem !important;
-  max-width: 9.75rem;
+  flex: 0 0 12.75rem;
+  width: 12.75rem !important;
+  max-width: 12.75rem;
   margin: 0 0 0.35rem !important;
-  padding: 0 0.4rem !important;
+  padding: 0 0.45rem !important;
   scroll-snap-align: start;
 }
 
@@ -1845,9 +1825,9 @@ aside.sidebar .title {
 
 @media (max-width: 991.98px) {
   .section-rail .media-rail-items .movie-item {
-    flex: 0 0 8.5rem;
-    width: 8.5rem !important;
-    max-width: 8.5rem;
+    flex: 0 0 9rem;
+    width: 9rem !important;
+    max-width: 9rem;
   }
 
   .section-rail .media-rail-nav {
@@ -1861,9 +1841,9 @@ aside.sidebar .title {
   }
 
   .section-rail .media-rail-items .movie-item {
-    flex: 0 0 7.75rem;
-    width: 7.75rem !important;
-    max-width: 7.75rem;
+    flex: 0 0 8rem;
+    width: 8rem !important;
+    max-width: 8rem;
   }
 }
 
@@ -2284,13 +2264,102 @@ aside.sidebar .title {
   }
 }
 
+/* Desktop: same phone nav pill, fixed top-right (same controls as phone) */
 @media (min-width: 992px) {
   .bottom-nav {
-    display: none !important;
+    display: block !important;
+    position: fixed;
+    top: 0.7rem;
+    right: max(1rem, env(safe-area-inset-right, 0px));
+    left: auto;
+    bottom: auto;
+    z-index: 130;
+    width: auto;
+    padding: 0;
+    pointer-events: none;
   }
 
-  .browse-sheet {
-    display: none !important;
+  .bottom-nav-inner {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    max-width: none;
+    margin: 0;
+    padding: 0.3rem;
+    border-radius: 1.25rem;
+    background: rgba(18, 20, 28, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+      0 10px 30px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(18px) saturate(1.25);
+    -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  }
+
+  .bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.1rem;
+    min-width: 4.1rem;
+    min-height: 3rem;
+    padding: 0.3rem 0.45rem 0.28rem;
+    border: 0;
+    background: transparent;
+    border-radius: 1rem;
+    color: rgba(255, 255, 255, 0.62);
+    text-decoration: none;
+    cursor: pointer;
+    font: inherit;
+    transition: color 0.08s ease, background 0.08s ease;
+  }
+
+  .bottom-nav-item:hover,
+  .bottom-nav-item:focus-visible {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+    outline: none;
+  }
+
+  .bottom-nav-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 0.65rem;
+  }
+
+  .bottom-nav-icon i {
+    font-size: 1.2rem;
+    line-height: 1;
+  }
+
+  .bottom-nav-label {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1;
+  }
+
+  .bottom-nav-item.active {
+    color: #fff;
+  }
+
+  .bottom-nav-item.active .bottom-nav-icon {
+    color: #fff;
+    background: linear-gradient(180deg, rgba(219, 105, 55, 0.95) 0%, rgba(220, 53, 69, 0.92) 100%);
+    box-shadow: 0 6px 16px rgba(220, 53, 69, 0.35);
+  }
+
+  .bottom-nav-item.active .bottom-nav-label {
+    color: #ffd2b8;
+  }
+
+  body {
+    padding-bottom: 0 !important;
   }
 }
 
@@ -2299,7 +2368,7 @@ aside.sidebar .title {
   display: none;
 }
 
-@media (max-width: 991.98px) {
+@media (max-width: 99999px) {
   .search-sheet {
     display: block;
     position: fixed;
@@ -2557,9 +2626,134 @@ aside.sidebar .title {
   }
 }
 
+/* Desktop search/browse sheets — same UI as phone, centered modal */
 @media (min-width: 992px) {
-  .search-sheet {
+  .search-sheet,
+  .browse-sheet {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 145;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+  }
+
+  .search-sheet.is-open,
+  .browse-sheet.is-open {
+    pointer-events: auto;
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .search-sheet[hidden],
+  .browse-sheet[hidden] {
     display: none !important;
+  }
+
+  .search-sheet.is-open[hidden],
+  .browse-sheet.is-open[hidden] {
+    display: block !important;
+  }
+
+  .search-sheet-backdrop,
+  .browse-sheet-backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background:
+      radial-gradient(700px 420px at 50% 15%, rgba(219, 105, 55, 0.22), transparent 60%),
+      rgba(4, 6, 10, 0.72);
+    backdrop-filter: blur(14px) saturate(1.15);
+    -webkit-backdrop-filter: blur(14px) saturate(1.15);
+    cursor: pointer;
+  }
+
+  .search-sheet-panel,
+  .browse-sheet-panel {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    right: auto;
+    bottom: auto;
+    width: min(34rem, calc(100vw - 3rem));
+    max-height: min(78vh, 40rem);
+    transform: translate(-50%, -46%) scale(0.96);
+    opacity: 0;
+    overflow: auto;
+    border-radius: 1.45rem;
+    background: linear-gradient(180deg, rgba(28, 32, 42, 0.96) 0%, rgba(16, 19, 26, 0.98) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
+  }
+
+  .search-sheet.is-open .search-sheet-panel,
+  .browse-sheet.is-open .browse-sheet-panel {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+
+  .search-sheet-head,
+  .browse-sheet-head,
+  .search-sheet-form,
+  .search-sheet-chips,
+  .search-sheet-suggest,
+  .search-sheet-empty-hint,
+  .browse-sheet-body {
+    position: relative;
+    z-index: 1;
+  }
+
+  .search-sheet-head,
+  .browse-sheet-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 1.05rem 1rem 0.55rem;
+  }
+
+  .search-sheet-form {
+    padding: 0 1rem 0.75rem;
+  }
+
+  .search-sheet-field {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .search-sheet-field input {
+    flex: 1 1 auto;
+    border: 0;
+    background: transparent;
+    color: #fff;
+    outline: none;
+    font: inherit;
+  }
+
+  .search-sheet-chips {
+    display: flex;
+    gap: 0.45rem;
+    overflow-x: auto;
+    padding: 0 1rem 0.75rem;
+  }
+
+  .search-sheet-suggest,
+  .search-sheet-empty-hint,
+  .browse-sheet-body {
+    padding: 0 1rem 1rem;
+  }
+
+  body.search-open,
+  body.browse-open {
+    overflow: hidden;
   }
 }
 
@@ -2568,7 +2762,7 @@ aside.sidebar .title {
   display: none;
 }
 
-@media (max-width: 991.98px) {
+@media (max-width: 99999px) {
   .browse-sheet {
     display: block;
     position: fixed;
@@ -2926,7 +3120,24 @@ aside.sidebar .title {
 
 @media (min-width: 992px) {
   .browse-mock-toast {
-    display: none !important;
+    bottom: 1.5rem;
+  }
+
+  /* Win over the shared sheet layout: center modals on desktop */
+  .search-sheet-panel,
+  .browse-sheet-panel {
+    left: 50% !important;
+    top: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: min(34rem, calc(100vw - 3rem)) !important;
+    max-height: min(78vh, 40rem) !important;
+    transform: translate(-50%, -46%) scale(0.96) !important;
+  }
+
+  .search-sheet.is-open .search-sheet-panel,
+  .browse-sheet.is-open .browse-sheet-panel {
+    transform: translate(-50%, -50%) scale(1) !important;
   }
 }
 
