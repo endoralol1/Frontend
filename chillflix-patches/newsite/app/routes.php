@@ -273,7 +273,10 @@ $router->get('/sitemap.xml', function () use ($tmdb) {
 
 function home(Tmdb $tmdb): void
 {
-    $featured = array_slice($tmdb->trending('movie', 'week'), 0, 5);
+    $trendingMoviesWeek = $tmdb->trending('movie', 'week');
+    $featured = array_slice($trendingMoviesWeek, 0, 5);
+    $top10Movies = array_slice($trendingMoviesWeek, 0, 10);
+    $top10Tv = array_slice($tmdb->trending('tv', 'week'), 0, 10);
     $recommendedMovies = $tmdb->discover('movie', [
         'sort_by' => 'popularity.desc',
         'vote_count.gte' => 50,
@@ -301,6 +304,8 @@ function home(Tmdb $tmdb): void
 
     view('pages/home', [
         'featured' => $featured,
+        'top10Movies' => $top10Movies,
+        'top10Tv' => $top10Tv,
         'recommendedMovies' => array_slice($recommendedMovies, 0, 7),
         'recommendedTv' => array_slice($recommendedTv, 0, 7),
         'latestMovies' => array_slice($latestMovies, 0, 14),

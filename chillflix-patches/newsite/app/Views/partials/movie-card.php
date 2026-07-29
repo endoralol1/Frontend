@@ -2,7 +2,12 @@
 /**
  * @var array $item
  * @var string $type movie|tv
+ * @var int|null $rank optional 1–10 badge (top-left)
  */
+$rank = isset($rank) ? (int) $rank : null;
+if ($rank !== null && ($rank < 1 || $rank > 99)) {
+    $rank = null;
+}
 $type = $type ?? (($item['media_type'] ?? '') === 'tv' || isset($item['first_air_date']) && !isset($item['title']) ? 'tv' : 'movie');
 if (isset($item['media_type']) && in_array($item['media_type'], ['movie', 'tv'], true)) {
     $type = $item['media_type'];
@@ -19,6 +24,9 @@ $rating = isset($item['vote_average']) ? round((float) $item['vote_average'], 1)
 <div class="movie-item media-card" data-id="<?= (int) $item['id'] ?>" data-type="<?= e($type) ?>">
     <div class="inner">
         <a class="item-poster" href="<?= e($href) ?>" data-tip="<?= (int) $item['id'] ?>" data-media-type="<?= e($type) ?>" aria-label="<?= e($title) ?>">
+            <?php if ($rank !== null): ?>
+            <span class="card-rank" aria-label="Rank <?= (int) $rank ?>"><?= (int) $rank ?></span>
+            <?php endif; ?>
             <div class="poster-media">
                 <img class="lazyload" data-src="<?= e($poster) ?>" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='100%25' height='100%25' fill='%231a1c23'/%3E%3C/svg%3E" alt="<?= e($title) ?>" width="300" height="450" loading="lazy">
             </div>
