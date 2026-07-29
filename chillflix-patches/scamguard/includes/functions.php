@@ -191,6 +191,143 @@ function record_is_provisional(array $record): bool
 }
 
 /**
+ * Infer rough site category + which “business hygiene” checks actually apply.
+ *
+ * Free media / hobby sites should NOT be dinged for missing payments, phone,
+ * or corporate contact pages. Shops, finance, hosting, and official services should.
+ *
+ * @return array{
+ *   category:string,
+ *   expects_payment:bool,
+ *   expects_business_contact:bool,
+ *   label:string
+ * }
+ */
+function infer_site_expectations(string $title = '', string $excerpt = '', string $html = ''): array
+{
+    $plain = strtolower(trim($title . ' ' . $excerpt));
+    if ($html !== '') {
+        $chunk = preg_replace('/<script\b[^>]*>.*?<\/script>/is', ' ', $html) ?? $html;
+        $chunk = preg_replace('/<style\b[^>]*>.*?<\/style>/is', ' ', $chunk) ?? $chunk;
+        $chunk = strtolower(trim(strip_tags($chunk)));
+        if (function_exists('mb_substr')) {
+            $plain .= ' ' . mb_substr($chunk, 0, 3500);
+        } else {
+            $plain .= ' ' . substr($chunk, 0, 3500);
+        }
+    }
+    $plain = preg_replace('/\s+/u', ' ', $plain) ?? $plain;
+
+    $commerce = (bool) preg_match(
+        '/\b(add to cart|buy now|checkout|shopping cart|order now|free shipping|sku\b|in stock|shop now|store\.|ecommerce|e-commerce)\b/i',
+        $plain
+    );
+    $finance = (bool) preg_match(
+        '/\b(bank(ing)?|invest(ment|ing)?|trading|broker|loan|mortgage|crypto exchange|wallet connect|forex|roi|guaranteed returns?)\b/i',
+        $plain
+    );
+    $hosting = (bool) preg_match(
+        '/\b(web hosting|vps|dedicated server|cloud hosting|domain registrar|cpanel)\b/i',
+        $plain
+    );
+    $freeMedia = (bool) preg_match(
+        '/\b(watch\s+online|stream(ing)?|movies?|tv\s*shows?|anime|series|episode|free\s+(movies?|streams?|anime|films?)|film\s+online|hd\s+movies?|download\s+(movies?|episodes?))\b/i',
+        $plain
+    );
+    // Official streamers still expect business contact; free/unofficial catalogs do not.
+    $officialMedia = (bool) preg_match(
+        '/\b(netflix|hulu|disney\+|disney plus|prime video|hbo max|max\.com|paramount\+|apple tv\+)\b/i',
+        $plain
+    );
+    $forumBlog = (bool) preg_match(
+        '/\b(forum|community|blog|wiki|fan\s*site|portfolio|personal\s+site)\b/i',
+        $plain
+    );
+
+    if ($finance) {
+        return [
+            'category' => 'finance',
+            'expects_payment' => true,
+            'expects_business_contact' => true,
+            'label' => 'Finance / money site',
+        ];
+    }
+    if ($commerce) {
+        return [
+            'category' => 'commerce',
+            'expects_payment' => true,
+            'expects_business_contact' => true,
+            'label' => 'Shop / commerce site',
+        ];
+    }
+    if ($hosting) {
+        return [
+            'category' => 'hosting',
+            'expects_payment' => true,
+            'expects_business_contact' => true,
+            'label' => 'Hosting / infrastructure',
+        ];
+    }
+    if ($freeMedia && !$officialMedia) {
+        return [
+            'category' => 'free_media',
+            'expects_payment' => false,
+            'expects_business_contact' => false,
+            'label' => 'Free / unofficial media site',
+        ];
+    }
+    if ($forumBlog) {
+        return [
+            'category' => 'community',
+            'expects_payment' => false,
+            'expects_business_contact' => false,
+            'label' => 'Community / blog style site',
+        ];
+    }
+
+    return [
+        'category' => 'general',
+        'expects_payment' => false,
+        'expects_business_contact' => true,
+        'label' => 'General website',
+    ];
+}
+
+/**
+ * Detect login/account UI cues (links, copy, password fields) — not proof of safety.
+ */
+function detect_login_ui(string $html): bool
+{
+    if ($html === '') {
+        return false;
+    }
+    if (preg_match('/type\s*=\s*[\'"]password[\'"]/i', $html)) {
+        return true;
+    }
+    if (preg_match('/\b(log[\s-]?in|sign[\s-]?in|sign[\s-]?up|create account|register|my account)\b/i', $html)) {
+        return true;
+    }
+    if (preg_match('/(?:href|action)\s*=\s*[\'"][^\'"]*(?:login|log-in|signin|sign-in|signup|sign-up|register|auth|account|\/user)[^\'"]*[\'"]/i', $html)) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Detect commerce / payment UI cues.
+ */
+function detect_payment_ui(string $html): bool
+{
+    if ($html === '') {
+        return false;
+    }
+    return (bool) preg_match(
+        '/\b(checkout|add to cart|payment|paypal|credit card|billing|buy now|order now|shopping cart)\b/i',
+        $html
+    );
+}
+
+/**
  * Trust-band theme for modern ScamGuard result hero.
  *
  * @return array{tone:string,accent:string,bar:string,label:string,why:string,hint:string,icon:string}

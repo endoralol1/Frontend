@@ -63,6 +63,12 @@ class DomainChecker
         $this->data['review_penalty'] = 0;
         $this->data['behavior_flags'] = [];
         $this->data['ai_evidence'] = null;
+        $this->data['has_login'] = 0;
+        $this->data['has_payment'] = 0;
+        $this->data['site_category'] = 'general';
+        $this->data['site_category_label'] = 'General website';
+        $this->data['expects_payment'] = 0;
+        $this->data['expects_business_contact'] = 1;
         $this->data['check_mode'] = $this->turboFast ? 'turbo' : ($this->fast ? 'fast' : 'full');
         // Provisional = discovery shortcut. Full = live homepage + reputation path.
         $this->data['scan_depth'] = $this->fast ? 'provisional' : 'full';
@@ -86,6 +92,8 @@ class DomainChecker
             $this->data['free_email_contact'] = 0;
             $this->data['noindex'] = 0;
             $this->data['crypto_only_payment'] = 0;
+            $this->data['has_login'] = 0;
+            $this->data['has_payment'] = 0;
             $this->data['suspicious_keyword_hits'] = 0;
             $this->data['redirect_count'] = 0;
             $this->addSignal(
@@ -997,8 +1005,8 @@ class DomainChecker
             || preg_match('/\bnoindex\b/i', $xRobots)
         ) ? 1 : 0;
 
-        $hasLogin = (bool) preg_match('/\b(login|sign in|create account|register)\b/i', $html);
-        $hasPayment = (bool) preg_match('/\b(checkout|add to cart|payment|paypal|credit card|billing)\b/i', $html);
+        $hasLogin = detect_login_ui($html);
+        $hasPayment = detect_payment_ui($html);
         $hasCryptoPay = (bool) preg_match(
             '/\b(bitcoin|btc|ethereum|eth|usdt|usdc|crypto(currency)?|wallet address|send (btc|eth)|coinpayments?|binance pay)\b/i',
             $html
@@ -1007,7 +1015,20 @@ class DomainChecker
             '/\b(visa|mastercard|amex|american express|paypal|stripe|apple pay|google pay|credit card|debit card)\b/i',
             $html
         );
+        $this->data['has_login'] = $hasLogin ? 1 : 0;
+        $this->data['has_payment'] = $hasPayment ? 1 : 0;
         $this->data['crypto_only_payment'] = ($hasCryptoPay && !$hasCardPay) ? 1 : 0;
+
+        // Site-type expectations: free media should not be judged like a shop/bank.
+        $profile = infer_site_expectations(
+            (string) ($this->data['page_title'] ?? ''),
+            '', // excerpt filled below; re-infer after excerpt when possible
+            $challenge ? '' : $html
+        );
+        $this->data['site_category'] = $profile['category'];
+        $this->data['site_category_label'] = $profile['label'];
+        $this->data['expects_payment'] = !empty($profile['expects_payment']) ? 1 : 0;
+        $this->data['expects_business_contact'] = !empty($profile['expects_business_contact']) ? 1 : 0;
 
         $suspiciousPhrases = [
             'verify your account', 'confirm your identity', 'account suspended', 'act now',
@@ -1030,6 +1051,19 @@ class DomainChecker
         // Plain-text excerpt for AI "what is this site about" review (not stored forever in DB columns).
         $this->data['page_excerpt'] = $challenge ? '' : $this->extractPageExcerpt($html);
         $this->data['page_meta_description'] = $challenge ? '' : $this->extractMetaDescription($html);
+
+        // Re-infer with excerpt so title+body classification is more reliable.
+        if (!$challenge) {
+            $profile = infer_site_expectations(
+                (string) ($this->data['page_title'] ?? ''),
+                (string) ($this->data['page_excerpt'] ?? ''),
+                $html
+            );
+            $this->data['site_category'] = $profile['category'];
+            $this->data['site_category_label'] = $profile['label'];
+            $this->data['expects_payment'] = !empty($profile['expects_payment']) ? 1 : 0;
+            $this->data['expects_business_contact'] = !empty($profile['expects_business_contact']) ? 1 : 0;
+        }
 
         // High-signal scam behavior analysis (forms, brand mismatch, investment/fake-shop).
         $this->data['behavior_flags'] = [];
@@ -1078,6 +1112,8 @@ class DomainChecker
             $this->data['free_email_contact'] = 0;
             $this->data['noindex'] = 0;
             $this->data['crypto_only_payment'] = 0;
+            $this->data['has_login'] = 0;
+            $this->data['has_payment'] = 0;
             $this->data['suspicious_keyword_hits'] = 0;
             $hasTerms = false;
             // Don't store/display the challenge page's own title ("Attention Required!
@@ -1120,33 +1156,70 @@ class DomainChecker
         }
         $this->addSignal('content', 'Redirects', (string) $this->data['redirect_count'], '', $this->data['redirect_count'] > 3 ? 'warn' : 'neutral');
         if (!$challenge) {
-            $this->addSignal('content', 'Contact info', $this->data['has_contact_info'] ? 'Found' : 'Not found', '', $this->data['has_contact_info'] ? 'good' : 'warn');
+            $expectsContact = !empty($this->data['expects_business_contact']);
+            $expectsPay = !empty($this->data['expects_payment']);
+            $categoryLabel = (string) ($this->data['site_category_label'] ?? 'General website');
+
+            $this->addSignal(
+                'content',
+                'Site type (for checks)',
+                $categoryLabel,
+                $expectsPay
+                    ? 'Payment / checkout expectations apply for this site type.'
+                    : 'Free/hobby-style site type — missing payments/phone/contact is not treated as a scam signal by itself.',
+                'neutral'
+            );
+
+            $missingContactTone = $this->data['has_contact_info']
+                ? 'good'
+                : ($expectsContact ? 'warn' : 'neutral');
+            $this->addSignal(
+                'content',
+                'Contact info',
+                $this->data['has_contact_info'] ? 'Found' : 'Not found',
+                $this->data['has_contact_info']
+                    ? ''
+                    : ($expectsContact
+                        ? 'No clear contact page/details — more relevant for shops/official services.'
+                        : 'Not required for this site type (e.g. free media / community).'),
+                $missingContactTone
+            );
+            $missingPhoneTone = $this->data['has_phone']
+                ? 'good'
+                : ($expectsContact ? 'warn' : 'neutral');
             $this->addSignal(
                 'content',
                 'Phone / WhatsApp',
                 $this->data['has_phone'] ? 'Found' : 'Not found',
                 $this->data['has_phone']
                     ? 'Public phone or messaging contact detected on the homepage.'
-                    : 'No clear phone / WhatsApp contact on the homepage.',
-                $this->data['has_phone'] ? 'good' : 'warn'
+                    : ($expectsContact
+                        ? 'No clear phone / WhatsApp contact on the homepage.'
+                        : 'Phone contact is optional for this site type — not used as a negative by itself.'),
+                $missingPhoneTone
             );
             $this->addSignal(
                 'content',
                 'Contact email type',
                 $this->data['free_email_contact'] ? 'Free webmail only' : ($businessMail ? 'Domain / business email' : 'Not detected'),
                 $this->data['free_email_contact']
-                    ? 'Only free providers (Gmail/Yahoo/Outlook/etc.) — weaker trust signal.'
+                    ? 'Only free providers (Gmail/Yahoo/Outlook/etc.) — weaker trust signal when contact is expected.'
                     : ($businessMail ? 'Uses an address on this domain.' : ''),
-                $this->data['free_email_contact'] ? 'warn' : ($businessMail ? 'good' : 'neutral')
+                ($this->data['free_email_contact'] && $expectsContact) ? 'warn' : ($businessMail ? 'good' : 'neutral')
             );
+            $missingPrivacyTone = $this->data['has_privacy_policy']
+                ? 'good'
+                : ($expectsContact ? 'warn' : 'neutral');
             $this->addSignal(
                 'content',
                 'Privacy policy',
                 $this->data['has_privacy_policy'] ? 'Found' : 'Not found',
                 $this->data['has_privacy_policy']
                     ? 'Privacy policy / privacy statement / do-not-sell style link detected.'
-                    : 'No clear privacy policy, privacy statement, or privacy-rights link found.',
-                $this->data['has_privacy_policy'] ? 'good' : 'warn'
+                    : ($expectsContact
+                        ? 'No clear privacy policy, privacy statement, or privacy-rights link found.'
+                        : 'Privacy page missing — informational only for this site type.'),
+                $missingPrivacyTone
             );
             $this->addSignal(
                 'content',
@@ -1176,8 +1249,29 @@ class DomainChecker
                     : 'No robots noindex directive detected on the homepage.',
                 $this->data['noindex'] ? 'warn' : 'good'
             );
-            $this->addSignal('content', 'Login / account UI', $hasLogin ? 'Present' : 'Not detected', '', 'neutral');
-            $this->addSignal('content', 'Payment language', $hasPayment ? 'Present' : 'Not detected', $hasPayment ? 'Commerce-style wording detected' : '', $hasPayment ? 'warn' : 'neutral');
+            $this->addSignal(
+                'content',
+                'Login / account UI',
+                $hasLogin ? 'Present' : 'Not detected',
+                $hasLogin
+                    ? 'Login / account / password UI cues were found on the page.'
+                    : 'No clear login/account UI cues on the inspected page (absence is not automatically bad).',
+                'neutral'
+            );
+            $payTone = 'neutral';
+            $payNote = '';
+            if ($hasPayment) {
+                $payTone = $expectsPay ? 'neutral' : 'warn';
+                $payNote = $expectsPay
+                    ? 'Commerce / payment wording fits this site type.'
+                    : 'Payment/checkout wording on a free/hobby-style site — worth a closer look.';
+            } elseif ($expectsPay) {
+                $payTone = 'warn';
+                $payNote = 'This site type usually has checkout/payment — none detected on the inspected page.';
+            } else {
+                $payNote = 'Payments are not expected for this site type (e.g. free streaming), so “no payment system” is not a negative.';
+            }
+            $this->addSignal('content', 'Payment language', $hasPayment ? 'Present' : 'Not detected', $payNote, $payTone);
             $this->addSignal(
                 'content',
                 'Crypto-only payments',
@@ -1195,6 +1289,18 @@ class DomainChecker
                 $hits === 0 ? 'good' : 'bad'
             );
         }
+        // Incomplete headers are a mild technical note — especially on free media sites,
+        // never treat 0/6 like a hard scam signal.
+        $secTone = 'neutral';
+        if (!$challenge) {
+            if ($sec['score'] >= 3) {
+                $secTone = 'good';
+            } elseif ($sec['score'] >= 1) {
+                $secTone = 'warn';
+            } else {
+                $secTone = !empty($this->data['expects_business_contact']) ? 'warn' : 'neutral';
+            }
+        }
         $this->addSignal(
             'security',
             'Security headers',
@@ -1202,7 +1308,7 @@ class DomainChecker
             $challenge
                 ? 'Headers may belong to the CDN challenge page, not the origin site'
                 : implode(', ', $sec['present'] ?: ['none detected']),
-            $challenge ? 'neutral' : ($sec['score'] >= 3 ? 'good' : ($sec['score'] >= 1 ? 'warn' : 'bad'))
+            $secTone
         );
     }
 
@@ -1717,8 +1823,12 @@ class DomainChecker
             ];
         }
 
+        // Business-hygiene heuristics only when this site type is expected to have them
+        // (shops, finance, hosting, official services). Free media / community sites skip these.
+        $expectsContact = !empty($this->data['expects_business_contact']);
+
         // Only when we actually read the page — bot walls must not look like "missing privacy".
-        if ($young && $contentRead
+        if ($expectsContact && $young && $contentRead
             && !(int) ($this->data['has_privacy_policy'] ?? 0)
             && !(int) ($this->data['has_contact_info'] ?? 0)) {
             $flags[] = [
@@ -1738,7 +1848,7 @@ class DomainChecker
             ];
         }
 
-        if (!empty($this->data['free_email_contact']) && ($young || $newish || empty($this->data['has_phone']))) {
+        if ($expectsContact && !empty($this->data['free_email_contact']) && ($young || $newish || empty($this->data['has_phone']))) {
             $flags[] = [
                 'code' => 'free_email_contact',
                 'label' => 'Only free webmail contact',
@@ -1757,7 +1867,8 @@ class DomainChecker
         }
 
         if (
-            empty($this->data['content_incomplete'])
+            $expectsContact
+            && empty($this->data['content_incomplete'])
             && empty($this->data['has_phone'])
             && empty($this->data['has_contact_info'])
             && ($young || $newish)
