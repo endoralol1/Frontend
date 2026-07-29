@@ -50,7 +50,7 @@
                 <div class="section section-top10">
                     <div class="head">
                         <div class="start">
-                            <h2 class="title top10-heading">TOP 10 Today</h2>
+                            <h2 class="title gardiently top10-heading">TOP 10 Today</h2>
                             <div class="tabs" data-tabs data-id="top10" data-persist="true">
                                 <span class="tab active" data-name="movies">Movies</span>
                                 <span class="tab" data-name="tv">TV Shows</span>

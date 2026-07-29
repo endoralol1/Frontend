@@ -451,7 +451,7 @@ body.index > .wrapper .index-head:before {
   width: 0.22rem;
   height: 1.15em;
   border-radius: 999px;
-  background: #e50914;
+  background: var(--cf-orange, #db6937);
   flex-shrink: 0;
 }
 
@@ -1005,15 +1005,12 @@ header .wrapper {
 }
 
 .section-top10 .top10-heading {
-  color: #fff !important;
   font-weight: 700;
   letter-spacing: 0.01em;
-  background: none !important;
-  -webkit-text-fill-color: #fff;
 }
 
 .section-top10 .top10-heading::before {
-  background: #e50914;
+  background: var(--cf-orange, #db6937);
 }
 
 .section-top10 .top10-rail-wrap {
