@@ -57,7 +57,7 @@ $extraJs = $extraJs ?? [];
     <link rel="stylesheet" href="<?= e(asset('vendor/tooltipster.bundle.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/swiper.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/episode-carousel.css')) ?>">
-    <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=20260729-viewall">
+    <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=20260729-railpeek">
     <?php foreach ($extraCss as $css): ?>
         <link rel="stylesheet" href="<?= e($css) ?>">
     <?php endforeach; ?>

@@ -1282,8 +1282,8 @@ header .wrapper {
 
 @media (max-width: 991.98px) {
   .section-top10 .top10-items .movie-item.media-card--ranked {
-    flex-basis: 25%;
-    width: 25% !important;
+    flex-basis: 28%;
+    width: 28% !important;
   }
 
   .section-top10 .top10-nav {
@@ -1293,15 +1293,20 @@ header .wrapper {
 
 @media (min-width: 480px) and (max-width: 767.9px) {
   .section-top10 .top10-items .movie-item.media-card--ranked {
-    flex-basis: 33.3333333333%;
-    width: 33.3333333333% !important;
+    flex-basis: 32%;
+    width: 32% !important;
   }
 }
 
 @media (max-width: 479.98px) {
+  .section-top10 .top10-items {
+    padding-right: 1.25rem;
+  }
+
   .section-top10 .top10-items .movie-item.media-card--ranked {
-    flex-basis: 50%;
-    width: 50% !important;
+    flex-basis: 40%;
+    width: 40% !important;
+    max-width: 40% !important;
   }
 }
 
@@ -1401,8 +1406,9 @@ header .wrapper {
 
 @media (max-width: 991.98px) {
   .section-rail .media-rail-items .movie-item {
-    flex-basis: 25%;
-    width: 25% !important;
+    flex-basis: 28%;
+    width: 28% !important;
+    max-width: 28% !important;
   }
 
   .section-rail .media-rail-nav {
@@ -1412,15 +1418,21 @@ header .wrapper {
 
 @media (min-width: 480px) and (max-width: 767.9px) {
   .section-rail .media-rail-items .movie-item {
-    flex-basis: 33.3333333333%;
-    width: 33.3333333333% !important;
+    flex-basis: 32%;
+    width: 32% !important;
+    max-width: 32% !important;
   }
 }
 
 @media (max-width: 479.98px) {
+  .section-rail .media-rail-items {
+    padding-right: 1.25rem;
+  }
+
   .section-rail .media-rail-items .movie-item {
-    flex-basis: 50%;
-    width: 50% !important;
+    flex-basis: 40%;
+    width: 40% !important;
+    max-width: 40% !important;
   }
 }
 
