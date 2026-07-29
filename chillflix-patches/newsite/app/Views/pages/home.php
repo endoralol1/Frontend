@@ -7,7 +7,7 @@
                 $href = media_url('movie', (int) $slide['id'], $t);
                 $bg = img_url($slide['backdrop_path'] ?? $slide['poster_path'] ?? null, 'original');
                 $rating = isset($slide['vote_average']) ? round((float) $slide['vote_average'], 1) : null;
-                $desc = truncate((string) ($slide['overview'] ?? ''), 140);
+                $desc = truncate((string) ($slide['overview'] ?? ''), 110);
             ?>
             <div class="swiper-slide lazyload" data-bgset="<?= e($bg) ?>" style="background-color:#0a0c12;">
                 <div class="wrapper">
