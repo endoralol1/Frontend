@@ -429,20 +429,20 @@ body.index > .wrapper .index-head:before {
   z-index: 1;
 }
 
-/* Soft lift under the header so cinematic dark skies don't read as a CSS wash */
+/* Counter the naturally dark sky in TMDB backdrops under the logo/nav */
 #featured > .hero-toplift,
 #featured .hero-toplift {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 5.5rem;
+  height: 7rem;
   z-index: 3;
   pointer-events: none;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.14) 0%,
-    rgba(255, 255, 255, 0.05) 45%,
+    rgba(255, 245, 235, 0.22) 0%,
+    rgba(255, 245, 235, 0.08) 40%,
     transparent 100%
   );
 }
