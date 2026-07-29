@@ -433,8 +433,8 @@ function discover_page(Tmdb $tmdb, string $type, bool $filtersPage = false): voi
         'include_adult' => 'false',
     ];
     if ($genresIn) {
-        // TMDB: comma = AND, pipe = OR
-        $params['with_genres'] = implode($genreMode === 'and' ? ',' : '|', $genresIn);
+        // TMDB: pipe = OR (any selected genre)
+        $params['with_genres'] = implode('|', $genresIn);
     }
     if ($genresOut) {
         $params['without_genres'] = implode(',', $genresOut);

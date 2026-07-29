@@ -26,7 +26,7 @@ $selectedProviders = array_values(array_map('strval', (array) ($selectedProvider
 $excludedProviders = array_values(array_map('strval', (array) ($excludedProviders ?? ($_GET['without_watch_providers'] ?? []))));
 $selectedNetworks = array_values(array_map('strval', (array) ($selectedNetworks ?? [])));
 $excludedNetworks = array_values(array_map('strval', (array) ($excludedNetworks ?? ($_GET['without_networks'] ?? []))));
-$genreMode = (string) ($_GET['genre_mode'] ?? '') === 'and' ? 'and' : '';
+$genreMode = '';
 $sortChosen = isset($_GET['sort_by']);
 $viewMode = (($_GET['view'] ?? 'grid') === 'list') ? 'list' : 'grid';
 
@@ -103,7 +103,7 @@ if ($selectedGenres) {
             $names[] = $genres[$gid];
         }
     }
-    $filterChips[] = ['key' => 'genres', 'label' => $names ? implode(', ', array_slice($names, 0, 2)) . (count($names) > 2 ? ' +' . (count($names) - 2) : '') : (count($selectedGenres) . ' genres'), 'clear' => ['with_genres', 'genre_mode'], 'tone' => 'in'];
+    $filterChips[] = ['key' => 'genres', 'label' => $names ? implode(', ', array_slice($names, 0, 2)) . (count($names) > 2 ? ' +' . (count($names) - 2) : '') : (count($selectedGenres) . ' genres'), 'clear' => ['with_genres'], 'tone' => 'in'];
 }
 if ($excludedGenres) {
     $names = [];
@@ -189,7 +189,7 @@ $activeFilterCount = count($filterChips);
 
 $chipUrl = static function (array $clearKeys) use ($path): string {
     $qs = $_GET;
-    unset($qs['page']);
+    unset($qs['page'], $qs['genre_mode']);
     foreach ($clearKeys as $k) {
         unset($qs[$k], $qs[$k . '[]']);
     }
@@ -201,6 +201,36 @@ $chipUrl = static function (array $clearKeys) use ($path): string {
     $q = http_build_query($qs);
     return url($path) . ($q !== '' ? ('?' . $q) : '');
 };
+
+$filterSummary = static function (array $included, array $excluded, array $labels): string {
+    $parts = [];
+    foreach ($included as $id) {
+        $key = (string) $id;
+        if (isset($labels[$key])) {
+            $parts[] = $labels[$key];
+        } elseif (isset($labels[(int) $id])) {
+            $parts[] = $labels[(int) $id];
+        }
+    }
+    foreach ($excluded as $id) {
+        $key = (string) $id;
+        if (isset($labels[$key])) {
+            $parts[] = '−' . $labels[$key];
+        } elseif (isset($labels[(int) $id])) {
+            $parts[] = '−' . $labels[(int) $id];
+        }
+    }
+    if (!$parts) {
+        return 'Any';
+    }
+    $shown = array_slice($parts, 0, 2);
+    return implode(', ', $shown) . (count($parts) > 2 ? ' +' . (count($parts) - 2) : '');
+};
+
+$genreSummary = $filterSummary($selectedGenres, $excludedGenres, $genres);
+$networkSummary = $filterSummary($selectedNetworks, $excludedNetworks, $networks);
+$countrySummary = $filterSummary($selectedCountries, $excludedCountries, $countries);
+$providerSummary = $filterSummary($selectedProviders, $excludedProviders, $providers);
 ?>
 <main class="page-pad-top discover-page">
     <div class="container">
@@ -264,125 +294,207 @@ $chipUrl = static function (array $clearKeys) use ($path): string {
                                 </div>
 
                                 <div class="filters-sheet-body">
-                                    <p class="filters-hint">Tap once to include · twice to exclude · thrice to clear</p>
+                                    <p class="filters-hint">Tap once to include · twice to exclude</p>
 
-                                    <section class="filter-section">
-                                        <h3 class="filter-section-title">Genre</h3>
-                                        <div class="filter-pills filter-pills-wrap" data-tri-group>
-                                            <?php foreach ($genres as $gid => $gname):
-                                                $st = $triState((string) $gid, $selectedGenres, $excludedGenres);
-                                            ?>
-                                            <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= (int) $gid ?>" data-include="with_genres[]" data-exclude="without_genres[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
-                                                <span><?= e($gname) ?></span>
+                                    <div class="filter-home" id="filter-home">
+                                        <div class="filter-rows">
+                                            <button type="button" class="filter-row" data-open-picker="picker-genre">
+                                                <span class="filter-row-icon"><i class="uil uil-apps" aria-hidden="true"></i></span>
+                                                <span class="filter-row-copy">
+                                                    <strong>Genre</strong>
+                                                    <em class="filter-row-summary" data-summary-for="picker-genre"><?= e($genreSummary) ?></em>
+                                                </span>
+                                                <i class="uil uil-angle-right filter-row-chevron" aria-hidden="true"></i>
                                             </button>
-                                            <?php endforeach; ?>
+
+                                            <?php if (!$isMovie): ?>
+                                            <button type="button" class="filter-row" data-open-picker="picker-network">
+                                                <span class="filter-row-icon"><i class="uil uil-rss" aria-hidden="true"></i></span>
+                                                <span class="filter-row-copy">
+                                                    <strong>Network</strong>
+                                                    <em class="filter-row-summary" data-summary-for="picker-network"><?= e($networkSummary) ?></em>
+                                                </span>
+                                                <i class="uil uil-angle-right filter-row-chevron" aria-hidden="true"></i>
+                                            </button>
+                                            <?php endif; ?>
+
+                                            <button type="button" class="filter-row" data-open-picker="picker-country">
+                                                <span class="filter-row-icon"><i class="uil uil-globe" aria-hidden="true"></i></span>
+                                                <span class="filter-row-copy">
+                                                    <strong>Country</strong>
+                                                    <em class="filter-row-summary" data-summary-for="picker-country"><?= e($countrySummary) ?></em>
+                                                </span>
+                                                <i class="uil uil-angle-right filter-row-chevron" aria-hidden="true"></i>
+                                            </button>
+
+                                            <button type="button" class="filter-row" data-open-picker="picker-provider">
+                                                <span class="filter-row-icon"><i class="uil uil-play" aria-hidden="true"></i></span>
+                                                <span class="filter-row-copy">
+                                                    <strong>Provider</strong>
+                                                    <em class="filter-row-summary" data-summary-for="picker-provider"><?= e($providerSummary) ?></em>
+                                                </span>
+                                                <i class="uil uil-angle-right filter-row-chevron" aria-hidden="true"></i>
+                                            </button>
                                         </div>
-                                        <label class="filter-check-row">
-                                            <input type="checkbox" id="genre_mode" name="genre_mode" value="and" <?= $genreMode === 'and' ? 'checked' : '' ?>>
-                                            <span>Must have all included genres</span>
-                                        </label>
-                                    </section>
+
+                                        <section class="filter-section filter-section-inline">
+                                            <h3 class="filter-section-title">Year</h3>
+                                            <div class="range-timeline year-timeline" id="year-timeline" data-min="<?= (int) $yearMin ?>" data-max="<?= (int) $yearMax ?>" data-step="1">
+                                                <div class="range-timeline-values">
+                                                    <strong id="year-timeline-from-label"><?= (int) $timelineFrom ?></strong>
+                                                    <span>to</span>
+                                                    <strong id="year-timeline-to-label"><?= (int) $timelineTo ?></strong>
+                                                </div>
+                                                <div class="range-timeline-track">
+                                                    <div class="range-timeline-rail" aria-hidden="true"></div>
+                                                    <div class="range-timeline-fill" id="year-timeline-range" aria-hidden="true"></div>
+                                                    <input type="range" class="range-timeline-thumb range-timeline-thumb-from" id="year-from-range" min="<?= (int) $yearMin ?>" max="<?= (int) $yearMax ?>" value="<?= (int) $timelineFrom ?>" step="1" aria-label="From year">
+                                                    <input type="range" class="range-timeline-thumb range-timeline-thumb-to" id="year-to-range" min="<?= (int) $yearMin ?>" max="<?= (int) $yearMax ?>" value="<?= (int) $timelineTo ?>" step="1" aria-label="To year">
+                                                </div>
+                                                <div class="range-timeline-ticks" aria-hidden="true">
+                                                    <?php for ($y = $yearMin; $y <= $yearMax; $y += 10): ?>
+                                                    <span style="left: <?= (($y - $yearMin) / max(1, $yearMax - $yearMin)) * 100 ?>%"><?= $y ?></span>
+                                                    <?php endfor; ?>
+                                                </div>
+                                                <input type="hidden" name="year_from" id="year-from" value="<?= e($selectedYearFrom) ?>">
+                                                <input type="hidden" name="year_to" id="year-to" value="<?= e($selectedYearTo) ?>">
+                                            </div>
+                                        </section>
+
+                                        <section class="filter-section filter-section-inline">
+                                            <h3 class="filter-section-title">Rating</h3>
+                                            <div class="range-timeline rating-timeline" id="rating-timeline" data-min="<?= (float) $ratingMin ?>" data-max="<?= (float) $ratingMax ?>" data-step="<?= (float) $ratingStep ?>">
+                                                <div class="range-timeline-values">
+                                                    <strong id="rating-timeline-from-label"><?= e(rtrim(rtrim(number_format($ratingTimelineFrom, 1, '.', ''), '0'), '.') ?: '0') ?></strong>
+                                                    <span>to</span>
+                                                    <strong id="rating-timeline-to-label"><?= e(rtrim(rtrim(number_format($ratingTimelineTo, 1, '.', ''), '0'), '.') ?: '0') ?></strong>
+                                                </div>
+                                                <div class="range-timeline-track">
+                                                    <div class="range-timeline-rail" aria-hidden="true"></div>
+                                                    <div class="range-timeline-fill" id="rating-timeline-range" aria-hidden="true"></div>
+                                                    <input type="range" class="range-timeline-thumb range-timeline-thumb-from" id="rating-from-range" min="<?= (float) $ratingMin ?>" max="<?= (float) $ratingMax ?>" value="<?= (float) $ratingTimelineFrom ?>" step="<?= (float) $ratingStep ?>" aria-label="Minimum rating">
+                                                    <input type="range" class="range-timeline-thumb range-timeline-thumb-to" id="rating-to-range" min="<?= (float) $ratingMin ?>" max="<?= (float) $ratingMax ?>" value="<?= (float) $ratingTimelineTo ?>" step="<?= (float) $ratingStep ?>" aria-label="Maximum rating">
+                                                </div>
+                                                <div class="range-timeline-ticks" aria-hidden="true">
+                                                    <?php for ($r = 0; $r <= 10; $r += 2): ?>
+                                                    <span style="left: <?= ($r / 10) * 100 ?>%"><?= $r ?></span>
+                                                    <?php endfor; ?>
+                                                </div>
+                                                <input type="hidden" name="rating_from" id="rating-from" value="<?= e($selectedRatingFrom) ?>">
+                                                <input type="hidden" name="rating_to" id="rating-to" value="<?= e($selectedRatingTo) ?>">
+                                            </div>
+                                        </section>
+
+                                        <section class="filter-section filter-section-inline">
+                                            <h3 class="filter-section-title">Sort by</h3>
+                                            <div class="filter-pills filter-pills-wrap">
+                                                <?php foreach ($sorts as $sval => $slabel): ?>
+                                                <label class="filter-pill">
+                                                    <input type="radio" id="sort-<?= md5($sval) ?>" name="sort_by" value="<?= e($sval) ?>" <?= $sortChosen && $selectedSort === $sval ? 'checked' : '' ?>>
+                                                    <span><?= e($slabel) ?></span>
+                                                </label>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </section>
+                                    </div>
+
+                                    <div class="filter-picker" id="picker-genre" hidden>
+                                        <div class="filter-picker-head">
+                                            <button type="button" class="filter-picker-back" aria-label="Back"><i class="uil uil-angle-left"></i></button>
+                                            <div>
+                                                <p class="filters-sheet-kicker">Choose genres</p>
+                                                <h3>Genre</h3>
+                                            </div>
+                                        </div>
+                                        <div class="filter-picker-body">
+                                            <div class="filter-pills filter-pills-wrap" data-tri-group data-summary-target="picker-genre">
+                                                <?php foreach ($genres as $gid => $gname):
+                                                    $st = $triState((string) $gid, $selectedGenres, $excludedGenres);
+                                                ?>
+                                                <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= (int) $gid ?>" data-include="with_genres[]" data-exclude="without_genres[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
+                                                    <span><?= e($gname) ?></span>
+                                                </button>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                        <div class="filter-picker-foot">
+                                            <button type="button" class="filter-picker-done">Done</button>
+                                        </div>
+                                    </div>
 
                                     <?php if (!$isMovie): ?>
-                                    <section class="filter-section">
-                                        <h3 class="filter-section-title">Network</h3>
-                                        <div class="filter-pills filter-pills-wrap" data-tri-group>
-                                            <?php foreach ($networks as $nid => $nname):
-                                                $st = $triState((string) $nid, $selectedNetworks, $excludedNetworks);
-                                            ?>
-                                            <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= e($nid) ?>" data-include="with_networks[]" data-exclude="without_networks[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
-                                                <span><?= e($nname) ?></span>
-                                            </button>
-                                            <?php endforeach; ?>
+                                    <div class="filter-picker" id="picker-network" hidden>
+                                        <div class="filter-picker-head">
+                                            <button type="button" class="filter-picker-back" aria-label="Back"><i class="uil uil-angle-left"></i></button>
+                                            <div>
+                                                <p class="filters-sheet-kicker">Broadcast networks</p>
+                                                <h3>Network</h3>
+                                            </div>
                                         </div>
-                                    </section>
+                                        <div class="filter-picker-body">
+                                            <div class="filter-pills filter-pills-wrap" data-tri-group data-summary-target="picker-network">
+                                                <?php foreach ($networks as $nid => $nname):
+                                                    $st = $triState((string) $nid, $selectedNetworks, $excludedNetworks);
+                                                ?>
+                                                <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= e($nid) ?>" data-include="with_networks[]" data-exclude="without_networks[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
+                                                    <span><?= e($nname) ?></span>
+                                                </button>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                        <div class="filter-picker-foot">
+                                            <button type="button" class="filter-picker-done">Done</button>
+                                        </div>
+                                    </div>
                                     <?php endif; ?>
 
-                                    <section class="filter-section">
-                                        <h3 class="filter-section-title">Country</h3>
-                                        <div class="filter-pills filter-pills-wrap filter-pills-scroll" data-tri-group>
-                                            <?php foreach ($countries as $code => $cname):
-                                                $st = $triState($code, $selectedCountries, $excludedCountries);
-                                            ?>
-                                            <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= e($code) ?>" data-include="with_origin_country[]" data-exclude="without_origin_country[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
-                                                <span><?= e($cname) ?></span>
-                                            </button>
-                                            <?php endforeach; ?>
+                                    <div class="filter-picker" id="picker-country" hidden>
+                                        <div class="filter-picker-head">
+                                            <button type="button" class="filter-picker-back" aria-label="Back"><i class="uil uil-angle-left"></i></button>
+                                            <div>
+                                                <p class="filters-sheet-kicker">Origin country</p>
+                                                <h3>Country</h3>
+                                            </div>
                                         </div>
-                                    </section>
+                                        <div class="filter-picker-body">
+                                            <div class="filter-pills filter-pills-wrap" data-tri-group data-summary-target="picker-country">
+                                                <?php foreach ($countries as $code => $cname):
+                                                    $st = $triState($code, $selectedCountries, $excludedCountries);
+                                                ?>
+                                                <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= e($code) ?>" data-include="with_origin_country[]" data-exclude="without_origin_country[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
+                                                    <span><?= e($cname) ?></span>
+                                                </button>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        </div>
+                                        <div class="filter-picker-foot">
+                                            <button type="button" class="filter-picker-done">Done</button>
+                                        </div>
+                                    </div>
 
-                                    <section class="filter-section">
-                                        <h3 class="filter-section-title">Year</h3>
-                                        <div class="range-timeline year-timeline" id="year-timeline" data-min="<?= (int) $yearMin ?>" data-max="<?= (int) $yearMax ?>" data-step="1">
-                                            <div class="range-timeline-values">
-                                                <strong id="year-timeline-from-label"><?= (int) $timelineFrom ?></strong>
-                                                <span>to</span>
-                                                <strong id="year-timeline-to-label"><?= (int) $timelineTo ?></strong>
+                                    <div class="filter-picker" id="picker-provider" hidden>
+                                        <div class="filter-picker-head">
+                                            <button type="button" class="filter-picker-back" aria-label="Back"><i class="uil uil-angle-left"></i></button>
+                                            <div>
+                                                <p class="filters-sheet-kicker">Streaming services</p>
+                                                <h3>Provider</h3>
                                             </div>
-                                            <div class="range-timeline-track">
-                                                <div class="range-timeline-rail" aria-hidden="true"></div>
-                                                <div class="range-timeline-fill" id="year-timeline-range" aria-hidden="true"></div>
-                                                <input type="range" class="range-timeline-thumb range-timeline-thumb-from" id="year-from-range" min="<?= (int) $yearMin ?>" max="<?= (int) $yearMax ?>" value="<?= (int) $timelineFrom ?>" step="1" aria-label="From year">
-                                                <input type="range" class="range-timeline-thumb range-timeline-thumb-to" id="year-to-range" min="<?= (int) $yearMin ?>" max="<?= (int) $yearMax ?>" value="<?= (int) $timelineTo ?>" step="1" aria-label="To year">
-                                            </div>
-                                            <div class="range-timeline-ticks" aria-hidden="true">
-                                                <?php for ($y = $yearMin; $y <= $yearMax; $y += 10): ?>
-                                                <span style="left: <?= (($y - $yearMin) / max(1, $yearMax - $yearMin)) * 100 ?>%"><?= $y ?></span>
-                                                <?php endfor; ?>
-                                            </div>
-                                            <input type="hidden" name="year_from" id="year-from" value="<?= e($selectedYearFrom) ?>">
-                                            <input type="hidden" name="year_to" id="year-to" value="<?= e($selectedYearTo) ?>">
                                         </div>
-                                    </section>
-
-                                    <section class="filter-section">
-                                        <h3 class="filter-section-title">Provider</h3>
-                                        <div class="filter-pills filter-pills-wrap" data-tri-group>
-                                            <?php foreach ($providers as $pid => $pname):
-                                                $st = $triState((string) $pid, $selectedProviders, $excludedProviders);
-                                            ?>
-                                            <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= e($pid) ?>" data-include="with_watch_providers[]" data-exclude="without_watch_providers[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
-                                                <span><?= e($pname) ?></span>
-                                            </button>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    </section>
-
-                                    <section class="filter-section">
-                                        <h3 class="filter-section-title">Rating</h3>
-                                        <div class="range-timeline rating-timeline" id="rating-timeline" data-min="<?= (float) $ratingMin ?>" data-max="<?= (float) $ratingMax ?>" data-step="<?= (float) $ratingStep ?>">
-                                            <div class="range-timeline-values">
-                                                <strong id="rating-timeline-from-label"><?= e(rtrim(rtrim(number_format($ratingTimelineFrom, 1, '.', ''), '0'), '.') ?: '0') ?></strong>
-                                                <span>to</span>
-                                                <strong id="rating-timeline-to-label"><?= e(rtrim(rtrim(number_format($ratingTimelineTo, 1, '.', ''), '0'), '.') ?: '0') ?></strong>
+                                        <div class="filter-picker-body">
+                                            <div class="filter-pills filter-pills-wrap" data-tri-group data-summary-target="picker-provider">
+                                                <?php foreach ($providers as $pid => $pname):
+                                                    $st = $triState((string) $pid, $selectedProviders, $excludedProviders);
+                                                ?>
+                                                <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= e($pid) ?>" data-include="with_watch_providers[]" data-exclude="without_watch_providers[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
+                                                    <span><?= e($pname) ?></span>
+                                                </button>
+                                                <?php endforeach; ?>
                                             </div>
-                                            <div class="range-timeline-track">
-                                                <div class="range-timeline-rail" aria-hidden="true"></div>
-                                                <div class="range-timeline-fill" id="rating-timeline-range" aria-hidden="true"></div>
-                                                <input type="range" class="range-timeline-thumb range-timeline-thumb-from" id="rating-from-range" min="<?= (float) $ratingMin ?>" max="<?= (float) $ratingMax ?>" value="<?= (float) $ratingTimelineFrom ?>" step="<?= (float) $ratingStep ?>" aria-label="Minimum rating">
-                                                <input type="range" class="range-timeline-thumb range-timeline-thumb-to" id="rating-to-range" min="<?= (float) $ratingMin ?>" max="<?= (float) $ratingMax ?>" value="<?= (float) $ratingTimelineTo ?>" step="<?= (float) $ratingStep ?>" aria-label="Maximum rating">
-                                            </div>
-                                            <div class="range-timeline-ticks" aria-hidden="true">
-                                                <?php for ($r = 0; $r <= 10; $r += 2): ?>
-                                                <span style="left: <?= ($r / 10) * 100 ?>%"><?= $r ?></span>
-                                                <?php endfor; ?>
-                                            </div>
-                                            <input type="hidden" name="rating_from" id="rating-from" value="<?= e($selectedRatingFrom) ?>">
-                                            <input type="hidden" name="rating_to" id="rating-to" value="<?= e($selectedRatingTo) ?>">
                                         </div>
-                                    </section>
-
-                                    <section class="filter-section">
-                                        <h3 class="filter-section-title">Sort by</h3>
-                                        <div class="filter-pills filter-pills-wrap">
-                                            <?php foreach ($sorts as $sval => $slabel): ?>
-                                            <label class="filter-pill">
-                                                <input type="radio" id="sort-<?= md5($sval) ?>" name="sort_by" value="<?= e($sval) ?>" <?= $sortChosen && $selectedSort === $sval ? 'checked' : '' ?>>
-                                                <span><?= e($slabel) ?></span>
-                                            </label>
-                                            <?php endforeach; ?>
+                                        <div class="filter-picker-foot">
+                                            <button type="button" class="filter-picker-done">Done</button>
                                         </div>
-                                    </section>
+                                    </div>
 
                                     <div id="filter-tri-inputs" hidden></div>
                                 </div>

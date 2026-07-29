@@ -121,7 +121,7 @@ function view(string $name, array $vars = []): void
 {
     // Floating transparent header on home + browse/list pages
     if (!isset($vars['headerClass'])) {
-        $floating = ['pages/home', 'pages/discover', 'pages/search', 'pages/top-imdb', 'pages/favorites'];
+        $floating = ['pages/home', 'pages/discover', 'pages/search', 'pages/top-imdb', 'pages/favorites', 'pages/watch'];
         $vars['headerClass'] = in_array($name, $floating, true) ? 'absolute' : 'relative';
     }
     extract($vars, EXTR_SKIP);

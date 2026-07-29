@@ -354,6 +354,7 @@
   function closeFiltersSheet() {
     var $sheet = $('#filters-sheet');
     if (!$sheet.length || (!$sheet.hasClass('is-open') && !$sheet.hasClass('is-closing'))) return;
+    closeFilterPicker();
     $sheet.removeClass('is-open').addClass('is-closing');
     $('#filters-open').attr('aria-expanded', 'false');
     $('body').removeClass('filters-open');
@@ -377,7 +378,8 @@
 
   $(document).on('keydown', function (e) {
     if (e.key === 'Escape' && $('#filters-sheet').hasClass('is-open')) {
-      closeFiltersSheet();
+      if ($('#filters-sheet').hasClass('has-picker')) closeFilterPicker();
+      else closeFiltersSheet();
     }
   });
 
@@ -426,6 +428,54 @@
     closeFiltersSheet();
   });
 
+  function updatePickerSummary(pickerId) {
+    var $group = $('#' + pickerId + ' [data-summary-target]');
+    if (!$group.length) return;
+    var parts = [];
+    $group.find('.filter-tri').each(function () {
+      var $btn = $(this);
+      var label = $.trim($btn.find('span').first().text());
+      if (!label) return;
+      if ($btn.hasClass('is-in')) parts.push(label);
+      else if ($btn.hasClass('is-out')) parts.push('−' + label);
+    });
+    var text = 'Any';
+    if (parts.length) {
+      text = parts.slice(0, 2).join(', ') + (parts.length > 2 ? (' +' + (parts.length - 2)) : '');
+    }
+    $('[data-summary-for="' + pickerId + '"]').text(text);
+  }
+
+  function openFilterPicker(id) {
+    var $picker = $('#' + id);
+    if (!$picker.length) return;
+    $('.filter-picker').removeClass('is-open').attr('hidden', true);
+    $picker.removeAttr('hidden');
+    void $picker[0].offsetWidth;
+    $picker.addClass('is-open');
+    $('#filters-sheet').addClass('has-picker');
+    $('#filter-home').addClass('is-away');
+  }
+
+  function closeFilterPicker() {
+    $('.filter-picker').removeClass('is-open');
+    $('#filters-sheet').removeClass('has-picker');
+    $('#filter-home').removeClass('is-away');
+    setTimeout(function () {
+      $('.filter-picker').not('.is-open').attr('hidden', true);
+    }, 280);
+  }
+
+  $(document).on('click', '[data-open-picker]', function (e) {
+    e.preventDefault();
+    openFilterPicker($(this).data('open-picker'));
+  });
+
+  $(document).on('click', '.filter-picker-back, .filter-picker-done', function (e) {
+    e.preventDefault();
+    closeFilterPicker();
+  });
+
   function syncTriInputs() {
     var $box = $('#filter-tri-inputs');
     if (!$box.length) return;
@@ -445,6 +495,8 @@
     $btn.removeClass('is-off is-in is-out').addClass('is-' + state);
     $btn.attr('aria-pressed', state === 'off' ? 'false' : 'true');
     syncTriInputs();
+    var pickerId = $btn.closest('.filter-picker').attr('id');
+    if (pickerId) updatePickerSummary(pickerId);
   }
 
   $(document).on('click', '.filter-tri', function (e) {
