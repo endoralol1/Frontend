@@ -264,11 +264,11 @@
       $('#recently-updated-prev').prop('disabled', offset <= 0);
       $('#recently-updated-next').prop('disabled', offset >= maxOffset() - 1);
     }
-    $('#recently-updated-prev').on('click', function () {
+    $('#recently-updated-prev').off('click.softnav').on('click.softnav', function () {
       offset -= step;
       apply();
     });
-    $('#recently-updated-next').on('click', function () {
+    $('#recently-updated-next').off('click.softnav').on('click.softnav', function () {
       offset += step;
       apply();
     });
