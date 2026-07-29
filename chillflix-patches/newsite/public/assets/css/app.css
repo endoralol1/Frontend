@@ -410,7 +410,7 @@ body.index > .wrapper .index-head:before {
   right: 0 !important;
   bottom: -1px;
   width: 100%;
-  height: 7rem !important;
+  height: 5.5rem !important;
   background: linear-gradient(0deg, var(--cf-bg, #14171f) 0%, transparent 100%) !important;
   box-shadow: none !important;
   pointer-events: none;
@@ -425,7 +425,7 @@ body.index > .wrapper .index-head:before {
   margin-right: 0 !important;
   max-width: 1800px;
   width: 100%;
-  padding: 0 max(1.5rem, env(safe-area-inset-right, 0px)) 4.75rem max(1.5rem, env(safe-area-inset-left, 0px)) !important;
+  padding: 0 max(1.5rem, env(safe-area-inset-right, 0px)) 3.1rem max(1.5rem, env(safe-area-inset-left, 0px)) !important;
   box-sizing: border-box !important;
   text-align: left !important;
   overflow: visible;
@@ -587,7 +587,7 @@ body.index > .wrapper .index-head:before {
 }
 
 #featured .swiper-pagination {
-  bottom: 1.35rem !important;
+  bottom: 0.85rem !important;
   left: 2.5rem !important;
   width: auto !important;
   text-align: left !important;
@@ -620,7 +620,17 @@ body.index > .wrapper .index-head:before {
   }
 
   #featured .swiper-wrapper .swiper-slide .wrapper {
-    padding: 0 max(1.15rem, env(safe-area-inset-right, 0px)) 4.2rem max(1.15rem, env(safe-area-inset-left, 0px)) !important;
+    /* Keep copy higher: less bottom padding, a bit of top breathing room under header */
+    padding: 5.5rem max(1.15rem, env(safe-area-inset-right, 0px)) 2.35rem max(1.15rem, env(safe-area-inset-left, 0px)) !important;
+    align-items: flex-end !important;
+  }
+
+  #featured .swiper-wrapper .swiper-slide .wrapper .info {
+    margin-bottom: 0.35rem;
+  }
+
+  #featured .swiper-wrapper .swiper-slide .wrapper .info .desc {
+    margin-bottom: 0.9rem !important;
   }
 
   #featured .swiper-button-next,
@@ -629,6 +639,7 @@ body.index > .wrapper .index-head:before {
   }
 
   #featured .swiper-pagination {
+    bottom: 0.55rem !important;
     left: 50% !important;
     right: auto !important;
     width: auto !important;
@@ -639,22 +650,35 @@ body.index > .wrapper .index-head:before {
 
 @media (max-width: 575.98px) {
   #featured {
-    height: min(62vh, 28rem) !important;
-    min-height: 22rem;
+    height: min(58vh, 26rem) !important;
+    min-height: 21rem;
   }
 
   #featured .swiper-wrapper .swiper-slide .wrapper {
-    padding: 0 max(1rem, env(safe-area-inset-right, 0px)) 3.9rem max(1rem, env(safe-area-inset-left, 0px)) !important;
+    padding: 5.1rem max(1rem, env(safe-area-inset-right, 0px)) 2.1rem max(1rem, env(safe-area-inset-left, 0px)) !important;
+  }
+
+  #featured .swiper-wrapper .swiper-slide .wrapper .info .name {
+    margin-bottom: 0.55rem !important;
+  }
+
+  #featured .swiper-wrapper .swiper-slide .wrapper .info .meta {
+    margin-bottom: 0.55rem;
   }
 
   #featured .swiper-wrapper .swiper-slide .wrapper .info .desc {
     -webkit-line-clamp: 2;
     font-size: 0.9rem !important;
+    margin-bottom: 0.8rem !important;
   }
 
   #featured .hero-kicker {
     font-size: 0.66rem;
-    margin-bottom: 0.65rem;
+    margin-bottom: 0.5rem;
+  }
+
+  #featured .hero-watch-btn {
+    padding: 0.75rem 1.25rem !important;
   }
 }
 
