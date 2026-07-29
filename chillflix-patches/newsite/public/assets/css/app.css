@@ -2372,14 +2372,22 @@ aside.sidebar .section .head .start .tabs {
   .section-top10 .top10-items,
   .section-rail .media-rail-items {
     display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(14.5rem, 1fr));
-    gap: 0.85rem 0.55rem;
+    grid-template-columns: repeat(auto-fill, minmax(15.25rem, 1fr));
+    gap: 1rem 0.75rem;
     overflow: visible !important;
+    overflow-x: visible !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 0.15rem 0 0.5rem !important;
     cursor: default;
-    scrollbar-width: none;
+    scrollbar-width: none !important;
+  }
+
+  .section-top10 .top10-items::-webkit-scrollbar,
+  .section-rail .media-rail-items::-webkit-scrollbar {
+    display: none !important;
+    height: 0 !important;
+    width: 0 !important;
   }
 
   .section-top10 .top10-items .movie-item.media-card--ranked,
@@ -2395,6 +2403,14 @@ aside.sidebar .section .head .start .tabs {
   .section-top10 .top10-nav,
   .section-rail .media-rail-nav {
     display: none !important;
+  }
+
+  header .wrapper .start .logo img {
+    height: 3.7rem;
+  }
+
+  .bottom-nav {
+    left: max(13rem, calc(env(safe-area-inset-left, 0px) + 13rem));
   }
 }
 
