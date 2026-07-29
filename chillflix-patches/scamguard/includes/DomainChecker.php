@@ -61,6 +61,9 @@ class DomainChecker
         $this->data['tranco_rank'] = null;
         $this->data['tranco_bonus'] = 0;
         $this->data['review_penalty'] = 0;
+        $this->data['review_bonus'] = 0;
+        $this->data['review_consensus'] = null;
+        $this->data['review_sources'] = [];
         $this->data['behavior_flags'] = [];
         $this->data['ai_evidence'] = null;
         $this->data['has_login'] = 0;
@@ -1549,6 +1552,7 @@ class DomainChecker
             $this->data['review_penalty'] = $reviewPen + (int) ($this->data['local_review_penalty'] ?? 0);
             $this->data['review_bonus'] = (int) ($ext['review_bonus'] ?? 0);
             $this->data['review_consensus'] = $ext['review_consensus'] ?? null;
+            $this->data['review_sources'] = is_array($ext['review_sources'] ?? null) ? $ext['review_sources'] : [];
             $this->data['external_score_delta'] = $delta;
             if (!empty($ext['spam_hit'])) {
                 $this->data['spam_hit'] = 1;
@@ -2029,7 +2033,7 @@ class DomainChecker
                 $reasons[] = 'No malware/phishing/feed hits and strong positive signals.';
             } else {
                 $verdict = 'caution';
-                $reasons[] = 'No direct malware/phishing hit, but not strongly verified either.';
+                $reasons[] = 'No malware/phishing list hit, but also no strong proof it is safe — treat as caution, not confirmed safe.';
             }
             foreach (array_slice($flags, 0, 3) as $flag) {
                 $reasons[] = $flag['label'] . ': ' . $flag['detail'];
@@ -2134,8 +2138,23 @@ class DomainChecker
             $this->data['analyst_lean'] = $ai['lean'];
         }
 
+        $pointBits = [];
+        foreach (array_merge($ai['points_added'] ?? [], $ai['points_deducted'] ?? []) as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $pts = (int) ($row['points'] ?? 0);
+            $reason = trim((string) ($row['reason'] ?? ''));
+            if ($reason === '' || $pts === 0) {
+                continue;
+            }
+            $pointBits[] = (($pts > 0) ? '+' : '') . $pts . ' ' . $reason;
+        }
         $factorNote = !empty($ai['factors']) ? implode('; ', $ai['factors']) : '';
         $scoreNote = 'Score impact: ' . (($aiDelta >= 0) ? '+' : '') . $aiDelta . ' (confidence ' . $conf . '%)';
+        if ($pointBits) {
+            $scoreNote .= ' · Points: ' . implode('; ', array_slice($pointBits, 0, 6));
+        }
         $this->addSignal(
             'ai',
             'AI risk judgment',

@@ -232,6 +232,33 @@ class AiAnalyst
         $expectsContact = !array_key_exists('expects_business_contact', $data) || !empty($data['expects_business_contact']);
         $siteCategory = (string) ($data['site_category'] ?? 'general');
 
+        $reviewSources = [];
+        foreach (array_slice((array) ($data['review_sources'] ?? []), 0, 8) as $rs) {
+            if (!is_array($rs)) {
+                continue;
+            }
+            $reviewSources[] = [
+                'source' => (string) ($rs['source'] ?? ''),
+                'kind' => (string) ($rs['kind'] ?? 'reviews'),
+                'stars' => $rs['stars'] ?? null,
+                'count' => (int) ($rs['count'] ?? 0),
+                'neg' => $rs['neg'] ?? null,
+                'pos' => $rs['pos'] ?? null,
+                'meta_trust' => $rs['meta_trust'] ?? null,
+                'snippets' => array_slice((array) ($rs['snippets'] ?? []), 0, 3),
+                'note' => mb_substr((string) ($rs['note'] ?? ''), 0, 160),
+            ];
+        }
+        $reviewPack = [
+            'consensus' => $data['review_consensus'] ?? null,
+            'penalty_applied' => (int) ($data['review_penalty'] ?? 0),
+            'bonus_applied' => (int) ($data['review_bonus'] ?? 0),
+            'sources' => $reviewSources,
+            'note' => 'kind=meta means an automated trust score (e.g. Scamadviser), NOT a count of human reviews. '
+                . 'kind=reviews means real consumer review counts when available. '
+                . 'Thin/meta-only reputation should not be treated like a large review consensus.',
+        ];
+
         $payloadFacts = [
             'domain' => $domain,
             'page_title' => $data['page_title'] ?? null,
@@ -256,17 +283,19 @@ class AiAnalyst
             'expects_business_contact' => $expectsContact,
             'behavior_flags' => $behaviorFlags,
             'evidence_pack' => $evidencePack,
+            'review_pack' => $reviewPack,
             'rule_brief_lean' => $ruleBrief['lean'] ?? 'mixed',
             'signals' => $compactSignals,
-            'task' => 'Investigate what this website/domain is about from title, meta, page text, AND evidence_pack. '
-                . 'Only judge from provided evidence — do not invent forms, brands, logins, payments, or quotes. '
+            'task' => 'Investigate what this website/domain is about from title, meta, page text, evidence_pack, AND review_pack. '
+                . 'Only judge from provided evidence — do not invent forms, brands, logins, payments, reviews, or quotes. '
                 . 'Respect has_login / has_payment / expects_* flags from the scanner. '
-                . 'Decide if that purpose is trustworthy or risky/scammy for average users (money, logins, downloads). '
-                . 'Then set lean + score_delta that should move the trust score.',
+                . 'Use review_pack carefully: meta scores are weak; large human-review samples are stronger. '
+                . 'Then assign your OWN score points: list concrete points_added and points_deducted with reasons, '
+                . 'and set score_delta to their net sum (this moves the trust score).',
         ];
 
         $system = 'You are ScamGuard’s website investigator. Your job is to judge whether a site will HARM a normal visitor, not to police content legality. '
-            . 'First figure out WHAT the site is (shop, forum, streaming, SaaS, blog, bank-phishing page, nulled-software downloads, casino, etc.) from page_title, meta_description, page_text_excerpt, evidence_pack, and site_category. '
+            . 'First figure out WHAT the site is (shop, forum, streaming, SaaS, blog, bank-phishing page, nulled-software downloads, casino, etc.) from page_title, meta_description, page_text_excerpt, evidence_pack, review_pack, and site_category. '
             . 'Separate two different things: (A) VISITOR HARM = scam/fraud, phishing/credential theft, fake shop that takes money and never delivers, malware or virus pop-ups, forced downloads, wallet-drainers. (B) GRAY / legality = piracy, unofficial movie/TV streaming, ROMs, or similar. '
             . 'Scoring rules: real VISITOR HARM → negative, strong penalty. GRAY-but-not-harmful sites (e.g. an unofficial streaming site with ads but no fraud/malware signs) are only MILDLY risky, NOT scams → lean mixed with a small penalty (about -3 to -8); do not treat piracy alone as fraud. Clearly legitimate sites → positive. '
             . 'CRITICAL expectation rules: '
@@ -275,19 +304,25 @@ class AiAnalyst
             . '(3) If expects_business_contact=false, missing phone/contact-page/privacy-policy is NOT a scam signal — do not list them as concerns and do not let them push lean negative. '
             . '(4) Only treat missing payments as relevant when expects_payment=true (shops, paid hosting, finance, paid SaaS). '
             . '(5) Only treat missing phone/contact/privacy as relevant when expects_business_contact=true. '
+            . 'Reputation rules: Scamadviser (kind=meta) is an automated meta score, NOT “12 human reviews”. Thin/meta-only reputation is weak evidence. Large Trustpilot/Sitejabber samples with real counts matter more. Do not invent public opinion that is not in review_pack. '
             . 'CDN/Cloudflare, a bot challenge page, or missing SPF/DMARC/MX are NOT scam signals — ignore them as fraud evidence. '
             . 'Incomplete security headers alone are a mild technical note, not proof of fraud — especially on free media sites. '
             . 'Treat evidence_pack as machine-checked facts: off-site credential/payment forms, brand↔domain mismatch, investment ROI cues, fake-shop cue packs, and identity conflicts are high-signal when present. Prefer corroborated multi-cue patterns over a single keyword. '
             . 'Do not invent page facts — if content_incomplete is true or the excerpt is empty, say you could not fully read the site and stay mixed with a small delta unless there is hard evidence (feed/blacklist) of harm. '
+            . 'You MUST return points_added and points_deducted arrays (each item: reason + points). points values are signed integers; deductions should be negative. score_delta MUST equal the sum of all points (clamped -22..16). '
             . 'score_delta guidance: confirmed fraud/phishing/malware → -14 to -22; clearly risky commercial behaviour → -8 to -13; gray/piracy or minor concerns → -3 to -8; unclear/mixed → -3 to +3; solid legit → +5 to +16. Scale magnitude by your confidence. '
             . 'Respond with ONLY JSON: '
             . '{"site_about":"short what the site is","lean":"positive|negative|mixed","confidence":0-100,'
-            . '"harm":"none|low|medium|high","summary":"2 sentences: what it is + whether it can actually harm a visitor","factors":["..."],"score_delta":-22..16}';
+            . '"harm":"none|low|medium|high","summary":"2 sentences: what it is + whether it can actually harm a visitor",'
+            . '"factors":["..."],'
+            . '"points_added":[{"reason":"...","points":2}],'
+            . '"points_deducted":[{"reason":"...","points":-3}],'
+            . '"score_delta":-22..16}';
 
         $body = json_encode([
             'model' => $model,
             'temperature' => 0.15,
-            'max_tokens' => 420,
+            'max_tokens' => 520,
             'messages' => [
                 ['role' => 'system', 'content' => $system],
                 ['role' => 'user', 'content' => json_encode($payloadFacts, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)],
@@ -395,7 +430,18 @@ class AiAnalyst
         $summary = trim(preg_replace('/\.\s*\./', '.', $summary) ?? $summary);
 
         $harm = strtolower((string) ($parsed['harm'] ?? ''));
-        $delta = (int) ($parsed['score_delta'] ?? 0);
+
+        // Prefer explicit AI point ledger when present.
+        $pointsAdded = self::normalizePointRows($parsed['points_added'] ?? [], true);
+        $pointsDeducted = self::normalizePointRows($parsed['points_deducted'] ?? [], false);
+        $ledgerSum = null;
+        if ($pointsAdded || $pointsDeducted) {
+            $ledgerSum = 0;
+            foreach (array_merge($pointsAdded, $pointsDeducted) as $row) {
+                $ledgerSum += (int) $row['points'];
+            }
+        }
+        $delta = $ledgerSum !== null ? (int) $ledgerSum : (int) ($parsed['score_delta'] ?? 0);
         $delta = max(-22, min(16, $delta));
 
         // Scale negative penalties by confidence so a 60%-sure hunch can't crush a site.
@@ -445,8 +491,49 @@ class AiAnalyst
             'confidence' => $confidence,
             'score_delta' => $delta,
             'factors' => array_slice($factors, 0, 6),
+            'points_added' => array_slice($pointsAdded, 0, 6),
+            'points_deducted' => array_slice($pointsDeducted, 0, 6),
             'site_about' => $siteAbout,
         ];
+    }
+
+    /**
+     * @param mixed $rows
+     * @return array<int,array{reason:string,points:int}>
+     */
+    private static function normalizePointRows($rows, bool $added): array
+    {
+        if (!is_array($rows)) {
+            return [];
+        }
+        $out = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $reason = trim((string) ($row['reason'] ?? ''));
+            if ($reason === '') {
+                continue;
+            }
+            $pts = (int) ($row['points'] ?? 0);
+            if ($added) {
+                $pts = max(0, min(12, $pts));
+            } else {
+                // Accept either negative or positive magnitude for deductions.
+                if ($pts > 0) {
+                    $pts = -$pts;
+                }
+                $pts = max(-16, min(0, $pts));
+            }
+            if ($pts === 0) {
+                continue;
+            }
+            $out[] = [
+                'reason' => mb_substr($reason, 0, 140),
+                'points' => $pts,
+            ];
+        }
+        return $out;
     }
 
     /** Admin site_settings override, then config.php constant. */

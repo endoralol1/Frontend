@@ -85,6 +85,25 @@ class ExternalReputation
             $spamHit = 1;
         }
 
+        $reviewSources = [];
+        foreach ($profiles as $p) {
+            $reviewSources[] = [
+                'source' => (string) ($p['source'] ?? ''),
+                'kind' => (string) ($p['kind'] ?? 'reviews'),
+                'stars' => $p['stars'] ?? null,
+                'count' => (int) ($p['count'] ?? 0),
+                'neg' => $p['neg'] ?? null,
+                'pos' => $p['pos'] ?? null,
+                'meta_trust' => $p['meta_trust'] ?? null,
+                'penalty' => (int) ($p['penalty'] ?? 0),
+                'bonus' => (int) ($p['bonus'] ?? 0),
+                'snippets' => array_values(array_slice((array) ($p['snippets'] ?? []), 0, 4)),
+                'note' => function_exists('mb_substr')
+                    ? mb_substr((string) (($p['signal']['note'] ?? '')), 0, 180)
+                    : substr((string) (($p['signal']['note'] ?? '')), 0, 180),
+            ];
+        }
+
         return [
             'signals' => $signals,
             'score_delta' => $delta,
@@ -92,6 +111,7 @@ class ExternalReputation
             'review_penalty' => $reviewPenalty,
             'review_bonus' => $reviewBonus,
             'review_consensus' => $consensus['summary'],
+            'review_sources' => $reviewSources,
         ];
     }
 
@@ -363,53 +383,63 @@ class ExternalReputation
             return $empty;
         }
 
-        // Map 0-100 trust → rough 1-5 stars for mix scoring.
-        $stars = max(1.0, min(5.0, $trust / 20.0));
         $posLean = (bool) preg_match('/people are giving this website positive reviews|positive public reviews|overwhelmingly positive/i', $raw);
         $negLean = (bool) preg_match('/\b(bad reviews|mostly negative reviews|negative review profile|reviews are (?:either )?missing|few or no reviews|little to no reviews)\b/i', $raw)
             || (bool) preg_match('/in summary[^\n]{0,120}\b(scam|suspicious|not safe|high risk)\b/i', $raw);
 
-        // Synthetic small sample so Scamadviser can't dominate — it's a meta score.
-        $count = $posLean || $negLean ? 12 : 8;
-        $neg = $negLean ? 7 : ($posLean ? 2 : 4);
-        $pos = max(0, $count - $neg);
-        if ($trust >= 80) {
-            $neg = 1;
-            $pos = 11;
-            $count = 12;
-        } elseif ($trust <= 35) {
-            $neg = 10;
-            $pos = 2;
-            $count = 12;
+        // Scamadviser is an automated META trust score — NOT N human reviews.
+        // Never invent fake review counts/pos/neg for the consensus UI.
+        $penalty = 0;
+        $bonus = 0;
+        $tone = 'neutral';
+        if ($trust <= 30) {
+            $penalty = 6;
+            $tone = 'bad';
+        } elseif ($trust <= 45) {
+            $penalty = 4;
+            $tone = 'warn';
+        } elseif ($trust <= 60) {
+            $penalty = 2;
+            $tone = 'warn';
+        } elseif ($trust >= 85) {
+            $bonus = 3;
+            $tone = 'good';
+        } elseif ($trust >= 75) {
+            $bonus = 2;
+            $tone = 'good';
         }
 
-        $scored = $this->scoreReviewMix([
-            'source' => 'Scamadviser',
-            'stars' => $stars,
-            'count' => $count,
-            'neg' => $neg,
-            'pos' => $pos,
-            'scamish' => $trust <= 30,
-            'weight' => 0.55,
-        ]);
+        $snippets = [];
+        if (preg_match('/in summary[:\s]+(.{20,180})/i', $raw, $sm)) {
+            $snippets[] = trim(preg_replace('/\s+/u', ' ', $sm[1]) ?? $sm[1]);
+        }
+        if ($posLean) {
+            $snippets[] = 'Scamadviser notes positive public reviews.';
+        }
+        if ($negLean) {
+            $snippets[] = 'Scamadviser notes a weak/negative or sparse review picture.';
+        }
 
-        $tone = $trust >= 75 ? 'good' : ($trust <= 40 ? 'bad' : ($trust <= 60 ? 'warn' : 'neutral'));
-        $note = 'Scamadviser trust score ' . $trust . '/100'
-            . ($posLean ? ' — notes positive public reviews.' : '')
-            . ($negLean ? ' — notes weak/negative review picture.' : '');
+        $note = 'Scamadviser automated meta trust score ' . $trust . '/100'
+            . ' — this is NOT a count of human reviews on Scamadviser.'
+            . ($posLean ? ' Notes positive public reviews elsewhere.' : '')
+            . ($negLean ? ' Notes weak/negative or sparse reviews.' : '');
 
         return [
             'usable' => true,
+            'kind' => 'meta',
             'source' => 'Scamadviser',
-            'stars' => $stars,
-            'count' => $count,
-            'neg' => $neg,
-            'pos' => $pos,
+            'stars' => null,
+            'meta_trust' => $trust,
+            'count' => 0,
+            'neg' => null,
+            'pos' => null,
             'scamish' => $trust <= 30,
-            'weight' => 0.55,
-            'penalty' => $scored['penalty'],
-            'bonus' => $scored['bonus'],
-            'signal' => $this->sig('reputation', 'Scamadviser', $trust . '/100 trust', $note, $tone),
+            'weight' => 0.35,
+            'penalty' => $penalty,
+            'bonus' => $bonus,
+            'snippets' => array_slice($snippets, 0, 4),
+            'signal' => $this->sig('reputation', 'Scamadviser', $trust . '/100 meta trust', $note, $tone),
         ];
     }
 
@@ -647,10 +677,26 @@ class ExternalReputation
         $rawPenalty = 0;
         $rawBonus = 0;
         $parts = [];
+        $hasHumanReviews = false;
+        $metaOnly = true;
 
         foreach ($profiles as $p) {
+            $kind = (string) ($p['kind'] ?? 'reviews');
             $n = (int) ($p['count'] ?? 0);
             $w = (float) ($p['weight'] ?? 1.0);
+            $rawPenalty += (int) ($p['penalty'] ?? 0);
+            $rawBonus += (int) ($p['bonus'] ?? 0);
+
+            if ($kind === 'meta') {
+                $trust = (int) ($p['meta_trust'] ?? 0);
+                $parts[] = $p['source'] . ' meta ' . $trust . '/100';
+                continue;
+            }
+
+            $metaOnly = false;
+            if ($n > 0 || $p['stars'] !== null) {
+                $hasHumanReviews = true;
+            }
             $volW = $w * log(1 + max(1, $n)); // volume-aware
             if ($p['stars'] !== null) {
                 $weightedStars += ((float) $p['stars']) * $volW;
@@ -658,11 +704,9 @@ class ExternalReputation
             }
             $totalNeg += (int) ($p['neg'] ?? 0);
             $totalPos += (int) ($p['pos'] ?? 0);
-            $rawPenalty += (int) ($p['penalty'] ?? 0);
-            $rawBonus += (int) ($p['bonus'] ?? 0);
             $parts[] = $p['source']
                 . ($p['stars'] !== null ? ' ' . number_format((float) $p['stars'], 1) . '/5' : '')
-                . ($n > 0 ? ' (' . $n . ')' : '');
+                . ($n > 0 ? ' (' . $n . ' reviews)' : '');
         }
 
         $avgStars = $starWeight > 0 ? ($weightedStars / $starWeight) : null;
@@ -716,6 +760,28 @@ class ExternalReputation
             ];
         }
 
+        // Meta-only (e.g. Scamadviser alone): soft signal, never pretend we counted human reviews.
+        if ($metaOnly || !$hasHumanReviews) {
+            $penalty = min(8, $rawPenalty);
+            $bonus = min(4, $rawBonus);
+            $summary = 'No sizable human review profile found yet. '
+                . 'Available automated/meta signals: ' . implode('; ', $parts) . '. '
+                . 'Treat this as weak evidence — not a large review consensus.';
+            $tone = $penalty >= 4 ? 'warn' : ($bonus >= 2 ? 'good' : 'neutral');
+            return [
+                'penalty' => $penalty,
+                'bonus' => $bonus,
+                'summary' => $summary,
+                'signal' => $this->sig(
+                    'reputation',
+                    'Review consensus',
+                    implode(' · ', $parts),
+                    $summary,
+                    $tone
+                ),
+            ];
+        }
+
         // No single strong positive — use combined mix, harsh when negatives dominate at volume.
         $mix = $this->scoreReviewMix([
             'source' => 'Combined',
@@ -741,7 +807,7 @@ class ExternalReputation
 
         $summary = 'Review consensus from ' . implode(', ', $parts) . '.';
         if ($totalNeg + $totalPos > 0) {
-            $summary .= ' Approx ' . $totalNeg . ' negative vs ' . $totalPos . ' positive across sources.';
+            $summary .= ' Approx ' . $totalNeg . ' negative vs ' . $totalPos . ' positive across human-review sources.';
         }
 
         $tone = $mix['tone'];
