@@ -57,7 +57,7 @@ $extraJs = $extraJs ?? [];
     <link rel="stylesheet" href="<?= e(asset('vendor/tooltipster.bundle.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/swiper.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/episode-carousel.css')) ?>">
-    <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=20260729-space">
+    <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=20260729-accent">
     <?php foreach ($extraCss as $css): ?>
         <link rel="stylesheet" href="<?= e($css) ?>">
     <?php endforeach; ?>
@@ -131,7 +131,7 @@ $extraJs = $extraJs ?? [];
 <script src="<?= e(asset('vendor/bootstrap.bundle.min.js')) ?>" defer></script>
 <script src="<?= e(asset('vendor/tooltipster.bundle.min.js')) ?>" defer></script>
 <script src="<?= e(asset('vendor/swiper.min.js')) ?>" defer></script>
-<script src="<?= e(asset('js/app.js')) ?>?v=20260729-space" defer></script>
+<script src="<?= e(asset('js/app.js')) ?>?v=20260729-accent" defer></script>
 <?php foreach ($extraJs as $js): ?>
     <script src="<?= e($js) ?>" defer></script>
 <?php endforeach; ?>
