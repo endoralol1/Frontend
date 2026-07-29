@@ -9,7 +9,7 @@
                 $rating = isset($slide['vote_average']) ? round((float) $slide['vote_average'], 1) : null;
                 $desc = truncate((string) ($slide['overview'] ?? ''), 180);
             ?>
-            <div class="swiper-slide lazyload" data-bgset="<?= e($bg) ?>" style="background-color:#1a1c23;">
+            <div class="swiper-slide lazyload" data-bgset="<?= e($bg) ?>" style="background-color:#12151c;">
                 <div class="wrapper justify-content-center">
                     <div class="info">
                         <div class="name"><?= e($t) ?></div>

@@ -357,6 +357,52 @@ body::after {
   font-size: 2.4rem !important;
 }
 
+/* Blend hero into the warmer page background (kill the gray band) */
+#featured {
+  background: transparent;
+}
+
+#featured .swiper-wrapper .swiper-slide {
+  background-color: #12151c !important;
+}
+
+#featured .swiper-wrapper .swiper-slide:before,
+body.index > .wrapper .index-head:before {
+  background: linear-gradient(
+    180deg,
+    rgba(8, 10, 14, 0.72) 0%,
+    rgba(18, 21, 28, 0.18) 55%,
+    transparent 100%
+  ) !important;
+}
+
+#featured .swiper-wrapper .swiper-slide:after {
+  position: absolute !important;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 48%;
+  box-shadow: none !important;
+  background: linear-gradient(
+    0deg,
+    #12151c 0%,
+    rgba(18, 21, 28, 0.94) 26%,
+    rgba(18, 21, 28, 0.42) 64%,
+    transparent 100%
+  ) !important;
+  pointer-events: none;
+  z-index: 1;
+}
+
+#featured .swiper-pagination .swiper-pagination-bullet {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+#featured .swiper-pagination .swiper-pagination-bullet-active {
+  background: #db6937;
+}
+
 .view-switcher .btn.active,
 .view-switcher .btn:focus {
   background: #dc3545;
