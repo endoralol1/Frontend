@@ -387,15 +387,17 @@ body.index > .wrapper .index-head:before {
   content: "" !important;
   display: block !important;
   position: absolute !important;
-  inset: 0 !important;
-  height: auto !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  top: auto !important;
+  /* Only cover lower hero for text — leave logo/top image clean */
+  height: 58% !important;
   width: 100% !important;
-  top: 0 !important;
   z-index: 1 !important;
-  /* No top vignette — that read as a shadow behind the logo */
   background:
-    linear-gradient(90deg, rgba(8, 10, 16, 0.72) 0%, rgba(8, 10, 16, 0.28) 38%, transparent 70%),
-    linear-gradient(0deg, rgba(8, 10, 16, 0.92) 0%, rgba(8, 10, 16, 0.4) 34%, transparent 62%) !important;
+    linear-gradient(90deg, rgba(8, 10, 16, 0.78) 0%, rgba(8, 10, 16, 0.28) 42%, transparent 72%),
+    linear-gradient(0deg, rgba(8, 10, 16, 0.9) 0%, rgba(8, 10, 16, 0.35) 45%, transparent 100%) !important;
   pointer-events: none;
 }
 
