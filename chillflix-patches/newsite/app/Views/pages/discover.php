@@ -40,6 +40,35 @@ $providers = [
     '8' => 'Netflix', '9' => 'Amazon Prime', '337' => 'Disney+', '15' => 'Hulu',
     '384' => 'HBO Max', '350' => 'Apple TV+', '531' => 'Paramount+', '386' => 'Peacock',
 ];
+$providerIcons = [
+    '8' => ['mark' => 'N', 'tone' => 'netflix'],
+    '9' => ['mark' => 'a', 'tone' => 'prime'],
+    '337' => ['mark' => '+', 'tone' => 'disney'],
+    '15' => ['mark' => 'h', 'tone' => 'hulu'],
+    '384' => ['mark' => 'H', 'tone' => 'hbomax'],
+    '350' => ['mark' => '', 'tone' => 'apple'],
+    '531' => ['mark' => 'P', 'tone' => 'paramount'],
+    '386' => ['mark' => 'p', 'tone' => 'peacock'],
+];
+$networkIcons = [
+    '49' => ['mark' => 'H', 'tone' => 'hbo'],
+    '67' => ['mark' => 'F', 'tone' => 'fox'],
+    '56' => ['mark' => 'C', 'tone' => 'cn'],
+    '6' => ['mark' => 'N', 'tone' => 'nbc'],
+    '2' => ['mark' => 'A', 'tone' => 'abc'],
+    '16' => ['mark' => 'C', 'tone' => 'cbs'],
+    '318' => ['mark' => 'M', 'tone' => 'marvel'],
+    '174' => ['mark' => 'A', 'tone' => 'amc'],
+    '88' => ['mark' => 'X', 'tone' => 'fx'],
+    '54' => ['mark' => 'D', 'tone' => 'disney'],
+];
+$countryFlag = static function (string $code): string {
+    $code = strtoupper($code);
+    if (strlen($code) !== 2 || !ctype_alpha($code)) {
+        return '🌐';
+    }
+    return mb_chr(127397 + ord($code[0])) . mb_chr(127397 + ord($code[1]));
+};
 // TV broadcast networks only — streaming apps live under Provider (no duplicates)
 $networks = [
     '49' => 'HBO', '67' => 'Fox', '56' => 'Cartoon Network',
@@ -226,11 +255,26 @@ $networkBubbles = $filterBubbles($selectedNetworks, $excludedNetworks, $networks
 $countryBubbles = $filterBubbles($selectedCountries, $excludedCountries, $countries);
 $providerBubbles = $filterBubbles($selectedProviders, $excludedProviders, $providers);
 
-$renderBubbles = static function (string $pickerId, array $bubbles): void {
+$renderBubbles = static function (string $pickerId, array $bubbles) use ($countryFlag, $providerIcons, $networkIcons): void {
     ?>
     <div class="filter-row-bubbles" data-summary-for="<?= e($pickerId) ?>"<?= $bubbles ? '' : ' hidden' ?>>
-        <?php foreach ($bubbles as $b): ?>
+        <?php foreach ($bubbles as $b):
+            $lead = '';
+            $toneClass = '';
+            if ($pickerId === 'picker-country') {
+                $lead = $countryFlag((string) $b['value']);
+            } elseif ($pickerId === 'picker-provider' && isset($providerIcons[$b['value']])) {
+                $lead = $providerIcons[$b['value']]['mark'];
+                $toneClass = ' tone-' . $providerIcons[$b['value']]['tone'];
+            } elseif ($pickerId === 'picker-network' && isset($networkIcons[$b['value']])) {
+                $lead = $networkIcons[$b['value']]['mark'];
+                $toneClass = ' tone-' . $networkIcons[$b['value']]['tone'];
+            }
+        ?>
         <button type="button" class="filter-bubble is-<?= e($b['tone']) ?>" data-picker="<?= e($pickerId) ?>" data-value="<?= e($b['value']) ?>" title="Clear">
+            <?php if ($lead !== '' || $toneClass !== ''): ?>
+            <span class="filter-bubble-lead<?= e($toneClass) ?>" aria-hidden="true"><?= $pickerId === 'picker-country' ? $lead : e((string) $lead) ?></span>
+            <?php endif; ?>
             <span><?= e($b['label']) ?></span>
             <i class="uil uil-times" aria-hidden="true"></i>
         </button>
@@ -306,53 +350,61 @@ $renderBubbles = static function (string $pickerId, array $bubbles): void {
                                     <div class="filter-home" id="filter-home">
                                         <div class="filter-rows">
                                             <div class="filter-row-block">
-                                                <button type="button" class="filter-row" data-open-picker="picker-genre">
-                                                    <span class="filter-row-icon"><i class="uil uil-apps" aria-hidden="true"></i></span>
-                                                    <span class="filter-row-copy">
-                                                        <strong>Genre</strong>
-                                                        <em class="filter-row-hint">Add genres</em>
-                                                    </span>
-                                                    <i class="uil uil-angle-right filter-row-chevron" aria-hidden="true"></i>
-                                                </button>
-                                                <?php $renderBubbles('picker-genre', $genreBubbles); ?>
+                                                <div class="filter-row-card">
+                                                    <button type="button" class="filter-row" data-open-picker="picker-genre">
+                                                        <span class="filter-row-icon"><i class="uil uil-apps" aria-hidden="true"></i></span>
+                                                        <span class="filter-row-copy">
+                                                            <strong>Genre</strong>
+                                                            <em class="filter-row-hint">Add genres</em>
+                                                        </span>
+                                                        <i class="uil uil-angle-right filter-row-chevron" aria-hidden="true"></i>
+                                                    </button>
+                                                    <?php $renderBubbles('picker-genre', $genreBubbles); ?>
+                                                </div>
                                             </div>
 
                                             <?php if (!$isMovie): ?>
                                             <div class="filter-row-block">
-                                                <button type="button" class="filter-row" data-open-picker="picker-network">
-                                                    <span class="filter-row-icon"><i class="uil uil-rss" aria-hidden="true"></i></span>
-                                                    <span class="filter-row-copy">
-                                                        <strong>Network</strong>
-                                                        <em class="filter-row-hint">Add networks</em>
-                                                    </span>
-                                                    <i class="uil uil-angle-right filter-row-chevron" aria-hidden="true"></i>
-                                                </button>
-                                                <?php $renderBubbles('picker-network', $networkBubbles); ?>
+                                                <div class="filter-row-card">
+                                                    <button type="button" class="filter-row" data-open-picker="picker-network">
+                                                        <span class="filter-row-icon"><i class="uil uil-rss" aria-hidden="true"></i></span>
+                                                        <span class="filter-row-copy">
+                                                            <strong>Network</strong>
+                                                            <em class="filter-row-hint">Add networks</em>
+                                                        </span>
+                                                        <i class="uil uil-angle-right filter-row-chevron" aria-hidden="true"></i>
+                                                    </button>
+                                                    <?php $renderBubbles('picker-network', $networkBubbles); ?>
+                                                </div>
                                             </div>
                                             <?php endif; ?>
 
                                             <div class="filter-row-block">
-                                                <button type="button" class="filter-row" data-open-picker="picker-country">
-                                                    <span class="filter-row-icon"><i class="uil uil-globe" aria-hidden="true"></i></span>
-                                                    <span class="filter-row-copy">
-                                                        <strong>Country</strong>
-                                                        <em class="filter-row-hint">Add countries</em>
-                                                    </span>
-                                                    <i class="uil uil-angle-right filter-row-chevron" aria-hidden="true"></i>
-                                                </button>
-                                                <?php $renderBubbles('picker-country', $countryBubbles); ?>
+                                                <div class="filter-row-card">
+                                                    <button type="button" class="filter-row" data-open-picker="picker-country">
+                                                        <span class="filter-row-icon"><i class="uil uil-globe" aria-hidden="true"></i></span>
+                                                        <span class="filter-row-copy">
+                                                            <strong>Country</strong>
+                                                            <em class="filter-row-hint">Add countries</em>
+                                                        </span>
+                                                        <i class="uil uil-angle-right filter-row-chevron" aria-hidden="true"></i>
+                                                    </button>
+                                                    <?php $renderBubbles('picker-country', $countryBubbles); ?>
+                                                </div>
                                             </div>
 
                                             <div class="filter-row-block">
-                                                <button type="button" class="filter-row" data-open-picker="picker-provider">
-                                                    <span class="filter-row-icon"><i class="uil uil-play" aria-hidden="true"></i></span>
-                                                    <span class="filter-row-copy">
-                                                        <strong>Provider</strong>
-                                                        <em class="filter-row-hint">Add providers</em>
-                                                    </span>
-                                                    <i class="uil uil-angle-right filter-row-chevron" aria-hidden="true"></i>
-                                                </button>
-                                                <?php $renderBubbles('picker-provider', $providerBubbles); ?>
+                                                <div class="filter-row-card">
+                                                    <button type="button" class="filter-row" data-open-picker="picker-provider">
+                                                        <span class="filter-row-icon"><i class="uil uil-play" aria-hidden="true"></i></span>
+                                                        <span class="filter-row-copy">
+                                                            <strong>Provider</strong>
+                                                            <em class="filter-row-hint">Add providers</em>
+                                                        </span>
+                                                        <i class="uil uil-angle-right filter-row-chevron" aria-hidden="true"></i>
+                                                    </button>
+                                                    <?php $renderBubbles('picker-provider', $providerBubbles); ?>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -426,12 +478,14 @@ $renderBubbles = static function (string $pickerId, array $bubbles): void {
                                             </div>
                                         </div>
                                         <div class="filter-picker-body">
-                                            <div class="filter-pills filter-pills-wrap" data-tri-group data-summary-target="picker-genre">
+                                            <div class="filter-list" data-tri-group data-summary-target="picker-genre">
                                                 <?php foreach ($genres as $gid => $gname):
                                                     $st = $triState((string) $gid, $selectedGenres, $excludedGenres);
                                                 ?>
-                                                <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= (int) $gid ?>" data-include="with_genres[]" data-exclude="without_genres[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
-                                                    <span><?= e($gname) ?></span>
+                                                <button type="button" class="filter-list-item filter-tri is-<?= e($st) ?>" data-value="<?= (int) $gid ?>" data-include="with_genres[]" data-exclude="without_genres[]" data-label="<?= e($gname) ?>" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
+                                                    <span class="filter-list-lead"><i class="uil uil-film" aria-hidden="true"></i></span>
+                                                    <span class="filter-list-label"><?= e($gname) ?></span>
+                                                    <span class="filter-list-check" aria-hidden="true"><i class="uil uil-check"></i></span>
                                                 </button>
                                                 <?php endforeach; ?>
                                             </div>
@@ -451,12 +505,15 @@ $renderBubbles = static function (string $pickerId, array $bubbles): void {
                                             </div>
                                         </div>
                                         <div class="filter-picker-body">
-                                            <div class="filter-pills filter-pills-wrap" data-tri-group data-summary-target="picker-network">
+                                            <div class="filter-list" data-tri-group data-summary-target="picker-network">
                                                 <?php foreach ($networks as $nid => $nname):
                                                     $st = $triState((string) $nid, $selectedNetworks, $excludedNetworks);
+                                                    $icon = $networkIcons[$nid] ?? ['mark' => 'TV', 'tone' => 'default'];
                                                 ?>
-                                                <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= e($nid) ?>" data-include="with_networks[]" data-exclude="without_networks[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
-                                                    <span><?= e($nname) ?></span>
+                                                <button type="button" class="filter-list-item filter-tri is-<?= e($st) ?>" data-value="<?= e($nid) ?>" data-include="with_networks[]" data-exclude="without_networks[]" data-label="<?= e($nname) ?>" data-mark="<?= e($icon['mark']) ?>" data-tone="<?= e($icon['tone']) ?>" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
+                                                    <span class="filter-list-lead tone-<?= e($icon['tone']) ?>" aria-hidden="true"><?= e($icon['mark']) ?></span>
+                                                    <span class="filter-list-label"><?= e($nname) ?></span>
+                                                    <span class="filter-list-check" aria-hidden="true"><i class="uil uil-check"></i></span>
                                                 </button>
                                                 <?php endforeach; ?>
                                             </div>
@@ -476,12 +533,15 @@ $renderBubbles = static function (string $pickerId, array $bubbles): void {
                                             </div>
                                         </div>
                                         <div class="filter-picker-body">
-                                            <div class="filter-pills filter-pills-wrap" data-tri-group data-summary-target="picker-country">
+                                            <div class="filter-list" data-tri-group data-summary-target="picker-country">
                                                 <?php foreach ($countries as $code => $cname):
                                                     $st = $triState($code, $selectedCountries, $excludedCountries);
+                                                    $flag = $countryFlag($code);
                                                 ?>
-                                                <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= e($code) ?>" data-include="with_origin_country[]" data-exclude="without_origin_country[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
-                                                    <span><?= e($cname) ?></span>
+                                                <button type="button" class="filter-list-item filter-tri is-<?= e($st) ?>" data-value="<?= e($code) ?>" data-include="with_origin_country[]" data-exclude="without_origin_country[]" data-label="<?= e($cname) ?>" data-flag="<?= e($flag) ?>" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
+                                                    <span class="filter-list-lead filter-list-flag" aria-hidden="true"><?= $flag ?></span>
+                                                    <span class="filter-list-label"><?= e($cname) ?></span>
+                                                    <span class="filter-list-check" aria-hidden="true"><i class="uil uil-check"></i></span>
                                                 </button>
                                                 <?php endforeach; ?>
                                             </div>
@@ -500,12 +560,15 @@ $renderBubbles = static function (string $pickerId, array $bubbles): void {
                                             </div>
                                         </div>
                                         <div class="filter-picker-body">
-                                            <div class="filter-pills filter-pills-wrap" data-tri-group data-summary-target="picker-provider">
+                                            <div class="filter-list" data-tri-group data-summary-target="picker-provider">
                                                 <?php foreach ($providers as $pid => $pname):
                                                     $st = $triState((string) $pid, $selectedProviders, $excludedProviders);
+                                                    $icon = $providerIcons[$pid] ?? ['mark' => '▶', 'tone' => 'default'];
                                                 ?>
-                                                <button type="button" class="filter-pill filter-tri is-<?= e($st) ?>" data-value="<?= e($pid) ?>" data-include="with_watch_providers[]" data-exclude="without_watch_providers[]" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
-                                                    <span><?= e($pname) ?></span>
+                                                <button type="button" class="filter-list-item filter-tri is-<?= e($st) ?>" data-value="<?= e($pid) ?>" data-include="with_watch_providers[]" data-exclude="without_watch_providers[]" data-label="<?= e($pname) ?>" data-mark="<?= e($icon['mark']) ?>" data-tone="<?= e($icon['tone']) ?>" aria-pressed="<?= $st === 'off' ? 'false' : 'true' ?>">
+                                                    <span class="filter-list-lead tone-<?= e($icon['tone']) ?>" aria-hidden="true"><?= e($icon['mark']) ?></span>
+                                                    <span class="filter-list-label"><?= e($pname) ?></span>
+                                                    <span class="filter-list-check" aria-hidden="true"><i class="uil uil-check"></i></span>
                                                 </button>
                                                 <?php endforeach; ?>
                                             </div>

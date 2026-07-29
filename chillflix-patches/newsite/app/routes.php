@@ -510,6 +510,8 @@ function discover_page(Tmdb $tmdb, string $type, bool $filtersPage = false): voi
         'filtersPage' => $filtersPage,
         'genres' => $isMovie ? config('genres_movie') : config('genres_tv'),
         'sidebarItems' => $sidebarItems,
+        'bodyClass' => 'page-watch',
+        'headerClass' => 'absolute',
         'seo' => [
             'title' => $label . ' | Watch ' . ($isMovie ? 'Movies' : 'TV Series') . ' Online Free - ' . config('site_name'),
             'description' => $isMovie
@@ -566,6 +568,8 @@ function watch_page(Tmdb $tmdb, string $type, int $id, string $slug): void
         'episode' => $episode,
         'episodes' => $episodes,
         'servers' => config('servers'),
+        'bodyClass' => 'page-watch',
+        'headerClass' => 'absolute',
         'seo' => [
             'title' => $title . ($year ? " ($year)" : '') . ' | Watch Online - ' . config('site_name'),
             'description' => truncate($overview !== '' ? $overview : "Watch {$title} online free in HD on " . config('site_name') . '.', 160),

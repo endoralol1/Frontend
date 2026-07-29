@@ -435,12 +435,24 @@
     var html = '';
     $group.find('.filter-tri').each(function () {
       var $btn = $(this);
-      var label = $.trim($btn.find('span').first().text());
+      var label = String($btn.data('label') || $.trim($btn.find('.filter-list-label, span').last().text()) || '');
       var val = String($btn.data('value'));
       if (!label) return;
       var tone = $btn.hasClass('is-in') ? 'in' : ($btn.hasClass('is-out') ? 'out' : '');
       if (!tone) return;
+      var lead = '';
+      var flag = $btn.data('flag');
+      var mark = $btn.data('mark');
+      var iconTone = $btn.data('tone');
+      if (flag) {
+        lead = '<span class="filter-bubble-lead" aria-hidden="true">' + String(flag) + '</span>';
+      } else if (mark != null && String(mark) !== '') {
+        lead = '<span class="filter-bubble-lead tone-' + $('<div>').text(String(iconTone || 'default')).html() + '" aria-hidden="true">' + $('<div>').text(String(mark)).html() + '</span>';
+      } else if (iconTone) {
+        lead = '<span class="filter-bubble-lead tone-' + $('<div>').text(String(iconTone)).html() + '" aria-hidden="true"></span>';
+      }
       html += '<button type="button" class="filter-bubble is-' + tone + '" data-picker="' + pickerId + '" data-value="' + $('<div>').text(val).html() + '" title="Clear">' +
+        lead +
         '<span>' + $('<div>').text(label).html() + '</span><i class="uil uil-times" aria-hidden="true"></i></button>';
     });
     $box.html(html);
