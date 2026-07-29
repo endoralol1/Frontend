@@ -486,9 +486,9 @@ header.absolute {
   background: linear-gradient(180deg, rgba(8, 10, 14, 0.72) 0%, rgba(8, 10, 14, 0.18) 70%, transparent 100%) !important;
 }
 
-/* Header: EN closer to logo; desktop nav top-right */
+/* Header: EN tight to logo; desktop nav top-right */
 header .wrapper .start {
-  gap: 0.35rem;
+  gap: 0.1rem;
   min-width: auto;
 }
 
@@ -496,24 +496,50 @@ header .wrapper .start .logo {
   margin-right: 0;
 }
 
+header .wrapper .start .logo img {
+  display: block;
+  margin-right: 0;
+}
+
 header .wrapper .start #language-toggler {
-  margin-left: 0.35rem !important;
+  margin-left: 0.05rem !important;
   margin-right: 0 !important;
+  padding: 0;
 }
 
 header .wrapper .start #language-toggler .lang-code {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
   opacity: 0.85;
 }
 
 header .wrapper {
-  gap: 1rem;
+  gap: 0.5rem;
 }
 
-/* Desktop horizontal menu on the right (before search) */
+/* Desktop: logo+EN left · search · nav pinned top-right */
 @media (min-width: 992px) {
+  header .wrapper {
+    justify-content: flex-start !important;
+    align-items: center;
+    height: 4.75rem;
+    gap: 0.35rem;
+  }
+
+  header .wrapper .start {
+    order: 1;
+    flex: 0 0 auto;
+  }
+
   header .wrapper .start #menu-toggler {
     display: none !important;
+  }
+
+  header .wrapper .step {
+    order: 2;
+    margin-left: auto;
+    flex: 0 0 auto;
+    max-width: none;
   }
 
   header #menu.header-nav,
@@ -521,16 +547,18 @@ header .wrapper {
     display: flex !important;
     position: static !important;
     top: auto !important;
-    margin-left: auto;
-    margin-right: 0.35rem;
+    order: 3;
+    margin-left: 0.15rem;
+    margin-right: 0;
     align-items: center;
+    flex: 0 0 auto;
   }
 
   header #menu.header-nav > ul,
   header .wrapper #menu > ul {
     display: flex !important;
     align-items: center;
-    gap: 0.15rem;
+    gap: 0.05rem;
     background: transparent !important;
     border: 0 !important;
     border-radius: 0 !important;
@@ -545,11 +573,11 @@ header .wrapper {
   header .wrapper #menu > ul > li > a {
     display: inline-flex !important;
     align-items: center;
-    padding: 0.45rem 0.85rem !important;
+    padding: 0.4rem 0.7rem !important;
     border-radius: 999px;
     color: rgba(233, 236, 239, 0.82);
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     white-space: nowrap;
     justify-content: center;
   }
@@ -560,11 +588,6 @@ header .wrapper {
   header .wrapper #menu > ul > li > a.active {
     background: rgba(219, 105, 55, 0.16) !important;
     color: #ffd2b8 !important;
-  }
-
-  header .wrapper .step {
-    margin-left: 0;
-    flex: 0 0 auto;
   }
 
   header .wrapper .end {
