@@ -397,14 +397,28 @@ body.index > .wrapper .index-head:before {
   background: var(--cf-orange);
 }
 
+.section .head {
+  margin-bottom: 1.15rem;
+}
+
+.section .head .start {
+  gap: 0.55rem 0.85rem;
+}
+
 .section .head .start .title {
   letter-spacing: -0.02em;
+  margin-right: 0.35rem;
+}
+
+.section .head .start .tabs,
+.tabs {
+  gap: 0.35rem;
 }
 
 .section .head .start .tabs .tab,
 .tabs .tab {
   border-radius: 999px;
-  padding: 0.28rem 0.75rem;
+  padding: 0.32rem 0.8rem;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
@@ -413,6 +427,21 @@ body.index > .wrapper .index-head:before {
   background: rgba(219, 105, 55, 0.18);
   color: #ffd2b8;
   border-color: rgba(219, 105, 55, 0.28);
+}
+
+.tabs .tab + .tab {
+  margin-left: 0;
+}
+
+@media (max-width: 991.98px) {
+  .section .head .start {
+    gap: 0.65rem;
+  }
+
+  .section .head .start .title {
+    margin-right: 0;
+    margin-bottom: 0.1rem;
+  }
 }
 
 /* Cards: slightly cleaner modern hover, same structure */
@@ -819,7 +848,7 @@ header.absolute {
 .section-top10 .top10-heading {
   display: inline-flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.8rem;
   color: #fff !important;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -835,6 +864,7 @@ header.absolute {
   border-radius: 999px;
   background: #e50914;
   flex-shrink: 0;
+  margin-right: 0.05rem;
 }
 
 .section-top10 .top10-rail-wrap {
