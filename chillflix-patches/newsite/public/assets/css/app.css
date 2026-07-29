@@ -666,18 +666,26 @@ body {
   background: linear-gradient(0deg, rgba(219, 105, 55, 0.28) 0%, transparent 58%);
 }
 
-/* ——— Top 10: single horizontal row, ranks 1→10 left to right ——— */
+/* ——— Top 10: single horizontal row, same card size, ranks from above ——— */
+.section-top10 {
+  overflow: visible;
+}
+
+.section-top10 .tab-content {
+  overflow: visible;
+}
+
 .section-top10 .top10-items {
   display: flex !important;
   flex-wrap: nowrap !important;
-  align-items: flex-end;
-  gap: 0.15rem;
+  align-items: flex-start;
+  gap: 0;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x proximity;
-  padding: 0.35rem 0.15rem 0.85rem;
-  margin: 0 -0.15rem;
+  padding: 2.4rem 0 0.85rem;
+  margin: 0 -0.4rem;
   float: none !important;
   width: auto !important;
   scrollbar-width: thin;
@@ -689,50 +697,49 @@ body {
   content: none !important;
 }
 
+/* Match Recommended / Latest card width exactly */
 .section-top10 .top10-items .movie-item.media-card--ranked {
   float: none !important;
-  flex: 0 0 auto;
-  width: 8.6rem !important;
-  max-width: 8.6rem;
-  margin: 0 !important;
-  padding: 0 0.15rem !important;
+  flex: 0 0 14.2857142857%;
+  width: 14.2857142857% !important;
+  max-width: none;
+  margin: 0 0 0.25rem !important;
+  padding: 0 0.4rem !important;
   scroll-snap-align: start;
   overflow: visible !important;
 }
 
 .section-top10 .top10-items .movie-item.media-card--ranked .inner {
-  overflow: visible;
+  overflow: visible !important;
   background: transparent;
-  border: 0;
-  padding: 0 0 0 1.55rem;
+  border: 1px solid transparent;
+  border-radius: 1.1rem;
+  padding: 0;
   box-shadow: none;
   transform: none;
+  position: relative;
 }
 
 .section-top10 .top10-items .movie-item.media-card--ranked .inner:hover {
-  border-color: transparent;
-  box-shadow: none;
-  transform: none;
+  border-color: rgba(219, 105, 55, 0.65);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  transform: translateY(-2px);
 }
 
 .section-top10 .top10-items .movie-item.media-card--ranked .inner .item-poster {
-  border-radius: 0.85rem;
+  border-radius: 1.1rem;
   z-index: 2;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+  position: relative;
 }
 
-.section-top10 .top10-items .movie-item.media-card--ranked .inner:hover .item-poster {
-  outline: 1px solid rgba(219, 105, 55, 0.7);
-}
-
-/* Big rank sits behind / peeks left of poster */
+/* Rank drops in from ABOVE the poster (overlaps top edge) */
 .section-top10 .top10-items .movie-item.media-card--ranked .card-rank {
   position: absolute !important;
-  left: -0.1rem !important;
+  top: -1.7rem !important;
+  left: 0.55rem !important;
   right: auto !important;
-  top: auto !important;
-  bottom: -0.15rem !important;
-  z-index: 1;
+  bottom: auto !important;
+  z-index: 3;
   display: block;
   min-width: 0;
   height: auto;
@@ -740,77 +747,82 @@ body {
   margin: 0;
   border: 0;
   border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+  background: transparent !important;
+  box-shadow: none !important;
   pointer-events: none;
-  font-size: 5.4rem;
+  transform: none;
+  font-size: clamp(2.8rem, 5.5vw, 4.4rem);
   font-weight: 800;
-  line-height: 0.8;
-  letter-spacing: -0.06em;
+  line-height: 0.82;
+  letter-spacing: -0.05em;
   color: transparent;
-  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.88);
-  text-shadow: 0 0 18px rgba(0, 0, 0, 0.45);
+  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.94);
+  text-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.5),
+    0 1px 0 rgba(0, 0, 0, 0.35);
   font-variant-numeric: tabular-nums;
 }
 
-.section-top10 .top10-items .movie-item.media-card--ranked[data-rank="10"] {
-  width: 9.4rem !important;
-  max-width: 9.4rem;
-}
-
-.section-top10 .top10-items .movie-item.media-card--ranked[data-rank="10"] .inner {
-  padding-left: 2.35rem;
-}
-
 .section-top10 .top10-items .movie-item.media-card--ranked[data-rank="10"] .card-rank {
-  font-size: 4.4rem;
-  left: -0.25rem !important;
+  font-size: clamp(2.3rem, 4.8vw, 3.6rem);
+  letter-spacing: -0.08em;
+  left: 0.35rem !important;
 }
 
 .section-top10 .top10-items .movie-item.media-card--ranked .card-caption {
-  padding: 1.8rem 0.55rem 0.5rem !important;
+  padding: 2.4rem 0.8rem 0.7rem !important;
 }
 
 .section-top10 .top10-items .movie-item.media-card--ranked .card-title {
-  font-size: 0.78rem;
-  -webkit-line-clamp: 1;
+  font-size: 0.9rem;
+  -webkit-line-clamp: 2;
 }
 
 .section-top10 .top10-items .movie-item.media-card--ranked .card-kicker > span {
-  font-size: 0.52rem;
-  padding: 0.08rem 0.32rem;
+  font-size: 0.62rem;
+  padding: 0.12rem 0.45rem;
 }
 
-@media (min-width: 992px) {
+@media (max-width: 1399.98px) {
   .section-top10 .top10-items .movie-item.media-card--ranked {
-    width: 10rem !important;
-    max-width: 10rem;
+    flex-basis: 20%;
+    width: 20% !important;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .section-top10 .top10-items {
+    padding-top: 2.1rem;
   }
 
-  .section-top10 .top10-items .movie-item.media-card--ranked[data-rank="10"] {
-    width: 11rem !important;
-    max-width: 11rem;
+  .section-top10 .top10-items .movie-item.media-card--ranked {
+    flex-basis: 25%;
+    width: 25% !important;
   }
 
   .section-top10 .top10-items .movie-item.media-card--ranked .card-rank {
-    font-size: 6.4rem;
+    top: -1.25rem !important;
+    -webkit-text-stroke-width: 1.5px;
   }
+}
 
-  .section-top10 .top10-items .movie-item.media-card--ranked[data-rank="10"] .card-rank {
-    font-size: 5.2rem;
+@media (min-width: 480px) and (max-width: 767.9px) {
+  .section-top10 .top10-items .movie-item.media-card--ranked {
+    flex-basis: 33.3333333333%;
+    width: 33.3333333333% !important;
   }
+}
 
-  .section-top10 .top10-items .movie-item.media-card--ranked .inner {
-    padding-left: 1.9rem;
-  }
-
-  .section-top10 .top10-items .movie-item.media-card--ranked[data-rank="10"] .inner {
-    padding-left: 2.8rem;
+@media (max-width: 479.98px) {
+  .section-top10 .top10-items .movie-item.media-card--ranked {
+    flex-basis: 50%;
+    width: 50% !important;
   }
 }
 
 /* Fallback tiny badge if ranked card appears outside Top 10 row */
-.movies.items .movie-item.media-card .card-rank {
+.movies.items .movie-item.media-card:not(.media-card--ranked) .card-rank,
+.movies.items:not(.top10-items) .movie-item.media-card .card-rank {
   position: absolute !important;
   top: 0.4rem !important;
   left: 0.4rem !important;
@@ -833,6 +845,8 @@ body {
   letter-spacing: -0.02em;
   pointer-events: none;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  transform: none;
+  -webkit-text-stroke: 0;
 }
 
 /* Force caption to the BOTTOM-LEFT of the poster */
