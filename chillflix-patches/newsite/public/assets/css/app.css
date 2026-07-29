@@ -139,7 +139,26 @@
   font-size: .85rem;
 }
 
-#menu.open { display: block; }
+/*
+ * #menu sits outside .start (desktop top-right layout), so theme rules
+ * `header .wrapper .start #menu { display:none }` no longer apply.
+ * Mobile-first: always hide raw nav / hamburger; bottom nav replaces them.
+ * Desktop (>=992) re-enables the horizontal header nav below.
+ */
+header #menu,
+header #menu.header-nav,
+header .wrapper #menu,
+#menu-toggler,
+header .wrapper .start #menu-toggler {
+  display: none !important;
+}
+
+header #menu ul,
+header #menu.header-nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
 
 .detail-poster {
   width: 160px;
@@ -567,7 +586,8 @@ header .wrapper {
     flex: 0 0 auto;
   }
 
-  header .wrapper .start #menu-toggler {
+  header .wrapper .start #menu-toggler,
+  #menu-toggler {
     display: none !important;
   }
 
@@ -579,7 +599,9 @@ header .wrapper {
   }
 
   header #menu.header-nav,
-  header .wrapper #menu {
+  header .wrapper #menu,
+  header #menu.header-nav.open,
+  header .wrapper #menu.open {
     display: flex !important;
     position: static !important;
     top: auto !important;
