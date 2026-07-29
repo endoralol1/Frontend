@@ -100,11 +100,18 @@ $unchecked = array_values(array_filter($signals, static fn($s) => ($s['value'] ?
 
 $score = (int) $record['trust_score'];
 $statusLabel = $badge['label'];
+$siteUnavailable = (($record['status'] ?? '') === 'unavailable' || ($record['verdict'] ?? '') === 'unavailable');
 $siteName = get_setting('site_name', 'ScamGuard');
 // Lead with the exact domain so brand queries like "chillflix.lol" can match this report.
-$pageTitle = $domain . ' Scam Check (' . $score . '/100 · ' . $statusLabel . ') | ' . $siteName;
-$pageDescription = $domain . ' scam check by ' . $siteName . ': trust score ' . $score . '/100 (' . $statusLabel . '). '
-    . 'See phishing/malware list hits, domain age, SSL, hosting, and community reports before you visit ' . $domain . '.';
+if ($siteUnavailable) {
+    $pageTitle = $domain . ' Scam Check (Website Down · score N/A) | ' . $siteName;
+    $pageDescription = $domain . ' looks down or unreachable right now, so ' . $siteName
+        . ' could not finish a live trust test. Try again later.';
+} else {
+    $pageTitle = $domain . ' Scam Check (' . $score . '/100 · ' . $statusLabel . ') | ' . $siteName;
+    $pageDescription = $domain . ' scam check by ' . $siteName . ': trust score ' . $score . '/100 (' . $statusLabel . '). '
+        . 'See phishing/malware list hits, domain age, SSL, hosting, and community reports before you visit ' . $domain . '.';
+}
 $canonicalUrl = domain_page_url($domain);
 $ogType = 'article';
 $jsonLd = json_encode([
@@ -132,7 +139,9 @@ $jsonLd = json_encode([
             'mainEntity' => [
                 '@type' => 'Thing',
                 'name' => $domain,
-                'description' => $statusLabel . ' — trust score ' . $score . '/100',
+                'description' => $siteUnavailable
+                    ? 'Website down — live trust score unavailable'
+                    : ($statusLabel . ' — trust score ' . $score . '/100'),
             ],
         ],
         [
@@ -166,8 +175,11 @@ $jsonLd = json_encode([
                     'name' => 'Is ' . $domain . ' safe or a scam?',
                     'acceptedAnswer' => [
                         '@type' => 'Answer',
-                        'text' => $siteName . ' rates ' . $domain . ' at ' . $score . '/100 (' . $statusLabel . '). '
-                            . 'This is a risk signal based on threat feeds, registration data, SSL, hosting, and community reports — not a legal verdict.',
+                        'text' => $siteUnavailable
+                            ? ($siteName . ' could not finish a live check of ' . $domain
+                                . ' because the website appears down or unreachable. Try again later.')
+                            : ($siteName . ' rates ' . $domain . ' at ' . $score . '/100 (' . $statusLabel . '). '
+                                . 'This is a risk signal based on threat feeds, registration data, SSL, hosting, and community reports — not a legal verdict.'),
                     ],
                 ],
                 [
@@ -175,7 +187,9 @@ $jsonLd = json_encode([
                     'name' => 'What is the ' . $domain . ' trust score?',
                     'acceptedAnswer' => [
                         '@type' => 'Answer',
-                        'text' => 'The current ' . $siteName . ' trust score for ' . $domain . ' is ' . $score . ' out of 100 (' . $statusLabel . ').',
+                        'text' => $siteUnavailable
+                            ? ('No trust score is available for ' . $domain . ' right now because the live website could not be tested.')
+                            : ('The current ' . $siteName . ' trust score for ' . $domain . ' is ' . $score . ' out of 100 (' . $statusLabel . ').'),
                     ],
                 ],
             ],
@@ -236,6 +250,8 @@ function tone_class(string $tone): string
     }));
     $primaryAnalyst = $analystSignals[0] ?? null;
     $plainSummary = match (true) {
+        $siteUnavailable
+            => 'This website looks down or unreachable right now, so we can’t finish a live trust test. Try again later.',
         !empty($record['malware_hit']) || !empty($record['phishing_hit']) || ($record['status'] ?? '') === 'blacklisted'
             => 'Strong warning signals were found. Avoid logging in or sending money until you verify the site another way.',
         ($record['status'] ?? '') === 'scam' || $score < 25
@@ -291,6 +307,7 @@ function tone_class(string $tone): string
 
         $goodMap = [
             'Domain age' => 'This domain was registered a long time ago',
+            'Parent domain age' => 'The parent domain is old (subdomain age still unknown)',
             'Valid SSL' => 'A valid SSL certificate was found',
             'HTTPS / TLS' => 'The connection to this site is encrypted (HTTPS)',
             'Malware lists' => 'Not flagged by malware blocklists',
@@ -376,6 +393,27 @@ function tone_class(string $tone): string
     $ageLabel = $record['domain_age_days'] !== null
         ? number_format((int) $record['domain_age_days']) . ' days'
         : 'Unknown';
+    foreach ($signals as $s) {
+        if (($s['label'] ?? '') === 'Domain age'
+            && stripos((string) ($s['value'] ?? ''), 'subdomain') !== false) {
+            $ageLabel = 'Unknown (subdomain)';
+            break;
+        }
+        if (($s['label'] ?? '') === 'Domain age'
+            && stripos((string) ($s['value'] ?? ''), 'platform') !== false) {
+            $ageLabel = 'Unknown (platform)';
+            break;
+        }
+        if (($s['label'] ?? '') === 'Parent domain age' && $record['domain_age_days'] === null) {
+            $ageLabel = 'Parent: ' . preg_replace('/\s·.*$/', '', (string) ($s['value'] ?? 'unknown'));
+        }
+    }
+    // Don't advertise "registered a long time ago" for subdomain/platform unknowns.
+    $goodBits = array_values(array_filter($goodBits, static function ($row) {
+        $t = strtolower((string) ($row['text'] ?? ''));
+        return !str_contains($t, 'registered a long time ago')
+            || !str_contains(strtolower((string) ($row['sub'] ?? '')), 'subdomain');
+    }));
     ?>
 
     <h2 class="sr-only"><?= h($domain) ?> scam check</h2>
@@ -428,7 +466,12 @@ function tone_class(string $tone): string
         <?php if ($record['manual_override']): ?>
             <div class="rc-alert is-info">Manually reviewed by an admin<?= !empty($record['admin_notes']) ? ': ' . h((string) $record['admin_notes']) : '.' ?></div>
         <?php endif; ?>
-        <?php if ($contentBlocked): ?>
+        <?php if ($siteUnavailable): ?>
+            <div class="rc-alert is-warn">
+                Website is down or unreachable right now, so we can’t finish a live trust test.
+                Hit <strong>Rescan</strong> later when the site is back online.
+            </div>
+        <?php elseif ($contentBlocked): ?>
             <div class="rc-alert is-neutral">
                 This site uses Cloudflare bot protection, so our scanner couldn't read the page content.
                 That's a normal setup used by millions of legitimate sites — not a red flag by itself.

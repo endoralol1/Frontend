@@ -52,8 +52,10 @@ class AiAnalyst
         }
 
         $age = $data['domain_age_days'] ?? null;
+        $ageScope = (string) ($data['domain_age_scope'] ?? 'exact');
         $scoreHint = 0;
-        if ($age !== null) {
+        // Only exact host registration age counts. Parent/platform age is informational.
+        if ($ageScope === 'exact' && $age !== null) {
             if ((int) $age < 30) {
                 $scoreHint -= 6;
                 $badBits[] = 'Very new domain (' . (int) $age . ' days)';
@@ -61,6 +63,10 @@ class AiAnalyst
                 $scoreHint += 3;
                 $goodBits[] = 'Established domain age';
             }
+        } elseif ($ageScope === 'parent') {
+            $badBits[] = 'Subdomain — parent domain age is not this site’s age';
+        } elseif ($ageScope === 'platform') {
+            $badBits[] = 'Shared platform host — platform age is not this site’s age';
         }
         if (!empty($data['ssl_valid'])) {
             $scoreHint += 2;

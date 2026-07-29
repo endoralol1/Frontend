@@ -24,6 +24,70 @@ function normalize_domain(string $input): ?string
     return $input;
 }
 
+/** Common multi-part public suffixes (not a full PSL, covers frequent cases). */
+function multi_part_tlds(): array
+{
+    return [
+        'co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'me.uk',
+        'com.au', 'net.au', 'org.au', 'edu.au',
+        'co.nz', 'net.nz', 'org.nz',
+        'co.jp', 'or.jp', 'ne.jp',
+        'com.br', 'com.mx', 'com.ar', 'com.co', 'com.pe',
+        'co.in', 'com.sg', 'com.my', 'com.ph', 'com.hk', 'com.tw', 'com.vn',
+        'co.za', 'com.ng', 'com.pk', 'com.tr', 'com.ua', 'co.kr',
+        'com.cn', 'com.sa', 'co.il',
+    ];
+}
+
+/**
+ * Registrable / apex domain for WHOIS (eTLD+1 style).
+ * www is ignored; other subdomains resolve to the parent registrable name.
+ */
+function registrable_domain(string $host): ?string
+{
+    $host = strtolower(trim($host));
+    $host = preg_replace('/^www\./', '', $host) ?? $host;
+    $parts = array_values(array_filter(explode('.', $host), static fn($p) => $p !== ''));
+    if (count($parts) < 2) {
+        return null;
+    }
+    $last2 = $parts[count($parts) - 2] . '.' . $parts[count($parts) - 1];
+    if (count($parts) >= 3 && in_array($last2, multi_part_tlds(), true)) {
+        return $parts[count($parts) - 3] . '.' . $last2;
+    }
+    return $last2;
+}
+
+function is_subdomain_hostname(string $host): bool
+{
+    $host = strtolower(trim(preg_replace('/^www\./', '', $host) ?? $host));
+    $apex = registrable_domain($host);
+    return $apex !== null && strcasecmp($apex, $host) !== 0;
+}
+
+/** Shared cloud / SaaS hostnames where tenant age ≠ platform domain age. */
+function is_platform_hosted_domain(string $host): bool
+{
+    $host = strtolower(trim($host));
+    $suffixes = [
+        '.amazonaws.com', '.cloudfront.net', '.elasticbeanstalk.com',
+        '.azurewebsites.net', '.azurefd.net', '.cloudapp.azure.com', '.blob.core.windows.net',
+        '.appspot.com', '.firebaseapp.com', '.web.app', '.googleusercontent.com',
+        '.github.io', '.githubusercontent.com',
+        '.vercel.app', '.netlify.app', '.pages.dev', '.workers.dev',
+        '.herokuapp.com', '.onrender.com', '.fly.dev',
+        '.myshopify.com', '.wordpress.com', '.blogspot.com',
+        '.webflow.io', '.carrd.co', '.ghost.io',
+        '.ngrok.io', '.ngrok-free.app', '.trycloudflare.com',
+    ];
+    foreach ($suffixes as $suffix) {
+        if (str_ends_with($host, $suffix)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /** @return array<string,string> */
 function &settings_cache(): array
 {
@@ -103,6 +167,7 @@ function status_badge(string $status): array
         'scam'         => ['label' => 'Likely Scam',    'class' => 'badge-scam'],
         'whitelisted'  => ['label' => 'Verified Safe',  'class' => 'badge-safe'],
         'blacklisted'  => ['label' => 'Confirmed Scam', 'class' => 'badge-scam'],
+        'unavailable'  => ['label' => 'Website Down',   'class' => 'badge-unknown'],
         default        => ['label' => 'Unknown',        'class' => 'badge-unknown'],
     };
 }
@@ -262,6 +327,7 @@ function render_status_banner(string $status, int $score, string $subject, array
 {
     $score = max(0, min(100, $score));
     $t = rating_score_theme($score);
+    $unavailable = ($status === 'unavailable');
 
     if ($status === 'whitelisted' && $score >= 80) {
         $t['label'] = 'Verified Safe';
@@ -273,6 +339,17 @@ function render_status_banner(string $status, int $score, string $subject, array
         $t['label'] = 'Confirmed Scam';
         $t['icon'] = 'x';
         $t['tone'] = 'danger';
+    } elseif ($unavailable) {
+        $t = [
+            'tone' => 'unknown',
+            'accent' => '#6b7a8d',
+            'bar' => 'progress-bar-bg-none',
+            'label' => 'Website Down',
+            'why' => 'no usable',
+            'hint' => 'The live site could not be reached, so a trust score is not available right now.',
+            'icon' => 'unknown',
+        ];
+        $score = 0;
     }
 
     $brand = get_setting('site_name', 'ScamGuard');
@@ -305,10 +382,10 @@ function render_status_banner(string $status, int $score, string $subject, array
                     <?php render_verdict_icon($t['icon']); ?>
                 </div>
                 <h1 class="sg-verdict-title"><?= h($subject) ?></h1>
-                <p class="sg-verdict-status"><?= h($t['label']) ?> · <?= (int) $score ?>/100</p>
+                <p class="sg-verdict-status"><?php if ($unavailable): ?>Website Down · score N/A<?php else: ?><?= h($t['label']) ?> · <?= (int) $score ?>/100<?php endif; ?></p>
                 <p class="sg-verdict-subject"><?= h($brand) ?> scam check &amp; trust report</p>
                 <div class="sg-verdict-actions">
-                    <?php if ($visit): ?>
+                    <?php if ($visit && !$unavailable): ?>
                         <a class="sg-btn sg-btn-ghost" href="<?= h($visit['href']) ?>"<?= !empty($visit['external']) ? ' target="_blank" rel="noopener noreferrer"' : '' ?>><?= h(strtoupper($visit['label'])) ?></a>
                     <?php endif; ?>
                     <?php if ($report): ?>
@@ -322,17 +399,17 @@ function render_status_banner(string $status, int $score, string $subject, array
         </div>
 
         <div class="sg-trust">
-            <p class="sg-trust-lead"><?= h($subject) ?> has <?= h($t['why']) ?> trust score. Why?</p>
+            <p class="sg-trust-lead"><?php if ($unavailable): ?><?= h($subject) ?> looks down or unreachable right now — we can’t finish a live trust test. Try again later.<?php else: ?><?= h($subject) ?> has <?= h($t['why']) ?> trust score. Why?<?php endif; ?></p>
             <div class="sg-trust-panel">
                 <div class="sg-trust-row">
                     <span class="sg-trust-brand"><?= h($brand) ?></span>
                     <span class="sg-trust-score-wrap">
                         <span class="sg-trust-score-label">Trust Score</span>
-                        <strong class="sg-trust-score" data-sa-score="<?= $score ?>"><?= $score ?></strong>
+                        <strong class="sg-trust-score" data-sa-score="<?= $score ?>"><?= $unavailable ? 'N/A' : $score ?></strong>
                     </span>
                 </div>
-                <div class="progress mt-40" role="meter" aria-valuenow="<?= $score ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Trust score <?= $score ?> out of 100">
-                    <div class="progress-bar <?= h($t['bar']) ?>" data-sa-bar="<?= $score ?>" style="width:<?= $score ?>%"></div>
+                <div class="progress mt-40" role="meter" aria-valuenow="<?= $score ?>" aria-valuemin="0" aria-valuemax="100" aria-label="<?= $unavailable ? 'Trust score unavailable' : ('Trust score ' . $score . ' out of 100') ?>">
+                    <div class="progress-bar <?= h($t['bar']) ?>" data-sa-bar="<?= $score ?>" style="width:<?= $unavailable ? 0 : $score ?>%"></div>
                 </div>
             </div>
             <?php if ($lastUpdate !== ''): ?>

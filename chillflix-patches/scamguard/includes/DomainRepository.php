@@ -38,8 +38,17 @@ class DomainRepository
             return true;
         }
 
-        $intervalHours = (int) get_score_config('recheck_interval_hours', 72);
         $lastChecked = strtotime($record['last_checked']);
+        if ($lastChecked === false) {
+            return true;
+        }
+
+        // Down / unreachable sites should be retested soon — don't cache "N/A" for days.
+        if (($record['status'] ?? '') === 'unavailable' || ($record['verdict'] ?? '') === 'unavailable') {
+            return (time() - $lastChecked) > 3600; // 1 hour
+        }
+
+        $intervalHours = (int) get_score_config('recheck_interval_hours', 72);
         return (time() - $lastChecked) > ($intervalHours * 3600);
     }
 

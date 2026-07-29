@@ -18,7 +18,7 @@ if ($status !== '') {
 
 require __DIR__ . '/includes/header.php';
 
-$statuses = ['', 'safe', 'caution', 'risky', 'scam', 'unknown'];
+$statuses = ['', 'safe', 'caution', 'risky', 'scam', 'unknown', 'unavailable'];
 ?>
 
 <section class="section container">

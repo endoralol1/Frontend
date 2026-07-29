@@ -18,6 +18,8 @@ class DomainChecker
     private ?int $lastRedirectCount = null;
     private ?string $lastFinalUrl = null;
     private ?int $lastHttpStatus = null;
+    private ?int $lastCurlErrno = null;
+    private ?string $lastCurlError = null;
 
     /** Real Chrome UA for homepage fetches — ScamGuardBot UA triggers CF harder. */
     private const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
@@ -46,6 +48,10 @@ class DomainChecker
 
         $this->data['content_incomplete'] = 0;
         $this->data['content_source'] = null;
+        $this->data['site_availability'] = 'unknown'; // up|challenge|down|unreachable|unknown
+        $this->data['domain_age_scope'] = 'unknown'; // exact|parent|platform|unknown
+        $this->data['parent_domain'] = null;
+        $this->data['parent_domain_age_days'] = null;
         $this->data['ai_score_delta'] = 0;
         $this->data['analyst_lean'] = null;
         $this->data['analyst_summary'] = null;
@@ -167,10 +173,27 @@ class DomainChecker
         $this->data['whois_privacy_protected'] = null;
         $this->data['domain_age_days'] = null;
         $this->data['registration_length_days'] = null;
+        $this->data['domain_age_scope'] = 'unknown';
+        $this->data['parent_domain'] = null;
+        $this->data['parent_domain_age_days'] = null;
 
-        $parsed = $this->fetchRdap($this->domain);
+        $apex = registrable_domain($this->domain) ?: $this->domain;
+        $isSub = is_subdomain_hostname($this->domain);
+        $isPlatform = is_platform_hosted_domain($this->domain);
+        // Subdomains rarely have their own registry record — look up the registrable parent.
+        $lookupDomain = ($isSub || $isPlatform) ? $apex : $this->domain;
+
+        $parsed = $this->fetchRdap($lookupDomain);
         if (!$parsed) {
-            $parsed = $this->fetchWhoisCli($this->domain);
+            $parsed = $this->fetchWhoisCli($lookupDomain);
+        }
+        // If apex lookup failed and we queried a subdomain path somehow, try exact once.
+        if (!$parsed && strcasecmp($lookupDomain, $this->domain) !== 0) {
+            $parsed = $this->fetchRdap($this->domain) ?: $this->fetchWhoisCli($this->domain);
+            if ($parsed) {
+                $lookupDomain = $this->domain;
+                $isSub = false;
+            }
         }
 
         if (!$parsed) {
@@ -181,53 +204,104 @@ class DomainChecker
         $this->data['whois_registrar'] = $parsed['registrar'] ?? null;
         $this->data['whois_privacy_protected'] = !empty($parsed['privacy']) ? 1 : 0;
 
-        if (!empty($parsed['created'])) {
-            $createdTs = strtotime($parsed['created']);
-            if ($createdTs) {
-                $this->data['whois_created_at'] = date('Y-m-d', $createdTs);
-                $this->data['domain_age_days'] = (int) floor((time() - $createdTs) / 86400);
-            }
+        $createdTs = !empty($parsed['created']) ? strtotime($parsed['created']) : false;
+        $ageDays = ($createdTs) ? (int) floor((time() - $createdTs) / 86400) : null;
+        if ($createdTs) {
+            $this->data['whois_created_at'] = date('Y-m-d', $createdTs);
         }
 
         if (!empty($parsed['expires'])) {
             $expiresTs = strtotime($parsed['expires']);
             if ($expiresTs) {
                 $this->data['whois_expires_at'] = date('Y-m-d', $expiresTs);
-                if (!empty($parsed['created'])) {
-                    $createdTs = strtotime($parsed['created']);
-                    if ($createdTs) {
-                        $this->data['registration_length_days'] = (int) floor(($expiresTs - $createdTs) / 86400);
-                    }
+                if ($createdTs) {
+                    $this->data['registration_length_days'] = (int) floor(($expiresTs - $createdTs) / 86400);
                 }
             }
         }
 
-        $age = $this->data['domain_age_days'];
-        $ageTone = 'neutral';
-        if ($age !== null) {
-            $ageTone = $age < 30 ? 'bad' : ($age < 180 ? 'warn' : 'good');
+        if ($isPlatform) {
+            // AWS/Azure/Vercel/etc. platform age is not the tenant site's age.
+            $this->data['domain_age_scope'] = 'platform';
+            $this->data['parent_domain'] = $apex;
+            $this->data['parent_domain_age_days'] = $ageDays;
+            $this->data['domain_age_days'] = null; // do not score age trust
+        } elseif ($isSub) {
+            $this->data['domain_age_scope'] = 'parent';
+            $this->data['parent_domain'] = $apex;
+            $this->data['parent_domain_age_days'] = $ageDays;
+            $this->data['domain_age_days'] = null; // hostname age unknown
+        } else {
+            $this->data['domain_age_scope'] = 'exact';
+            $this->data['domain_age_days'] = $ageDays;
         }
 
         $this->addSignal(
             'registration',
             'Registrar',
             $this->data['whois_registrar'] ?? 'Unknown',
-            $parsed['source'] ?? '',
+            ($parsed['source'] ?? '') . ($lookupDomain !== $this->domain ? (' · looked up ' . $lookupDomain) : ''),
             'neutral'
         );
-        $this->addSignal(
-            'registration',
-            'Domain age',
-            $age !== null ? number_format($age) . ' days' : 'Unknown',
-            $this->data['whois_created_at'] ? ('Registered ' . $this->data['whois_created_at']) : '',
-            $ageTone
-        );
+
+        if ($this->data['domain_age_scope'] === 'exact') {
+            $age = $this->data['domain_age_days'];
+            $ageTone = 'neutral';
+            if ($age !== null) {
+                $ageTone = $age < 30 ? 'bad' : ($age < 180 ? 'warn' : 'good');
+            }
+            $this->addSignal(
+                'registration',
+                'Domain age',
+                $age !== null ? number_format($age) . ' days' : 'Unknown',
+                $this->data['whois_created_at'] ? ('Registered ' . $this->data['whois_created_at']) : '',
+                $ageTone
+            );
+        } elseif ($this->data['domain_age_scope'] === 'parent') {
+            $parentAge = $this->data['parent_domain_age_days'];
+            $this->addSignal(
+                'registration',
+                'Parent domain age',
+                $parentAge !== null
+                    ? (number_format($parentAge) . ' days · ' . ($this->data['parent_domain'] ?? $apex))
+                    : ('Unknown · ' . ($this->data['parent_domain'] ?? $apex)),
+                'This is a subdomain. Parent registration age is informational only — the subdomain itself could be new.',
+                'neutral'
+            );
+            $this->addSignal(
+                'registration',
+                'Domain age',
+                'Unknown (subdomain)',
+                'Hostname age is not the same as parent domain age, so we do not treat this site as “old”.',
+                'neutral'
+            );
+        } else { // platform
+            $parentAge = $this->data['parent_domain_age_days'];
+            $this->addSignal(
+                'registration',
+                'Platform host age',
+                $parentAge !== null
+                    ? (number_format($parentAge) . ' days · shared platform')
+                    : 'Shared cloud / SaaS host',
+                'Hosted on a third-party platform (AWS/Azure/Vercel/etc.). Platform age is not this site’s age.',
+                'neutral'
+            );
+            $this->addSignal(
+                'registration',
+                'Domain age',
+                'Unknown (platform host)',
+                'No tenant-level registration age — not scored as an established domain.',
+                'neutral'
+            );
+        }
+
         $this->addSignal(
             'registration',
             'Expires',
             $this->data['whois_expires_at'] ?? 'Unknown',
             $this->data['registration_length_days']
-                ? ('Term ≈ ' . number_format($this->data['registration_length_days']) . ' days')
+                ? ('Term ≈ ' . number_format($this->data['registration_length_days']) . ' days'
+                    . ($this->data['domain_age_scope'] !== 'exact' ? ' (parent/platform record)' : ''))
                 : '',
             'neutral'
         );
@@ -748,7 +822,11 @@ class DomainChecker
         $this->data['content_source'] = 'live';
 
         if ($html === null) {
-            $this->addSignal('content', 'Homepage fetch', 'Failed', 'Could not download HTML over HTTP/HTTPS', 'bad');
+            $why = 'Could not connect to the website over HTTP/HTTPS';
+            if ($this->lastCurlError) {
+                $why .= ' (' . $this->lastCurlError . ')';
+            }
+            $this->markSiteUnavailable('unreachable', $why);
             return;
         }
 
@@ -756,8 +834,19 @@ class DomainChecker
             $this->data['page_title'] = trim(html_entity_decode(strip_tags($m[1])));
         }
 
+        $httpStatus = (int) ($this->data['http_status'] ?? 0);
+        // Origin / CDN "site is down" pages are not analyzable business content.
+        if ($this->isDownHtml($html, (string) ($this->data['page_title'] ?? ''), $httpStatus)) {
+            $this->markSiteUnavailable(
+                'down',
+                'The website appears to be down or its origin server is not responding'
+                . ($httpStatus ? (' (HTTP ' . $httpStatus . ')') : '') . '.'
+            );
+            return;
+        }
+
         // Bot walls / challenge pages — try low-RAM fallbacks (Wayback, optional API). No Chrome.
-        $challenge = $this->isChallengeHtml($html, (string) ($this->data['page_title'] ?? ''), (int) ($this->data['http_status'] ?? 0));
+        $challenge = $this->isChallengeHtml($html, (string) ($this->data['page_title'] ?? ''), $httpStatus);
         $contentNote = 'Homepage HTML fetched for analysis';
         $contentLabel = 'Readable';
         $contentTone = 'good';
@@ -771,6 +860,11 @@ class DomainChecker
                 if (preg_match('/<title[^>]*>(.*?)<\/title>/is', $html, $m2)) {
                     $this->data['page_title'] = trim(html_entity_decode(strip_tags($m2[1])));
                 }
+                // Fallback content might still be a down page — treat as unavailable.
+                if ($this->isDownHtml($html, (string) ($this->data['page_title'] ?? ''), 200)) {
+                    $this->markSiteUnavailable('down', 'Live site looks down; archive/fallback also showed an outage page.');
+                    return;
+                }
                 $challenge = $this->isChallengeHtml(
                     $html,
                     (string) ($this->data['page_title'] ?? ''),
@@ -782,6 +876,12 @@ class DomainChecker
                     $contentTone = 'neutral';
                 }
             }
+        }
+
+        if (!$challenge) {
+            $this->data['site_availability'] = 'up';
+        } else {
+            $this->data['site_availability'] = 'challenge';
         }
 
         $lower = strtolower($html);
@@ -1636,8 +1736,19 @@ class DomainChecker
     private function buildVerdict(int $score): void
     {
         $reasons = [];
+        $availability = (string) ($this->data['site_availability'] ?? '');
 
-        if (!empty($this->data['malware_hit'])) {
+        if (in_array($availability, ['down', 'unreachable'], true)) {
+            $verdict = 'unavailable';
+            $reasons[] = $availability === 'unreachable'
+                ? 'Website could not be reached — live trust testing is not possible right now.'
+                : 'Website appears down — live trust testing is not possible right now.';
+            $reasons[] = 'Try again later when the site is back online.';
+            // Still surface hard threat hits if we have them independently.
+            if (!empty($this->data['malware_hit']) || !empty($this->data['phishing_hit']) || !empty($this->data['threat_feed_hit'])) {
+                $reasons[] = 'Note: threat-list signals may still apply even while the site is down.';
+            }
+        } elseif (!empty($this->data['malware_hit'])) {
             $verdict = 'malware';
             $reasons[] = 'Domain/host appears on malware or botnet URL intelligence.';
         } elseif (!empty($this->data['phishing_hit'])) {
@@ -1683,25 +1794,37 @@ class DomainChecker
             if (!empty($this->data['registrar_risk'])) {
                 $reasons[] = 'Registrar is commonly used by high volumes of low-trust sites (soft signal).';
             }
+            if (($this->data['domain_age_scope'] ?? '') === 'parent') {
+                $reasons[] = 'Subdomain checked — parent domain age is informational only and was not used as “old site” trust.';
+            } elseif (($this->data['domain_age_scope'] ?? '') === 'platform') {
+                $reasons[] = 'Shared platform host — platform/company age was not used as this site’s age.';
+            }
         }
 
         if (!empty($this->data['threat_feed_sources'])) {
             $reasons[] = 'Feeds: ' . $this->data['threat_feed_sources'];
         }
-        if (!empty($this->data['analyst_summary'])) {
+        if (!empty($this->data['analyst_summary']) && ($verdict ?? '') !== 'unavailable') {
             array_unshift($reasons, 'Analyst: ' . $this->data['analyst_summary']);
         }
-        $reasons[] = 'Note: Review coverage includes Trustpilot + Sitejabber when available, plus ScamGuard community reports. Google Reviews, BBB, and Reddit are not queried.';
-
+        if (($verdict ?? '') !== 'unavailable') {
+            $reasons[] = 'Note: Review coverage includes Trustpilot + Sitejabber when available, plus ScamGuard community reports. Google Reviews, BBB, and Reddit are not queried.';
+        }
 
         $this->data['verdict'] = $verdict;
         $this->data['verdict_reasons'] = json_encode($reasons);
+        $tone = match ($verdict) {
+            'malware', 'phishing', 'likely_scam' => 'bad',
+            'likely_safe' => 'good',
+            'unavailable' => 'neutral',
+            default => 'warn',
+        };
         $this->addSignal(
             'verdict',
             'Engine verdict',
             strtoupper(str_replace('_', ' ', $verdict)),
             implode(' | ', $reasons),
-            in_array($verdict, ['malware', 'phishing', 'likely_scam'], true) ? 'bad' : ($verdict === 'likely_safe' ? 'good' : 'warn')
+            $tone
         );
     }
 
@@ -1712,6 +1835,7 @@ class DomainChecker
             'suspicious' => 'risky',
             'likely_safe' => 'safe',
             'caution' => 'caution',
+            'unavailable' => 'unavailable',
             default => score_to_status($score),
         };
     }
@@ -1911,6 +2035,12 @@ class DomainChecker
     // -------------------------------------------------------------
     private function calculateScore(): int
     {
+        // Live site down / unreachable — do not invent a trust score.
+        $availability = (string) ($this->data['site_availability'] ?? '');
+        if (in_array($availability, ['down', 'unreachable'], true)) {
+            return 0;
+        }
+
         $score = 50;
 
         $wAge = get_score_config('weight_domain_age', 20);
@@ -1920,8 +2050,11 @@ class DomainChecker
         $wContent = get_score_config('weight_content', 15);
         $wThreat = get_score_config('weight_threat_feed', 30);
         $newDomainThreshold = get_score_config('new_domain_threshold_days', 180);
+        $ageScope = (string) ($this->data['domain_age_scope'] ?? 'unknown');
 
-        if ($this->data['domain_age_days'] !== null) {
+        // Only exact registrable-domain age earns / loses age trust.
+        // Subdomains & platform hosts must not inherit "old domain" credit.
+        if ($ageScope === 'exact' && $this->data['domain_age_days'] !== null) {
             if ($this->data['domain_age_days'] < 30) {
                 $score -= $wAge;
             } elseif ($this->data['domain_age_days'] < $newDomainThreshold) {
@@ -1929,11 +2062,15 @@ class DomainChecker
             } else {
                 $score += $wAge * 0.5;
             }
+        } elseif ($ageScope === 'parent' || $ageScope === 'platform') {
+            // Informational parent/platform age only — no bonus, mild unknown trim.
+            $score -= 2;
         } else {
             $score -= 4; // missing registration data is mildly suspicious / incomplete
         }
 
-        if ($this->data['registration_length_days'] !== null) {
+        // Registration length from parent WHOIS is also not the subdomain's term.
+        if ($ageScope === 'exact' && $this->data['registration_length_days'] !== null) {
             if ($this->data['registration_length_days'] <= 370) {
                 $score -= $wReg * 0.5;
             } else {
@@ -2072,8 +2209,9 @@ class DomainChecker
                 $floor += 6;
             }
             $ageDays = $this->data['domain_age_days'];
-            if (is_int($ageDays) && $ageDays >= $newDomainThreshold) {
-                $floor += 6; // established registration age
+            $ageScopeExact = ((string) ($this->data['domain_age_scope'] ?? '')) === 'exact';
+            if ($ageScopeExact && is_int($ageDays) && $ageDays >= $newDomainThreshold) {
+                $floor += 6; // established registration age (exact host only)
             }
             $score = max($score, $floor);
         }
@@ -2096,10 +2234,137 @@ class DomainChecker
     // -------------------------------------------------------------
 
     /**
+     * Mark live site as down/unreachable — stop content analysis and force N/A scoring.
+     */
+    private function markSiteUnavailable(string $kind, string $detail): void
+    {
+        $kind = in_array($kind, ['down', 'unreachable'], true) ? $kind : 'down';
+        $this->data['site_availability'] = $kind;
+        $this->data['content_incomplete'] = 1;
+        $this->data['has_contact_info'] = 0;
+        $this->data['has_privacy_policy'] = 0;
+        $this->data['has_cookie_policy'] = 0;
+        $this->data['has_discord'] = 0;
+        $this->data['has_phone'] = 0;
+        $this->data['free_email_contact'] = 0;
+        $this->data['noindex'] = 0;
+        $this->data['crypto_only_payment'] = 0;
+        $this->data['suspicious_keyword_hits'] = 0;
+        $this->data['page_excerpt'] = '';
+        $this->data['page_meta_description'] = '';
+
+        $label = $kind === 'unreachable' ? 'Unreachable' : 'Website down';
+        $this->addSignal(
+            'content',
+            'Site availability',
+            $label,
+            $detail . ' We can’t complete a live trust test right now — try again later.',
+            'bad'
+        );
+        $this->addSignal(
+            'content',
+            'Homepage fetch',
+            'Failed',
+            $detail,
+            'bad'
+        );
+        $this->addSignal(
+            'content',
+            'Content visibility',
+            'Not readable (site down)',
+            'The live website did not return a usable page, so content signals are unavailable.',
+            'neutral'
+        );
+        $status = (int) ($this->data['http_status'] ?? 0);
+        if ($status > 0) {
+            $this->addSignal(
+                'content',
+                'HTTP status',
+                (string) $status,
+                'Returned while the site appeared down/unreachable.',
+                'bad'
+            );
+        }
+    }
+
+    /**
+     * Detect Cloudflare / host “origin down” pages (521–524 etc.), not bot challenges.
+     */
+    private function isDownHtml(string $html, string $title = '', int $httpStatus = 0): bool
+    {
+        $lower = strtolower($html);
+        $title = strtolower($title);
+        if ($title === '' && preg_match('/<title[^>]*>(.*?)<\/title>/is', $html, $m)) {
+            $title = strtolower(trim(html_entity_decode(strip_tags($m[1]))));
+        }
+
+        if (in_array($httpStatus, [521, 522, 523, 524, 525, 526], true)) {
+            return true;
+        }
+
+        $downByText = (
+            str_contains($title, 'web server is down')
+            || str_contains($title, 'origin is unreachable')
+            || str_contains($title, 'connection timed out')
+            || str_contains($title, 'host error')
+            || str_contains($title, '502 bad gateway')
+            || str_contains($title, '503 service')
+            || str_contains($title, '504 gateway')
+            || str_contains($title, 'this site can’t be reached')
+            || str_contains($title, 'this site can\'t be reached')
+            || str_contains($title, 'website is offline')
+            || str_contains($lower, 'error code 521')
+            || str_contains($lower, 'error code 522')
+            || str_contains($lower, 'error code 523')
+            || str_contains($lower, 'error code 524')
+            || str_contains($lower, 'cloudflare is currently unable to resolve')
+            || (str_contains($lower, 'web server is down') && str_contains($lower, 'cloudflare'))
+            || (bool) preg_match('/\b(error\s*code\s*52[1-6]|origin dns error|origin connection time-?out)\b/i', $lower)
+        );
+        if ($downByText) {
+            return true;
+        }
+
+        // Generic 5xx: treat as down unless it clearly looks like a bot challenge.
+        if ($httpStatus >= 500 && $httpStatus <= 599) {
+            return !$this->hasChallengeMarkers($lower, $title);
+        }
+
+        return false;
+    }
+
+    /** Marker-only challenge detection (no recursion with isDownHtml). */
+    private function hasChallengeMarkers(string $lowerHtml, string $titleLower): bool
+    {
+        return (
+            str_contains($titleLower, 'just a moment')
+            || str_contains($titleLower, 'attention required')
+            || str_contains($titleLower, 'checking your browser')
+            || str_contains($titleLower, 'access denied')
+            || str_contains($titleLower, 'request unsuccessful')
+            || str_contains($lowerHtml, 'cf-browser-verification')
+            || str_contains($lowerHtml, 'challenge-platform')
+            || str_contains($lowerHtml, '_cf_chl')
+            || str_contains($lowerHtml, 'cdn-cgi/challenge')
+            || str_contains($lowerHtml, 'performing security verification')
+            || str_contains($lowerHtml, 'incapsula')
+            || str_contains($lowerHtml, '_incapsula_resource')
+            || str_contains($lowerHtml, 'imperva')
+            || str_contains($lowerHtml, 'distil_referrer')
+            || str_contains($lowerHtml, 'pardon our interruption')
+        );
+    }
+
+    /**
      * Detect Cloudflare / Incapsula / bot-challenge interstitial pages.
      */
     private function isChallengeHtml(string $html, string $title = '', int $httpStatus = 0): bool
     {
+        // Down pages are handled separately — don't classify them as bot walls.
+        if ($this->isDownHtml($html, $title, $httpStatus)) {
+            return false;
+        }
+
         $lower = strtolower($html);
         $title = strtolower($title);
         if ($title === '' && preg_match('/<title[^>]*>(.*?)<\/title>/is', $html, $m)) {
@@ -2109,21 +2374,7 @@ class DomainChecker
         $len = strlen($html);
 
         return (
-            str_contains($title, 'just a moment')
-            || str_contains($title, 'attention required')
-            || str_contains($title, 'checking your browser')
-            || str_contains($title, 'access denied')
-            || str_contains($title, 'request unsuccessful')
-            || str_contains($lower, 'cf-browser-verification')
-            || str_contains($lower, 'challenge-platform')
-            || str_contains($lower, '_cf_chl')
-            || str_contains($lower, 'cdn-cgi/challenge')
-            || str_contains($lower, 'performing security verification')
-            || str_contains($lower, 'incapsula')
-            || str_contains($lower, '_incapsula_resource')
-            || str_contains($lower, 'imperva')
-            || str_contains($lower, 'distil_referrer')
-            || str_contains($lower, 'pardon our interruption')
+            $this->hasChallengeMarkers($lower, $title)
             || ($httpStatus === 403 && $len < 8000)
             // Tiny 200 responses with no real document body are almost always interstitials.
             || ($httpStatus === 200 && $len > 0 && $len < 450
@@ -2445,10 +2696,13 @@ class DomainChecker
         ]);
         $result = curl_exec($ch);
         $errno = curl_errno($ch);
+        $error = curl_error($ch);
         if ($trackRedirects) {
             $this->lastRedirectCount = (int) curl_getinfo($ch, CURLINFO_REDIRECT_COUNT);
             $this->lastFinalUrl = (string) curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
             $this->lastHttpStatus = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $this->lastCurlErrno = $errno ?: null;
+            $this->lastCurlError = $errno ? (string) $error : null;
         }
         curl_close($ch);
 
