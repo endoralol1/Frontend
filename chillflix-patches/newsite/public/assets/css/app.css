@@ -373,7 +373,39 @@ body.index > .wrapper .index-head:before {
   border-radius: 999px;
   padding-left: 1.25rem;
   padding-right: 1.25rem;
-  box-shadow: 0 8px 22px rgba(220, 53, 69, 0.25);
+  border: 1px solid rgba(219, 105, 55, 0.55) !important;
+  color: #ffe4d4 !important;
+  background: transparent !important;
+  box-shadow: none;
+  transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+
+#featured .swiper-wrapper .swiper-slide .wrapper .info .action div .btn.btn-primary {
+  background: linear-gradient(135deg, #db6937 0%, #c44a22 100%) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: 0 10px 26px rgba(196, 74, 34, 0.38);
+}
+
+#featured .swiper-wrapper .swiper-slide .wrapper .info .action div .btn.btn-primary:hover {
+  background: linear-gradient(135deg, #e57945 0%, #d2552a 100%) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: 0 12px 30px rgba(196, 74, 34, 0.48);
+  filter: brightness(1.04);
+}
+
+#featured .swiper-wrapper .swiper-slide .wrapper .info .action div .btn.user-bookmark-toggle {
+  border: 1.5px solid rgba(219, 105, 55, 0.7) !important;
+  color: #ffd2b8 !important;
+  background: rgba(219, 105, 55, 0.08) !important;
+}
+
+#featured .swiper-wrapper .swiper-slide .wrapper .info .action div .btn.user-bookmark-toggle:hover,
+#featured .swiper-wrapper .swiper-slide .wrapper .info .action div .btn.user-bookmark-toggle.is-fav {
+  background: rgba(219, 105, 55, 0.18) !important;
+  border-color: #db6937 !important;
+  color: #ffe4d4 !important;
 }
 
 #featured .swiper-wrapper .swiper-slide .wrapper .info .name {
