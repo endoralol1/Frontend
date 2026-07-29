@@ -364,6 +364,8 @@ function tone_class(string $tone): string
             'Brand match' => 'Brand mentions align with the domain',
             'Form destinations' => 'Sensitive forms stay on this domain',
             'Identity consistency' => 'Identity cues look consistent',
+            'Login / account UI' => 'Login / account UI was detected',
+            'Site type (for checks)' => 'Site type expectations were applied to this check',
         ];
         $badMap = [
             'Domain age' => 'The domain is relatively new',
@@ -398,6 +400,8 @@ function tone_class(string $tone): string
             'Investment risk language' => 'Investment / high-ROI scam-style language found',
             'Shop risk pattern' => 'Fake-shop style marketing pattern detected',
             'Identity consistency' => 'Identity cues look inconsistent',
+            'Payment language' => 'Payment/checkout cues look unexpected for this site type',
+            'Login / account UI' => 'Login / account UI was not clearly detected',
             'Login/password form posts off-site' => 'Login form sends credentials to another domain',
             'Payment form posts off-site' => 'Payment form posts to another domain',
             'Brand content does not match domain' => 'Brand wording does not match the domain',
