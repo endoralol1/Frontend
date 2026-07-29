@@ -29,7 +29,8 @@ import {
 import {
     ensureStreamSourcesConfigReady,
     getEnabledProviderIds,
-    getProviderWaitMs,
+    getHeadStartMs,
+    getProviderFetchTimeoutMs,
     isStreamSourcesConfigReady,
 } from "@/hooks/useStreamSourcesConfig"
 import {
@@ -39,7 +40,6 @@ import {
 import { resolveTitleUnavailableMessage } from "@/lib/playback-user-messages"
 import {
   INITIAL_SOURCES_FETCH_TIMEOUT_MS,
-  PRIMARY_PROVIDER_HEAD_START_MS,
   PRIMARY_PROVIDER_RETRY_MS,
   PROVIDER_SOURCE_FETCH_TIMEOUT_MS,
 } from "@/lib/source-probe-constants"
@@ -167,7 +167,7 @@ function fetchSourcesWithTimeout(
   }
 ) {
   const raceTimeoutMs = options?.provider
-    ? getProviderWaitMs(options.provider, PROVIDER_FETCH_TIMEOUT_MS)
+    ? getProviderFetchTimeoutMs(options.provider, PROVIDER_FETCH_TIMEOUT_MS)
     : PROVIDER_FETCH_TIMEOUT_MS
   return Promise.race([
     fetchSources(options),
@@ -663,7 +663,7 @@ export function useMediaSources({
       let lastError: Error | undefined
 
       const fetchTimeoutMs = options?.provider
-        ? getProviderWaitMs(options.provider, PROVIDER_FETCH_TIMEOUT_MS)
+        ? getProviderFetchTimeoutMs(options.provider, PROVIDER_FETCH_TIMEOUT_MS)
         : options?.retry
           ? FETCH_TIMEOUT_MS
           : INITIAL_SOURCES_FETCH_TIMEOUT_MS
@@ -1304,7 +1304,7 @@ export function useMediaSources({
               markProviderFailed(primaryProviderId)
             })
 
-          const headStartDeadline = Date.now() + PRIMARY_PROVIDER_HEAD_START_MS
+          const headStartDeadline = Date.now() + getHeadStartMs()
           while (Date.now() < headStartDeadline) {
             if (cancelled) return
             // Primary miss → test others now (do not wait out the head-start).

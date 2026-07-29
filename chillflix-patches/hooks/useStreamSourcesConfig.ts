@@ -4,11 +4,12 @@ import { useCallback, useEffect, useState } from "react"
 
 import {
     DEFAULT_EXTERNAL_PLAYERS,
+    DEFAULT_PLAYBACK_TIMINGS,
     DEFAULT_PROVIDER_CATALOG,
-    DEFAULT_PROVIDER_WAIT_SECONDS,
     normalizeProviderName,
-    providerWaitSecondsToMs,
+    sanitizePlaybackTimings,
     type CustomPlayerEntry,
+    type StreamPlaybackTimings,
     type StreamSourceEntry,
 } from "@/lib/stream-sources-defaults"
 import { STREAM_SOURCES_CONFIG_EVENT } from "@/lib/stream-sources-client"
@@ -20,6 +21,7 @@ type StreamSourcesState = {
     order: string[]
     enabledIds: string[]
     enabledPlayers: CustomPlayerEntry[]
+    timings: StreamPlaybackTimings
     vidrockClientPlaybackTest?: boolean
 }
 
@@ -39,6 +41,7 @@ const PLACEHOLDER: StreamSourcesState = {
     order: [],
     enabledIds: [],
     enabledPlayers: DEFAULT_EXTERNAL_PLAYERS.filter((entry) => entry.enabled),
+    timings: { ...DEFAULT_PLAYBACK_TIMINGS },
 }
 
 const MAX_FETCH_ATTEMPTS = 3
@@ -55,6 +58,7 @@ function parseStreamSourcesPayload(data: {
     order?: string[]
     enabledIds?: string[]
     enabledPlayers?: CustomPlayerEntry[]
+    timings?: StreamPlaybackTimings
     features?: { vidrockClientPlaybackTest?: boolean }
 }): StreamSourcesState {
     const next: StreamSourcesState = {
@@ -63,6 +67,7 @@ function parseStreamSourcesPayload(data: {
         order: data.order ?? PLACEHOLDER.order,
         enabledIds: data.enabledIds ?? PLACEHOLDER.enabledIds,
         enabledPlayers: data.enabledPlayers ?? PLACEHOLDER.enabledPlayers,
+        timings: sanitizePlaybackTimings(data.timings ?? DEFAULT_PLAYBACK_TIMINGS),
         vidrockClientPlaybackTest: data.features?.vidrockClientPlaybackTest,
     }
 
@@ -86,6 +91,7 @@ async function requestStreamSourcesConfig() {
         order?: string[]
         enabledIds?: string[]
         enabledPlayers?: CustomPlayerEntry[]
+        timings?: StreamPlaybackTimings
         features?: { vidrockClientPlaybackTest?: boolean }
     }
 
@@ -153,7 +159,29 @@ export function getEnabledProviderIds() {
     return cachedConfig?.enabledIds ?? []
 }
 
-/** Per-provider admin wait in seconds, or undefined for global defaults. */
+export function getPlaybackTimings(): StreamPlaybackTimings {
+    return sanitizePlaybackTimings(
+        cachedConfig?.timings ?? DEFAULT_PLAYBACK_TIMINGS
+    )
+}
+
+export function getHeadStartMs(): number {
+    return Math.round(getPlaybackTimings().headStartSeconds * 1000)
+}
+
+export function getLinkFetchTimeoutMs(): number {
+    return getPlaybackTimings().linkFetchSeconds * 1000
+}
+
+export function getMetadataTimeoutMs(): number {
+    return getPlaybackTimings().metadataSeconds * 1000
+}
+
+export function getFirstPlayTimeoutMs(): number {
+    return getPlaybackTimings().firstPlaySeconds * 1000
+}
+
+/** Per-provider first-play override in seconds, or undefined for global. */
 export function getProviderWaitSeconds(providerId: string): number | undefined {
     const key = normalizeProviderName(providerId)
     if (!key || !cachedConfig) return undefined
@@ -164,20 +192,58 @@ export function getProviderWaitSeconds(providerId: string): number | undefined {
 }
 
 /**
- * Resolve provider wait to ms.
- * Admin Wait (sec) only raises the budget (never shortens below the code default),
- * so slow providers can get more time without risking an accidental cut.
+ * Effective first-play budget for a provider (admin absolute control).
+ * Per-provider override wins; else global First play; else code fallback.
  */
 export function getProviderWaitMs(providerId: string, fallbackMs: number): number {
-    const configuredMs = providerWaitSecondsToMs(
-        getProviderWaitSeconds(providerId),
-        fallbackMs
-    )
-    return Math.max(fallbackMs, configuredMs)
+    return getProviderFirstPlayTimeoutMs(providerId, fallbackMs)
+}
+
+export function getProviderFirstPlayTimeoutMs(
+    providerId: string,
+    fallbackMs: number
+): number {
+    const perProvider = getProviderWaitSeconds(providerId)
+    if (perProvider != null) {
+        return perProvider * 1000
+    }
+    if (cachedConfig?.timings) {
+        return getFirstPlayTimeoutMs()
+    }
+    return fallbackMs
+}
+
+export function getProviderMetadataTimeoutMs(
+    providerId: string,
+    fallbackMs: number
+): number {
+    const perProvider = getProviderWaitSeconds(providerId)
+    if (perProvider != null) {
+        return perProvider * 1000
+    }
+    if (cachedConfig?.timings) {
+        return getMetadataTimeoutMs()
+    }
+    return fallbackMs
+}
+
+/** Link-fetch race for a provider (per-provider first-play override also raises fetch). */
+export function getProviderFetchTimeoutMs(
+    providerId: string,
+    fallbackMs: number
+): number {
+    const perProvider = getProviderWaitSeconds(providerId)
+    if (perProvider != null) {
+        return Math.max(perProvider * 1000, getLinkFetchTimeoutMs())
+    }
+    if (cachedConfig?.timings) {
+        return getLinkFetchTimeoutMs()
+    }
+    return fallbackMs
 }
 
 export function getDefaultProviderWaitSeconds() {
-    return DEFAULT_PROVIDER_WAIT_SECONDS
+    return getPlaybackTimings().firstPlaySeconds
 }
 
 export function isStreamSourcesConfigReady() {
@@ -264,6 +330,7 @@ export function useStreamSourcesConfig() {
         enabledPlayers: resolvedConfig?.enabledPlayers ?? PLACEHOLDER.enabledPlayers,
         order: resolvedConfig?.order ?? PLACEHOLDER.order,
         enabledIds: resolvedConfig?.enabledIds ?? PLACEHOLDER.enabledIds,
+        timings: resolvedConfig?.timings ?? PLACEHOLDER.timings,
         ready: resolvedConfig !== null,
         loading,
         refresh,

@@ -62,7 +62,12 @@ import {
   SOURCE_METADATA_TIMEOUT_MS,
   STARTUP_PLAYBACK_FAIL_MS,
 } from "@/lib/source-probe-constants"
-import { getProviderWaitMs } from "@/hooks/useStreamSourcesConfig"
+import {
+  getFirstPlayTimeoutMs,
+  getMetadataTimeoutMs,
+  getProviderFirstPlayTimeoutMs,
+  getProviderMetadataTimeoutMs,
+} from "@/hooks/useStreamSourcesConfig"
 import {
   isTransientPlaybackStatusMessage,
   shouldShowPlaybackRetryButton,
@@ -1157,20 +1162,16 @@ export function MediaPlayer({
       ? fourKStartupTimeoutMs
       : isVidLinkSource
       ? 20_000
-      : isProxiedCinepro
-      ? Math.max(SOURCE_METADATA_TIMEOUT_MS, 14_000)
-      : SOURCE_METADATA_TIMEOUT_MS
+      : getMetadataTimeoutMs() || SOURCE_METADATA_TIMEOUT_MS
     const defaultStartupFailMs = isVidLinkSource
       ? 20_000
-      : isProxiedCinepro
-      ? Math.max(STARTUP_PLAYBACK_FAIL_MS, 18_000)
-      : STARTUP_PLAYBACK_FAIL_MS
-    // Admin per-provider wait can raise (or lower) both budgets when set.
+      : getFirstPlayTimeoutMs() || STARTUP_PLAYBACK_FAIL_MS
+    // Admin per-provider first-play override when set; else global Player timing.
     const sourceLoadTimeoutMs = providerKey
-      ? getProviderWaitMs(providerKey, defaultMetadataTimeoutMs)
+      ? getProviderMetadataTimeoutMs(providerKey, defaultMetadataTimeoutMs)
       : defaultMetadataTimeoutMs
     const startupFailMs = providerKey
-      ? getProviderWaitMs(providerKey, defaultStartupFailMs)
+      ? getProviderFirstPlayTimeoutMs(providerKey, defaultStartupFailMs)
       : defaultStartupFailMs
 
     sourceTimeoutRef.current = window.setTimeout(() => {
@@ -2038,10 +2039,7 @@ export function MediaPlayer({
       if (!isColdStart && !onBufferStallRef.current) return
       if (stallRecoveryTimerRef.current != null) return
       const delayMs = isColdStart
-        ? Math.max(
-            STARTUP_PLAYBACK_FAIL_MS,
-            sourcePropsRef.current.url.includes("/api/cinepro/proxy") ? 18_000 : 0
-          )
+        ? getFirstPlayTimeoutMs() || STARTUP_PLAYBACK_FAIL_MS
         : 2200
       stallRecoveryTimerRef.current = window.setTimeout(() => {
         stallRecoveryTimerRef.current = null

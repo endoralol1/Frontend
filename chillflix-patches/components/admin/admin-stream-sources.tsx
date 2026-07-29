@@ -42,13 +42,17 @@ import { invalidateStreamSourcesConfigCache } from "@/hooks/useStreamSourcesConf
 import { notifyStreamSourcesConfigChanged } from "@/lib/stream-sources-client"
 import { getTemplateHelpText } from "@/lib/custom-players"
 import {
-    DEFAULT_PROVIDER_PLAY_WAIT_SECONDS,
+    DEFAULT_PLAYBACK_TIMINGS,
+    MAX_HEAD_START_SECONDS,
     MAX_PROVIDER_WAIT_SECONDS,
+    MIN_HEAD_START_SECONDS,
     MIN_PROVIDER_WAIT_SECONDS,
     clampProviderWaitSeconds,
     normalizeProviderName,
+    sanitizePlaybackTimings,
     type CustomPlayerEntry,
     type CustomPlayerKind,
+    type StreamPlaybackTimings,
     type StreamSourceEntry,
 } from "@/lib/stream-sources-defaults"
 
@@ -64,6 +68,9 @@ export function AdminStreamSources() {
     const defaultTab = resolveDefaultTab(searchParams)
     const [sources, setSources] = useState<StreamSourceEntry[]>([])
     const [players, setPlayers] = useState<CustomPlayerEntry[]>([])
+    const [timings, setTimings] = useState<StreamPlaybackTimings>({
+        ...DEFAULT_PLAYBACK_TIMINGS,
+    })
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [customId, setCustomId] = useState("")
@@ -81,6 +88,11 @@ export function AdminStreamSources() {
             .then((data) => {
                 if (data.config?.sources) setSources(data.config.sources)
                 if (data.config?.players) setPlayers(data.config.players)
+                setTimings(
+                    sanitizePlaybackTimings(
+                        data.config?.timings ?? data.timings ?? DEFAULT_PLAYBACK_TIMINGS
+                    )
+                )
             })
             .catch(() => {
                 toast({ title: "Failed to load stream sources", variant: "destructive" })
@@ -222,7 +234,9 @@ export function AdminStreamSources() {
             const response = await fetch("/api/admin/stream-sources", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(reset ? { reset: true } : { sources, players }),
+                body: JSON.stringify(
+                    reset ? { reset: true } : { sources, players, timings }
+                ),
             })
             const data = await response.json()
 
@@ -232,6 +246,11 @@ export function AdminStreamSources() {
 
             setSources(data.config?.sources ?? sources)
             setPlayers(data.config?.players ?? players)
+            setTimings(
+                sanitizePlaybackTimings(
+                    data.config?.timings ?? timings
+                )
+            )
             invalidateStreamSourcesConfigCache()
             notifyStreamSourcesConfigChanged()
 
@@ -353,6 +372,138 @@ export function AdminStreamSources() {
                 <TabsContent value="sources" className="space-y-6">
                     <Card className={ADMIN_CARD_CLASS}>
                         <CardHeader>
+                            <CardTitle>Player timing</CardTitle>
+                            <CardDescription>
+                                These are the real wait budgets the player uses. Change them and
+                                Save — nothing is hidden behind “auto.”
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                <label className="space-y-1.5 text-sm">
+                                    <span className="font-medium">Head-start</span>
+                                    <span className="relative block">
+                                        <Input
+                                            type="number"
+                                            min={MIN_HEAD_START_SECONDS}
+                                            max={MAX_HEAD_START_SECONDS}
+                                            step={0.1}
+                                            className="h-9 rounded-lg pr-8"
+                                            value={timings.headStartSeconds}
+                                            onChange={(event) =>
+                                                setTimings((current) =>
+                                                    sanitizePlaybackTimings({
+                                                        ...current,
+                                                        headStartSeconds: event.target.value,
+                                                    })
+                                                )
+                                            }
+                                        />
+                                        <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                                            s
+                                        </span>
+                                    </span>
+                                    <span className="block text-xs text-muted-foreground">
+                                        #1 provider exclusive scan before others compete
+                                    </span>
+                                </label>
+
+                                <label className="space-y-1.5 text-sm">
+                                    <span className="font-medium">Link fetch</span>
+                                    <span className="relative block">
+                                        <Input
+                                            type="number"
+                                            min={MIN_PROVIDER_WAIT_SECONDS}
+                                            max={MAX_PROVIDER_WAIT_SECONDS}
+                                            step={1}
+                                            className="h-9 rounded-lg pr-8"
+                                            value={timings.linkFetchSeconds}
+                                            onChange={(event) =>
+                                                setTimings((current) =>
+                                                    sanitizePlaybackTimings({
+                                                        ...current,
+                                                        linkFetchSeconds: event.target.value,
+                                                    })
+                                                )
+                                            }
+                                        />
+                                        <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                                            s
+                                        </span>
+                                    </span>
+                                    <span className="block text-xs text-muted-foreground">
+                                        Max wait for a provider to return stream URLs
+                                    </span>
+                                </label>
+
+                                <label className="space-y-1.5 text-sm">
+                                    <span className="font-medium">First play</span>
+                                    <span className="relative block">
+                                        <Input
+                                            type="number"
+                                            min={MIN_PROVIDER_WAIT_SECONDS}
+                                            max={MAX_PROVIDER_WAIT_SECONDS}
+                                            step={1}
+                                            className="h-9 rounded-lg pr-8"
+                                            value={timings.firstPlaySeconds}
+                                            onChange={(event) =>
+                                                setTimings((current) =>
+                                                    sanitizePlaybackTimings({
+                                                        ...current,
+                                                        firstPlaySeconds: event.target.value,
+                                                    })
+                                                )
+                                            }
+                                        />
+                                        <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                                            s
+                                        </span>
+                                    </span>
+                                    <span className="block text-xs text-muted-foreground">
+                                        Max wait for picture to start before fallback
+                                    </span>
+                                </label>
+
+                                <label className="space-y-1.5 text-sm">
+                                    <span className="font-medium">Metadata</span>
+                                    <span className="relative block">
+                                        <Input
+                                            type="number"
+                                            min={MIN_PROVIDER_WAIT_SECONDS}
+                                            max={MAX_PROVIDER_WAIT_SECONDS}
+                                            step={1}
+                                            className="h-9 rounded-lg pr-8"
+                                            value={timings.metadataSeconds}
+                                            onChange={(event) =>
+                                                setTimings((current) =>
+                                                    sanitizePlaybackTimings({
+                                                        ...current,
+                                                        metadataSeconds: event.target.value,
+                                                    })
+                                                )
+                                            }
+                                        />
+                                        <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                                            s
+                                        </span>
+                                    </span>
+                                    <span className="block text-xs text-muted-foreground">
+                                        Max wait for stream metadata before giving up
+                                    </span>
+                                </label>
+                            </div>
+                            <p className="mt-4 text-xs text-muted-foreground">
+                                Defaults: head-start {DEFAULT_PLAYBACK_TIMINGS.headStartSeconds}s ·
+                                link fetch {DEFAULT_PLAYBACK_TIMINGS.linkFetchSeconds}s · first play{" "}
+                                {DEFAULT_PLAYBACK_TIMINGS.firstPlaySeconds}s · metadata{" "}
+                                {DEFAULT_PLAYBACK_TIMINGS.metadataSeconds}s. Per-provider First play
+                                below overrides the global First play for that source only.
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className={ADMIN_CARD_CLASS}>
+                        <CardHeader>
                             <CardTitle>CinePro providers</CardTitle>
                             <CardDescription>
                                 Enable providers and set failover order. Top = tried first.
@@ -428,7 +579,7 @@ export function AdminStreamSources() {
 
                                             <div className="flex items-center gap-2">
                                                 <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                    <span className="whitespace-nowrap">Play wait</span>
+                                                    <span className="whitespace-nowrap">First play</span>
                                                     <span className="relative inline-flex items-center">
                                                         <Input
                                                             type="number"
@@ -436,8 +587,8 @@ export function AdminStreamSources() {
                                                             max={MAX_PROVIDER_WAIT_SECONDS}
                                                             step={1}
                                                             inputMode="numeric"
-                                                            className="h-8 w-[4.25rem] rounded-lg border-border/60 bg-background/80 px-2 pr-6 text-center tabular-nums"
-                                                            placeholder="auto"
+                                                            className="h-8 w-[4.5rem] rounded-lg border-border/60 bg-background/80 px-2 pr-6 text-center tabular-nums"
+                                                            placeholder={String(timings.firstPlaySeconds)}
                                                             value={entry.timeoutSeconds ?? ""}
                                                             onChange={(event) =>
                                                                 setSourceTimeoutSeconds(
@@ -445,8 +596,8 @@ export function AdminStreamSources() {
                                                                     event.target.value
                                                                 )
                                                             }
-                                                            aria-label={`Play wait for ${entry.name}`}
-                                                            title={`First-play budget before fallback. Blank = auto (~${DEFAULT_PROVIDER_PLAY_WAIT_SECONDS}s). Raise if cold starts fail once then work. Does not change the 0.8s #1 head-start. ${MIN_PROVIDER_WAIT_SECONDS}–${MAX_PROVIDER_WAIT_SECONDS}s.`}
+                                                            aria-label={`First play override for ${entry.name}`}
+                                                            title={`Override first-play budget for this provider. Blank = global ${timings.firstPlaySeconds}s. Range ${MIN_PROVIDER_WAIT_SECONDS}–${MAX_PROVIDER_WAIT_SECONDS}.`}
                                                         />
                                                         <span className="pointer-events-none absolute right-2 text-[10px] text-muted-foreground/80">
                                                             s
@@ -476,9 +627,8 @@ export function AdminStreamSources() {
                                         </div>
                                     ))}
                                     <p className="px-1 pt-1 text-xs text-muted-foreground">
-                                        Play wait blank = auto (~{DEFAULT_PROVIDER_PLAY_WAIT_SECONDS}s
-                                        first play). Link fetch already allows up to 45s. #1 head-start
-                                        stays 0.8s.
+                                        Per-provider First play blank = use global{" "}
+                                        {timings.firstPlaySeconds}s from Player timing above.
                                     </p>
                                 </div>
                             )}

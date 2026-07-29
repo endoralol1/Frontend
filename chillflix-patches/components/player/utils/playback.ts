@@ -450,8 +450,10 @@ export type ProviderScanGate = {
     isScanningProviders?: boolean
     scanningProviderId?: string
     scanFailedProviderIds?: readonly string[]
-    /** When set, lower-ranked providers unlock after PRIMARY_PROVIDER_HEAD_START_MS. */
+    /** When set, lower-ranked providers unlock after this many ms (admin Head-start). */
     scanStartedAt?: number
+    /** Admin-configured #1 exclusive window; falls back to PRIMARY_PROVIDER_HEAD_START_MS. */
+    headStartMs?: number
     /**
      * #1 provider returned at least one URL. Used for preference only — never a
      * hard lock: a resolve hit is not proof the stream will play.
@@ -480,9 +482,13 @@ export function filterPlaybackOptionsByScanGate<
     const activeId = gate.scanningProviderId
         ? normalizeProviderName(gate.scanningProviderId)
         : ""
+    const headStartMs =
+        typeof gate.headStartMs === "number" && gate.headStartMs > 0
+            ? gate.headStartMs
+            : PRIMARY_PROVIDER_HEAD_START_MS
     const headStartExpired =
         typeof gate.scanStartedAt === "number" &&
-        Date.now() - gate.scanStartedAt >= PRIMARY_PROVIDER_HEAD_START_MS
+        Date.now() - gate.scanStartedAt >= headStartMs
     const primaryId = order[0] ?? ""
 
     return options.filter((option) => {

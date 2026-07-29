@@ -114,28 +114,96 @@ export type StreamSourceEntry = {
     /** Only the site owner can enable or receive streams from this provider. */
     ownerOnly?: boolean
     /**
-     * Optional per-provider play-wait budget in seconds.
-     * Raises first-playback (+ link-fetch) budgets before auto-fallback.
-     * Omit / blank = code defaults (~15s first play, 45s link fetch max).
-     * Values only raise budgets; they never cut below built-in minimums.
-     * Does not change the #1 provider head-start (0.8s).
+     * Optional per-provider first-play override (seconds).
+     * Blank = use global Player timing → First play.
      */
     timeoutSeconds?: number
 }
 
-/**
- * Typical first-play budget when Wait is left blank (proxied HLS ~12–15s).
- * Shown as the admin hint — not the 45s link-fetch ceiling.
- */
-export const DEFAULT_PROVIDER_PLAY_WAIT_SECONDS = 15
-/** Link-fetch race ceiling when Wait is blank (separate from first-play). */
-export const DEFAULT_PROVIDER_FETCH_WAIT_SECONDS = 45
-/** @deprecated Prefer DEFAULT_PROVIDER_PLAY_WAIT_SECONDS for UI hints. */
-export const DEFAULT_PROVIDER_WAIT_SECONDS = DEFAULT_PROVIDER_PLAY_WAIT_SECONDS
+/** Global player timing defaults (admin-editable). */
+export type StreamPlaybackTimings = {
+    /** #1 provider exclusive scan window before others compete. */
+    headStartSeconds: number
+    /** Max wait for a provider to return stream links. */
+    linkFetchSeconds: number
+    /** Max wait for first playable frame before auto-fallback. */
+    firstPlaySeconds: number
+    /** Max wait for video metadata before declaring source dead. */
+    metadataSeconds: number
+}
+
+export const DEFAULT_PLAYBACK_TIMINGS: StreamPlaybackTimings = {
+    headStartSeconds: 0.8,
+    linkFetchSeconds: 45,
+    firstPlaySeconds: 15,
+    metadataSeconds: 12,
+}
+
+export const MIN_HEAD_START_SECONDS = 0.2
+export const MAX_HEAD_START_SECONDS = 10
 export const MIN_PROVIDER_WAIT_SECONDS = 5
 export const MAX_PROVIDER_WAIT_SECONDS = 120
 
-/** Clamp admin wait input; blank/invalid → undefined (use global defaults). */
+/** @deprecated UI hint — use DEFAULT_PLAYBACK_TIMINGS.firstPlaySeconds */
+export const DEFAULT_PROVIDER_PLAY_WAIT_SECONDS =
+    DEFAULT_PLAYBACK_TIMINGS.firstPlaySeconds
+/** @deprecated use DEFAULT_PLAYBACK_TIMINGS.linkFetchSeconds */
+export const DEFAULT_PROVIDER_FETCH_WAIT_SECONDS =
+    DEFAULT_PLAYBACK_TIMINGS.linkFetchSeconds
+/** @deprecated Prefer DEFAULT_PROVIDER_PLAY_WAIT_SECONDS */
+export const DEFAULT_PROVIDER_WAIT_SECONDS = DEFAULT_PROVIDER_PLAY_WAIT_SECONDS
+
+function clampNumber(
+    value: unknown,
+    min: number,
+    max: number,
+    fallback: number,
+    decimals = 0
+): number {
+    const n = typeof value === "number" ? value : Number(value)
+    if (!Number.isFinite(n) || n <= 0) return fallback
+    const scaled =
+        decimals > 0
+            ? Math.round(n * 10 ** decimals) / 10 ** decimals
+            : Math.round(n)
+    return Math.min(max, Math.max(min, scaled))
+}
+
+export function sanitizePlaybackTimings(
+    raw: unknown
+): StreamPlaybackTimings {
+    const record =
+        raw && typeof raw === "object" ? (raw as Partial<StreamPlaybackTimings>) : {}
+    return {
+        headStartSeconds: clampNumber(
+            record.headStartSeconds,
+            MIN_HEAD_START_SECONDS,
+            MAX_HEAD_START_SECONDS,
+            DEFAULT_PLAYBACK_TIMINGS.headStartSeconds,
+            1
+        ),
+        linkFetchSeconds: clampNumber(
+            record.linkFetchSeconds,
+            MIN_PROVIDER_WAIT_SECONDS,
+            MAX_PROVIDER_WAIT_SECONDS,
+            DEFAULT_PLAYBACK_TIMINGS.linkFetchSeconds
+        ),
+        firstPlaySeconds: clampNumber(
+            record.firstPlaySeconds,
+            MIN_PROVIDER_WAIT_SECONDS,
+            MAX_PROVIDER_WAIT_SECONDS,
+            DEFAULT_PLAYBACK_TIMINGS.firstPlaySeconds
+        ),
+        metadataSeconds: clampNumber(
+            record.metadataSeconds,
+            MIN_PROVIDER_WAIT_SECONDS,
+            MAX_PROVIDER_WAIT_SECONDS,
+            DEFAULT_PLAYBACK_TIMINGS.metadataSeconds
+        ),
+    }
+}
+
+/** Clamp optional per-provider override; blank/invalid → undefined (use global). */
 export function clampProviderWaitSeconds(value: unknown): number | undefined {
     if (value === null || value === undefined || value === "") {
         return undefined
@@ -197,7 +265,9 @@ export const DEFAULT_EXTERNAL_PLAYERS: CustomPlayerEntry[] = [
 export type StreamSourcesConfig = {
     sources: StreamSourceEntry[]
     players: CustomPlayerEntry[]
+    timings: StreamPlaybackTimings
 }
+
 
 export const OWNER_ONLY_PROVIDER_IDS = new Set<string>()
 

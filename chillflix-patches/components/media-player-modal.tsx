@@ -44,6 +44,7 @@ import {
 import { unlockScreenOrientation } from "@/lib/player-orientation"
 import { resolveProviderUserLabel } from "@/lib/provider-display"
 import { PRIMARY_PROVIDER_HEAD_START_MS } from "@/lib/source-probe-constants"
+import { getHeadStartMs } from "@/hooks/useStreamSourcesConfig"
 import { resolveNextTvEpisode } from "@/lib/tv-auto-next"
 import { cn } from "@/lib/utils"
 import { watchPartyPlayerUrl } from "@/lib/watch-party-session"
@@ -577,6 +578,7 @@ export const MediaPlayerModal: React.FC<MediaPlayerModalProps> = ({
       scanningProviderId,
       scanFailedProviderIds,
       scanStartedAt: providerScanStartedAt,
+      headStartMs: getHeadStartMs() || PRIMARY_PROVIDER_HEAD_START_MS,
       primaryProviderResolved,
     }),
     [
@@ -706,7 +708,7 @@ export const MediaPlayerModal: React.FC<MediaPlayerModalProps> = ({
     skipProbe: skipHealthProbe,
     trustedSourceIds: trustedProbeSourceIds,
     playbackContext: playbackProbeContext,
-    headStartMs: PRIMARY_PROVIDER_HEAD_START_MS,
+    headStartMs: getHeadStartMs() || PRIMARY_PROVIDER_HEAD_START_MS,
     primarySourceIds: primaryProbeSourceIds,
   })
 

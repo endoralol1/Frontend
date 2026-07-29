@@ -7,12 +7,15 @@ import type { UserRole } from "@/lib/permissions"
 import { canManageSiteSettings } from "@/lib/permissions"
 import {
     DEFAULT_EXTERNAL_PLAYERS,
+    DEFAULT_PLAYBACK_TIMINGS,
     DEFAULT_PROVIDER_CATALOG,
     OWNER_ONLY_PROVIDER_IDS,
     RETIRED_EXTERNAL_PLAYER_IDS,
     clampProviderWaitSeconds,
     normalizeProviderName,
+    sanitizePlaybackTimings,
     type CustomPlayerEntry,
+    type StreamPlaybackTimings,
     type StreamSourceEntry,
     type StreamSourcesConfig,
 } from "@/lib/stream-sources-defaults"
@@ -30,6 +33,7 @@ export type StreamSourcesPublic = {
     order: string[]
     enabledIds: string[]
     enabledPlayers: CustomPlayerEntry[]
+    timings: StreamPlaybackTimings
 }
 
 function normalizeEntry(entry: StreamSourceEntry): StreamSourceEntry {
@@ -75,6 +79,7 @@ export function getDefaultStreamSourcesConfig(): StreamSourcesConfig {
     return {
         sources: DEFAULT_PROVIDER_CATALOG.map((entry) => ({ ...entry })),
         players: DEFAULT_EXTERNAL_PLAYERS.map((entry) => ({ ...entry })),
+        timings: { ...DEFAULT_PLAYBACK_TIMINGS },
     }
 }
 
@@ -82,6 +87,9 @@ function mergeWithDefaults(parsed: StreamSourcesConfig): StreamSourcesConfig {
     const defaults = getDefaultStreamSourcesConfig()
     const seen = new Set<string>()
     const merged: StreamSourceEntry[] = []
+    const timings = sanitizePlaybackTimings(
+        (parsed as StreamSourcesConfig & { timings?: unknown }).timings
+    )
 
     for (const entry of parsed.sources.map(normalizeEntry)) {
         if (!entry.id || seen.has(entry.id)) continue
@@ -125,7 +133,7 @@ function mergeWithDefaults(parsed: StreamSourcesConfig): StreamSourcesConfig {
         players.push({ ...entry })
     }
 
-    return { sources: merged, players }
+    return { sources: merged, players, timings }
 }
 
 function parseStoredConfig(raw: string | undefined): StreamSourcesConfig {
@@ -142,6 +150,7 @@ function parseStoredConfig(raw: string | undefined): StreamSourcesConfig {
         return mergeWithDefaults({
             sources: parsed.sources as StreamSourceEntry[],
             players: Array.isArray(parsed.players) ? (parsed.players as CustomPlayerEntry[]) : [],
+            timings: sanitizePlaybackTimings(parsed.timings),
         })
     } catch {
         return getDefaultStreamSourcesConfig()
@@ -218,6 +227,7 @@ export function toPublicStreamSourcesConfig(
         order: playbackOrder,
         enabledIds: playbackOrder,
         enabledPlayers,
+        timings: sanitizePlaybackTimings(config.timings),
     }
 }
 
@@ -226,7 +236,12 @@ export function sanitizeStreamSourcesUpdate(body: unknown): StreamSourcesConfig 
         throw new Error("Invalid stream sources payload.")
     }
 
-    const record = body as { sources?: unknown; players?: unknown; reset?: boolean }
+    const record = body as {
+        sources?: unknown
+        players?: unknown
+        timings?: unknown
+        reset?: boolean
+    }
 
     if (record.reset) {
         return getDefaultStreamSourcesConfig()
@@ -302,7 +317,11 @@ export function sanitizeStreamSourcesUpdate(body: unknown): StreamSourcesConfig 
         players.push({ ...entry })
     }
 
-    return { sources, players }
+    return {
+        sources,
+        players,
+        timings: sanitizePlaybackTimings(record.timings ?? defaults.timings),
+    }
 }
 
 export function getCustomPlayerById(
