@@ -359,28 +359,40 @@ class AiAnalyst
             if ($hasLogin && preg_match('/\b(no |lack(?:s|ing)? |missing |without ).{0,40}\b(login|sign[\s-]?in|account system)\b/i', $low)) {
                 return false;
             }
-            if (!$expectsPay && preg_match('/\b(no |lack(?:s|ing)? |missing |without ).{0,40}\b(payment|checkout|billing|pay system)\b/i', $low)) {
+            if (!$expectsPay && preg_match('/\b(payment|checkout|billing)\b/i', $low)
+                && preg_match('/\b(no|lack|missing|without|absent|unclear)\b/i', $low)) {
                 return false;
             }
-            if (!$expectsContact && preg_match('/\b(no |lack(?:s|ing)? |missing |without ).{0,40}\b(contact|phone|whatsapp|privacy policy|privacy page)\b/i', $low)) {
+            if (!$expectsContact && preg_match('/\b(contact|phone|whatsapp|privacy)\b/i', $low)
+                && preg_match('/\b(no|lack|missing|without|absent)\b/i', $low)) {
                 return false;
             }
             return true;
         }));
 
-        // Clean summary sentences that wrongly cite missing login/payment/contact.
+        // Clean summary clauses that wrongly cite missing login/payment/contact.
         if ($hasLogin) {
             $summary = preg_replace('/\b(?:it )?lacks? a clear (?:payment or )?login system[,.]?\s*/i', '', $summary) ?? $summary;
             $summary = preg_replace('/\bmissing (?:a )?login(?: system)?[,.]?\s*/i', '', $summary) ?? $summary;
         }
         if (!$expectsPay) {
-            $summary = preg_replace('/\b(?:and )?its? (?:lack of|missing) (?:a )?payment(?: system)?[,.]?\s*/i', '', $summary) ?? $summary;
-            $summary = preg_replace('/\b(?:no|without|lacks?) (?:a )?payment(?: system|\/checkout)?[,.]?\s*/i', '', $summary) ?? $summary;
+            // Catch variants like "lacks a clear payment system" / "no payment or checkout".
+            $summary = preg_replace(
+                '/[,.]?\s*(?:but )?(?:it )?(?:also )?(?:lacks?|missing|has no|without|does not have)\s+(?:a\s+)?(?:clear\s+)?(?:payment|checkout)(?:\s+system|\s*\/\s*checkout)?[^.]{0,80}\.?/i',
+                '.',
+                $summary
+            ) ?? $summary;
+            $summary = preg_replace('/\b(?:and )?its? (?:lack of|missing) (?:a )?(?:clear )?payment(?: system)?[,.]?\s*/i', '', $summary) ?? $summary;
         }
         if (!$expectsContact) {
-            $summary = preg_replace('/\b(?:missing|no|lacks?) (?:clear )?(?:contact(?: info(?:rmation)?)?|phone|privacy policy)[,.]?\s*/i', '', $summary) ?? $summary;
+            $summary = preg_replace(
+                '/[,.]?\s*(?:but )?(?:it )?(?:lacks?|missing|has no|without)\s+(?:a\s+)?(?:clear\s+)?(?:contact(?: info(?:rmation)?)?|phone|privacy policy)[^.]{0,60}\.?/i',
+                '.',
+                $summary
+            ) ?? $summary;
         }
         $summary = trim(preg_replace('/\s+/u', ' ', $summary) ?? $summary);
+        $summary = trim(preg_replace('/\.\s*\./', '.', $summary) ?? $summary);
 
         $harm = strtolower((string) ($parsed['harm'] ?? ''));
         $delta = (int) ($parsed['score_delta'] ?? 0);
