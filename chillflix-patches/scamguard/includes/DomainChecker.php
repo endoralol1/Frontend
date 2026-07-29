@@ -2739,16 +2739,19 @@ class DomainChecker
             if ($body === null || strlen($body) < 400) {
                 continue;
             }
-            if ($this->isChallengeHtml($body, '', 200)) {
+            $hasPasswordField = (bool) preg_match('/type\s*=\s*[\'"]password[\'"]/i', $body);
+            // Cloudflare Turnstile / challenge scripts often appear on real pages.
+            // Only skip when it looks like a challenge shell AND there is no password field.
+            if (!$hasPasswordField && $this->isChallengeHtml($body, '', 200)) {
                 continue;
             }
             // Soft 404 shells often still include global "Sign in" i18n strings.
             if (preg_match('/\b(404|page not found|this page could not be found|does not exist)\b/i', $body)
-                && !preg_match('/type\s*=\s*[\'"]password[\'"]/i', $body)) {
+                && !$hasPasswordField) {
                 continue;
             }
             $strong = (
-                preg_match('/type\s*=\s*[\'"]password[\'"]/i', $body)
+                $hasPasswordField
                 || preg_match('/\b(welcome back|forgot(?:\s+your)?\s+password|create your account|sign in to|log in to)\b/i', $body)
                 || preg_match('/["\']signInTitle["\']\s*:/i', $body)
             );
