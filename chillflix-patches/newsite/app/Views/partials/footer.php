@@ -2,7 +2,7 @@
 <div class="container">
     <div class="footer">
         <div class="logo w-100 d-flex justify-content-center py-4">
-            <img src="<?= e(asset('img/logo.webp')) ?>?v=20260729-chillflix" alt="<?= e($site) ?>" loading="lazy" width="160" height="46">
+            <img src="<?= e(asset('img/logo.webp')) ?>?v=20260729-chillflix-tr" alt="<?= e($site) ?>" loading="lazy" width="160" height="46">
         </div>
         <div class="f-top">
             <div class="f-top-inner">

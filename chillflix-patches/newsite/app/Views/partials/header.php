@@ -17,7 +17,7 @@ $site = (string) config('site_name');
                     </ul>
                 </div>
                 <div class="logo">
-                    <a href="<?= e(url('/home')) ?>"><img src="<?= e(asset('img/logo.webp')) ?>?v=20260729-chillflix" alt="<?= e($site) ?>" width="140" height="40"></a>
+                    <a href="<?= e(url('/home')) ?>"><img src="<?= e(asset('img/logo.webp')) ?>?v=20260729-chillflix-tr" alt="<?= e($site) ?>" width="140" height="40"></a>
                 </div>
                 <div id="language-toggler"><span class="lang-code">EN</span></div>
                 <div id="language-menu" style="display:none">
