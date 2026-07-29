@@ -358,11 +358,12 @@ body {
 #featured .swiper-button-next { right: 1.1rem; }
 
 /* ——— Cinematic homepage hero ——— */
+/* IMPORTANT: never animate background-size to % — that letterboxes the image */
 #featured {
   background: #0a0c12;
-  margin-bottom: 0.75rem;
-  height: min(78vh, 46rem) !important;
-  min-height: 32rem;
+  margin-bottom: 0.5rem;
+  height: min(85vh, 48rem) !important;
+  min-height: 34rem;
   overflow: hidden;
   position: relative;
   text-align: left !important;
@@ -375,19 +376,10 @@ body {
 
 #featured .swiper-wrapper .swiper-slide {
   background-color: #0a0c12 !important;
-  background-position: center center;
-  background-size: cover;
+  background-position: center center !important;
+  background-size: cover !important;
+  background-repeat: no-repeat !important;
   overflow: hidden;
-}
-
-#featured .swiper-slide-active.lazyloaded,
-#featured .swiper-slide-duplicate-active.lazyloaded {
-  animation: cfHeroKen 14s ease-out forwards;
-}
-
-@keyframes cfHeroKen {
-  from { background-size: 104%; }
-  to { background-size: 100%; }
 }
 
 #featured .swiper-wrapper .swiper-slide:before,
@@ -401,9 +393,9 @@ body.index > .wrapper .index-head:before {
   top: 0 !important;
   z-index: 1 !important;
   background:
-    linear-gradient(90deg, rgba(8, 10, 16, 0.72) 0%, rgba(8, 10, 16, 0.28) 38%, transparent 72%),
-    linear-gradient(180deg, rgba(8, 10, 16, 0.35) 0%, transparent 42%),
-    linear-gradient(0deg, rgba(8, 10, 16, 0.9) 0%, rgba(8, 10, 16, 0.35) 30%, transparent 60%) !important;
+    linear-gradient(90deg, rgba(8, 10, 16, 0.78) 0%, rgba(8, 10, 16, 0.32) 40%, transparent 72%),
+    linear-gradient(180deg, rgba(8, 10, 16, 0.55) 0%, transparent 40%),
+    linear-gradient(0deg, rgba(8, 10, 16, 0.92) 0%, rgba(8, 10, 16, 0.4) 34%, transparent 62%) !important;
   pointer-events: none;
 }
 
@@ -413,28 +405,30 @@ body.index > .wrapper .index-head:before {
   right: 0 !important;
   bottom: -1px;
   width: 100%;
-  height: 5rem !important;
+  height: 6rem !important;
   background: linear-gradient(0deg, var(--cf-bg, #14171f) 0%, transparent 100%) !important;
   box-shadow: none !important;
   pointer-events: none;
   z-index: 1;
 }
 
-/* Copy pinned to TOP — logo can sit over the hero */
+/* Text stays DOWN in the hero; image is full-bleed under logo */
 #featured .swiper-wrapper .swiper-slide .wrapper {
   display: flex !important;
   flex-direction: column !important;
-  justify-content: flex-start !important;
+  justify-content: flex-end !important;
   align-items: flex-start !important;
   height: 100% !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
   max-width: 1800px;
   width: 100%;
-  padding: 5.75rem max(1.5rem, env(safe-area-inset-right, 0px)) 3.5rem max(1.5rem, env(safe-area-inset-left, 0px)) !important;
+  padding: 0 max(1.5rem, env(safe-area-inset-right, 0px)) 3.6rem max(1.5rem, env(safe-area-inset-left, 0px)) !important;
   box-sizing: border-box !important;
   text-align: left !important;
   overflow: hidden;
+  position: relative;
+  z-index: 2;
 }
 
 #featured .swiper-wrapper .swiper-slide .wrapper .info {
@@ -464,7 +458,7 @@ body.index > .wrapper .index-head:before {
 @keyframes cfHeroCopyIn {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(14px);
   }
   to {
     opacity: 1;
@@ -616,19 +610,24 @@ body.index > .wrapper .index-head:before {
   background: linear-gradient(90deg, #db6937, #c43c2e);
 }
 
+/* Transparent header over full-bleed hero */
+header.absolute {
+  background: linear-gradient(180deg, rgba(8, 10, 14, 0.55) 0%, rgba(8, 10, 14, 0.12) 70%, transparent 100%) !important;
+}
+
 .container > .aside-wrapper {
   margin-top: 0.25rem;
 }
 
 @media (max-width: 991.98px) {
   #featured {
-    height: min(70vh, 38rem) !important;
-    min-height: 32rem;
+    height: min(78vh, 40rem) !important;
+    min-height: 34rem;
   }
 
   #featured .swiper-wrapper .swiper-slide .wrapper {
-    justify-content: flex-start !important;
-    padding: 4.1rem max(1.15rem, env(safe-area-inset-right, 0px)) 3rem max(1.15rem, env(safe-area-inset-left, 0px)) !important;
+    justify-content: flex-end !important;
+    padding: 0 max(1.15rem, env(safe-area-inset-right, 0px)) 3.1rem max(1.15rem, env(safe-area-inset-left, 0px)) !important;
   }
 
   #featured .swiper-wrapper .swiper-slide .wrapper .info .name {
@@ -661,12 +660,12 @@ body.index > .wrapper .index-head:before {
 
 @media (max-width: 575.98px) {
   #featured {
-    height: min(68vh, 34rem) !important;
-    min-height: 30rem;
+    height: min(75vh, 36rem) !important;
+    min-height: 32rem;
   }
 
   #featured .swiper-wrapper .swiper-slide .wrapper {
-    padding: 3.85rem max(1rem, env(safe-area-inset-right, 0px)) 2.85rem max(1rem, env(safe-area-inset-left, 0px)) !important;
+    padding: 0 max(1rem, env(safe-area-inset-right, 0px)) 2.85rem max(1rem, env(safe-area-inset-left, 0px)) !important;
   }
 
   #featured .hero-kicker {
@@ -918,7 +917,7 @@ body .wrapper > .container {
 }
 
 header.absolute {
-  background: linear-gradient(180deg, rgba(8, 10, 14, 0.72) 0%, rgba(8, 10, 14, 0.18) 70%, transparent 100%) !important;
+  background: linear-gradient(180deg, rgba(8, 10, 14, 0.5) 0%, rgba(8, 10, 14, 0.1) 65%, transparent 100%) !important;
   margin-bottom: 0 !important;
 }
 
@@ -1468,7 +1467,6 @@ header .wrapper {
   border-radius: 1.1rem;
   padding: 0;
   box-shadow: none;
-  transform: none;
   position: relative;
 }
 
@@ -1544,7 +1542,6 @@ header .wrapper {
   color: #fff !important;
   -webkit-text-stroke: 0 !important;
   text-shadow: none !important;
-  transform: none !important;
   pointer-events: none;
   line-height: 1;
   font-weight: 700;
