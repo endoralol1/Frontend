@@ -683,35 +683,19 @@ header.absolute .logo img {
   margin-top: 0.25rem;
 }
 
-/*
- * Homepage columns: main rails must NOT force width:100% and shove the
- * Most Commented sidebar off-screen (only a sliver was visible).
- */
-@media (min-width: 1200px) {
-  main .aside-wrapper {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: flex-start;
-    gap: 1.5rem;
-    width: 100%;
-  }
+/* Homepage: no right sidebar — media rails use the full width */
+body.home main .aside-wrapper,
+main .aside-wrapper:not(:has(> .sidebar)) {
+  display: block !important;
+}
 
-  main .aside-wrapper > .main {
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-    width: auto !important;
-    max-width: none !important;
-    margin-right: 0 !important;
-    overflow: hidden;
-  }
-
-  main .aside-wrapper > .sidebar {
-    flex: 0 0 24rem !important;
-    width: 24rem !important;
-    min-width: 24rem !important;
-    max-width: 24rem !important;
-    flex-grow: 0 !important;
-  }
+body.home main .aside-wrapper > .main,
+main .aside-wrapper:not(:has(> .sidebar)) > .main {
+  width: 100% !important;
+  max-width: none !important;
+  margin-right: 0 !important;
+  min-width: 0 !important;
+  overflow: visible;
 }
 
 @media (max-width: 991.98px) {
@@ -1035,9 +1019,15 @@ header .wrapper .start .logo {
 header .wrapper .start .logo img {
   display: block;
   width: auto;
-  height: 2.4rem;
+  height: 2.85rem;
   max-width: none;
   margin-right: 0;
+}
+
+@media (min-width: 992px) {
+  header .wrapper .start .logo img {
+    height: 3.35rem;
+  }
 }
 
 header .wrapper .start #language-toggler {
@@ -2280,14 +2270,14 @@ aside.sidebar .section .head .start .tabs {
   }
 }
 
-/* Desktop: same phone nav pill, fixed top-right (same controls as phone) */
+/* Desktop: same phone nav pill, sitting left near the logo */
 @media (min-width: 992px) {
   .bottom-nav {
     display: block !important;
     position: fixed;
-    top: 0.7rem;
-    right: max(1rem, env(safe-area-inset-right, 0px));
-    left: auto;
+    top: 0.75rem;
+    left: max(11.5rem, calc(env(safe-area-inset-left, 0px) + 11.5rem));
+    right: auto;
     bottom: auto;
     z-index: 130;
     width: auto;
@@ -2299,10 +2289,10 @@ aside.sidebar .section .head .start .tabs {
     pointer-events: auto;
     display: flex;
     align-items: center;
-    gap: 0.15rem;
+    gap: 0.2rem;
     max-width: none;
     margin: 0;
-    padding: 0.3rem;
+    padding: 0.35rem;
     border-radius: 1.25rem;
     background: rgba(18, 20, 28, 0.55);
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -2318,10 +2308,10 @@ aside.sidebar .section .head .start .tabs {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.1rem;
-    min-width: 4.1rem;
-    min-height: 3rem;
-    padding: 0.3rem 0.45rem 0.28rem;
+    gap: 0.12rem;
+    min-width: 4.55rem;
+    min-height: 3.25rem;
+    padding: 0.35rem 0.55rem 0.3rem;
     border: 0;
     background: transparent;
     border-radius: 1rem;
@@ -2343,18 +2333,18 @@ aside.sidebar .section .head .start .tabs {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.8rem;
-    height: 1.8rem;
-    border-radius: 0.65rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.7rem;
   }
 
   .bottom-nav-icon i {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     line-height: 1;
   }
 
   .bottom-nav-label {
-    font-size: 0.62rem;
+    font-size: 0.68rem;
     font-weight: 600;
     letter-spacing: 0.01em;
     line-height: 1;
@@ -2376,6 +2366,35 @@ aside.sidebar .section .head .start .tabs {
 
   body {
     padding-bottom: 0 !important;
+  }
+
+  /* Bigger cards, fill the row — no horizontal scrollbars for now */
+  .section-top10 .top10-items,
+  .section-rail .media-rail-items {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(14.5rem, 1fr));
+    gap: 0.85rem 0.55rem;
+    overflow: visible !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0.15rem 0 0.5rem !important;
+    cursor: default;
+    scrollbar-width: none;
+  }
+
+  .section-top10 .top10-items .movie-item.media-card--ranked,
+  .section-rail .media-rail-items .movie-item {
+    flex: none !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .section-top10 .top10-nav,
+  .section-rail .media-rail-nav {
+    display: none !important;
   }
 }
 
