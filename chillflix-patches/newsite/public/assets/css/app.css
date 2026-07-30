@@ -698,8 +698,10 @@ header.absolute .logo img {
   body.home main > .container,
   main > .container:has(.home-sidebar) {
     overflow-x: hidden !important;
-    max-width: 100% !important;
+    max-width: min(1400px, 100%) !important;
     width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
     box-sizing: border-box !important;
   }
 
@@ -2642,12 +2644,12 @@ aside.sidebar .section .head .start .tabs .tab {
   .section-top10 .top10-items .movie-item.media-card--ranked,
   .section-rail:not(.section-episodes) .media-rail-items .movie-item {
     float: none !important;
-    flex: 0 0 15.25rem !important;
-    width: 15.25rem !important;
-    max-width: 15.25rem !important;
-    min-width: 15.25rem !important;
+    flex: 0 0 12.75rem !important;
+    width: 12.75rem !important;
+    max-width: 12.75rem !important;
+    min-width: 12.75rem !important;
     margin: 0 0 0.35rem !important;
-    padding: 0 0.5rem !important;
+    padding: 0 0.45rem !important;
     scroll-snap-align: start;
   }
 
