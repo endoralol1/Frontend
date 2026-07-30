@@ -1036,14 +1036,13 @@ header .wrapper .start .logo a {
 
 /*
  * Original Chillflix arched wordmark.
- * Size by WIDTH on phones — height-only sizing made it ~60px wide and the
- * tall condensed letters looked weird/thin.
+ * Size by WIDTH — keep aspect ratio; header-friendly, not hero-sized.
  */
 header .wrapper .start .logo img {
   display: block;
-  width: min(44vw, 10.5rem) !important;
+  width: min(32vw, 7.5rem) !important;
   height: auto !important;
-  max-width: min(44vw, 10.5rem);
+  max-width: min(32vw, 7.5rem);
   max-height: none;
   margin-right: 0;
   object-fit: contain !important;
@@ -1055,8 +1054,8 @@ header .wrapper .start .logo img {
 
 @media (min-width: 992px) {
   header .wrapper .start .logo img {
-    width: 11.5rem !important;
-    max-width: 11.5rem;
+    width: 8.5rem !important;
+    max-width: 8.5rem;
     height: auto !important;
   }
 }
@@ -2347,7 +2346,7 @@ aside.sidebar .section .head .start .tabs {
     display: block !important;
     position: fixed;
     top: 0.75rem;
-    left: max(11.5rem, calc(env(safe-area-inset-left, 0px) + 11.5rem));
+    left: max(9.75rem, calc(env(safe-area-inset-left, 0px) + 9.75rem));
     right: auto;
     bottom: auto;
     z-index: 130;
@@ -2477,18 +2476,18 @@ aside.sidebar .section .head .start .tabs {
   }
 
   header .wrapper .start .logo img {
-    width: 12.5rem !important;
-    max-width: 12.5rem;
+    width: 9.5rem !important;
+    max-width: 9.5rem;
     height: auto !important;
   }
 
   .bottom-nav {
-    left: max(14.5rem, calc(env(safe-area-inset-left, 0px) + 14.5rem));
+    left: max(11rem, calc(env(safe-area-inset-left, 0px) + 11rem));
   }
 }
 
 .footer .logo img {
-  width: 11rem !important;
+  width: 8.5rem !important;
   height: auto !important;
   object-fit: contain !important;
   aspect-ratio: 388 / 208;
@@ -3799,7 +3798,9 @@ body.page-watch header.absolute .wrapper {
 }
 
 body.page-watch header.absolute .wrapper .start .logo img {
-  height: 1.75rem;
+  width: 5.5rem !important;
+  max-width: 5.5rem;
+  height: auto !important;
 }
 
 body.page-watch main.watch-p {
@@ -3813,7 +3814,9 @@ body.page-watch main.watch-p {
   }
 
   body.page-watch header.absolute .wrapper .start .logo img {
-    height: 2rem;
+    width: 6.25rem !important;
+    max-width: 6.25rem;
+    height: auto !important;
   }
 
   body.page-watch main.watch-p {
