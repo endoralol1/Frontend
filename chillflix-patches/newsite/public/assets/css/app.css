@@ -1998,7 +1998,8 @@ aside.sidebar .section .head .start .tabs .tab {
 }
 
 /* ——— Latest Episodes landscape rail ——— */
-.section-episodes .episode-rail-items {
+.section-episodes .episode-rail-items,
+.section-episodes .media-rail-items.episode-rail-items {
   display: flex !important;
   flex-wrap: nowrap !important;
   align-items: stretch;
@@ -2010,16 +2011,27 @@ aside.sidebar .section .head .start .tabs .tab {
   scroll-behavior: smooth;
   padding: 0.15rem 0 0.45rem;
   margin: 0 -0.4rem;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(219, 105, 55, 0.55) transparent;
+  grid-template-columns: none !important;
 }
 
 .section-episodes .episode-rail-items::-webkit-scrollbar {
-  display: none;
+  height: 6px;
+  display: block;
+}
+
+.section-episodes .episode-rail-items::-webkit-scrollbar-thumb {
+  background: rgba(219, 105, 55, 0.45);
+  border-radius: 999px;
 }
 
 .episode-card {
+  float: none !important;
+  position: relative !important;
   flex: 0 0 22rem;
   width: 22rem;
+  min-width: 22rem;
   max-width: 78vw;
   margin: 0 0.4rem;
   padding: 0;
@@ -2032,6 +2044,7 @@ aside.sidebar .section .head .start .tabs .tab {
   background: #1a1c23;
   border: 1px solid rgba(255, 255, 255, 0.08);
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  box-sizing: border-box;
 }
 
 .episode-card:hover {
@@ -2516,41 +2529,68 @@ aside.sidebar .section .head .start .tabs .tab {
     padding-bottom: 0 !important;
   }
 
-  /* Bigger cards, fill the row — no horizontal scrollbars for now */
+  /* PC: keep one horizontal row (same as phone), larger cards + L/R arrows */
   .section-top10 .top10-items,
   .section-rail .media-rail-items {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fill, minmax(15.25rem, 1fr));
-    gap: 1rem 0.75rem;
-    overflow: visible !important;
-    overflow-x: visible !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0.15rem 0 0.5rem !important;
-    cursor: default;
-    scrollbar-width: none !important;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: flex-start;
+    gap: 0;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    width: auto !important;
+    margin: 0 -0.4rem !important;
+    padding: 0.25rem 0 0.85rem !important;
+    cursor: grab;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(219, 105, 55, 0.55) transparent;
   }
 
   .section-top10 .top10-items::-webkit-scrollbar,
   .section-rail .media-rail-items::-webkit-scrollbar {
-    display: none !important;
-    height: 0 !important;
-    width: 0 !important;
+    display: block !important;
+    height: 6px !important;
   }
 
   .section-top10 .top10-items .movie-item.media-card--ranked,
-  .section-rail .media-rail-items .movie-item {
-    flex: none !important;
-    width: auto !important;
-    max-width: none !important;
-    min-width: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
+  .section-rail:not(.section-episodes) .media-rail-items .movie-item {
+    float: none !important;
+    flex: 0 0 15.25rem !important;
+    width: 15.25rem !important;
+    max-width: 15.25rem !important;
+    min-width: 15.25rem !important;
+    margin: 0 0 0.35rem !important;
+    padding: 0 0.5rem !important;
+    scroll-snap-align: start;
   }
 
   .section-top10 .top10-nav,
   .section-rail .media-rail-nav {
-    display: none !important;
+    display: inline-flex !important;
+  }
+
+  /* Latest Episodes: never collapse into the poster grid — keep landscape rail */
+  .section-episodes .episode-rail-items,
+  .section-episodes .media-rail-items.episode-rail-items {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    grid-template-columns: none !important;
+  }
+
+  .section-episodes .episode-card {
+    float: none !important;
+    position: relative !important;
+    flex: 0 0 22rem !important;
+    width: 22rem !important;
+    min-width: 22rem !important;
+    max-width: 22rem !important;
+    margin: 0 0.45rem !important;
+    grid-column: auto !important;
   }
 
   header .wrapper .start .logo img {
