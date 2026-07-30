@@ -1034,26 +1034,30 @@ header .wrapper .start .logo a {
   line-height: 0;
 }
 
-/* Original Chillflix arched wordmark — correct ratio, never stretched */
+/*
+ * Original Chillflix arched wordmark.
+ * Size by WIDTH on phones — height-only sizing made it ~60px wide and the
+ * tall condensed letters looked weird/thin.
+ */
 header .wrapper .start .logo img {
   display: block;
-  width: auto !important;
-  height: 2.7rem !important;
-  max-width: min(48vw, 10rem);
-  max-height: 2.7rem;
+  width: min(44vw, 10.5rem) !important;
+  height: auto !important;
+  max-width: min(44vw, 10.5rem);
+  max-height: none;
   margin-right: 0;
   object-fit: contain !important;
   object-position: left center;
-  aspect-ratio: 396 / 216;
+  aspect-ratio: 388 / 208;
   image-rendering: auto;
   -webkit-user-drag: none;
 }
 
 @media (min-width: 992px) {
   header .wrapper .start .logo img {
-    height: 3.2rem !important;
-    max-height: 3.2rem;
-    max-width: 12.5rem;
+    width: 11.5rem !important;
+    max-width: 11.5rem;
+    height: auto !important;
   }
 }
 
@@ -2473,21 +2477,21 @@ aside.sidebar .section .head .start .tabs {
   }
 
   header .wrapper .start .logo img {
-    height: 3.4rem !important;
-    max-height: 3.4rem;
-    max-width: 13rem;
+    width: 12.5rem !important;
+    max-width: 12.5rem;
+    height: auto !important;
   }
 
   .bottom-nav {
-    left: max(12.75rem, calc(env(safe-area-inset-left, 0px) + 12.75rem));
+    left: max(14.5rem, calc(env(safe-area-inset-left, 0px) + 14.5rem));
   }
 }
 
 .footer .logo img {
-  width: auto !important;
-  height: 2.85rem !important;
+  width: 11rem !important;
+  height: auto !important;
   object-fit: contain !important;
-  aspect-ratio: 396 / 216;
+  aspect-ratio: 388 / 208;
 }
 
 /* ——— Search popup sheet ——— */
