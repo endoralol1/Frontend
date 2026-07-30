@@ -301,16 +301,16 @@ function home(Tmdb $tmdb): void
     ])['results'] ?? [];
     $mostCommented = array_slice($tmdb->trending('all', 'day'), 0, 10);
     $recentlyUpdated = array_slice($tmdb->trending('all', 'week'), 0, 12);
-    $latestEpisodes = $tmdb->latestEpisodes(9);
+    $latestEpisodes = $tmdb->latestEpisodes(12);
 
     view('pages/home', [
         'featured' => $featured,
         'top10Movies' => $top10Movies,
         'top10Tv' => $top10Tv,
-        'recommendedMovies' => array_slice($recommendedMovies, 0, 9),
-        'recommendedTv' => array_slice($recommendedTv, 0, 9),
-        'latestMovies' => array_slice($latestMovies, 0, 9),
-        'latestTv' => array_slice($latestTv, 0, 9),
+        'recommendedMovies' => array_slice($recommendedMovies, 0, 12),
+        'recommendedTv' => array_slice($recommendedTv, 0, 12),
+        'latestMovies' => array_slice($latestMovies, 0, 12),
+        'latestTv' => array_slice($latestTv, 0, 12),
         'latestEpisodes' => $latestEpisodes,
         'mostCommented' => $mostCommented,
         'recentlyUpdated' => $recentlyUpdated,

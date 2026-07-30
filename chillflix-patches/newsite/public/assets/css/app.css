@@ -698,7 +698,7 @@ header.absolute .logo img {
   body.home main > .container,
   main > .container:has(.home-sidebar) {
     overflow-x: hidden !important;
-    max-width: min(1400px, 100%) !important;
+    max-width: min(1760px, 100%) !important;
     width: 100% !important;
     margin-left: auto !important;
     margin-right: auto !important;
@@ -724,7 +724,7 @@ header.absolute .logo img {
     flex: 1 1 0% !important;
     min-width: 0 !important;
     width: auto !important;
-    max-width: calc(100% - 22.5rem - 1.25rem) !important;
+    max-width: calc(100% - 20rem - 1.25rem) !important;
     margin-right: 0 !important;
     overflow: hidden !important;
     box-sizing: border-box !important;
@@ -734,10 +734,10 @@ header.absolute .logo img {
   main .aside-wrapper:has(> .home-sidebar) > .sidebar,
   aside.sidebar.home-sidebar {
     display: flex !important;
-    flex: 0 0 22.5rem !important;
-    width: 22.5rem !important;
-    min-width: 22.5rem !important;
-    max-width: 22.5rem !important;
+    flex: 0 0 20rem !important;
+    width: 20rem !important;
+    min-width: 20rem !important;
+    max-width: 20rem !important;
     flex-grow: 0 !important;
     flex-shrink: 0 !important;
     overflow: visible;
@@ -2644,13 +2644,24 @@ aside.sidebar .section .head .start .tabs .tab {
   .section-top10 .top10-items .movie-item.media-card--ranked,
   .section-rail:not(.section-episodes) .media-rail-items .movie-item {
     float: none !important;
-    flex: 0 0 12.75rem !important;
-    width: 12.75rem !important;
-    max-width: 12.75rem !important;
-    min-width: 12.75rem !important;
+    flex: 0 0 10.35rem !important;
+    width: 10.35rem !important;
+    max-width: 10.35rem !important;
+    min-width: 10.35rem !important;
     margin: 0 0 0.35rem !important;
-    padding: 0 0.45rem !important;
+    padding: 0 0.35rem !important;
     scroll-snap-align: start;
+  }
+
+  .section-episodes .episode-card {
+    float: none !important;
+    position: relative !important;
+    flex: 0 0 16.5rem !important;
+    width: 16.5rem !important;
+    min-width: 16.5rem !important;
+    max-width: 16.5rem !important;
+    margin: 0 0.4rem !important;
+    grid-column: auto !important;
   }
 
   .section-top10 .top10-nav,
@@ -2672,17 +2683,6 @@ aside.sidebar .section .head .start .tabs .tab {
     margin: 0 !important;
     grid-template-columns: none !important;
     box-sizing: border-box;
-  }
-
-  .section-episodes .episode-card {
-    float: none !important;
-    position: relative !important;
-    flex: 0 0 22rem !important;
-    width: 22rem !important;
-    min-width: 22rem !important;
-    max-width: 22rem !important;
-    margin: 0 0.45rem !important;
-    grid-column: auto !important;
   }
 
   header .wrapper .start .logo img {
