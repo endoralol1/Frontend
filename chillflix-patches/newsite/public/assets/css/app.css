@@ -1034,26 +1034,26 @@ header .wrapper .start .logo a {
   line-height: 0;
 }
 
-/* Keep natural logo ratio — HTML width/height used to force 120x40 (3:1) and stretch it */
+/* Natural wide wordmark — not the old ultra-tall condensed mark */
 header .wrapper .start .logo img {
   display: block;
   width: auto !important;
-  height: 2.65rem !important;
-  max-width: min(46vw, 9.5rem);
-  max-height: 2.65rem;
+  height: 1.85rem !important;
+  max-width: min(52vw, 11.5rem);
+  max-height: 1.85rem;
   margin-right: 0;
   object-fit: contain !important;
   object-position: left center;
-  aspect-ratio: 400 / 220;
+  aspect-ratio: 1172 / 199;
   image-rendering: auto;
   -webkit-user-drag: none;
 }
 
 @media (min-width: 992px) {
   header .wrapper .start .logo img {
-    height: 3.15rem !important;
-    max-height: 3.15rem;
-    max-width: 12rem;
+    height: 2.35rem !important;
+    max-height: 2.35rem;
+    max-width: 15rem;
   }
 }
 
@@ -2473,21 +2473,21 @@ aside.sidebar .section .head .start .tabs {
   }
 
   header .wrapper .start .logo img {
-    height: 3.35rem !important;
-    max-height: 3.35rem;
-    max-width: 13rem;
+    height: 2.5rem !important;
+    max-height: 2.5rem;
+    max-width: 16rem;
   }
 
   .bottom-nav {
-    left: max(12.5rem, calc(env(safe-area-inset-left, 0px) + 12.5rem));
+    left: max(14.5rem, calc(env(safe-area-inset-left, 0px) + 14.5rem));
   }
 }
 
 .footer .logo img {
   width: auto !important;
-  height: 2.75rem !important;
+  height: 2.1rem !important;
   object-fit: contain !important;
-  aspect-ratio: 400 / 220;
+  aspect-ratio: 1172 / 199;
 }
 
 /* ——— Search popup sheet ——— */
