@@ -1531,6 +1531,28 @@ aside.sidebar .section .head .start .tabs .tab {
   aspect-ratio: 2 / 3;
   margin: 0 !important;
   background: #15171d;
+  position: relative;
+}
+
+.movie-sidebar.items .movie-item .sidebar-rank {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.28rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 0 0.4rem 0;
+  background: linear-gradient(135deg, #db6937 0%, #c43c2e 100%);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 8px rgba(196, 60, 46, 0.4);
 }
 
 @media (min-width: 1200px) {
@@ -2498,7 +2520,7 @@ aside.sidebar .section .head .start .tabs .tab {
     position: fixed;
     top: 0.55rem;
     left: auto;
-    right: max(1rem, calc(env(safe-area-inset-right, 0px) + 1rem));
+    right: max(2.75rem, calc(env(safe-area-inset-right, 0px) + 2.75rem));
     bottom: auto;
     z-index: 130;
     width: auto;

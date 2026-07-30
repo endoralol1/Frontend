@@ -83,6 +83,26 @@
                     </div>
                 </div>
 
+                <?php if (!empty($latestEpisodes)): ?>
+                <div class="section section-rail section-episodes">
+                    <div class="head">
+                        <div class="start">
+                            <h2 class="title gardiently">Latest Episodes</h2>
+                            <a class="more" href="<?= e(url('/tv-series')) ?>"><span>View All</span> <i class="uil uil-arrow-right"></i></a>
+                        </div>
+                    </div>
+                    <div class="media-rail-wrap">
+                        <button type="button" class="media-rail-nav media-rail-nav-prev" aria-label="Scroll left"><i class="uil uil-angle-left"></i></button>
+                        <div class="episode-rail-items media-rail-items">
+                            <?php foreach ($latestEpisodes as $epItem) {
+                                require __DIR__ . '/../partials/episode-card.php';
+                            } ?>
+                        </div>
+                        <button type="button" class="media-rail-nav media-rail-nav-next" aria-label="Scroll right"><i class="uil uil-angle-right"></i></button>
+                    </div>
+                </div>
+                <?php endif; ?>
+
                 <div class="section section-rail">
                     <div class="head">
                         <div class="start">
@@ -140,26 +160,6 @@
                         <button type="button" class="media-rail-nav media-rail-nav-next" aria-label="Scroll right"><i class="uil uil-angle-right"></i></button>
                     </div>
                 </div>
-
-                <?php if (!empty($latestEpisodes)): ?>
-                <div class="section section-rail section-episodes">
-                    <div class="head">
-                        <div class="start">
-                            <h2 class="title gardiently">Latest Episodes</h2>
-                            <a class="more" href="<?= e(url('/tv-series')) ?>"><span>View All</span> <i class="uil uil-arrow-right"></i></a>
-                        </div>
-                    </div>
-                    <div class="media-rail-wrap">
-                        <button type="button" class="media-rail-nav media-rail-nav-prev" aria-label="Scroll left"><i class="uil uil-angle-left"></i></button>
-                        <div class="episode-rail-items media-rail-items">
-                            <?php foreach ($latestEpisodes as $epItem) {
-                                require __DIR__ . '/../partials/episode-card.php';
-                            } ?>
-                        </div>
-                        <button type="button" class="media-rail-nav media-rail-nav-next" aria-label="Scroll right"><i class="uil uil-angle-right"></i></button>
-                    </div>
-                </div>
-                <?php endif; ?>
             </aside>
 
             <aside class="sidebar home-sidebar">
@@ -167,46 +167,23 @@
                     <div class="head">
                         <div class="start">
                             <h2 class="title gardiently">Most Commented</h2>
-                            <div class="tabs" data-tabs>
-                                <span class="tab active" data-name="day">Day</span>
-                                <span class="tab" data-name="week">Week</span>
-                                <span class="tab" data-name="month">Month</span>
-                            </div>
                         </div>
                     </div>
                     <div class="body">
-                        <div class="tab-content scaff movie-sidebar items" data-name="day" style="display:block">
+                        <div class="scaff movie-sidebar items">
                             <?php
-                            $shown = 0;
+                            $sideRank = 0;
                             foreach ($mostCommented as $item) {
                                 if (($item['media_type'] ?? '') === 'person') continue;
                                 $type = (($item['media_type'] ?? 'movie') === 'tv') ? 'tv' : 'movie';
+                                $sideRank++;
                                 require __DIR__ . '/../partials/sidebar-item.php';
-                                if (++$shown >= 10) break;
+                                if ($sideRank >= 5) break;
                             }
-                            if ($shown === 0): ?>
-                                <div class="text-center text-muted p-3">No commented content for this period</div>
-                            <?php endif; ?>
-                        </div>
-                        <div class="tab-content scaff movie-sidebar items" data-name="week" style="display:none">
-                            <?php
-                            $shown = 0;
-                            foreach ($recentlyUpdated as $item) {
-                                if (($item['media_type'] ?? '') === 'person') continue;
-                                $type = (($item['media_type'] ?? 'movie') === 'tv') ? 'tv' : 'movie';
-                                require __DIR__ . '/../partials/sidebar-item.php';
-                                if (++$shown >= 10) break;
-                            }
-                            ?>
-                        </div>
-                        <div class="tab-content scaff movie-sidebar items" data-name="month" style="display:none">
-                            <?php
-                            $shown = 0;
-                            foreach (array_slice($latestMovies, 0, 10) as $item) {
-                                $type = 'movie';
-                                require __DIR__ . '/../partials/sidebar-item.php';
-                                $shown++;
-                            }
+                            if ($sideRank === 0): ?>
+                                <div class="text-center text-muted p-3">No commented content right now</div>
+                            <?php endif;
+                            unset($sideRank);
                             ?>
                         </div>
                     </div>
@@ -217,32 +194,23 @@
                         <div class="start">
                             <h2 class="title gardiently">Recently Added</h2>
                         </div>
-                        <div class="end">
-                            <div class="btn-group pagination-control sidebar-slider-control" role="group">
-                                <button type="button" id="recently-updated-prev" class="btn btn-sm btn-primary" aria-label="Scroll up" disabled>
-                                    <i class="uil uil-angle-up"></i>
-                                </button>
-                                <button type="button" id="recently-updated-next" class="btn btn-sm btn-primary" aria-label="Scroll down">
-                                    <i class="uil uil-angle-down"></i>
-                                </button>
-                            </div>
-                        </div>
                     </div>
-                    <div class="body recently-updated-scrollable">
-                        <div class="scaff movie-sidebar items" id="recently-updated-list" data-template="sidebar">
+                    <div class="body">
+                        <div class="scaff movie-sidebar items">
                             <?php
-                            $shownRecent = 0;
-                            foreach ($recentlyUpdated as $item) {
+                            $sideRank = 0;
+                            $recentSource = !empty($latestMovies) ? $latestMovies : ($recentlyUpdated ?? []);
+                            foreach ($recentSource as $item) {
                                 if (($item['media_type'] ?? '') === 'person') continue;
-                                $type = (($item['media_type'] ?? 'movie') === 'tv') ? 'tv' : 'movie';
-                                require __DIR__ . '/../partials/sidebar-item.php';
-                                if (++$shownRecent >= 12) break;
-                            }
-                            if ($shownRecent === 0 && !empty($latestEpisodes)) {
-                                foreach ($latestEpisodes as $epItem) {
-                                    require __DIR__ . '/../partials/episode-list-item.php';
+                                $type = isset($item['title']) ? 'movie' : ((($item['media_type'] ?? 'movie') === 'tv') ? 'tv' : 'movie');
+                                if (isset($item['media_type']) && in_array($item['media_type'], ['movie', 'tv'], true)) {
+                                    $type = $item['media_type'];
                                 }
+                                $sideRank++;
+                                require __DIR__ . '/../partials/sidebar-item.php';
+                                if ($sideRank >= 5) break;
                             }
+                            unset($sideRank);
                             ?>
                         </div>
                     </div>

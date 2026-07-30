@@ -3,6 +3,7 @@
  * Sidebar row — matches original .scaff.movie-sidebar.items > a.movie-item
  * @var array $item
  * @var string $type
+ * @var int|null $sideRank optional 1–5 corner rank badge
  */
 $type = $type ?? (isset($item['title']) ? 'movie' : 'tv');
 if (isset($item['media_type']) && in_array($item['media_type'], ['movie', 'tv'], true)) {
@@ -16,8 +17,9 @@ $href = media_url($type, (int) $item['id'], $title);
 $poster = img_url($item['poster_path'] ?? null, 'w185');
 $rating = isset($item['vote_average']) ? round((float) $item['vote_average'], 1) : null;
 $label = $type === 'tv' ? 'TV' : 'Movie';
+$rankBadge = isset($sideRank) ? (int) $sideRank : 0;
 ?>
-<a class="movie-item" href="<?= e($href) ?>" data-id="<?= (int) $item['id'] ?>" data-type="<?= e($type) ?>">
+<a class="movie-item<?= $rankBadge ? ' movie-item--ranked' : '' ?>" href="<?= e($href) ?>" data-id="<?= (int) $item['id'] ?>" data-type="<?= e($type) ?>">
     <div class="item-poster" data-tip="<?= (int) $item['id'] ?>" data-media-type="<?= e($type) ?>">
         <div>
             <img class="lazyload"
@@ -25,6 +27,9 @@ $label = $type === 'tv' ? 'TV' : 'Movie';
                  src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='150'%3E%3Crect width='100%25' height='100%25' fill='%231a1c23'/%3E%3C/svg%3E"
                  alt="<?= e($title) ?>" loading="lazy">
         </div>
+        <?php if ($rankBadge > 0): ?>
+        <span class="sidebar-rank" aria-label="Rank <?= $rankBadge ?>"><?= $rankBadge ?></span>
+        <?php endif; ?>
     </div>
     <div class="info">
         <div>
