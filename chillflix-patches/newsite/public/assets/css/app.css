@@ -686,35 +686,51 @@ header.absolute .logo img {
 /*
  * Homepage columns: clip media rails inside .main so Most Commented /
  * Recently Added stay fully visible — no page-level horizontal scroll.
+ * Targets both body.home and .home-sidebar (body class was missing before).
  */
 @media (min-width: 1200px) {
-  body.home main > .container {
-    overflow-x: clip;
-    max-width: 100%;
+  html:has(body.home),
+  body.home {
+    overflow-x: hidden !important;
+    max-width: 100vw;
   }
 
-  body.home main .aside-wrapper {
+  body.home main > .container,
+  main > .container:has(.home-sidebar) {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  body.home main .aside-wrapper,
+  main .aside-wrapper:has(> .home-sidebar) {
     display: flex !important;
     flex-direction: row !important;
+    flex-wrap: nowrap !important;
     align-items: flex-start;
     gap: 1.25rem;
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
     overflow: hidden !important;
-    box-sizing: border-box;
+    box-sizing: border-box !important;
   }
 
-  body.home main .aside-wrapper > .main {
+  body.home main .aside-wrapper > .main,
+  main .aside-wrapper:has(> .home-sidebar) > .main {
     flex: 1 1 0% !important;
     min-width: 0 !important;
-    width: 0 !important; /* flex-basis wins; stops theme width:100% blowout */
-    max-width: none !important;
+    width: auto !important;
+    max-width: calc(100% - 22.5rem - 1.25rem) !important;
     margin-right: 0 !important;
     overflow: hidden !important;
+    box-sizing: border-box !important;
   }
 
-  body.home main .aside-wrapper > .sidebar {
+  body.home main .aside-wrapper > .sidebar,
+  main .aside-wrapper:has(> .home-sidebar) > .sidebar,
+  aside.sidebar.home-sidebar {
     display: flex !important;
     flex: 0 0 22.5rem !important;
     width: 22.5rem !important;
@@ -723,25 +739,33 @@ header.absolute .logo img {
     flex-grow: 0 !important;
     flex-shrink: 0 !important;
     overflow: visible;
+    box-sizing: border-box !important;
   }
 
   body.home .section-top10,
   body.home .section-rail,
   body.home .top10-rail-wrap,
-  body.home .media-rail-wrap {
-    max-width: 100%;
-    min-width: 0;
-    overflow: hidden;
+  body.home .media-rail-wrap,
+  main .aside-wrapper:has(> .home-sidebar) .section-top10,
+  main .aside-wrapper:has(> .home-sidebar) .section-rail,
+  main .aside-wrapper:has(> .home-sidebar) .top10-rail-wrap,
+  main .aside-wrapper:has(> .home-sidebar) .media-rail-wrap {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
   }
 
   body.home .section-top10 .top10-items,
   body.home .section-rail .media-rail-items,
-  body.home .section-episodes .episode-rail-items {
+  body.home .section-episodes .episode-rail-items,
+  main .aside-wrapper:has(> .home-sidebar) .top10-items,
+  main .aside-wrapper:has(> .home-sidebar) .media-rail-items,
+  main .aside-wrapper:has(> .home-sidebar) .episode-rail-items {
     width: 100% !important;
     max-width: 100% !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
-    box-sizing: border-box;
+    box-sizing: border-box !important;
   }
 }
 
@@ -760,17 +784,21 @@ main .aside-wrapper:not(:has(> .sidebar)) > .main {
 
 /* Mobile / tablet: sidebar stacks under the main rails */
 @media (max-width: 1199.98px) {
-  body.home main .aside-wrapper {
+  body.home main .aside-wrapper,
+  main .aside-wrapper:has(> .home-sidebar) {
     display: flex !important;
     flex-direction: column !important;
   }
 
-  body.home main .aside-wrapper > .main {
+  body.home main .aside-wrapper > .main,
+  main .aside-wrapper:has(> .home-sidebar) > .main {
     width: 100% !important;
+    max-width: 100% !important;
     margin-right: 0 !important;
   }
 
-  body.home main .aside-wrapper > .sidebar {
+  body.home main .aside-wrapper > .sidebar,
+  main .aside-wrapper:has(> .home-sidebar) > .sidebar {
     display: flex !important;
     width: 100% !important;
     min-width: 0 !important;

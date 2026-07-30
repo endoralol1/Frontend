@@ -314,6 +314,7 @@ function home(Tmdb $tmdb): void
         'latestEpisodes' => $latestEpisodes,
         'mostCommented' => $mostCommented,
         'recentlyUpdated' => $recentlyUpdated,
+        'bodyClass' => 'home',
         'seo' => [
             'title' => 'Home - Explore Thousands of Movies & Series | ' . config('site_name'),
             'description' => 'Start exploring our vast library of movies and TV series. Find new releases, popular titles, and browse by genre on ' . config('site_name') . '.',
