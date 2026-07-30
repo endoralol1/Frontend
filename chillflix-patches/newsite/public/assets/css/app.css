@@ -702,6 +702,16 @@ main .aside-wrapper:not(:has(> .sidebar)) > .main {
   #featured {
     height: min(78vh, 40rem) !important;
     min-height: 34rem;
+    margin-bottom: 1.15rem;
+  }
+
+  /* Nudge Top 10 / first rail a little further below the hero */
+  .container > .aside-wrapper {
+    margin-top: 0.85rem;
+  }
+
+  .section-top10 {
+    padding-top: 0.35rem;
   }
 
   #featured .swiper-wrapper .swiper-slide .wrapper {
