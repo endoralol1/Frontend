@@ -2644,22 +2644,22 @@ aside.sidebar .section .head .start .tabs .tab {
   .section-top10 .top10-items .movie-item.media-card--ranked,
   .section-rail:not(.section-episodes) .media-rail-items .movie-item {
     float: none !important;
-    flex: 0 0 10.35rem !important;
-    width: 10.35rem !important;
-    max-width: 10.35rem !important;
-    min-width: 10.35rem !important;
+    flex: 0 0 11.15rem !important;
+    width: 11.15rem !important;
+    max-width: 11.15rem !important;
+    min-width: 11.15rem !important;
     margin: 0 0 0.35rem !important;
-    padding: 0 0.35rem !important;
+    padding: 0 0.38rem !important;
     scroll-snap-align: start;
   }
 
   .section-episodes .episode-card {
     float: none !important;
     position: relative !important;
-    flex: 0 0 16.5rem !important;
-    width: 16.5rem !important;
-    min-width: 16.5rem !important;
-    max-width: 16.5rem !important;
+    flex: 0 0 17.75rem !important;
+    width: 17.75rem !important;
+    min-width: 17.75rem !important;
+    max-width: 17.75rem !important;
     margin: 0 0.4rem !important;
     grid-column: auto !important;
   }
