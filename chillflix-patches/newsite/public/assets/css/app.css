@@ -657,10 +657,25 @@ body.index > .wrapper .index-head:before {
 
 #featured .swiper-pagination {
   bottom: 1rem !important;
-  left: 2.5rem !important;
+  left: max(1.15rem, env(safe-area-inset-left, 0px)) !important;
   width: auto !important;
   text-align: left !important;
   z-index: 5;
+}
+
+/* PC: line up pagination bars with hero copy / media-card column */
+@media (min-width: 992px) {
+  #featured .swiper-pagination {
+    left: 50% !important;
+    right: auto !important;
+    width: min(1800px, 100%) !important;
+    max-width: min(1800px, 100%);
+    padding-left: calc(max(1rem, env(safe-area-inset-left, 0px)) + 0.45rem) !important;
+    padding-right: max(1rem, env(safe-area-inset-right, 0px)) !important;
+    box-sizing: border-box !important;
+    transform: translateX(-50%);
+    text-align: left !important;
+  }
 }
 
 #featured .swiper-pagination .swiper-pagination-bullet {
