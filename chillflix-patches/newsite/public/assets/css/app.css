@@ -683,8 +683,9 @@ header.absolute .logo img {
   margin-top: 0.25rem;
 }
 
-/* Homepage: no right sidebar — media rails use the full width */
+/* Homepage / browse: no right sidebar — media rails use the full width */
 body.home main .aside-wrapper,
+body.page-watch .aside-wrapper.swap:has(> .main:only-child),
 main .aside-wrapper:not(:has(> .sidebar)) {
   display: block !important;
 }
@@ -696,6 +697,13 @@ main .aside-wrapper:not(:has(> .sidebar)) > .main {
   margin-right: 0 !important;
   min-width: 0 !important;
   overflow: visible;
+}
+
+/* Hide leftover Most Commented / You may like rails if soft-nav caches them */
+body.home aside.sidebar,
+.discover-page aside.sidebar,
+body.page-watch .aside-wrapper.swap.mt-4 > aside.sidebar {
+  display: none !important;
 }
 
 @media (max-width: 991.98px) {
@@ -1054,8 +1062,8 @@ header .wrapper .start .logo img {
 
 @media (min-width: 992px) {
   header .wrapper .start .logo img {
-    width: 8.5rem !important;
-    max-width: 8.5rem;
+    width: 7.5rem !important;
+    max-width: 7.5rem;
     height: auto !important;
   }
 }
@@ -2340,14 +2348,14 @@ aside.sidebar .section .head .start .tabs {
   }
 }
 
-/* Desktop: same phone nav pill, sitting left near the logo */
+/* Desktop: same phone nav pill, pinned to the top-right */
 @media (min-width: 992px) {
   .bottom-nav {
     display: block !important;
     position: fixed;
     top: 0.75rem;
-    left: max(9.75rem, calc(env(safe-area-inset-left, 0px) + 9.75rem));
-    right: auto;
+    left: auto;
+    right: max(1rem, calc(env(safe-area-inset-right, 0px) + 1rem));
     bottom: auto;
     z-index: 130;
     width: auto;
@@ -2476,13 +2484,9 @@ aside.sidebar .section .head .start .tabs {
   }
 
   header .wrapper .start .logo img {
-    width: 9.5rem !important;
-    max-width: 9.5rem;
+    width: 7.5rem !important;
+    max-width: 7.5rem;
     height: auto !important;
-  }
-
-  .bottom-nav {
-    left: max(11rem, calc(env(safe-area-inset-left, 0px) + 11rem));
   }
 }
 

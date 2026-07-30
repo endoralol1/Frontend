@@ -313,27 +313,6 @@ $starFill = $rating !== null ? min(5, max(0, (int) round($rating / 2))) : 0;
                     </div>
                 </div>
             </aside>
-
-            <aside class="sidebar">
-                <div class="section">
-                    <div class="head">
-                        <div class="start">
-                            <h2 class="title gardiently">You may like</h2>
-                        </div>
-                    </div>
-                    <div class="body">
-                        <div class="scaff movie-sidebar items">
-                            <?php
-                            foreach ($similar as $sim) {
-                                $item = $sim;
-                                $type = isset($sim['title']) ? 'movie' : 'tv';
-                                require __DIR__ . '/../partials/sidebar-item.php';
-                            }
-                            ?>
-                        </div>
-                    </div>
-                </div>
-            </aside>
         </div>
     </div>
 </main>

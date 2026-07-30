@@ -2,7 +2,7 @@
 <div class="container">
     <div class="footer">
         <div class="logo w-100 d-flex justify-content-center py-4">
-            <img src="<?= e(asset('img/logo.webp')) ?>?v=20260730-brand3" alt="<?= e($site) ?>" loading="lazy" width="388" height="208" decoding="async">
+            <img src="<?= e(asset('img/logo.webp')) ?>?v=20260730-desk1" alt="<?= e($site) ?>" loading="lazy" width="388" height="208" decoding="async">
         </div>
         <div class="f-top">
             <div class="f-top-inner">
