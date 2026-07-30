@@ -1406,8 +1406,17 @@ header .wrapper {
   transition: border-color 0.25s ease, background 0.25s ease;
 }
 
-aside.sidebar .section .head {
-  margin-bottom: 0.65rem;
+aside.sidebar .section,
+aside.sidebar.home-sidebar .section {
+  padding: 1rem 0.85rem 0.85rem !important;
+  box-sizing: border-box;
+}
+
+aside.sidebar .section .head,
+aside.sidebar.home-sidebar .section .head {
+  margin-top: 0.15rem;
+  margin-bottom: 0.75rem;
+  padding-top: 0.2rem;
 }
 
 aside.sidebar .section .head .start {
@@ -1422,12 +1431,14 @@ aside.sidebar .section .head .start .title {
   overflow: visible !important;
   text-overflow: clip !important;
   font-size: 1.15rem !important;
-  line-height: 1.2;
-  margin: 0 !important;
+  line-height: 1.25;
+  margin: 0.15rem 0 0.1rem !important;
+  padding-top: 0.1rem;
 }
 
 aside.sidebar .section .head .start .tabs {
   flex: 0 0 auto;
+  margin-top: 0.1rem;
 }
 
 .movie-sidebar.items .movie-item:hover {
