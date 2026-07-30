@@ -49,7 +49,7 @@ $extraJs = $extraJs ?? [];
     <link rel="preload" href="<?= e(asset('img/logo.webp')) ?>" as="image" fetchpriority="high">
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,900;1,400&display=swap">
-    <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=20260730-rail1" fetchpriority="high">
+    <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=20260730-rail2" fetchpriority="high">
     <link rel="stylesheet" href="<?= e(asset('css/views.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/continue-watching.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/site-notice.css')) ?>">
@@ -57,7 +57,7 @@ $extraJs = $extraJs ?? [];
     <link rel="stylesheet" href="<?= e(asset('vendor/tooltipster.bundle.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/swiper.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/episode-carousel.css')) ?>">
-    <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=20260730-rail1">
+    <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=20260730-rail2">
     <?php foreach ($extraCss as $css): ?>
         <link rel="stylesheet" href="<?= e($css) ?>">
     <?php endforeach; ?>

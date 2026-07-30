@@ -684,34 +684,64 @@ header.absolute .logo img {
 }
 
 /*
- * Homepage columns: main rails must NOT force width:100% and shove the
- * Most Commented / Recently Added sidebar off-screen.
+ * Homepage columns: clip media rails inside .main so Most Commented /
+ * Recently Added stay fully visible — no page-level horizontal scroll.
  */
 @media (min-width: 1200px) {
+  body.home main > .container {
+    overflow-x: clip;
+    max-width: 100%;
+  }
+
   body.home main .aside-wrapper {
     display: flex !important;
     flex-direction: row !important;
     align-items: flex-start;
-    gap: 1.5rem;
-    width: 100%;
+    gap: 1.25rem;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    box-sizing: border-box;
   }
 
   body.home main .aside-wrapper > .main {
-    flex: 1 1 auto !important;
+    flex: 1 1 0% !important;
     min-width: 0 !important;
-    width: auto !important;
+    width: 0 !important; /* flex-basis wins; stops theme width:100% blowout */
     max-width: none !important;
     margin-right: 0 !important;
-    overflow: hidden;
+    overflow: hidden !important;
   }
 
   body.home main .aside-wrapper > .sidebar {
     display: flex !important;
-    flex: 0 0 25.5rem !important;
-    width: 25.5rem !important;
-    min-width: 25.5rem !important;
-    max-width: 25.5rem !important;
+    flex: 0 0 22.5rem !important;
+    width: 22.5rem !important;
+    min-width: 22.5rem !important;
+    max-width: 22.5rem !important;
     flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+    overflow: visible;
+  }
+
+  body.home .section-top10,
+  body.home .section-rail,
+  body.home .top10-rail-wrap,
+  body.home .media-rail-wrap {
+    max-width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  body.home .section-top10 .top10-items,
+  body.home .section-rail .media-rail-items,
+  body.home .section-episodes .episode-rail-items {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    box-sizing: border-box;
   }
 }
 
@@ -2529,7 +2559,7 @@ aside.sidebar .section .head .start .tabs .tab {
     padding-bottom: 0 !important;
   }
 
-  /* PC: keep one horizontal row (same as phone), larger cards + L/R arrows */
+  /* PC: one horizontal row — scroll ONLY inside the left column */
   .section-top10 .top10-items,
   .section-rail .media-rail-items {
     display: flex !important;
@@ -2538,13 +2568,15 @@ aside.sidebar .section .head .start .tabs .tab {
     gap: 0;
     overflow-x: auto !important;
     overflow-y: hidden !important;
-    width: auto !important;
-    margin: 0 -0.4rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
     padding: 0.25rem 0 0.85rem !important;
     cursor: grab;
     scroll-snap-type: x proximity;
     scrollbar-width: thin;
     scrollbar-color: rgba(219, 105, 55, 0.55) transparent;
+    box-sizing: border-box;
   }
 
   .section-top10 .top10-items::-webkit-scrollbar,
@@ -2570,7 +2602,7 @@ aside.sidebar .section .head .start .tabs .tab {
     display: inline-flex !important;
   }
 
-  /* Latest Episodes: never collapse into the poster grid — keep landscape rail */
+  /* Latest Episodes: landscape rail, clipped to main column */
   .section-episodes .episode-rail-items,
   .section-episodes .media-rail-items.episode-rail-items {
     display: flex !important;
@@ -2579,7 +2611,11 @@ aside.sidebar .section .head .start .tabs .tab {
     gap: 0 !important;
     overflow-x: auto !important;
     overflow-y: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
     grid-template-columns: none !important;
+    box-sizing: border-box;
   }
 
   .section-episodes .episode-card {
