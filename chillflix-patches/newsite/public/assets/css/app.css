@@ -470,6 +470,24 @@ body.index > .wrapper .index-head:before {
   z-index: 2;
 }
 
+/* PC: line up hero copy with the media-card column start */
+@media (min-width: 992px) {
+  #featured .swiper-wrapper .swiper-slide .wrapper {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    max-width: min(1800px, 100%) !important;
+    width: 100% !important;
+    padding-left: max(1rem, env(safe-area-inset-left, 0px)) !important;
+    padding-right: max(1rem, env(safe-area-inset-right, 0px)) !important;
+    padding-bottom: 3.6rem !important;
+  }
+
+  #featured .swiper-wrapper .swiper-slide .wrapper .info {
+    /* Match first card inset inside the rails */
+    margin-left: 0.45rem;
+  }
+}
+
 #featured .swiper-wrapper .swiper-slide .wrapper .info {
   max-width: 38rem !important;
   padding-bottom: 0 !important;
