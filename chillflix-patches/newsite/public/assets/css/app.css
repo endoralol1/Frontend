@@ -1698,18 +1698,19 @@ aside.sidebar .section .head .start .tabs .tab {
   margin: 0 -0.4rem;
   float: none !important;
   width: auto !important;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(219, 105, 55, 0.55) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   cursor: grab;
 }
 
 .section-top10 .top10-items::-webkit-scrollbar {
-  height: 6px;
+  display: none !important;
+  height: 0 !important;
+  width: 0 !important;
 }
 
 .section-top10 .top10-items::-webkit-scrollbar-thumb {
-  background: rgba(219, 105, 55, 0.45);
-  border-radius: 999px;
+  display: none !important;
 }
 
 .section-top10 .top10-items::after {
@@ -1944,18 +1945,19 @@ aside.sidebar .section .head .start .tabs .tab {
   margin: 0 -0.4rem;
   float: none !important;
   width: auto !important;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(219, 105, 55, 0.55) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   cursor: grab;
 }
 
 .section-rail .media-rail-items::-webkit-scrollbar {
-  height: 6px;
+  display: none !important;
+  height: 0 !important;
+  width: 0 !important;
 }
 
 .section-rail .media-rail-items::-webkit-scrollbar-thumb {
-  background: rgba(219, 105, 55, 0.45);
-  border-radius: 999px;
+  display: none !important;
 }
 
 .section-rail .media-rail-items::after {
@@ -2069,19 +2071,19 @@ aside.sidebar .section .head .start .tabs .tab {
   scroll-behavior: smooth;
   padding: 0.15rem 0 0.45rem;
   margin: 0 -0.4rem;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(219, 105, 55, 0.55) transparent;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   grid-template-columns: none !important;
 }
 
 .section-episodes .episode-rail-items::-webkit-scrollbar {
-  height: 6px;
-  display: block;
+  display: none !important;
+  height: 0 !important;
+  width: 0 !important;
 }
 
 .section-episodes .episode-rail-items::-webkit-scrollbar-thumb {
-  background: rgba(219, 105, 55, 0.45);
-  border-radius: 999px;
+  display: none !important;
 }
 
 .episode-card {
@@ -2602,15 +2604,17 @@ aside.sidebar .section .head .start .tabs .tab {
     padding: 0.25rem 0 0.85rem !important;
     cursor: grab;
     scroll-snap-type: x proximity;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(219, 105, 55, 0.55) transparent;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
     box-sizing: border-box;
   }
 
   .section-top10 .top10-items::-webkit-scrollbar,
-  .section-rail .media-rail-items::-webkit-scrollbar {
-    display: block !important;
-    height: 6px !important;
+  .section-rail .media-rail-items::-webkit-scrollbar,
+  .section-episodes .episode-rail-items::-webkit-scrollbar {
+    display: none !important;
+    height: 0 !important;
+    width: 0 !important;
   }
 
   .section-top10 .top10-items .movie-item.media-card--ranked,
