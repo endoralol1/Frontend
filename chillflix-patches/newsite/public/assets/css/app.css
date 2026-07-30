@@ -390,10 +390,9 @@ body {
 }
 
 /*
- * Theme ships a FULL-HEIGHT `.swiper-slide::after` dark wash
- * (linear-gradient(#0000004d, #000000b3) with top:0). That is what darkened
- * the logo zone. Disable every slide pseudo on #featured, then paint only a
- * small bottom-left text scrim (never touches the header/logo).
+ * Theme ships a FULL-HEIGHT `.swiper-slide::after` dark wash.
+ * Replace with a soft full-width bottom fade (no hard horizontal cut)
+ * plus a gentle left scrim for title readability.
  */
 #featured .swiper-slide:before,
 #featured .swiper-slide::before,
@@ -415,18 +414,30 @@ body.index > .wrapper .index-head:before {
   content: "" !important;
   display: block !important;
   position: absolute !important;
+  inset: 0 !important;
   left: 0 !important;
-  right: auto !important;
+  right: 0 !important;
+  top: 0 !important;
   bottom: 0 !important;
-  top: auto !important;
-  width: min(38rem, 52%) !important;
-  height: min(42%, 15rem) !important;
-  background: linear-gradient(
-    115deg,
-    rgba(8, 10, 16, 0.82) 0%,
-    rgba(8, 10, 16, 0.35) 58%,
-    transparent 100%
-  ) !important;
+  width: 100% !important;
+  height: 100% !important;
+  background:
+    /* soft left readability wash — no boxed edge */
+    linear-gradient(
+      90deg,
+      rgba(8, 10, 16, 0.55) 0%,
+      rgba(8, 10, 16, 0.22) 28%,
+      rgba(8, 10, 16, 0.06) 48%,
+      transparent 68%
+    ),
+    /* soft bottom blend into page — no hard cut line */
+    linear-gradient(
+      0deg,
+      rgba(10, 12, 18, 0.92) 0%,
+      rgba(10, 12, 18, 0.45) 18%,
+      rgba(10, 12, 18, 0.12) 38%,
+      transparent 58%
+    ) !important;
   box-shadow: none !important;
   filter: none !important;
   pointer-events: none;
