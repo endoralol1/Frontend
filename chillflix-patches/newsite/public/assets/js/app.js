@@ -1160,13 +1160,6 @@
     }, 1600);
   });
 
-  $(document).on('click', '[data-browse-ads]', function (e) {
-    e.preventDefault();
-    var $btn = $(this);
-    var on = !$btn.hasClass('is-on');
-    $btn.toggleClass('is-on', on).attr('aria-pressed', on ? 'true' : 'false').text(on ? 'ON' : 'OFF');
-  });
-
   window.addEventListener('popstate', function () {
     softNavigate(window.location.href, false);
   });

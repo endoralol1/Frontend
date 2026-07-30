@@ -158,12 +158,6 @@ $navTv = is_active('/tv-series') || (bool) preg_match('#^/tv(/|$)#', $path);
                     </button>
                 </div>
             </section>
-
-            <div class="browse-ads-row" role="group" aria-label="Ads status mock">
-                <i class="uil uil-sliders-v-alt"></i>
-                <span>Ads status</span>
-                <button type="button" class="browse-ads-toggle is-on" data-browse-ads aria-pressed="true">ON</button>
-            </div>
         </div>
     </div>
 </div>

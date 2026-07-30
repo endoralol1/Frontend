@@ -3416,41 +3416,6 @@ aside.sidebar .section .head .start .tabs .tab {
     font-size: 1.1rem;
   }
 
-  .browse-ads-row {
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    margin-top: 1rem;
-    padding: 0.7rem 0.8rem;
-    border-radius: 1rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.03);
-    color: rgba(255, 255, 255, 0.82);
-    font-size: 0.88rem;
-    font-weight: 600;
-  }
-
-  .browse-ads-row > span {
-    flex: 1;
-  }
-
-  .browse-ads-toggle {
-    border: 0;
-    border-radius: 999px;
-    min-width: 2.7rem;
-    height: 1.55rem;
-    padding: 0 0.55rem;
-    font-size: 0.68rem;
-    font-weight: 800;
-    letter-spacing: 0.04em;
-    color: #fff;
-    background: #6b7280;
-  }
-
-  .browse-ads-toggle.is-on {
-    background: #dc2626;
-  }
-
   body.browse-open {
     overflow: hidden;
   }
