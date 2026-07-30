@@ -161,6 +161,93 @@
                 </div>
                 <?php endif; ?>
             </aside>
+
+            <aside class="sidebar home-sidebar">
+                <div class="section">
+                    <div class="head">
+                        <div class="start">
+                            <h2 class="title gardiently">Most Commented</h2>
+                            <div class="tabs" data-tabs>
+                                <span class="tab active" data-name="day">Day</span>
+                                <span class="tab" data-name="week">Week</span>
+                                <span class="tab" data-name="month">Month</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="body">
+                        <div class="tab-content scaff movie-sidebar items" data-name="day" style="display:block">
+                            <?php
+                            $shown = 0;
+                            foreach ($mostCommented as $item) {
+                                if (($item['media_type'] ?? '') === 'person') continue;
+                                $type = (($item['media_type'] ?? 'movie') === 'tv') ? 'tv' : 'movie';
+                                require __DIR__ . '/../partials/sidebar-item.php';
+                                if (++$shown >= 10) break;
+                            }
+                            if ($shown === 0): ?>
+                                <div class="text-center text-muted p-3">No commented content for this period</div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="tab-content scaff movie-sidebar items" data-name="week" style="display:none">
+                            <?php
+                            $shown = 0;
+                            foreach ($recentlyUpdated as $item) {
+                                if (($item['media_type'] ?? '') === 'person') continue;
+                                $type = (($item['media_type'] ?? 'movie') === 'tv') ? 'tv' : 'movie';
+                                require __DIR__ . '/../partials/sidebar-item.php';
+                                if (++$shown >= 10) break;
+                            }
+                            ?>
+                        </div>
+                        <div class="tab-content scaff movie-sidebar items" data-name="month" style="display:none">
+                            <?php
+                            $shown = 0;
+                            foreach (array_slice($latestMovies, 0, 10) as $item) {
+                                $type = 'movie';
+                                require __DIR__ . '/../partials/sidebar-item.php';
+                                $shown++;
+                            }
+                            ?>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="head">
+                        <div class="start">
+                            <h2 class="title gardiently">Recently Added</h2>
+                        </div>
+                        <div class="end">
+                            <div class="btn-group pagination-control sidebar-slider-control" role="group">
+                                <button type="button" id="recently-updated-prev" class="btn btn-sm btn-primary" aria-label="Scroll up" disabled>
+                                    <i class="uil uil-angle-up"></i>
+                                </button>
+                                <button type="button" id="recently-updated-next" class="btn btn-sm btn-primary" aria-label="Scroll down">
+                                    <i class="uil uil-angle-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="body recently-updated-scrollable">
+                        <div class="scaff movie-sidebar items" id="recently-updated-list" data-template="sidebar">
+                            <?php
+                            $shownRecent = 0;
+                            foreach ($recentlyUpdated as $item) {
+                                if (($item['media_type'] ?? '') === 'person') continue;
+                                $type = (($item['media_type'] ?? 'movie') === 'tv') ? 'tv' : 'movie';
+                                require __DIR__ . '/../partials/sidebar-item.php';
+                                if (++$shownRecent >= 12) break;
+                            }
+                            if ($shownRecent === 0 && !empty($latestEpisodes)) {
+                                foreach ($latestEpisodes as $epItem) {
+                                    require __DIR__ . '/../partials/episode-list-item.php';
+                                }
+                            }
+                            ?>
+                        </div>
+                    </div>
+                </div>
+            </aside>
         </div>
     </div>
 </main>

@@ -683,14 +683,43 @@ header.absolute .logo img {
   margin-top: 0.25rem;
 }
 
-/* Homepage / browse: no right sidebar — media rails use the full width */
-body.home main .aside-wrapper,
-body.page-watch .aside-wrapper.swap:has(> .main:only-child),
+/*
+ * Homepage columns: main rails must NOT force width:100% and shove the
+ * Most Commented / Recently Added sidebar off-screen.
+ */
+@media (min-width: 1200px) {
+  body.home main .aside-wrapper {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-start;
+    gap: 1.5rem;
+    width: 100%;
+  }
+
+  body.home main .aside-wrapper > .main {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    margin-right: 0 !important;
+    overflow: hidden;
+  }
+
+  body.home main .aside-wrapper > .sidebar {
+    display: flex !important;
+    flex: 0 0 24rem !important;
+    width: 24rem !important;
+    min-width: 24rem !important;
+    max-width: 24rem !important;
+    flex-grow: 0 !important;
+  }
+}
+
+/* Pages without a sidebar still use full width */
 main .aside-wrapper:not(:has(> .sidebar)) {
   display: block !important;
 }
 
-body.home main .aside-wrapper > .main,
 main .aside-wrapper:not(:has(> .sidebar)) > .main {
   width: 100% !important;
   max-width: none !important;
@@ -699,11 +728,25 @@ main .aside-wrapper:not(:has(> .sidebar)) > .main {
   overflow: visible;
 }
 
-/* Hide leftover Most Commented / You may like rails if soft-nav caches them */
-body.home aside.sidebar,
-.discover-page aside.sidebar,
-body.page-watch .aside-wrapper.swap.mt-4 > aside.sidebar {
-  display: none !important;
+/* Mobile / tablet: sidebar stacks under the main rails */
+@media (max-width: 1199.98px) {
+  body.home main .aside-wrapper {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  body.home main .aside-wrapper > .main {
+    width: 100% !important;
+    margin-right: 0 !important;
+  }
+
+  body.home main .aside-wrapper > .sidebar {
+    display: flex !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin-top: 0.75rem;
+  }
 }
 
 @media (max-width: 991.98px) {
