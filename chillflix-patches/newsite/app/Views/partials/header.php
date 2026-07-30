@@ -8,7 +8,7 @@ $site = (string) config('site_name');
             <div class="start d-flex align-items-center">
                 <div id="menu-toggler" aria-label="Open menu"><i class="uil uil-list-ui-alt"></i></div>
                 <div class="logo">
-                    <a href="<?= e(url('/home')) ?>"><img src="<?= e(asset('img/logo.webp')) ?>?v=20260730-pro1" alt="<?= e($site) ?>" width="1172" height="199" decoding="async"></a>
+                    <a href="<?= e(url('/home')) ?>"><img src="<?= e(asset('img/logo.webp')) ?>?v=20260730-brand1" alt="<?= e($site) ?>" width="396" height="216" decoding="async"></a>
                 </div>
                 <div id="language-toggler" title="Language"><span class="lang-code">EN</span></div>
                 <div id="language-menu" style="display:none">
