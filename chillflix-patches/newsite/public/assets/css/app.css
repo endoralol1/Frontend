@@ -698,7 +698,7 @@ header.absolute .logo img {
   body.home main > .container,
   main > .container:has(.home-sidebar) {
     overflow-x: hidden !important;
-    max-width: min(1760px, 100%) !important;
+    max-width: min(1800px, 100%) !important;
     width: 100% !important;
     margin-left: auto !important;
     margin-right: auto !important;
@@ -754,7 +754,7 @@ header.absolute .logo img {
   main .aside-wrapper:has(> .home-sidebar) .media-rail-wrap {
     max-width: 100% !important;
     min-width: 0 !important;
-    overflow: hidden !important;
+    overflow: visible !important;
   }
 
   body.home .section-top10 .top10-items,
@@ -1643,8 +1643,10 @@ aside.sidebar .section .head .start .tabs .tab {
 }
 
 .movies.items .movie-item.media-card .inner:hover {
-  border-color: rgba(219, 105, 55, 0.65);
-  transform: translateY(-2px);
+  border-color: rgba(219, 105, 55, 0.85);
+  border-width: 1px;
+  border-style: solid;
+  transform: translateY(-1px);
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
 }
 
@@ -1718,7 +1720,8 @@ aside.sidebar .section .head .start .tabs .tab {
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x proximity;
   scroll-behavior: smooth;
-  padding: 0.35rem 0 0.85rem;
+  /* Top padding so hover orange border / lift is not clipped */
+  padding: 0.55rem 0 0.85rem;
   margin: 0 -0.4rem;
   float: none !important;
   width: auto !important;
@@ -1744,9 +1747,9 @@ aside.sidebar .section .head .start .tabs .tab {
 
 .section-top10 .top10-items .movie-item.media-card--ranked {
   float: none !important;
-  flex: 0 0 12.75rem;
-  width: 12.75rem !important;
-  max-width: 12.75rem;
+  flex: 0 0 13.75rem;
+  width: 13.75rem !important;
+  max-width: 13.75rem;
   margin: 0 0 0.35rem !important;
   padding: 0 0.45rem !important;
   scroll-snap-align: start;
@@ -1764,9 +1767,11 @@ aside.sidebar .section .head .start .tabs .tab {
 }
 
 .section-top10 .top10-items .movie-item.media-card--ranked .inner:hover {
-  border-color: rgba(219, 105, 55, 0.65);
+  border-color: rgba(219, 105, 55, 0.85);
+  border-width: 1px;
+  border-style: solid;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
 .section-top10 .top10-items .movie-item.media-card--ranked .inner .item-poster {
@@ -1911,16 +1916,16 @@ aside.sidebar .section .head .start .tabs .tab {
     overflow-y: hidden !important;
     gap: 0;
     scroll-snap-type: x mandatory;
-    padding: 0.25rem 1rem 0.85rem 0 !important;
+    padding: 0.55rem 1rem 0.85rem 0 !important;
     margin: 0 !important;
     width: 100% !important;
   }
 
   .section-top10 .top10-items .movie-item.media-card--ranked {
-    flex: 0 0 calc((100% - 0.75rem) / 2.35) !important;
-    width: calc((100% - 0.75rem) / 2.35) !important;
+    flex: 0 0 calc((100% - 0.75rem) / 2.15) !important;
+    width: calc((100% - 0.75rem) / 2.15) !important;
     max-width: none !important;
-    min-width: 9.5rem;
+    min-width: 10.5rem;
     padding: 0 0.35rem 0 0 !important;
     margin: 0 !important;
     scroll-snap-align: start;
@@ -1965,7 +1970,8 @@ aside.sidebar .section .head .start .tabs .tab {
   -webkit-overflow-scrolling: touch;
   scroll-snap-type: x proximity;
   scroll-behavior: smooth;
-  padding: 0.15rem 0 0.35rem;
+  /* Top padding so hover orange border / lift is not clipped */
+  padding: 0.55rem 0 0.45rem;
   margin: 0 -0.4rem;
   float: none !important;
   width: auto !important;
@@ -1991,12 +1997,13 @@ aside.sidebar .section .head .start .tabs .tab {
 
 .section-rail .media-rail-items .movie-item {
   float: none !important;
-  flex: 0 0 12.75rem;
-  width: 12.75rem !important;
-  max-width: 12.75rem;
+  flex: 0 0 13.75rem;
+  width: 13.75rem !important;
+  max-width: 13.75rem;
   margin: 0 0 0.35rem !important;
   padding: 0 0.45rem !important;
   scroll-snap-align: start;
+  overflow: visible !important;
 }
 
 .section-rail .media-rail-nav {
@@ -2048,16 +2055,16 @@ aside.sidebar .section .head .start .tabs .tab {
     overflow-y: hidden !important;
     gap: 0;
     scroll-snap-type: x mandatory;
-    padding: 0.15rem 1rem 0.55rem 0 !important;
+    padding: 0.55rem 1rem 0.55rem 0 !important;
     margin: 0 !important;
     width: 100% !important;
   }
 
   .section-rail .media-rail-items .movie-item {
-    flex: 0 0 calc((100% - 0.75rem) / 2.35) !important;
-    width: calc((100% - 0.75rem) / 2.35) !important;
+    flex: 0 0 calc((100% - 0.75rem) / 2.15) !important;
+    width: calc((100% - 0.75rem) / 2.15) !important;
     max-width: none !important;
-    min-width: 9.5rem;
+    min-width: 10.5rem;
     padding: 0 0.35rem 0 0 !important;
     margin: 0 !important;
     scroll-snap-align: start;
@@ -2613,7 +2620,7 @@ aside.sidebar .section .head .start .tabs .tab {
     padding-bottom: 0 !important;
   }
 
-  /* PC: one horizontal row — scroll ONLY inside the left column */
+  /* PC: visibly larger cards (~8–8.5 across), room for hover top border */
   .section-top10 .top10-items,
   .section-rail .media-rail-items {
     display: flex !important;
@@ -2625,7 +2632,7 @@ aside.sidebar .section .head .start .tabs .tab {
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
-    padding: 0.25rem 0 0.85rem !important;
+    padding: 0.65rem 0 0.85rem !important;
     cursor: grab;
     scroll-snap-type: x proximity;
     scrollbar-width: none !important;
@@ -2644,23 +2651,24 @@ aside.sidebar .section .head .start .tabs .tab {
   .section-top10 .top10-items .movie-item.media-card--ranked,
   .section-rail:not(.section-episodes) .media-rail-items .movie-item {
     float: none !important;
-    flex: 0 0 11.15rem !important;
-    width: 11.15rem !important;
-    max-width: 11.15rem !important;
-    min-width: 11.15rem !important;
+    flex: 0 0 13.75rem !important;
+    width: 13.75rem !important;
+    max-width: 13.75rem !important;
+    min-width: 13.75rem !important;
     margin: 0 0 0.35rem !important;
-    padding: 0 0.38rem !important;
+    padding: 0 0.45rem !important;
     scroll-snap-align: start;
+    overflow: visible !important;
   }
 
   .section-episodes .episode-card {
     float: none !important;
     position: relative !important;
-    flex: 0 0 17.75rem !important;
-    width: 17.75rem !important;
-    min-width: 17.75rem !important;
-    max-width: 17.75rem !important;
-    margin: 0 0.4rem !important;
+    flex: 0 0 19.5rem !important;
+    width: 19.5rem !important;
+    min-width: 19.5rem !important;
+    max-width: 19.5rem !important;
+    margin: 0 0.45rem !important;
     grid-column: auto !important;
   }
 
