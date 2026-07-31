@@ -189,7 +189,7 @@
                         $periodFirst = true;
                         foreach ($commentPeriods as $periodName => $periodItems):
                         ?>
-                        <div class="tab-content scaff movie-sidebar items" data-name="<?= e($periodName) ?>" style="display:<?= $periodFirst ? 'block' : 'none' ?>">
+                        <div class="tab-content scaff movie-sidebar items" data-name="<?= e($periodName) ?>" style="display:<?= $periodFirst ? 'flex' : 'none' ?>">
                             <?php
                             $sideRank = 0;
                             foreach ($periodItems as $item) {

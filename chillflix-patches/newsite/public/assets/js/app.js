@@ -204,13 +204,22 @@
       $wrap = $tab.closest('.section');
     }
     $tab.addClass('active').siblings('.tab').removeClass('active');
-    $wrap.find('> .tab-content, .tab-content').hide().filter('[data-name="' + name + '"]').show();
-    // recommended section structure
-    $tab.closest('.section').find('.tab-content').hide().filter('[data-name="' + name + '"]').show();
+    var $section = $tab.closest('.section');
+    $section.find('.tab-content').each(function () {
+      var $pane = $(this);
+      var on = $pane.data('name') === name;
+      if (!on) {
+        $pane.hide();
+        return;
+      }
+      // Sidebar lists need flex so row gaps render; rails can use block/flex fine
+      if ($pane.hasClass('movie-sidebar')) $pane.css('display', 'flex').show();
+      else $pane.show();
+    });
     setTimeout(function () {
       syncAllRails();
       // Cinema-reveal cards in the newly shown rail
-      $tab.closest('.section').find('.tab-content:visible .cf-cinema-item').addClass('cf-cinema-in');
+      $section.find('.tab-content:visible .cf-cinema-item').addClass('cf-cinema-in');
     }, 0);
   });
 
