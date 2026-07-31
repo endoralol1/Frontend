@@ -19,7 +19,10 @@ $rating = isset($item['vote_average']) ? round((float) $item['vote_average'], 1)
 $label = $type === 'tv' ? 'TV' : 'Movie';
 $rankBadge = isset($sideRank) ? (int) $sideRank : 0;
 ?>
-<a class="movie-item<?= $rankBadge ? ' movie-item--ranked' : '' ?>" href="<?= e($href) ?>" data-id="<?= (int) $item['id'] ?>" data-type="<?= e($type) ?>">
+<a class="movie-item<?= $rankBadge ? ' movie-item--ranked' : '' ?>" href="<?= e($href) ?>" data-id="<?= (int) $item['id'] ?>" data-type="<?= e($type) ?>"<?= $rankBadge ? ' style="--side-i:' . $rankBadge . '"' : '' ?>>
+    <?php if ($rankBadge > 0): ?>
+    <span class="sidebar-rank" aria-label="Rank <?= $rankBadge ?>"><?= $rankBadge ?></span>
+    <?php endif; ?>
     <div class="item-poster" data-tip="<?= (int) $item['id'] ?>" data-media-type="<?= e($type) ?>">
         <div>
             <img class="lazyload"
@@ -27,11 +30,9 @@ $rankBadge = isset($sideRank) ? (int) $sideRank : 0;
                  src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='150'%3E%3Crect width='100%25' height='100%25' fill='%231a1c23'/%3E%3C/svg%3E"
                  alt="<?= e($title) ?>" loading="lazy">
         </div>
-        <?php if ($rankBadge > 0): ?>
-        <span class="sidebar-rank" aria-label="Rank <?= $rankBadge ?>"><?= $rankBadge ?></span>
-        <?php endif; ?>
     </div>
     <div class="info">
+        <div class="name"><?= e($title) ?></div>
         <div class="meta sidebar-meta">
             <span class="rating status-icon"><?= e($label) ?></span>
             <?php if ($rating !== null && $rating > 0): ?>
@@ -41,6 +42,5 @@ $rankBadge = isset($sideRank) ? (int) $sideRank : 0;
             <span class="hero-chip"><i class="uil uil-calender"></i> <?= e($year) ?></span>
             <?php endif; ?>
         </div>
-        <div class="name"><?= e($title) ?></div>
     </div>
 </a>
