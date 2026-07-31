@@ -1498,15 +1498,15 @@ header .wrapper {
 }
 
 
-/* Homepage sidebar — Most Commented / Recently Added */
+/* Homepage sidebar — older look, lightly refined */
 aside.sidebar.home-sidebar .section,
 aside.sidebar .section {
   padding: 1rem 0.85rem 0.85rem !important;
-  margin-bottom: 0.9rem !important;
+  margin-bottom: 0.75rem !important;
   box-sizing: border-box;
-  background: linear-gradient(180deg, rgba(22, 25, 34, 0.96) 0%, rgba(16, 18, 26, 0.96) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.95rem;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 
 aside.sidebar.home-sidebar .section:last-child,
@@ -1516,9 +1516,9 @@ aside.sidebar .section:last-child {
 
 aside.sidebar .section .head,
 aside.sidebar.home-sidebar .section .head {
-  margin-top: 0;
-  margin-bottom: 0.75rem;
-  padding-top: 0.05rem;
+  margin-top: 0.1rem;
+  margin-bottom: 0.7rem;
+  padding-top: 0.15rem;
 }
 
 aside.sidebar .section .head .start {
@@ -1538,13 +1538,12 @@ aside.sidebar .section .head .start .title {
   white-space: nowrap !important;
   overflow: visible !important;
   text-overflow: clip !important;
-  font-size: 1rem !important;
-  font-weight: 800 !important;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  font-size: 0.98rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
   margin: 0 !important;
   padding-top: 0;
-  color: #f5f7fa !important;
 }
 
 aside.sidebar .section .head .start .tabs {
@@ -1565,51 +1564,47 @@ aside.sidebar .section .head .start .tabs .tab {
 aside.sidebar .scaff.movie-sidebar.items {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.28rem;
 }
 
 .movie-sidebar.items .movie-item {
   display: flex !important;
   align-items: center !important;
-  background: rgba(10, 12, 18, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.75rem;
-  padding: 0.42rem 0.48rem;
-  gap: 0.65rem;
+  background: #1a1c23;
+  border: 0;
+  border-radius: 0.7rem;
+  padding: 0.32rem 0.4rem;
+  gap: 0.55rem;
   margin: 0;
   min-height: 0;
   text-decoration: none;
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    transform 0.2s ease;
+  transition: background 0.2s ease;
 }
 
 .movie-sidebar.items .movie-item:hover {
-  background: rgba(219, 105, 55, 0.08);
-  border-color: rgba(219, 105, 55, 0.45);
-  transform: translateX(2px);
+  background: #242832;
+  border: 0;
+  transform: none;
 }
 
 .movie-sidebar.items .movie-item .item-poster {
-  width: 3.15rem !important;
-  min-width: 3.15rem;
-  max-width: 3.15rem;
-  border-radius: 0.48rem;
+  width: 3.05rem !important;
+  min-width: 3.05rem;
+  max-width: 3.05rem;
+  border-radius: 0.45rem;
   flex-shrink: 0 !important;
   overflow: hidden;
   aspect-ratio: 2 / 3;
   margin: 0 !important;
   background: #15171d;
   position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 0;
+  box-shadow: none;
 }
 
 .movie-sidebar.items .movie-item:hover .item-poster {
-  transform: scale(1.03);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.38);
+  transform: none;
+  box-shadow: none;
 }
 
 .movie-sidebar.items .movie-item .sidebar-rank {
@@ -1617,21 +1612,21 @@ aside.sidebar .scaff.movie-sidebar.items {
   top: 0;
   left: 0;
   z-index: 2;
-  min-width: 1.2rem;
-  height: 1.2rem;
+  min-width: 1.15rem;
+  height: 1.15rem;
   padding: 0 0.28rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0 0 0.42rem 0;
+  border-radius: 0 0 0.4rem 0;
   background: linear-gradient(135deg, #db6937 0%, #c43c2e 100%);
   border: 0;
   color: #fff;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0.01em;
-  box-shadow: 0 2px 8px rgba(196, 60, 46, 0.4);
+  box-shadow: none;
 }
 
 .movie-sidebar.items .movie-item .item-poster > div,
@@ -1640,31 +1635,31 @@ aside.sidebar .scaff.movie-sidebar.items {
   height: 100% !important;
   object-fit: cover;
   display: block;
-  transition: transform 0.25s ease;
+  transition: none;
 }
 
 .movie-sidebar.items .movie-item:hover .item-poster img {
-  transform: scale(1.04);
+  transform: none;
 }
 
 .movie-sidebar.items .movie-item .info {
   min-width: 0;
   flex: 1 1 auto;
-  padding: 0 0.15rem 0 0 !important;
+  padding: 0 0.45rem 0 0 !important;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.38rem;
+  gap: 0.28rem;
 }
 
-/* Same chip language as hero: Movie/TV + star rating + year */
+/* Hero-like meta chips, sized for sidebar */
 .movie-sidebar.items .movie-item .sidebar-meta,
 .movie-sidebar.items .movie-item .info > .meta {
   display: flex !important;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.28rem;
   margin: 0 !important;
   line-height: 1;
 }
@@ -1678,46 +1673,44 @@ aside.sidebar .scaff.movie-sidebar.items {
   margin: 0 !important;
   display: inline-flex !important;
   align-items: center;
-  gap: 0.22rem;
-  padding: 0.22rem 0.5rem !important;
+  gap: 0.2rem;
+  padding: 0.2rem 0.48rem !important;
   border-radius: 999px !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
-  background: rgba(12, 14, 20, 0.55) !important;
-  color: rgba(255, 255, 255, 0.88) !important;
-  font-size: 0.68rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  background: rgba(12, 14, 20, 0.4) !important;
+  color: rgba(255, 255, 255, 0.86) !important;
+  font-size: 0.66rem !important;
   font-weight: 600 !important;
   line-height: 1 !important;
   height: auto !important;
   min-width: 0 !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 .movie-sidebar.items .movie-item .sidebar-meta > span.rating,
 .movie-sidebar.items .movie-item .info > .meta > span.rating {
-  border-color: rgba(219, 105, 55, 0.4) !important;
-  background: rgba(219, 105, 55, 0.18) !important;
+  border-color: rgba(219, 105, 55, 0.38) !important;
+  background: rgba(219, 105, 55, 0.16) !important;
   color: #ffd2b8 !important;
 }
 
 .movie-sidebar.items .movie-item .sidebar-meta .uil-star,
 .movie-sidebar.items .movie-item .info > .meta .uil-star {
   color: #ffc107 !important;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
 }
 
 .movie-sidebar.items .movie-item .sidebar-meta .uil-calender,
 .movie-sidebar.items .movie-item .info > .meta .uil-calender {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.7rem;
 }
 
 .movie-sidebar.items .movie-item .info .name {
-  font-weight: 750;
-  font-size: 0.9rem !important;
-  color: #f5f7fa;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  font-weight: 650;
+  font-size: 0.88rem !important;
+  color: #e9ecef;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -1727,12 +1720,12 @@ aside.sidebar .scaff.movie-sidebar.items {
 }
 
 .movie-sidebar.items .movie-item:hover .info .name {
-  color: #ffd2b8;
+  color: #fff;
 }
 
 @media (min-width: 1200px) {
   .movie-sidebar.items .movie-item .info .name {
-    font-size: 0.94rem !important;
+    font-size: 0.92rem !important;
   }
 }
 
