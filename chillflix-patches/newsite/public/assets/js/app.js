@@ -207,7 +207,11 @@
     $wrap.find('> .tab-content, .tab-content').hide().filter('[data-name="' + name + '"]').show();
     // recommended section structure
     $tab.closest('.section').find('.tab-content').hide().filter('[data-name="' + name + '"]').show();
-    setTimeout(syncAllRails, 0);
+    setTimeout(function () {
+      syncAllRails();
+      // Cinema-reveal cards in the newly shown rail
+      $tab.closest('.section').find('.tab-content:visible .cf-cinema-item').addClass('cf-cinema-in');
+    }, 0);
   });
 
   // Horizontal rails (Top 10 + homepage Recommended/Movies/TV)
@@ -224,6 +228,62 @@
   function syncAllRails() {
     $('.top10-items, .media-rail-items').each(function () {
       syncRailNav($(this));
+    });
+  }
+
+  function initCinemaReveal() {
+    if (!$('body').hasClass('home')) return;
+
+    var $rails = $('body.home .top10-items, body.home .media-rail-items, body.home .episode-rail-items');
+    if (!$rails.length) return;
+
+    $rails.each(function () {
+      $(this).children('.movie-item, .episode-card').each(function (idx) {
+        $(this)
+          .addClass('cf-cinema-item')
+          .css('--cf-i', String(Math.min(idx, 10)));
+      });
+    });
+
+    if (prefersReducedMotion()) {
+      $rails.children('.cf-cinema-item').addClass('cf-cinema-in');
+      return;
+    }
+
+    if (window.__cinemaRevealIO) {
+      try {
+        window.__cinemaRevealIO.disconnect();
+      } catch (e) {}
+    }
+
+    if (!('IntersectionObserver' in window)) {
+      $rails.children('.cf-cinema-item').addClass('cf-cinema-in');
+      return;
+    }
+
+    window.__cinemaRevealIO = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          $(entry.target).children('.cf-cinema-item').addClass('cf-cinema-in');
+          window.__cinemaRevealIO.unobserve(entry.target);
+        });
+      },
+      { rootMargin: '48px 0px', threshold: 0.1 }
+    );
+
+    $rails.each(function () {
+      var rect = this.getBoundingClientRect();
+      var onScreen = rect.top < window.innerHeight * 0.94 && rect.bottom > 40;
+      if (onScreen) {
+        var rail = this;
+        // Slight beat after paint, then cascade 1→2→3…
+        setTimeout(function () {
+          $(rail).children('.cf-cinema-item').addClass('cf-cinema-in');
+        }, 120);
+      } else {
+        window.__cinemaRevealIO.observe(this);
+      }
     });
   }
 
@@ -1001,6 +1061,7 @@
     renderFavoritesPage();
     syncAllRails();
     refreshLazyMedia();
+    initCinemaReveal();
     prefetchBottomNavTargets();
     bindMediaPrefetchObserver();
     syncTriInputs();
@@ -1208,6 +1269,8 @@
     initSwiper();
     initRecentlyUpdated();
     renderFavoritesPage();
+    syncAllRails();
+    initCinemaReveal();
     document.addEventListener('lazybeforeunveil', function (e) {
       var bg = e.target.getAttribute('data-bgset');
       if (bg) e.target.style.backgroundImage = 'url(' + bg + ')';
