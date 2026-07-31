@@ -172,13 +172,27 @@
                     <div class="head">
                         <div class="start">
                             <h2 class="title gardiently">Most Commented</h2>
+                            <div class="tabs" data-tabs data-id="most-commented" data-persist="true">
+                                <span class="tab active" data-name="day">Day</span>
+                                <span class="tab" data-name="week">Week</span>
+                                <span class="tab" data-name="month">Month</span>
+                            </div>
                         </div>
                     </div>
                     <div class="body">
-                        <div class="scaff movie-sidebar items">
+                        <?php
+                        $commentPeriods = [
+                            'day' => $mostCommentedDay ?? $mostCommented ?? [],
+                            'week' => $mostCommentedWeek ?? $recentlyUpdated ?? [],
+                            'month' => $mostCommentedMonth ?? [],
+                        ];
+                        $periodFirst = true;
+                        foreach ($commentPeriods as $periodName => $periodItems):
+                        ?>
+                        <div class="tab-content scaff movie-sidebar items" data-name="<?= e($periodName) ?>" style="display:<?= $periodFirst ? 'block' : 'none' ?>">
                             <?php
                             $sideRank = 0;
-                            foreach ($mostCommented as $item) {
+                            foreach ($periodItems as $item) {
                                 if (($item['media_type'] ?? '') === 'person') continue;
                                 $type = (($item['media_type'] ?? 'movie') === 'tv') ? 'tv' : 'movie';
                                 $sideRank++;
@@ -186,11 +200,16 @@
                                 if ($sideRank >= 5) break;
                             }
                             if ($sideRank === 0): ?>
-                                <div class="text-center text-muted p-3">No commented content right now</div>
+                                <div class="text-center text-muted p-3">No commented content for this period</div>
                             <?php endif;
                             unset($sideRank);
                             ?>
                         </div>
+                        <?php
+                        $periodFirst = false;
+                        endforeach;
+                        unset($commentPeriods, $periodFirst, $periodName, $periodItems);
+                        ?>
                     </div>
                 </div>
 

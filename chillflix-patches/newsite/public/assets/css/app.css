@@ -1611,12 +1611,12 @@ aside.sidebar.home-sidebar .section .head .start {
 }
 
 aside.sidebar.home-sidebar .section .head .start .title {
-  flex: 0 0 auto !important;
-  min-width: max-content !important;
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
   max-width: none !important;
   white-space: nowrap !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
   font-size: 1.05rem !important;
   font-weight: 800 !important;
   letter-spacing: -0.025em;
@@ -1624,6 +1624,19 @@ aside.sidebar.home-sidebar .section .head .start .title {
   margin: 0 !important;
   padding-top: 0;
   color: #f7f8fa !important;
+}
+
+aside.sidebar.home-sidebar .section .head .start .tabs {
+  flex: 0 0 auto !important;
+  margin-left: auto !important;
+  height: 1.85rem;
+  padding: 0.12rem;
+  gap: 0.08rem;
+}
+
+aside.sidebar.home-sidebar .section .head .start .tabs .tab {
+  padding: 0.28rem 0.5rem !important;
+  font-size: 0.68rem !important;
 }
 
 aside.sidebar.home-sidebar .scaff.movie-sidebar.items {

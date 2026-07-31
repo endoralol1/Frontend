@@ -299,8 +299,37 @@ function home(Tmdb $tmdb): void
         'vote_count.gte' => 20,
         'page' => 1,
     ])['results'] ?? [];
-    $mostCommented = array_slice($tmdb->trending('all', 'day'), 0, 10);
-    $recentlyUpdated = array_slice($tmdb->trending('all', 'week'), 0, 12);
+    $mostCommentedDay = array_slice($tmdb->trending('all', 'day'), 0, 16);
+    $mostCommentedWeek = array_slice($tmdb->trending('all', 'week'), 0, 16);
+    // TMDB has no "month" trending window — approximate with popular titles from the last 30 days
+    $monthFrom = date('Y-m-d', strtotime('-30 days'));
+    $monthMovies = $tmdb->discover('movie', [
+        'sort_by' => 'popularity.desc',
+        'vote_count.gte' => 40,
+        'primary_release_date.gte' => $monthFrom,
+        'page' => 1,
+    ])['results'] ?? [];
+    $monthTv = $tmdb->discover('tv', [
+        'sort_by' => 'popularity.desc',
+        'vote_count.gte' => 40,
+        'first_air_date.gte' => $monthFrom,
+        'page' => 1,
+    ])['results'] ?? [];
+    foreach ($monthMovies as &$mm) {
+        $mm['media_type'] = 'movie';
+    }
+    unset($mm);
+    foreach ($monthTv as &$mt) {
+        $mt['media_type'] = 'tv';
+    }
+    unset($mt);
+    $mostCommentedMonth = array_merge($monthMovies, $monthTv);
+    usort($mostCommentedMonth, static function ($a, $b) {
+        return ((float) ($b['popularity'] ?? 0)) <=> ((float) ($a['popularity'] ?? 0));
+    });
+    $mostCommentedMonth = array_slice($mostCommentedMonth, 0, 16);
+    $mostCommented = $mostCommentedDay;
+    $recentlyUpdated = array_slice($mostCommentedWeek, 0, 12);
     $latestEpisodes = $tmdb->latestEpisodes(12);
 
     view('pages/home', [
@@ -313,6 +342,9 @@ function home(Tmdb $tmdb): void
         'latestTv' => array_slice($latestTv, 0, 12),
         'latestEpisodes' => $latestEpisodes,
         'mostCommented' => $mostCommented,
+        'mostCommentedDay' => $mostCommentedDay,
+        'mostCommentedWeek' => $mostCommentedWeek,
+        'mostCommentedMonth' => $mostCommentedMonth,
         'recentlyUpdated' => $recentlyUpdated,
         'bodyClass' => 'home',
         'seo' => [
