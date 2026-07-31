@@ -6,13 +6,13 @@ Live path: `/var/www/chillflix-newsite/`
 
 On movie/TV watch pages (e.g. `/newsite/movie/supergirl/1081003`):
 
-1. **You may also like** sidebar for movies (uses TMDB similar/recommendations already loaded).
-2. **More like this** poster grid under the detail block.
-3. **Cast row** with photos + character names (CSS was already present).
-4. **Genre links** into `/movies` or `/tv-series` discover filters.
-5. Removed empty **Comments coming soon**; added a **Report an issue** button instead.
-6. Clearer **Trailer** label on the player poster.
-7. Richer JSON-LD (`genre`, `director`, `actor`, `duration`).
+1. Current title details sit directly under the player; **You may also like** is below that (desktop sidebar / mobile bottom).
+2. **Cast row** with photos + character names.
+3. **Genre links** into `/movies` or `/tv-series` discover filters.
+4. Removed empty **Comments coming soon**; added a **Report an issue** button instead.
+5. Clearer **Trailer** label on the player poster.
+6. Richer JSON-LD (`genre`, `director`, `actor`, `duration`).
+7. No duplicate **More like this** poster grid.
 
 ## Deploy
 

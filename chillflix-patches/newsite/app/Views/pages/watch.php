@@ -176,39 +176,6 @@ $starFill = $rating !== null ? min(5, max(0, (int) round($rating / 2))) : 0;
 
             <div class="clearfix"></div>
 
-            <?php if ($type === 'movie' && $similar): ?>
-            <aside class="sidebar">
-                <div class="section">
-                    <div class="head">
-                        <div class="start">
-                            <h2 class="title gardiently">You may also like</h2>
-                        </div>
-                    </div>
-                    <div class="body">
-                        <div class="scaff movie-sidebar items">
-                            <?php
-                            $sideRank = 0;
-                            foreach (array_slice($similar, 0, 8) as $sideItem) {
-                                $item = $sideItem;
-                                $type = 'movie';
-                                if (isset($sideItem['media_type']) && in_array($sideItem['media_type'], ['movie', 'tv'], true)) {
-                                    $type = $sideItem['media_type'];
-                                } elseif (isset($sideItem['name']) && !isset($sideItem['title'])) {
-                                    $type = 'tv';
-                                }
-                                $sideRank++;
-                                require __DIR__ . '/../partials/sidebar-item.php';
-                            }
-                            $item = $watchItem;
-                            $type = $watchType;
-                            unset($sideRank, $sideItem);
-                            ?>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-            <?php endif; ?>
-
             <?php if ($type === 'tv'): ?>
             <aside class="sidebar">
                 <div id="movie-episode" class="tv">
@@ -388,41 +355,45 @@ $starFill = $rating !== null ? min(5, max(0, (int) round($rating / 2))) : 0;
                 </div>
                 <?php endif; ?>
 
-                <?php if ($similar): ?>
-                <div class="section watch-similar" style="margin-top:20px;">
-                    <div class="head">
-                        <div class="start">
-                            <h2 class="title gardiently">More like this</h2>
-                        </div>
-                    </div>
-                    <div class="body">
-                        <div class="scaff movies items">
-                            <?php
-                            foreach (array_slice($similar, 0, 8) as $simItem) {
-                                $item = $simItem;
-                                $type = $watchType;
-                                if (isset($simItem['media_type']) && in_array($simItem['media_type'], ['movie', 'tv'], true)) {
-                                    $type = $simItem['media_type'];
-                                } elseif (isset($simItem['name']) && !isset($simItem['title'])) {
-                                    $type = 'tv';
-                                }
-                                require __DIR__ . '/../partials/movie-card.php';
-                            }
-                            $item = $watchItem;
-                            $type = $watchType;
-                            unset($simItem);
-                            ?>
-                        </div>
-                    </div>
-                </div>
-                <?php endif; ?>
-
                 <div class="section watch-report" style="margin-top:20px;">
                     <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle="modal" data-target="#report">
                         <i class="uil uil-exclamation-triangle"></i> Report an issue
                     </button>
                 </div>
             </aside>
+
+            <?php if ($similar): ?>
+            <aside class="sidebar">
+                <div class="section watch-similar">
+                    <div class="head">
+                        <div class="start">
+                            <h2 class="title gardiently">You may also like</h2>
+                        </div>
+                    </div>
+                    <div class="body">
+                        <div class="scaff movie-sidebar items">
+                            <?php
+                            $sideRank = 0;
+                            foreach (array_slice($similar, 0, 8) as $sideItem) {
+                                $item = $sideItem;
+                                $type = $watchType;
+                                if (isset($sideItem['media_type']) && in_array($sideItem['media_type'], ['movie', 'tv'], true)) {
+                                    $type = $sideItem['media_type'];
+                                } elseif (isset($sideItem['name']) && !isset($sideItem['title'])) {
+                                    $type = 'tv';
+                                }
+                                $sideRank++;
+                                require __DIR__ . '/../partials/sidebar-item.php';
+                            }
+                            $item = $watchItem;
+                            $type = $watchType;
+                            unset($sideRank, $sideItem);
+                            ?>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+            <?php endif; ?>
         </div>
     </div>
 </main>
