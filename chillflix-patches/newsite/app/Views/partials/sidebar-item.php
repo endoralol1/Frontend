@@ -28,7 +28,10 @@ $rankBadge = isset($sideRank) ? (int) $sideRank : 0;
             <img class="lazyload"
                  data-src="<?= e($poster) ?>"
                  src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='150'%3E%3Crect width='100%25' height='100%25' fill='%231a1c23'/%3E%3C/svg%3E"
-                 alt="<?= e($title) ?>" loading="lazy">
+                 alt="<?= e($title) ?>"
+                 width="100" height="150"
+                 loading="lazy"
+                 decoding="async">
         </div>
     </div>
     <div class="info">

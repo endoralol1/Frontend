@@ -2,15 +2,20 @@
     <div class="swiper swiper-container" id="featured">
         <div class="hero-toplift" aria-hidden="true"></div>
         <div class="swiper-wrapper">
-            <?php foreach ($featured as $slide):
+            <?php foreach ($featured as $i => $slide):
                 $t = title_of($slide);
                 $y = year_of(date_of($slide));
                 $href = media_url('movie', (int) $slide['id'], $t);
-                $bg = img_url($slide['backdrop_path'] ?? $slide['poster_path'] ?? null, 'original');
+                /* w1280 looks sharp full-bleed; original (2K–4K) was a major decode cost */
+                $bg = img_url($slide['backdrop_path'] ?? $slide['poster_path'] ?? null, 'w1280');
                 $rating = isset($slide['vote_average']) ? round((float) $slide['vote_average'], 1) : null;
                 $desc = truncate((string) ($slide['overview'] ?? ''), 160);
+                $heroStyle = 'background-color:#0a0c12;';
+                if ((int) $i === 0) {
+                    $heroStyle .= 'background-image:url(' . e($bg) . ');';
+                }
             ?>
-            <div class="swiper-slide lazyload" data-bgset="<?= e($bg) ?>" style="background-color:#0a0c12;">
+            <div class="swiper-slide<?= (int) $i === 0 ? ' lazyloaded' : ' lazyload' ?>"<?php if ((int) $i !== 0): ?> data-bgset="<?= e($bg) ?>"<?php endif; ?> style="<?= $heroStyle ?>">
                 <div class="wrapper">
                     <div class="info">
                         <div class="hero-kicker">Now Featured</div>

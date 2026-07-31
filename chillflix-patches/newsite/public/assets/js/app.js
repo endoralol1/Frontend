@@ -251,6 +251,24 @@
     toggleFav($(this));
   });
 
+  function isLowEndDevice() {
+    try {
+      if (navigator.connection && (navigator.connection.saveData || /2g/.test(navigator.connection.effectiveType || ''))) {
+        return true;
+      }
+    } catch (e) {}
+    return (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+      (navigator.deviceMemory && navigator.deviceMemory <= 4);
+  }
+
+  function prefersReducedMotion() {
+    try {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Featured swiper (Swiper 5 uses .swiper-container)
   function initSwiper() {
     if (!window.Swiper || !$('#featured').length) return;
@@ -260,18 +278,60 @@
       } catch (e) {}
       window.__featuredSwiper = null;
     }
+    if (window.__featuredSwiperIO) {
+      try {
+        window.__featuredSwiperIO.disconnect();
+      } catch (e) {}
+      window.__featuredSwiperIO = null;
+    }
+
+    var lowEnd = isLowEndDevice();
+    var reduceMotion = prefersReducedMotion();
+    var useAutoplay = !reduceMotion && !lowEnd;
+
     window.__featuredSwiper = new Swiper('#featured', {
       loop: true,
-      effect: 'fade',
+      effect: lowEnd ? 'slide' : 'fade',
       fadeEffect: { crossFade: true },
-      speed: 900,
-      autoplay: { delay: 6500, disableOnInteraction: false },
+      speed: lowEnd ? 450 : 900,
+      autoplay: useAutoplay ? { delay: 6500, disableOnInteraction: false } : false,
       pagination: { el: '#featured .swiper-pagination', clickable: true },
       navigation: {
         nextEl: '#featured .swiper-button-next',
         prevEl: '#featured .swiper-button-prev'
+      },
+      on: {
+        slideChange: function () {
+          // Unveil nearby hero backgrounds only when needed
+          var swiper = this;
+          [swiper.realIndex, swiper.realIndex + 1].forEach(function (idx) {
+            var slide = swiper.slides[idx];
+            if (!slide) return;
+            var bg = slide.getAttribute('data-bgset');
+            if (bg && !slide.style.backgroundImage) {
+              slide.style.backgroundImage = 'url(' + bg + ')';
+              slide.classList.add('lazyloaded');
+              slide.classList.remove('lazyload');
+            }
+          });
+        }
       }
     });
+
+    // Pause autoplay when hero leaves viewport (saves GPU while scrolling rails)
+    if (useAutoplay && 'IntersectionObserver' in window) {
+      window.__featuredSwiperIO = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            if (!window.__featuredSwiper || !window.__featuredSwiper.autoplay) return;
+            if (entry.isIntersecting) window.__featuredSwiper.autoplay.start();
+            else window.__featuredSwiper.autoplay.stop();
+          });
+        },
+        { threshold: 0.2 }
+      );
+      window.__featuredSwiperIO.observe(document.getElementById('featured'));
+    }
   }
 
   // Recently updated sidebar scroller
@@ -773,6 +833,11 @@
 
   function initMediaTips() {
     if (!$.fn.tooltipster) return;
+    // Tooltips are desktop-hover UX — skip on touch / narrow screens
+    try {
+      if (window.matchMedia('(hover: none), (max-width: 991.98px)').matches) return;
+    } catch (e) {}
+
     var $targets = $('.movies.items .item-poster[data-tip], .scaff.movies .item-poster[data-tip]');
     if (!$targets.length) return;
 
@@ -904,48 +969,22 @@
   }
 
   function bindMediaPrefetchObserver() {
-    if (!('IntersectionObserver' in window)) {
-      prefetchVisibleMediaLinks();
-      return;
-    }
+    // Scroll-time HTML prefetch fights image loading on weak devices — disabled.
+    // Intent prefetch still runs on pointerdown (see handlers below).
     if (window.__mediaPrefetchObs) {
       try {
         window.__mediaPrefetchObs.disconnect();
       } catch (e) {}
+      window.__mediaPrefetchObs = null;
     }
-    window.__mediaPrefetchObs = new IntersectionObserver(
-      function (entries) {
-        entries.forEach(function (entry) {
-          if (!entry.isIntersecting) return;
-          var a = entry.target.closest('a[href]');
-          if (a && a.href && isInternalSoftUrl(a.href)) prefetchPage(a.href);
-          window.__mediaPrefetchObs.unobserve(entry.target);
-        });
-      },
-      { rootMargin: '240px 0px', threshold: 0.01 }
-    );
-    $(mediaSoftLinkSelector).each(function () {
-      window.__mediaPrefetchObs.observe(this);
-    });
   }
 
 
   function refreshLazyMedia() {
+    // Only ask lazysizes to check viewport — never force-load every image
     if (window.lazySizes && lazySizes.loader && typeof lazySizes.loader.checkElems === 'function') {
       lazySizes.loader.checkElems();
     }
-    $('[data-bgset]').each(function () {
-      if (!this.style.backgroundImage) {
-        this.style.backgroundImage = 'url(' + this.getAttribute('data-bgset') + ')';
-      }
-      $(this).addClass('lazyloaded');
-    });
-    $('img.lazyload[data-src]').each(function () {
-      if (!this.getAttribute('src') || this.getAttribute('src').indexOf('data:image') === 0) {
-        this.src = this.getAttribute('data-src');
-      }
-      $(this).addClass('lazyloaded');
-    });
   }
 
   function afterSoftNav() {
@@ -1168,37 +1207,30 @@
     updateFavCounter();
     initSwiper();
     initRecentlyUpdated();
-    initMediaTips();
     renderFavoritesPage();
-    if (window.lazysizes) {
-      document.addEventListener('lazybeforeunveil', function (e) {
-        var bg = e.target.getAttribute('data-bgset');
-        if (bg) e.target.style.backgroundImage = 'url(' + bg + ')';
-      });
+    document.addEventListener('lazybeforeunveil', function (e) {
+      var bg = e.target.getAttribute('data-bgset');
+      if (bg) e.target.style.backgroundImage = 'url(' + bg + ')';
+    });
+    // Desktop tip widgets after first paint / idle
+    var bootTips = function () {
+      initMediaTips();
+    };
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(bootTips, { timeout: 1800 });
     } else {
-      $('[data-bgset]').each(function () {
-        this.style.backgroundImage = 'url(' + this.getAttribute('data-bgset') + ')';
-        $(this).addClass('lazyloaded');
-      });
-      $('img.lazyload[data-src]').each(function () {
-        this.src = this.getAttribute('data-src');
-        $(this).addClass('lazyloaded');
-      });
+      setTimeout(bootTips, 600);
     }
     try {
       history.replaceState({ softnav: 1 }, '', window.location.href);
     } catch (e) {}
-    // Warm Home / Movies / TV so the first tap is instant
+    // Only warm primary nav routes when idle — not every media card HTML
     if ('requestIdleCallback' in window) {
       requestIdleCallback(function () {
         prefetchBottomNavTargets();
-        bindMediaPrefetchObserver();
-      }, { timeout: 800 });
+      }, { timeout: 2000 });
     } else {
-      setTimeout(function () {
-        prefetchBottomNavTargets();
-        bindMediaPrefetchObserver();
-      }, 120);
+      setTimeout(prefetchBottomNavTargets, 900);
     }
   });
 })(jQuery);

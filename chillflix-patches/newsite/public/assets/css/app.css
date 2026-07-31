@@ -307,7 +307,8 @@ body {
     radial-gradient(820px 480px at 100% 0%, rgba(220, 53, 69, 0.1), transparent 52%),
     radial-gradient(700px 420px at 50% 120%, rgba(219, 105, 55, 0.07), transparent 60%),
     linear-gradient(180deg, #191d27 0%, var(--cf-bg) 36%, var(--cf-bg-deep) 100%) !important;
-  background-attachment: fixed;
+  /* scroll (not fixed): avoids full-viewport repaint on every scroll frame */
+  background-attachment: scroll;
   background-color: var(--cf-bg) !important;
   min-height: 100%;
 }
@@ -338,10 +339,8 @@ body {
   top: 50%;
   transform: translateY(-50%);
   border-radius: 999px;
-  background: rgba(12, 14, 20, 0.42);
+  background: rgba(12, 14, 20, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
@@ -585,13 +584,11 @@ body.index > .wrapper .index-head:before {
   padding: 0.28rem 0.65rem;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.16) !important;
-  background: rgba(12, 14, 20, 0.45) !important;
+  background: rgba(12, 14, 20, 0.72) !important;
   color: rgba(255, 255, 255, 0.88) !important;
   font-size: 0.78rem;
   font-weight: 600;
   line-height: 1;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
 }
 
 #featured .swiper-wrapper .swiper-slide .wrapper .info .meta span + span {
@@ -1411,12 +1408,38 @@ header .wrapper {
 }
 
 .movies.items .movie-item .inner:hover .item-poster img {
-  transform: scale(1.05);
+  transform: scale(1.04);
+}
+
+/* Skip offscreen paint work for long homepage rails */
+body.home main > .container .section-rail,
+body.home main > .container .aside-wrapper > .sidebar {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 420px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .movies.items .movie-item .inner:hover .item-poster img,
+  .episode-card:hover .episode-card-media img,
+  aside.sidebar.home-sidebar .movie-sidebar.items .movie-item:hover .item-poster img {
+    transform: none !important;
+  }
+
+  .episode-card:hover,
+  aside.sidebar.home-sidebar .movie-sidebar.items .movie-item:hover {
+    transform: none !important;
+  }
+}
+
+/* Quieter lazy placeholders — less infinite shimmer work */
+.lazyload:not(.lazyloaded)::before,
+.lazyloading:not(.lazyloaded)::before {
+  animation: none !important;
+  background: #1a1c23 !important;
 }
 
 .movies.items .movie-item .inner .quality {
-  background: rgba(12, 14, 18, 0.78);
-  backdrop-filter: blur(8px);
+  background: rgba(12, 14, 18, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   color: #ffc107;
@@ -1697,13 +1720,11 @@ aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .item-poster img {
   height: 100% !important;
   object-fit: cover;
   display: block;
-  transition: transform 0.35s ease, filter 0.22s ease;
-  filter: saturate(0.96) contrast(1.03);
+  transition: transform 0.25s ease;
 }
 
 aside.sidebar.home-sidebar .movie-sidebar.items .movie-item:hover .item-poster img {
-  transform: scale(1.06);
-  filter: saturate(1.05) contrast(1.05);
+  transform: scale(1.04);
 }
 
 aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info {
@@ -2083,13 +2104,12 @@ aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta .uil-c
   height: 2.4rem;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(18, 20, 28, 0.82);
   color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  backdrop-filter: blur(6px);
   transition: background 0.2s ease, opacity 0.2s ease;
 }
 
@@ -2223,13 +2243,12 @@ aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta .uil-c
   height: 2.4rem;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(18, 20, 28, 0.82);
   color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  backdrop-filter: blur(6px);
   transition: background 0.2s ease, opacity 0.2s ease;
 }
 
@@ -2641,13 +2660,11 @@ aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta .uil-c
     margin: 0 auto;
     padding: 0.35rem;
     border-radius: 1.35rem;
-    background: rgba(18, 20, 28, 0.55);
+    background: rgba(14, 16, 22, 0.94);
     border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow:
       0 10px 30px rgba(0, 0, 0, 0.35),
       inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(18px) saturate(1.25);
-    -webkit-backdrop-filter: blur(18px) saturate(1.25);
   }
 
   .bottom-nav-item {
@@ -2754,13 +2771,11 @@ aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta .uil-c
     margin: 0;
     padding: 0.16rem;
     border-radius: 1rem;
-    background: rgba(18, 20, 28, 0.55);
+    background: rgba(14, 16, 22, 0.94);
     border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow:
       0 10px 30px rgba(0, 0, 0, 0.35),
       inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    backdrop-filter: blur(18px) saturate(1.25);
-    -webkit-backdrop-filter: blur(18px) saturate(1.25);
   }
 
   .bottom-nav-item {

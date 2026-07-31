@@ -27,7 +27,9 @@ $overview = truncate((string) ($item['overview'] ?? ''), 72);
              data-src="<?= e($still) ?>"
              src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='180'%3E%3Crect width='100%25' height='100%25' fill='%231a1c23'/%3E%3C/svg%3E"
              alt="<?= e($title) ?>"
-             loading="lazy">
+             width="320" height="180"
+             loading="lazy"
+             decoding="async">
         <span class="episode-card-badge"><?= e($label) ?></span>
         <div class="episode-card-meta">
             <div class="episode-card-show"><?= e($title) ?></div>
