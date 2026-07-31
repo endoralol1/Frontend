@@ -82,3 +82,8 @@ Origin cannot replace CF Managed Challenge for Chrome-spoofing bots. Keep Bot Fi
 2. Open site in a normal browser → should load without interstitial (or rare Managed Challenge)
 3. `curl -I https://www.chillflix.lol/movie/123` → challenge/block/403, not a full HTML page storm
 4. Watch Security → Events for Managed Challenge / Bot Fight hits
+
+## “Is this really Semrush?”
+
+Usually **no** — UA spoofing is trivial. See **[IDENTIFY-BOT-SOURCES.md](./IDENTIFY-BOT-SOURCES.md)**  
+(visitor IP via `/var/log/nginx/chillflix.cf.log` + Cloudflare ASN / reverse DNS).
