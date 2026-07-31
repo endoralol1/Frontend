@@ -1639,9 +1639,18 @@ aside.sidebar.home-sidebar .section .head .start .tabs .tab {
   font-size: 0.68rem !important;
 }
 
-aside.sidebar.home-sidebar .scaff.movie-sidebar.items,
-aside.sidebar.home-sidebar .tab-content.scaff.movie-sidebar.items {
+/* Recently Added (no tabs): always a flex column with gaps */
+aside.sidebar.home-sidebar .scaff.movie-sidebar.items:not(.tab-content) {
   display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
+}
+
+/*
+ * Most Commented tab panes: do NOT force display — hidden panes must stay
+ * display:none. When JS shows a pane as flex, gap still applies.
+ */
+aside.sidebar.home-sidebar .tab-content.scaff.movie-sidebar.items {
   flex-direction: column !important;
   gap: 0.75rem !important;
 }
