@@ -229,21 +229,11 @@ export const MovieHero: React.FC<MovieHeroProps> = ({
                   ) : null}
                 </div>
 
-                {(item.trendingRank && item.trendingRank <= 10) ||
-                item.isHot ||
-                item.isNewlyLaunched ? (
+                {item.isHot || item.isNewlyLaunched ? (
                   <div
                     className="home-hero-badges animate-fade-in-down"
                     style={{ animationDelay: "0.28s" }}
                   >
-                    {item.trendingRank && item.trendingRank <= 10 ? (
-                      <span className="home-hero-badge home-hero-badge-today">
-                        <span className="home-hero-badge-rank">
-                          #{item.trendingRank}
-                        </span>
-                        <span>Today</span>
-                      </span>
-                    ) : null}
                     {item.isHot ? (
                       <span className="home-hero-badge home-hero-badge-hot">
                         <Flame

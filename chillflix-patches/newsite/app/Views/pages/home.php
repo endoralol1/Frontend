@@ -42,11 +42,8 @@
                             <?php if ($y): ?><span class="hero-chip"><i class="uil uil-calender"></i> <?= e($y) ?></span><?php endif; ?>
                             <?php if ($runtimeLabel): ?><span class="hero-chip"><i class="uil uil-clock"></i> <?= e($runtimeLabel) ?></span><?php endif; ?>
                         </div>
-                        <?php if (($rank > 0 && $rank <= 10) || $isHot || $isNew): ?>
+                        <?php if ($isHot || $isNew): ?>
                         <div class="hero-badges">
-                            <?php if ($rank > 0 && $rank <= 10): ?>
-                            <span class="hero-badge hero-badge-today"><span class="hero-badge-rank">#<?= (int) $rank ?></span><span>Today</span></span>
-                            <?php endif; ?>
                             <?php if ($isHot): ?>
                             <span class="hero-badge hero-badge-hot"><i class="uil uil-fire"></i><span>HOT</span></span>
                             <?php endif; ?>
