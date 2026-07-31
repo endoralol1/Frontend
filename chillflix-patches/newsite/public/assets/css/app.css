@@ -2824,11 +2824,11 @@ aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta .uil-c
     pointer-events: auto;
     display: flex;
     align-items: center;
-    gap: 0.08rem;
+    gap: 0.18rem;
     max-width: none;
     margin: 0;
-    padding: 0.16rem;
-    border-radius: 1rem;
+    padding: 0.28rem;
+    border-radius: 1.15rem;
     background: rgba(14, 16, 22, 0.94);
     border: 1px solid rgba(255, 255, 255, 0.12);
     box-shadow:
@@ -2841,13 +2841,13 @@ aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta .uil-c
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0.05rem;
-    min-width: 3.85rem;
-    min-height: 2.45rem;
-    padding: 0.16rem 0.38rem 0.12rem;
+    gap: 0.14rem;
+    min-width: 4.55rem;
+    min-height: 3.05rem;
+    padding: 0.28rem 0.55rem 0.22rem;
     border: 0;
     background: transparent;
-    border-radius: 0.8rem;
+    border-radius: 0.95rem;
     color: rgba(255, 255, 255, 0.62);
     text-decoration: none;
     cursor: pointer;
@@ -2866,19 +2866,19 @@ aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta .uil-c
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    border-radius: 0.55rem;
+    width: 1.85rem;
+    height: 1.85rem;
+    border-radius: 0.65rem;
   }
 
   .bottom-nav-icon i {
-    font-size: 1.05rem;
+    font-size: 1.2rem;
     line-height: 1;
   }
 
   .bottom-nav-label {
-    font-size: 0.58rem;
-    font-weight: 600;
+    font-size: 0.7rem;
+    font-weight: 650;
     letter-spacing: 0.01em;
     line-height: 1;
   }
@@ -2901,9 +2901,17 @@ aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta .uil-c
     padding-bottom: 0 !important;
   }
 
-  /* PC: visibly larger cards (~8–8.5 across), room for hover top border */
+  /* PC rails: no visible scrollbars; room for round L/R buttons inside */
+  .section-top10 .top10-rail-wrap,
+  .section-rail .media-rail-wrap {
+    padding: 0 2.9rem;
+    box-sizing: border-box;
+  }
+
   .section-top10 .top10-items,
-  .section-rail .media-rail-items {
+  .section-rail .media-rail-items,
+  .section-episodes .episode-rail-items,
+  .section-episodes .media-rail-items.episode-rail-items {
     display: flex !important;
     flex-wrap: nowrap !important;
     align-items: flex-start;
@@ -2917,27 +2925,39 @@ aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta .uil-c
     cursor: grab;
     scroll-snap-type: x proximity;
     scrollbar-width: none !important;
+    scrollbar-color: transparent transparent !important;
     -ms-overflow-style: none !important;
     box-sizing: border-box;
   }
 
   .section-top10 .top10-items::-webkit-scrollbar,
   .section-rail .media-rail-items::-webkit-scrollbar,
-  .section-episodes .episode-rail-items::-webkit-scrollbar {
+  .section-episodes .episode-rail-items::-webkit-scrollbar,
+  .section-episodes .media-rail-items.episode-rail-items::-webkit-scrollbar,
+  .section-top10 .top10-items::-webkit-scrollbar-thumb,
+  .section-rail .media-rail-items::-webkit-scrollbar-thumb,
+  .section-episodes .episode-rail-items::-webkit-scrollbar-thumb,
+  .section-top10 .top10-items::-webkit-scrollbar-track,
+  .section-rail .media-rail-items::-webkit-scrollbar-track,
+  .section-episodes .episode-rail-items::-webkit-scrollbar-track {
     display: none !important;
-    height: 0 !important;
     width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
   }
 
+  /* Slightly bigger cards on PC */
   .section-top10 .top10-items .movie-item.media-card--ranked,
   .section-rail:not(.section-episodes) .media-rail-items .movie-item {
     float: none !important;
-    flex: 0 0 13.75rem !important;
-    width: 13.75rem !important;
-    max-width: 13.75rem !important;
-    min-width: 13.75rem !important;
+    flex: 0 0 14.75rem !important;
+    width: 14.75rem !important;
+    max-width: 14.75rem !important;
+    min-width: 14.75rem !important;
     margin: 0 0 0.35rem !important;
-    padding: 0 0.45rem !important;
+    padding: 0 0.5rem !important;
     scroll-snap-align: start;
     overflow: visible !important;
   }
@@ -2945,33 +2965,47 @@ aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta .uil-c
   .section-episodes .episode-card {
     float: none !important;
     position: relative !important;
-    flex: 0 0 19.5rem !important;
-    width: 19.5rem !important;
-    min-width: 19.5rem !important;
-    max-width: 19.5rem !important;
-    margin: 0 0.45rem !important;
+    flex: 0 0 21rem !important;
+    width: 21rem !important;
+    min-width: 21rem !important;
+    max-width: 21rem !important;
+    margin: 0 0.5rem !important;
     grid-column: auto !important;
   }
 
+  /* Round rail buttons: bigger, inside the rail (not clipped/squished) */
   .section-top10 .top10-nav,
   .section-rail .media-rail-nav {
     display: inline-flex !important;
+    width: 2.9rem !important;
+    height: 2.9rem !important;
+    top: 42%;
+    background: rgba(14, 16, 22, 0.92) !important;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
   }
 
-  /* Latest Episodes: landscape rail, clipped to main column */
+  .section-top10 .top10-nav i,
+  .section-rail .media-rail-nav i {
+    font-size: 1.7rem !important;
+  }
+
+  .section-top10 .top10-nav-prev,
+  .section-rail .media-rail-nav-prev {
+    left: 0.15rem !important;
+  }
+
+  .section-top10 .top10-nav-next,
+  .section-rail .media-rail-nav-next {
+    right: 0.15rem !important;
+  }
+
+  /* Latest Episodes / Recommended landscape rails */
   .section-episodes .episode-rail-items,
   .section-episodes .media-rail-items.episode-rail-items {
-    display: flex !important;
-    flex-wrap: nowrap !important;
     align-items: stretch !important;
     gap: 0 !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
     grid-template-columns: none !important;
-    box-sizing: border-box;
   }
 
   header .wrapper .start .logo img {
