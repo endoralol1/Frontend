@@ -1498,15 +1498,15 @@ header .wrapper {
 }
 
 
-/* Homepage sidebar — clean ranked lists */
+/* Homepage sidebar — Most Commented / Recently Added */
 aside.sidebar.home-sidebar .section,
 aside.sidebar .section {
-  padding: 0.95rem 0.8rem 0.75rem !important;
-  margin-bottom: 0.85rem !important;
+  padding: 1rem 0.85rem 0.85rem !important;
+  margin-bottom: 0.9rem !important;
   box-sizing: border-box;
-  background: rgba(18, 20, 28, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.055);
-  border-radius: 0.9rem;
+  background: linear-gradient(180deg, rgba(22, 25, 34, 0.96) 0%, rgba(16, 18, 26, 0.96) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.95rem;
 }
 
 aside.sidebar.home-sidebar .section:last-child,
@@ -1517,7 +1517,7 @@ aside.sidebar .section:last-child {
 aside.sidebar .section .head,
 aside.sidebar.home-sidebar .section .head {
   margin-top: 0;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.75rem;
   padding-top: 0.05rem;
 }
 
@@ -1538,12 +1538,13 @@ aside.sidebar .section .head .start .title {
   white-space: nowrap !important;
   overflow: visible !important;
   text-overflow: clip !important;
-  font-size: 0.92rem !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.01em;
-  line-height: 1.25;
+  font-size: 1rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   margin: 0 !important;
   padding-top: 0;
+  color: #f5f7fa !important;
 }
 
 aside.sidebar .section .head .start .tabs {
@@ -1564,17 +1565,17 @@ aside.sidebar .section .head .start .tabs .tab {
 aside.sidebar .scaff.movie-sidebar.items {
   display: flex;
   flex-direction: column;
-  gap: 0.28rem;
+  gap: 0.4rem;
 }
 
 .movie-sidebar.items .movie-item {
   display: flex !important;
   align-items: center !important;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 0.7rem;
-  padding: 0.35rem 0.4rem;
-  gap: 0.55rem;
+  background: rgba(10, 12, 18, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  padding: 0.42rem 0.48rem;
+  gap: 0.65rem;
   margin: 0;
   min-height: 0;
   text-decoration: none;
@@ -1585,49 +1586,23 @@ aside.sidebar .scaff.movie-sidebar.items {
 }
 
 .movie-sidebar.items .movie-item:hover {
-  background: rgba(255, 255, 255, 0.035);
-  border-color: rgba(219, 105, 55, 0.28);
+  background: rgba(219, 105, 55, 0.08);
+  border-color: rgba(219, 105, 55, 0.45);
   transform: translateX(2px);
 }
 
-.movie-sidebar.items .movie-item .sidebar-rank {
-  position: static;
-  flex: 0 0 1.35rem;
-  width: 1.35rem;
-  min-width: 1.35rem;
-  height: 1.35rem;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.4rem;
-  background: linear-gradient(145deg, rgba(219, 105, 55, 0.22), rgba(196, 60, 46, 0.12));
-  border: 1px solid rgba(219, 105, 55, 0.38);
-  color: #ffc8a8;
-  font-size: 0.72rem;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: 0.01em;
-  box-shadow: none;
-}
-
-.movie-sidebar.items .movie-item:nth-child(1) .sidebar-rank {
-  background: linear-gradient(145deg, #db6937 0%, #c43c2e 100%);
-  border-color: transparent;
-  color: #fff;
-}
-
 .movie-sidebar.items .movie-item .item-poster {
-  width: 2.85rem !important;
-  min-width: 2.85rem;
-  max-width: 2.85rem;
-  border-radius: 0.42rem;
+  width: 3.15rem !important;
+  min-width: 3.15rem;
+  max-width: 3.15rem;
+  border-radius: 0.48rem;
   flex-shrink: 0 !important;
   overflow: hidden;
   aspect-ratio: 2 / 3;
   margin: 0 !important;
   background: #15171d;
   position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -1635,6 +1610,28 @@ aside.sidebar .scaff.movie-sidebar.items {
 .movie-sidebar.items .movie-item:hover .item-poster {
   transform: scale(1.03);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.38);
+}
+
+.movie-sidebar.items .movie-item .sidebar-rank {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  min-width: 1.2rem;
+  height: 1.2rem;
+  padding: 0 0.28rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0 0 0.42rem 0;
+  background: linear-gradient(135deg, #db6937 0%, #c43c2e 100%);
+  border: 0;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 8px rgba(196, 60, 46, 0.4);
 }
 
 .movie-sidebar.items .movie-item .item-poster > div,
@@ -1653,68 +1650,74 @@ aside.sidebar .scaff.movie-sidebar.items {
 .movie-sidebar.items .movie-item .info {
   min-width: 0;
   flex: 1 1 auto;
-  padding: 0 0.1rem 0 0 !important;
+  padding: 0 0.15rem 0 0 !important;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.22rem;
+  gap: 0.38rem;
 }
 
-.movie-sidebar.items .movie-item .info > div,
-.movie-sidebar.items .movie-item .sidebar-meta {
-  display: flex;
-  align-items: center;
+/* Same chip language as hero: Movie/TV + star rating + year */
+.movie-sidebar.items .movie-item .sidebar-meta,
+.movie-sidebar.items .movie-item .info > .meta {
+  display: flex !important;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  font-size: 0.68rem;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0 !important;
   line-height: 1;
-  color: rgba(233, 236, 239, 0.55);
 }
 
-.movie-sidebar.items .movie-item .sidebar-meta .sidebar-type,
-.movie-sidebar.items .movie-item .info > div > span.rating.status-icon {
-  display: inline-flex;
+.movie-sidebar.items .movie-item .sidebar-meta > span,
+.movie-sidebar.items .movie-item .sidebar-meta > span.rating,
+.movie-sidebar.items .movie-item .sidebar-meta > span.hero-chip,
+.movie-sidebar.items .movie-item .info > .meta > span,
+.movie-sidebar.items .movie-item .info > .meta > span.rating,
+.movie-sidebar.items .movie-item .info > .meta > span.hero-chip {
+  margin: 0 !important;
+  display: inline-flex !important;
   align-items: center;
-  padding: 0.16rem 0.42rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(233, 236, 239, 0.72);
-  font-size: 0.62rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  height: auto;
-  min-width: 0;
+  gap: 0.22rem;
+  padding: 0.22rem 0.5rem !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  background: rgba(12, 14, 20, 0.55) !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+  font-size: 0.68rem !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  height: auto !important;
+  min-width: 0 !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-.movie-sidebar.items .movie-item .sidebar-meta .sidebar-rating,
-.movie-sidebar.items .movie-item .sidebar-meta .sidebar-year,
-.movie-sidebar.items .movie-item .info > div > span:not(.rating) {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.18rem;
-  color: rgba(233, 236, 239, 0.58);
-  font-weight: 500;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  height: auto;
+.movie-sidebar.items .movie-item .sidebar-meta > span.rating,
+.movie-sidebar.items .movie-item .info > .meta > span.rating {
+  border-color: rgba(219, 105, 55, 0.4) !important;
+  background: rgba(219, 105, 55, 0.18) !important;
+  color: #ffd2b8 !important;
 }
 
-.movie-sidebar.items .movie-item .sidebar-meta .sidebar-rating i,
-.movie-sidebar.items .movie-item .info > div > span .uil-star {
-  color: #ffc107;
+.movie-sidebar.items .movie-item .sidebar-meta .uil-star,
+.movie-sidebar.items .movie-item .info > .meta .uil-star {
+  color: #ffc107 !important;
+  font-size: 0.72rem;
+}
+
+.movie-sidebar.items .movie-item .sidebar-meta .uil-calender,
+.movie-sidebar.items .movie-item .info > .meta .uil-calender {
+  color: rgba(255, 255, 255, 0.72);
   font-size: 0.72rem;
 }
 
 .movie-sidebar.items .movie-item .info .name {
-  font-weight: 650;
-  font-size: 0.84rem !important;
-  color: #f3f5f7;
-  letter-spacing: -0.015em;
-  line-height: 1.25;
+  font-weight: 750;
+  font-size: 0.9rem !important;
+  color: #f5f7fa;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -1729,7 +1732,7 @@ aside.sidebar .scaff.movie-sidebar.items {
 
 @media (min-width: 1200px) {
   .movie-sidebar.items .movie-item .info .name {
-    font-size: 0.88rem !important;
+    font-size: 0.94rem !important;
   }
 }
 
