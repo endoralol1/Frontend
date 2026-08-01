@@ -216,25 +216,28 @@
         '<div class="cf-party-scrim" data-party-close></div>' +
         '<div class="cf-party-sheet" role="dialog" aria-label="Watch Party">' +
         '<header class="cf-party-head">' +
-        "<div><p class=\"cf-party-kicker\">Watch together</p><h3>Watch Party</h3></div>" +
+        '<div class="cf-party-copy">' +
+        '<p class="cf-party-kicker"><span class="cf-party-dot" aria-hidden="true"></span>Watch together</p>' +
+        "<h3>Watch Party</h3>" +
+        "</div>" +
         '<button type="button" class="cf-party-x" data-party-close aria-label="Close">&times;</button>' +
         "</header>" +
-        '<div class="cf-party-tabs">' +
-        '<button type="button" class="is-active" data-party-tab="create">Create</button>' +
-        '<button type="button" data-party-tab="join">Join</button>' +
+        '<div class="cf-party-tabs" role="tablist" aria-label="Watch Party mode">' +
+        '<button type="button" class="is-active" data-party-tab="create" role="tab" aria-selected="true">Create</button>' +
+        '<button type="button" data-party-tab="join" role="tab" aria-selected="false">Join</button>' +
         "</div>" +
         '<section class="cf-party-pane is-active" data-party-pane="create">' +
-        '<p class="cf-party-hint">Pick any movie/show, share the code, watch in sync.</p>' +
-        '<label class="cf-party-label">Search title</label>' +
+        '<p class="cf-party-hint">Pick any movie or show, share the code, and watch in sync.</p>' +
+        '<label class="cf-party-label" for="cf-party-q">Search title</label>' +
         '<input type="search" id="cf-party-q" class="cf-party-input" placeholder="Search movies & TV…" autocomplete="off">' +
         '<div id="cf-party-results" class="cf-party-results"></div>' +
         '<div id="cf-party-created" class="cf-party-created" hidden></div>' +
         "</section>" +
         '<section class="cf-party-pane" data-party-pane="join">' +
         '<p class="cf-party-hint">Enter a 4-digit party code from your friend.</p>' +
-        '<label class="cf-party-label">Party code</label>' +
+        '<label class="cf-party-label" for="cf-party-code">Party code</label>' +
         '<input type="text" id="cf-party-code" class="cf-party-input" maxlength="6" inputmode="numeric" placeholder="1234">' +
-        '<button type="button" class="cf-party-btn" id="cf-party-join">Join party</button>' +
+        '<button type="button" class="cf-party-btn is-primary" id="cf-party-join">Join party</button>' +
         '<p id="cf-party-join-err" class="cf-party-err" hidden></p>' +
         "</section>" +
         "</div></div>"
