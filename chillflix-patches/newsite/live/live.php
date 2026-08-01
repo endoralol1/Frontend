@@ -7,7 +7,7 @@ $categories = $categories ?? [];
 $channels = $channels ?? [];
 $initial = $initial ?? null;
 $totalAll = (int) ($totalAll ?? count($channels));
-$assetV = '20260801-ui29';
+$assetV = '20260801-ui30';
 ?>
 <main class="live-p">
     <div class="live-shell"
@@ -16,15 +16,17 @@ $assetV = '20260801-ui29';
          data-play-api="<?= e(url('/api/live/play')) ?>"
          data-main-play="<?= e(rtrim((string) config('player_main_api', 'https://www.chillflix.lol'), '/')) ?>/api/iptv/live/">
         <header class="live-hero">
-            <div class="live-hero-copy">
-                <p class="live-kicker"><span class="live-pulse" aria-hidden="true"></span> Live TV</p>
-                <h1>Watch live channels</h1>
-                <p class="live-lead">Sports, news, and entertainment — categorized and ready to play.</p>
+            <div class="live-hero-top">
+                <div class="live-hero-copy">
+                    <p class="live-kicker"><span class="live-pulse" aria-hidden="true"></span> Live TV</p>
+                    <h1>Watch live channels</h1>
+                </div>
+                <div class="live-hero-stats" id="live-stats">
+                    <div><strong id="live-count"><?= (int) $totalAll ?></strong><span>channels</span></div>
+                    <div><strong id="live-cats"><?= (int) count($categories) ?></strong><span>regions</span></div>
+                </div>
             </div>
-            <div class="live-hero-stats" id="live-stats">
-                <div><strong id="live-count"><?= (int) $totalAll ?></strong><span>channels</span></div>
-                <div><strong id="live-cats"><?= (int) count($categories) ?></strong><span>regions</span></div>
-            </div>
+            <p class="live-lead">Sports, news, and entertainment — categorized and ready to play.</p>
         </header>
 
         <section class="live-stage" aria-label="Live player">
