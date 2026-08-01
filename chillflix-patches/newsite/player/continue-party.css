@@ -116,15 +116,16 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  /* Keep original outer size — only inset content inside */
-  width: min(28rem, calc(100% - 1.25rem));
+  /* Same outer width as original — inset is padding only */
+  width: min(28rem, calc(100% - 1.25rem)) !important;
   max-height: min(86vh, 40rem);
   overflow: auto;
   background: linear-gradient(180deg, #1c202a 0%, #141820 100%);
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 1rem;
   box-shadow: 0 20px 50px rgba(0,0,0,.5);
-  padding: 20px 22px 22px;
+  /* Push title + X away from the modal wall */
+  padding: 24px 32px 28px !important;
   color: #eef1f6;
   box-sizing: border-box;
 }
@@ -135,10 +136,14 @@
   gap: 1rem;
   margin: 0 0 1rem;
   padding: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 .cf-party-copy {
   min-width: 0;
-  padding-top: 0.1rem;
+  flex: 1 1 auto;
+  padding: 0;
+  margin: 0;
 }
 .cf-party-kicker {
   margin: 0;
