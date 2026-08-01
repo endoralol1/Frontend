@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path("/var/www/chillflix-newsite")
 LOCAL = Path(__file__).resolve().parent
-ASSET_V = "20260801-ui48"
+ASSET_V = "20260801-ui50"
 
 
 def main() -> None:

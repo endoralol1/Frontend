@@ -1,4 +1,5 @@
-/* Desktop: Browse as dropdown under nav pill; hide search scrollbars */
+/* Desktop: Browse as dropdown under nav pill; hide search scrollbars;
+   un-squash genre chips; fit Browse tiles without scrolling */
 @media (min-width: 992px) {
   /* Browse — dropdown anchored to nav, not centered modal */
   .browse-sheet-backdrop {
@@ -19,11 +20,12 @@
     ) !important;
     top: 4.35rem !important;
     bottom: auto !important;
-    width: min(22.5rem, calc(100vw - 2.5rem)) !important;
-    max-height: min(72vh, 34rem) !important;
+    width: min(24rem, calc(100vw - 2.5rem)) !important;
+    max-height: none !important;
+    height: auto !important;
     transform: translateY(-6px) scale(0.98) !important;
     border-radius: 1.1rem !important;
-    overflow: auto !important;
+    overflow: hidden !important;
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
   }
@@ -40,16 +42,132 @@
   }
 
   .browse-sheet-head {
-    padding: 0.85rem 0.95rem 0.45rem !important;
+    padding: 0.7rem 0.85rem 0.3rem !important;
   }
 
   .browse-sheet-head h2 {
-    font-size: 1.1rem !important;
+    font-size: 1.05rem !important;
+  }
+
+  .browse-sheet-close {
+    width: 1.9rem !important;
+    height: 1.9rem !important;
   }
 
   .browse-sheet-body {
-    padding: 0 0.85rem 0.95rem !important;
-    max-height: none;
+    padding: 0 0.75rem 0.75rem !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Compact tiles so the whole menu fits without scrolling */
+  .browse-section + .browse-section {
+    margin-top: 0.55rem !important;
+  }
+
+  .browse-section-title {
+    margin: 0 0 0.35rem !important;
+    font-size: 0.62rem !important;
+  }
+
+  .browse-grid {
+    gap: 0.35rem !important;
+  }
+
+  .browse-tile {
+    min-height: 3.55rem !important;
+    padding: 0.4rem 0.25rem !important;
+    gap: 0.25rem !important;
+    border-radius: 0.85rem !important;
+  }
+
+  .browse-tile-icon {
+    width: 1.85rem !important;
+    height: 1.85rem !important;
+    border-radius: 0.6rem !important;
+  }
+
+  .browse-tile-icon i {
+    font-size: 0.95rem !important;
+  }
+
+  .browse-tile-label {
+    font-size: 0.7rem !important;
+    line-height: 1.1 !important;
+  }
+
+  .browse-tile-badge {
+    top: 0.22rem !important;
+    right: 0.22rem !important;
+    font-size: 0.5rem !important;
+    padding: 0.05rem 0.26rem !important;
+  }
+
+  .browse-card {
+    min-height: 3rem !important;
+    padding: 0.5rem 0.65rem !important;
+    gap: 0.5rem !important;
+    border-radius: 0.85rem !important;
+  }
+
+  .browse-card-icon {
+    width: 1.75rem !important;
+    height: 1.75rem !important;
+    border-radius: 0.55rem !important;
+  }
+
+  .browse-card-icon i {
+    font-size: 0.95rem !important;
+  }
+
+  .browse-card-copy strong {
+    font-size: 0.8rem !important;
+  }
+
+  .browse-card-copy em {
+    font-size: 0.62rem !important;
+  }
+
+  .browse-auth-cta {
+    gap: 0.35rem !important;
+  }
+
+  .browse-auth-cta-card,
+  .browse-auth-user-card {
+    min-height: 2.75rem !important;
+    padding: 0.45rem 0.65rem !important;
+    gap: 0.55rem !important;
+    border-radius: 0.85rem !important;
+  }
+
+  .browse-auth-cta-icon,
+  .browse-auth-user-avatar {
+    width: 1.75rem !important;
+    height: 1.75rem !important;
+    border-radius: 0.55rem !important;
+  }
+
+  .browse-auth-cta-copy strong {
+    font-size: 0.8rem !important;
+  }
+
+  .browse-auth-cta-copy em {
+    font-size: 0.62rem !important;
+  }
+
+  .browse-list {
+    margin-top: 0.35rem !important;
+    gap: 0.3rem !important;
+  }
+
+  .browse-list-item {
+    min-height: 2.35rem !important;
+    padding: 0.4rem 0.65rem !important;
+    border-radius: 0.75rem !important;
+  }
+
+  .browse-list-item > span {
+    font-size: 0.8rem !important;
   }
 
   /* Search — keep modal, but never show scrollbars on PC */
@@ -73,5 +191,26 @@
     width: 0 !important;
     height: 0 !important;
     background: transparent !important;
+  }
+
+  /* Genre chips — stop looking vertically squished */
+  .search-sheet-chips {
+    gap: 0.55rem !important;
+    padding: 0.35rem 1rem 0.95rem !important;
+    align-items: center !important;
+  }
+
+  .search-chip {
+    box-sizing: border-box !important;
+    min-height: 42px !important;
+    height: 42px !important;
+    padding: 0 20px !important;
+    font-size: 14px !important;
+    font-weight: 650 !important;
+    line-height: 1 !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
   }
 }
