@@ -6,140 +6,96 @@
   margin-top: 0.25rem;
 }
 
-/* Portrait resume posters — same language as site rails, CW-only details */
+/* Smaller Latest-Episodes-style resume cards */
 #continue-watching .media-rail-items.cw-track {
   display: flex !important;
   flex-wrap: nowrap !important;
-  gap: 0.65rem !important;
   align-items: stretch !important;
+  gap: 0 !important;
+  padding: 0.15rem 0 0.35rem !important;
+  margin: 0 -0.25rem !important;
 }
 #continue-watching .media-rail-items.cw-track::after {
-  content: "";
-  flex: 0 0 0.5rem;
+  content: none !important;
+  display: none !important;
 }
 
-.cw-poster {
-  --cw-bar: #ff3b30;
-  position: relative;
-  flex: 0 0 calc((100% - 0.55rem) / 2.15);
-  width: calc((100% - 0.55rem) / 2.15);
-  min-width: 10.25rem;
-  max-width: 13.75rem;
-  aspect-ratio: 2 / 3;
+#continue-watching .cw-ep.episode-card {
+  flex: 0 0 14.25rem;
+  width: 14.25rem;
+  min-width: 14.25rem;
+  max-width: 72vw;
+  margin: 0 0.3rem;
   border-radius: 0.85rem;
   overflow: hidden;
-  background: #15171d;
-  color: #fff;
-  text-decoration: none !important;
-  -webkit-tap-highlight-color: transparent;
-  box-shadow: none;
-  scroll-snap-align: start;
-  transition: transform 0.28s ease, box-shadow 0.28s ease;
+  background: #1a1c23;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 @media (min-width: 992px) {
-  .cw-poster {
-    flex: 0 0 13.75rem;
-    width: 13.75rem;
-    min-width: 13.75rem;
+  #continue-watching .cw-ep.episode-card {
+    flex-basis: 15.5rem;
+    width: 15.5rem;
+    min-width: 15.5rem;
   }
 }
-.cw-poster:hover,
-.cw-poster:focus-visible {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
-}
-.cw-poster:focus-visible {
-  outline: 2px solid rgba(255, 140, 66, 0.75);
-  outline-offset: 2px;
-}
 
-.cw-poster-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center top;
-  display: block;
-  transition: transform 0.4s ease;
+#continue-watching .cw-ep .episode-card-media {
+  aspect-ratio: 16 / 9;
 }
-.cw-poster:hover .cw-poster-img,
-.cw-poster:focus-visible .cw-poster-img {
-  transform: scale(1.04);
-}
-
-.cw-poster-fade {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 42%, rgba(10, 12, 16, 0.92) 100%);
-  pointer-events: none;
-}
-
-.cw-poster-body {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 2;
-  padding: 2rem 0.55rem 0.72rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.18rem;
-  pointer-events: none;
-}
-
-.cw-poster-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.28rem;
-}
-.cw-poster-chips span {
+#continue-watching .cw-ep .episode-card-badge {
+  left: 0.55rem;
+  top: 0.55rem;
+  padding: 0.24rem 0.48rem;
   font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #e8ecf2;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
-  background: rgba(12, 14, 18, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  padding: 0.14rem 0.38rem;
-  line-height: 1.15;
+}
+#continue-watching .cw-ep .episode-card-meta {
+  padding: 0.65rem 0.65rem 0.7rem;
+}
+#continue-watching .cw-ep .episode-card-show {
+  font-size: 0.86rem;
+}
+#continue-watching .cw-ep .episode-card-ep {
+  font-size: 0.72rem;
 }
 
-.cw-poster-title {
-  font-size: 0.82rem;
-  font-weight: 700;
-  line-height: 1.25;
-  color: #fff;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
-}
-
-.cw-poster-bar {
+/* Centered watched % */
+#continue-watching .cw-ep-pct {
   position: absolute;
-  left: 0.45rem;
-  right: 0.45rem;
-  bottom: 0.35rem;
-  height: 3px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
-  overflow: hidden;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
   z-index: 3;
+  min-width: 2.55rem;
+  height: 2.55rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #fff;
+  background: rgba(10, 12, 18, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
 }
-.cw-poster-bar i {
+
+/* Progress line below the image */
+#continue-watching .cw-ep-line {
+  display: block;
+  height: 3px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.12);
+}
+#continue-watching .cw-ep-line i {
   display: block;
   height: 100%;
-  border-radius: inherit;
-  background: var(--cw-bar);
+  background: linear-gradient(90deg, #db6937 0%, #c43c2e 100%);
 }
-
-@media (hover: none) {
-  .cw-poster:hover { transform: none; box-shadow: none; }
-  .cw-poster:hover .cw-poster-img { transform: none; }
-}
-
-/* store portrait poster again for CW (backdrop made landscape ugly) */
 
 .cf-party-panel[hidden] { display: none !important; }
 .cf-party-panel {

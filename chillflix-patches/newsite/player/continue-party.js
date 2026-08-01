@@ -96,8 +96,8 @@
   function pct(row) {
     var t = Number(row.t) || 0;
     var d = Number(row.d) || 0;
-    if (d <= 0) return 0;
-    return Math.max(2, Math.min(98, Math.round((t / d) * 100)));
+    if (d <= 0) return t > 0 ? 1 : 0;
+    return Math.max(1, Math.min(99, Math.round((t / d) * 100)));
   }
 
   function remainLabel(row) {
@@ -112,24 +112,21 @@
       }
       return left + "m left";
     }
-    if (row.type === "tv") return "S" + (row.season || 1) + " E" + (row.episode || 1);
-    return row.year ? String(row.year) : "Resume";
+    return "Resume watching";
   }
 
-  function posterUrl(row) {
-    var src = row.poster || "";
-    // If only a wide backdrop was stored earlier, still show something
-    if (!src && row.backdrop) src = row.backdrop;
+  function artUrl(row) {
+    var src = row.backdrop || row.poster || "";
     if (src.indexOf("/t/p/") >= 0) {
       src = src
-        .replace("/w1280/", "/w500/")
-        .replace("/w780/", "/w500/")
-        .replace("/w600_and_h900_bestv2/", "/w500/")
-        .replace("/original/", "/w500/");
+        .replace("/w1280/", "/w780/")
+        .replace("/w600_and_h900_bestv2/", "/w780/")
+        .replace("/w500/", "/w780/")
+        .replace("/original/", "/w780/");
     }
     return (
       src ||
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='100%25' height='100%25' fill='%2315171d'/%3E%3C/svg%3E"
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='180'%3E%3Crect width='100%25' height='100%25' fill='%231a1c23'/%3E%3C/svg%3E"
     );
   }
 
@@ -150,11 +147,16 @@
       .map(function (row) {
         var href = watchHref(row);
         var progress = pct(row);
-        var meta = remainLabel(row);
-        var kind = row.type === "tv" ? "TV" : "Movie";
-        var img = posterUrl(row);
+        var badge =
+          row.type === "tv"
+            ? "S" + (row.season || 1) + " · E" + (row.episode || 1)
+            : row.year
+              ? String(row.year)
+              : "Movie";
+        var sub = remainLabel(row);
+        var img = artUrl(row);
         return (
-          '<a class="cw-poster" href="' +
+          '<a class="cw-ep episode-card" href="' +
           esc(href) +
           '" data-id="' +
           esc(row.id) +
@@ -163,23 +165,27 @@
           '" aria-label="Resume ' +
           esc(row.title) +
           '">' +
-          '<img class="cw-poster-img" src="' +
+          '<div class="episode-card-media">' +
+          '<img src="' +
           esc(img) +
           '" alt="' +
           esc(row.title) +
-          '" width="300" height="450" loading="lazy" decoding="async">' +
-          '<span class="cw-poster-fade" aria-hidden="true"></span>' +
-          '<span class="cw-poster-body">' +
-          '<span class="cw-poster-chips"><span>' +
-          esc(kind) +
-          "</span><span>" +
-          esc(meta) +
-          "</span></span>" +
-          '<span class="cw-poster-title">' +
+          '" width="320" height="180" loading="lazy" decoding="async">' +
+          '<span class="episode-card-badge">' +
+          esc(badge) +
+          "</span>" +
+          '<span class="cw-ep-pct">' +
+          progress +
+          "%</span>" +
+          '<div class="episode-card-meta">' +
+          '<div class="episode-card-show">' +
           esc(row.title) +
-          "</span>" +
-          "</span>" +
-          '<span class="cw-poster-bar" aria-hidden="true"><i style="width:' +
+          "</div>" +
+          '<div class="episode-card-ep">' +
+          esc(sub) +
+          "</div>" +
+          "</div></div>" +
+          '<span class="cw-ep-line" aria-hidden="true"><i style="width:' +
           progress +
           '%"></i></span>' +
           "</a>"
