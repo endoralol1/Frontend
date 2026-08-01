@@ -22,7 +22,7 @@
   align-items: stretch;
   gap: 0.4rem;
   margin-bottom: 1rem;
-  padding: 16px 18px;
+  padding: 18px 20px;
   border-radius: 1rem;
   background: rgba(20, 24, 32, 0.72);
   border: 1px solid var(--live-line);
@@ -111,13 +111,17 @@
 }
 @media (max-width: 991.98px) {
   .live-p {
-    --live-gutter: 28px;
+    --live-gutter: 32px;
     padding-top: 0.85rem;
   }
   .live-hero {
     gap: 0.3rem;
-    padding: 16px 18px;
+    padding: 18px 20px;
   }
+  .live-now { padding: 0.9rem 1.15rem; }
+  .live-toolbar { padding: 0.85rem 1rem 0.5rem; }
+  .live-cats { padding: 0.4rem 1rem 0.75rem; }
+  .live-list { padding: 0.2rem 0.8rem 1rem; }
   .live-hero-top { gap: 0.55rem; }
   .live-hero h1 { font-size: clamp(1.3rem, 6vw, 1.65rem); }
   .live-lead {

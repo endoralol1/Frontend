@@ -7,7 +7,7 @@ $categories = $categories ?? [];
 $channels = $channels ?? [];
 $initial = $initial ?? null;
 $totalAll = (int) ($totalAll ?? count($channels));
-$assetV = '20260801-ui33';
+$assetV = '20260801-ui34';
 ?>
 <main class="live-p">
     <div class="live-shell"
