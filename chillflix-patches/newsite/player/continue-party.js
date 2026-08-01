@@ -108,12 +108,29 @@
       if (left >= 60) {
         var h = Math.floor(left / 60);
         var m = left % 60;
-        return h + "h " + (m ? m + "m left" : "left");
+        return h + "h" + (m ? " " + m + "m" : "") + " left";
       }
       return left + "m left";
     }
-    if (row.type === "tv") return "S" + (row.season || 1) + " · E" + (row.episode || 1);
+    if (row.type === "tv") return "S" + (row.season || 1) + " E" + (row.episode || 1);
     return row.year ? String(row.year) : "Resume";
+  }
+
+  function posterUrl(row) {
+    var src = row.poster || "";
+    // If only a wide backdrop was stored earlier, still show something
+    if (!src && row.backdrop) src = row.backdrop;
+    if (src.indexOf("/t/p/") >= 0) {
+      src = src
+        .replace("/w1280/", "/w500/")
+        .replace("/w780/", "/w500/")
+        .replace("/w600_and_h900_bestv2/", "/w500/")
+        .replace("/original/", "/w500/");
+    }
+    return (
+      src ||
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='100%25' height='100%25' fill='%2315171d'/%3E%3C/svg%3E"
+    );
   }
 
   function renderContinueRail() {
@@ -135,11 +152,9 @@
         var progress = pct(row);
         var meta = remainLabel(row);
         var kind = row.type === "tv" ? "TV" : "Movie";
-        var poster =
-          row.poster ||
-          "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='270'%3E%3Crect width='100%25' height='100%25' fill='%23141820'/%3E%3C/svg%3E";
+        var img = posterUrl(row);
         return (
-          '<a class="cw-tile" href="' +
+          '<a class="cw-poster" href="' +
           esc(href) +
           '" data-id="' +
           esc(row.id) +
@@ -148,26 +163,26 @@
           '" aria-label="Resume ' +
           esc(row.title) +
           '">' +
-          '<span class="cw-tile-art">' +
-          '<img src="' +
-          esc(poster) +
-          '" alt="" width="480" height="270" loading="lazy" decoding="async">' +
-          '<span class="cw-tile-shade" aria-hidden="true"></span>' +
-          '<span class="cw-tile-play" aria-hidden="true"><i class="uil uil-play"></i></span>' +
-          '<span class="cw-tile-progress" aria-hidden="true"><i style="width:' +
-          progress +
-          '%"></i></span>' +
-          "</span>" +
-          '<span class="cw-tile-copy">' +
-          '<span class="cw-tile-title">' +
+          '<img class="cw-poster-img" src="' +
+          esc(img) +
+          '" alt="' +
           esc(row.title) +
-          "</span>" +
-          '<span class="cw-tile-meta"><em>' +
+          '" width="300" height="450" loading="lazy" decoding="async">' +
+          '<span class="cw-poster-fade" aria-hidden="true"></span>' +
+          '<span class="cw-poster-body">' +
+          '<span class="cw-poster-chips"><span>' +
           esc(kind) +
-          "</em><span>" +
+          "</span><span>" +
           esc(meta) +
           "</span></span>" +
-          "</span></a>"
+          '<span class="cw-poster-title">' +
+          esc(row.title) +
+          "</span>" +
+          "</span>" +
+          '<span class="cw-poster-bar" aria-hidden="true"><i style="width:' +
+          progress +
+          '%"></i></span>' +
+          "</a>"
         );
       })
       .join("");
