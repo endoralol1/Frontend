@@ -1,0 +1,33 @@
+/* managers-row-trailer-share */
+#movie-managers {
+  width: 100%;
+}
+#movie-managers .movie-managers-wrap {
+  display: flex !important;
+  flex-wrap: nowrap;
+  align-items: center;
+  width: 100%;
+  gap: 0.25rem;
+}
+#movie-managers .movie-manager.trailer {
+  display: inline-flex !important;
+}
+#movie-managers .movie-manager.share-btn,
+#btn-share {
+  margin-left: auto !important;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+}
+@media (max-width: 767.98px) {
+  #movie-managers .movie-manager.trailer {
+    display: inline-flex !important;
+  }
+  #movie-managers .movie-managers-wrap .movie-manager span.ml-1 {
+    /* keep labels readable; allow slight shrink */
+  }
+}
