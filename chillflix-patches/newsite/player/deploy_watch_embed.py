@@ -184,10 +184,10 @@ def patch_routes_watch_page() -> None:
         'autoPlay' => $autoPlay,
         'playerConfig' => $playerConfig,
         'nextEpisode' => $nextEpisode,
-        'extraCss' => [asset('css/player.css') . '?v=20260801-embed2'],
+        'extraCss' => [asset('css/player.css') . '?v=20260801-ui3'],
         'extraJs' => [
             'https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js',
-            asset('js/player.js') . '?v=20260801-embed2',
+            asset('js/player.js') . '?v=20260801-ui3',
         ],
         'bodyClass' => 'page-watch',
         'headerClass' => 'absolute',
@@ -331,8 +331,8 @@ def patch_app_js() -> None:
 
 def bump_assets() -> None:
     text = LAYOUT.read_text()
-    text2 = text.replace("?v=20260801-player1", "?v=20260801-embed2")
-    text2 = text2.replace("?v=20260731-browseauth1", "?v=20260801-embed2")
+    text2 = text.replace("?v=20260801-player1", "?v=20260801-ui3")
+    text2 = text2.replace("?v=20260731-browseauth1", "?v=20260801-ui3")
     if text2 != text:
         LAYOUT.write_text(text2)
         print("bumped layout assets")

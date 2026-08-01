@@ -4,9 +4,15 @@
   const ICO = {
     play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5.14v13.72L19 12 8 5.14z"/></svg>',
     pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 5h3.5v14H7V5zm6.5 0H17v14h-3.5V5z"/></svg>',
-    vol: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 9.5v5h3.2L12 18.2V5.8L7.7 9.5H4.5z"/><path d="M15.2 9.2a3.2 3.2 0 0 1 0 5.6"/><path d="M17.4 7a6 6 0 0 1 0 10"/></svg>',
-    mute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 9.5v5h3.2L12 18.2V5.8L7.7 9.5H4.5z"/><path d="m16 9 5 5M21 9l-5 5"/></svg>',
-    fs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4"/></svg>',
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5 8 12l7 7"/></svg>',
+    vol: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 9.5v5h3.2L12 18.2V5.8L7.7 9.5H4.5z"/><path d="M15.2 9.2a3.2 3.2 0 0 1 0 5.6"/><path d="M17.4 7a6 6 0 0 1 0 10"/></svg>',
+    mute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 9.5v5h3.2L12 18.2V5.8L7.7 9.5H4.5z"/><path d="m16 9 5 5M21 9l-5 5"/></svg>',
+    cc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6.5" width="17" height="11" rx="2"/><path d="M8 12.2h2.2M13.8 12.2H16M8 15h3.2M13.8 15H17"/></svg>',
+    pip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5.5" width="17" height="13" rx="2"/><rect x="12.5" y="11.5" width="6.5" height="5.5" rx="1"/></svg>',
+    gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M5.8 5.8l1.6 1.6M16.6 16.6l1.6 1.6M5.8 18.2l1.6-1.6M16.6 7.4l1.6-1.6"/></svg>',
+    fs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4"/></svg>',
+    kb: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="18" height="11" rx="2"/><path d="M7 11h.01M11 11h.01M15 11h.01M7 14.5h10"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>',
   };
 
   function esc(s) {
@@ -19,59 +25,62 @@
 
   function buildMarkup(cfg) {
     const isTv = cfg.type === "tv";
-    const meta = isTv
-      ? `S${cfg.season || 1} · E${cfg.episode || 1}`
-      : cfg.year || "";
+    const meta = isTv ? `S${cfg.season || 1} · E${cfg.episode || 1}` : "";
     const nextUrl = (cfg.next && cfg.next.url) || "";
+    const backHref = cfg.backUrl || cfg.watchUrl || "#";
     return `
 <div class="np-shell ${cfg.embed ? "np-embed" : ""}" id="np-shell">
   <div class="np-stage">
     <video id="np-video" class="np-video" playsinline webkit-playsinline></video>
     <div class="np-poster" id="np-poster" style="background-image:url('${esc(cfg.backdrop || "")}')"></div>
     <div class="np-subs" id="np-subs" aria-live="polite"></div>
+
     <div class="np-top">
-      ${cfg.embed ? "" : `<a class="np-back" href="${esc(cfg.backUrl || "#")}" aria-label="Back"><span>←</span><span>Details</span></a>`}
+      <button type="button" class="np-back" id="np-back" aria-label="Back">${ICO.back}</button>
       <div class="np-titleblock">
+        <p class="np-now">Now Playing</p>
         <h1 class="np-title">${esc(cfg.title || "Player")}</h1>
         ${meta ? `<p class="np-meta">${esc(meta)}</p>` : ""}
       </div>
-      <div class="np-top-actions">
-        ${isTv ? `<button type="button" class="np-chip" id="np-autonext" aria-pressed="true" title="Auto next episode">Auto Next</button>` : ""}
-        <button type="button" class="np-chip" id="np-settings-btn" aria-haspopup="dialog">Settings</button>
+      <div class="np-top-right">
+        <button type="button" class="np-iconbtn" id="np-more" aria-label="Options" title="Options">${ICO.kb}</button>
       </div>
     </div>
+
     <div class="np-center" id="np-center">
       <button type="button" class="np-playbig" id="np-playbig" aria-label="Play">${ICO.play}</button>
+      <button type="button" class="np-unmute" id="np-unmute" aria-label="Unmute">${ICO.mute}<span>Tap to unmute</span></button>
       <p class="np-status" id="np-status">Loading sources…</p>
     </div>
+
     <div class="np-bottom" id="np-controls">
-      <div class="np-progress-wrap">
-        <input type="range" id="np-progress" class="np-progress" min="0" max="1000" value="0" step="1" aria-label="Seek">
-      </div>
-      <div class="np-bar">
-        <div class="np-bar-left">
-          <button type="button" class="np-btn" id="np-play" aria-label="Play/Pause">${ICO.play}</button>
-          <button type="button" class="np-btn np-mute-btn" id="np-mute" aria-label="Mute">${ICO.vol}</button>
-          <span class="np-time" id="np-time">0:00 / 0:00</span>
+      <div class="np-timeline">
+        <span class="np-time" id="np-time-cur">0:00</span>
+        <div class="np-progress-wrap">
+          <input type="range" id="np-progress" class="np-progress" min="0" max="1000" value="0" step="1" aria-label="Seek">
         </div>
-        <div class="np-bar-right">
-          ${isTv && nextUrl ? `<a class="np-btn" id="np-next" href="${esc(nextUrl)}" title="Next episode">Next</a>` : ""}
-          <button type="button" class="np-btn" id="np-source-btn" title="Source">Src</button>
-          <button type="button" class="np-btn" id="np-fs" aria-label="Fullscreen">${ICO.fs}</button>
-        </div>
+        <span class="np-time np-time-end" id="np-time-dur">0:00</span>
       </div>
+      <div class="np-actions">
+        <button type="button" class="np-iconbtn" id="np-cc" aria-label="Subtitles" title="Subtitles">${ICO.cc}</button>
+        <button type="button" class="np-iconbtn" id="np-pip" aria-label="Picture in picture" title="Picture in picture">${ICO.pip}</button>
+        <button type="button" class="np-iconbtn" id="np-settings-btn" aria-label="Settings" title="Settings">${ICO.gear}</button>
+        <button type="button" class="np-iconbtn" id="np-fs" aria-label="Fullscreen" title="Fullscreen">${ICO.fs}</button>
+      </div>
+      ${isTv && nextUrl ? `<a class="np-next-link" id="np-next" href="${esc(nextUrl)}">Next</a>` : ""}
     </div>
   </div>
+
   <aside class="np-panel" id="np-panel" hidden>
     <div class="np-panel-head">
       <h2>Settings</h2>
-      <button type="button" class="np-btn" id="np-panel-close" aria-label="Close">✕</button>
+      <button type="button" class="np-iconbtn" id="np-panel-close" aria-label="Close">${ICO.close}</button>
     </div>
     <div class="np-panel-tabs" id="np-panel-tabs">
       <button type="button" data-tab="source" class="is-active">Source</button>
       <button type="button" data-tab="quality">Quality</button>
       <button type="button" data-tab="audio">Audio</button>
-      <button type="button" data-tab="subs">Subs</button>
+      <button type="button" data-tab="subs">Subtitles</button>
     </div>
     <div class="np-panel-body">
       <section data-panel="source" class="is-active"><div class="np-list" id="np-source-list"></div></section>
@@ -84,6 +93,7 @@
           <label><span>Size</span><input type="range" id="np-size" min="0.75" max="1.75" step="0.05" value="1"><span class="np-slider-val" id="np-size-val">100%</span></label>
           <label><span>BG</span><input type="range" id="np-bg" min="0" max="0.9" step="0.05" value="0.7"><span class="np-slider-val" id="np-bg-val">70%</span></label>
         </div>
+        ${isTv ? `<div class="np-toggle-row"><span>Auto Next</span><button type="button" class="np-switch" id="np-autonext" aria-checked="true" role="switch" aria-label="Auto next"></button></div>` : ""}
       </section>
     </div>
   </aside>
@@ -100,13 +110,16 @@
       subs: $("#np-subs", root),
       status: $("#np-status", root),
       playBig: $("#np-playbig", root),
-      play: $("#np-play", root),
-      mute: $("#np-mute", root),
+      unmute: $("#np-unmute", root),
+      back: $("#np-back", root),
+      more: $("#np-more", root),
       fs: $("#np-fs", root),
+      pip: $("#np-pip", root),
+      cc: $("#np-cc", root),
       progress: $("#np-progress", root),
-      time: $("#np-time", root),
+      timeCur: $("#np-time-cur", root),
+      timeDur: $("#np-time-dur", root),
       settingsBtn: $("#np-settings-btn", root),
-      sourceBtn: $("#np-source-btn", root),
       panel: $("#np-panel", root),
       panelClose: $("#np-panel-close", root),
       panelTabs: $("#np-panel-tabs", root),
@@ -142,6 +155,7 @@
       cueBases: new WeakMap(),
       payloadSubtitles: [],
       bound: false,
+      startMuted: true,
     };
 
     function fmt(t) {
@@ -197,7 +211,7 @@
         const empty = document.createElement("button");
         empty.type = "button";
         empty.disabled = true;
-        empty.textContent = "None";
+        empty.textContent = "None available";
         container.appendChild(empty);
         return;
       }
@@ -244,23 +258,24 @@
         (i) => setSubtitle(i - 1),
         (t) => t.name || t.lang || "Track"
       );
+      if (els.cc) els.cc.classList.toggle("is-on", state.textIndex >= 0);
     }
 
     function syncUi() {
       const v = els.video;
       if (!v) return;
       const playing = !v.paused && !v.ended;
-      if (els.play) els.play.innerHTML = playing ? ICO.pause : ICO.play;
+      const muted = v.muted || v.volume === 0;
       if (els.playBig) els.playBig.innerHTML = playing ? ICO.pause : ICO.play;
-      if (els.mute) els.mute.innerHTML = v.muted || v.volume === 0 ? ICO.mute : ICO.vol;
-      if (els.time) els.time.textContent = `${fmt(v.currentTime)} / ${fmt(v.duration)}`;
+      if (els.timeCur) els.timeCur.textContent = fmt(v.currentTime);
+      if (els.timeDur) els.timeDur.textContent = fmt(v.duration);
       if (els.progress && Number.isFinite(v.duration) && v.duration > 0) {
         const pct = (v.currentTime / v.duration) * 100;
         els.progress.value = String(Math.round((v.currentTime / v.duration) * 1000));
         els.progress.style.setProperty("--np-progress", `${pct}%`);
       }
-      if (playing) els.shell?.classList.add("is-playing");
-      else els.shell?.classList.remove("is-playing");
+      els.shell?.classList.toggle("is-playing", playing);
+      els.shell?.classList.toggle("is-muted", muted && playing);
     }
 
     function setQuality(idx) {
@@ -297,17 +312,12 @@
 
     function onCueChange() {
       const tt = activeTextTrack();
-      if (!tt) {
-        paintCue("");
-        return;
-      }
-      const cues = tt.activeCues;
-      if (!cues || !cues.length) {
+      if (!tt?.activeCues?.length) {
         paintCue("");
         return;
       }
       const parts = [];
-      for (let i = 0; i < cues.length; i++) parts.push(cues[i].text || "");
+      for (let i = 0; i < tt.activeCues.length; i++) parts.push(tt.activeCues[i].text || "");
       paintCue(parts.join("\n"));
     }
 
@@ -396,7 +406,12 @@
 
       const onReady = () => {
         setStatus("");
-        if (state.autoplay) v.play().catch(() => setStatus("Tap play to start"));
+        if (state.autoplay) {
+          // Start muted so autoplay works, show Tap to unmute
+          if (state.startMuted) v.muted = true;
+          v.play().catch(() => setStatus("Tap play to start"));
+        }
+        syncUi();
       };
 
       if (isHls && window.Hls && window.Hls.isSupported()) {
@@ -551,25 +566,69 @@
       if (state.bound || !els.video) return;
       state.bound = true;
 
-      els.play?.addEventListener("click", togglePlay);
-      els.playBig?.addEventListener("click", togglePlay);
-      els.mute?.addEventListener("click", () => {
-        els.video.muted = !els.video.muted;
-        syncUi();
+      els.back?.addEventListener("click", () => {
+        const href = cfg.backUrl || cfg.watchUrl;
+        if (href && cfg.embed) {
+          // Exit player overlay, keep watch page
+          try {
+            active?.destroy?.();
+          } catch (_) {}
+          const mp = document.getElementById("movie-player");
+          mp?.classList.remove("np-active", "playing");
+          mp?.classList.add("no-player");
+          const host = document.getElementById("player");
+          if (host) host.innerHTML = "";
+          return;
+        }
+        if (href) location.href = href;
+        else history.back();
       });
+
+      els.playBig?.addEventListener("click", togglePlay);
+      els.unmute?.addEventListener("click", () => {
+        els.video.muted = false;
+        els.video.volume = Math.max(els.video.volume, 0.8);
+        state.startMuted = false;
+        els.video.play().catch(() => {});
+        syncUi();
+        showControls();
+      });
+
       els.fs?.addEventListener("click", () => {
         const target = els.shell;
         if (!document.fullscreenElement) target?.requestFullscreen?.();
         else document.exitFullscreen?.();
       });
+
+      els.pip?.addEventListener("click", async () => {
+        const v = els.video;
+        try {
+          if (document.pictureInPictureElement) await document.exitPictureInPicture();
+          else if (v.requestPictureInPicture) await v.requestPictureInPicture();
+        } catch (_) {
+          setStatus("PiP not available");
+        }
+      });
+
+      els.cc?.addEventListener("click", () => {
+        if (!state.textTracks.length) {
+          openPanel("subs");
+          return;
+        }
+        const next = state.textIndex < 0 ? 0 : -1;
+        setSubtitle(next);
+        showControls();
+      });
+
       els.progress?.addEventListener("input", () => {
         const v = els.video;
         if (!v?.duration) return;
         v.currentTime = (Number(els.progress.value) / 1000) * v.duration;
         syncUi();
       });
+
       els.settingsBtn?.addEventListener("click", () => openPanel());
-      els.sourceBtn?.addEventListener("click", () => openPanel("source"));
+      els.more?.addEventListener("click", () => openPanel("source"));
       els.panelClose?.addEventListener("click", closePanel);
 
       els.panelTabs?.querySelectorAll("[data-tab]").forEach((btn) => {
@@ -577,12 +636,11 @@
       });
 
       if (els.autonext) {
-        els.autonext.setAttribute("aria-pressed", state.autoNext ? "true" : "false");
+        els.autonext.setAttribute("aria-checked", state.autoNext ? "true" : "false");
         els.autonext.addEventListener("click", () => {
           state.autoNext = !state.autoNext;
           localStorage.setItem("cf_np_autonext", state.autoNext ? "1" : "0");
-          els.autonext.setAttribute("aria-pressed", state.autoNext ? "true" : "false");
-          setStatus(state.autoNext ? "Auto Next on" : "Auto Next off");
+          els.autonext.setAttribute("aria-checked", state.autoNext ? "true" : "false");
         });
       }
 
@@ -631,7 +689,11 @@
       v.addEventListener("ended", () => {
         if (cfg.type === "tv" && state.autoNext) goNextEpisode();
       });
-      v.addEventListener("click", togglePlay);
+      v.addEventListener("click", () => {
+        // tap video toggles controls when playing; play/pause on center button
+        if (v.paused) togglePlay();
+        else showControls();
+      });
 
       els.shell?.addEventListener("mousemove", () => showControls());
       els.shell?.addEventListener("touchstart", () => showControls(), { passive: true });
@@ -647,10 +709,15 @@
         } else if (e.key === "ArrowRight") {
           els.video.currentTime = Math.min(els.video.duration || 0, els.video.currentTime + 10);
         } else if (e.key === "f") els.fs?.click();
-        else if (e.key === "m") els.mute?.click();
-        else if (e.key === "n" && cfg.type === "tv") goNextEpisode();
+        else if (e.key === "m") {
+          els.video.muted = !els.video.muted;
+          syncUi();
+        } else if (e.key === "n" && cfg.type === "tv") goNextEpisode();
         else if (e.key === "Escape") closePanel();
       });
+
+      // Title drop-in after ~1s
+      setTimeout(() => els.shell?.classList.add("np-title-in"), 1000);
     }
 
     bind();
@@ -689,8 +756,7 @@
     }
     const conf = Object.assign({ embed: true, autoplay: true }, cfg || {});
     container.innerHTML = buildMarkup(conf);
-    const host = container.querySelector("#np-shell") || container;
-    active = createPlayer(Object.assign({}, conf, { root: host.parentElement || container }));
+    active = createPlayer(Object.assign({}, conf, { root: container }));
     return active;
   }
 
@@ -711,10 +777,10 @@
     },
   };
 
-  // Standalone /player page
   if (document.getElementById("np-shell") && window.PLAYER && !window.PLAYER.embed) {
     ensureHls(() => {
       active = createPlayer(Object.assign({}, window.PLAYER, { root: document, embed: false }));
+      setTimeout(() => document.getElementById("np-shell")?.classList.add("np-title-in"), 1000);
     });
   }
 })();
