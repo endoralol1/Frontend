@@ -21,8 +21,10 @@
 .cw-poster {
   --cw-bar: #ff3b30;
   position: relative;
-  flex: 0 0 auto;
-  width: 8.6rem;
+  flex: 0 0 calc((100% - 0.55rem) / 2.15);
+  width: calc((100% - 0.55rem) / 2.15);
+  min-width: 10.25rem;
+  max-width: 13.75rem;
   aspect-ratio: 2 / 3;
   border-radius: 0.85rem;
   overflow: hidden;
@@ -31,13 +33,15 @@
   text-decoration: none !important;
   -webkit-tap-highlight-color: transparent;
   box-shadow: none;
+  scroll-snap-align: start;
   transition: transform 0.28s ease, box-shadow 0.28s ease;
 }
-@media (min-width: 576px) {
-  .cw-poster { width: 9.4rem; }
-}
 @media (min-width: 992px) {
-  .cw-poster { width: 10.25rem; }
+  .cw-poster {
+    flex: 0 0 13.75rem;
+    width: 13.75rem;
+    min-width: 13.75rem;
+  }
 }
 .cw-poster:hover,
 .cw-poster:focus-visible {
