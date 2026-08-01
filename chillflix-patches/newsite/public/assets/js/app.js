@@ -1,0 +1,1532 @@
+(function ($) {
+  'use strict';
+
+  var FAV_KEY = 'user_bookmarks';
+
+  function favStore() {
+    try {
+      return JSON.parse(localStorage.getItem(FAV_KEY) || '{}') || {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveFavs(map) {
+    localStorage.setItem(FAV_KEY, JSON.stringify(map));
+    updateFavCounter();
+  }
+
+  function updateFavCounter() {
+    var n = Object.keys(favStore()).length;
+    var $c = $('.favorites-counter');
+    if (!n) {
+      $c.attr('hidden', true).text('0');
+    } else {
+      $c.removeAttr('hidden').text(String(n));
+    }
+    $('.user-bookmark-toggle').each(function () {
+      var id = String($(this).data('id'));
+      $(this).toggleClass('is-fav', !!favStore()[id]);
+    });
+  }
+
+  function toggleFav($btn) {
+    var id = String($btn.data('id'));
+    var type = $btn.data('media-type') || 'movie';
+    var map = favStore();
+    if (map[id]) {
+      delete map[id];
+    } else {
+      map[id] = {
+        id: id,
+        type: type,
+        mediaType: type,
+        title: $btn.data('title') || '',
+        name: $btn.data('title') || '',
+        poster: $btn.data('poster') || '',
+        poster_path: null,
+        year: $btn.data('year') || '',
+        saved_at: new Date().toISOString()
+      };
+    }
+    saveFavs(map);
+  }
+
+  // Mobile / nav menu (CSS defaults #menu to display:none)
+  $(document).on('click', '#menu-toggler', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var $menu = $('#menu');
+    if ($menu.is(':visible')) $menu.hide();
+    else $menu.show();
+  });
+  // Language menu
+  $(document).on('click', '#language-toggler', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $('#language-menu').toggle();
+  });
+
+  $(document).on('click', function (e) {
+    if (!$(e.target).closest('#menu, #menu-toggler').length) {
+      $('#menu').hide();
+    }
+    if (!$(e.target).closest('#language-menu, #language-toggler').length) {
+      $('#language-menu').hide();
+    }
+  });
+
+  // Search toggle + live movie/TV suggestions
+  $(document).on('click', '#show-search', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    // Same search sheet as phone (desktop header bar is hidden).
+    if ($('#search-sheet').length) {
+      openSearchSheet();
+      return;
+    }
+    var $search = $('#search');
+    var $wrap = $('#search-wrapper');
+    $search.toggleClass('active');
+    $wrap.toggleClass('active show');
+    if ($wrap.hasClass('active')) {
+      $wrap.find('input[name=keyword]').trigger('focus');
+    } else {
+      $wrap.find('.search-suggest').removeClass('open').empty();
+    }
+  });
+
+  var suggestTimer = null;
+  var suggestReq = null;
+  function renderSearchSuggest(results) {
+    var movies = [];
+    var shows = [];
+    (results || []).forEach(function (r) {
+      if (r.type === 'tv') shows.push(r);
+      else movies.push(r);
+    });
+
+    function rows(list, label) {
+      if (!list.length) return '';
+      var html = '<div class="suggest-group-label">' + label + '</div>';
+      list.forEach(function (r) {
+        var typeLabel = r.type === 'tv' ? 'TV Show' : 'Movie';
+        var poster = r.poster || '';
+        html +=
+          '<a href="' +
+          r.url +
+          '" role="option" class="suggest-item">' +
+          '<img src="' +
+          poster +
+          '" alt="" loading="lazy">' +
+          '<span class="suggest-text">' +
+          '<strong>' +
+          $('<div>').text(r.title || '').html() +
+          '</strong>' +
+          '<div class="meta-line">' +
+          '<em class="type-pill">' +
+          typeLabel +
+          '</em>' +
+          (r.year ? ' · ' + r.year : '') +
+          (r.rating != null ? ' · ★ ' + r.rating : '') +
+          '</div></span></a>';
+      });
+      return html;
+    }
+
+    var html = rows(movies, 'Movies') + rows(shows, 'TV Shows');
+    if (!html) html = '<div class="suggest-empty">No movies or TV shows found</div>';
+    return html;
+  }
+
+  function runLiveSearch(q, $box, $sheet) {
+    clearTimeout(suggestTimer);
+    if (suggestReq && suggestReq.abort) {
+      try {
+        suggestReq.abort();
+      } catch (err) {}
+      suggestReq = null;
+    }
+    q = $.trim(q || '');
+    if (q.length < 2) {
+      $box.removeClass('open').empty();
+      if ($sheet) $sheet.removeClass('has-results');
+      return;
+    }
+    suggestTimer = setTimeout(function () {
+      $box.html('<div class="suggest-empty">Searching movies &amp; TV…</div>').addClass('open');
+      if ($sheet) $sheet.addClass('has-results');
+      suggestReq = $.getJSON((window.APP && APP.baseUrl ? APP.baseUrl : '') + '/api/search', {
+        q: q,
+      })
+        .done(function (res) {
+          $box.html(renderSearchSuggest(res && res.results)).addClass('open');
+          if ($sheet) $sheet.addClass('has-results');
+        })
+        .fail(function (xhr, status) {
+          if (status === 'abort') return;
+          $box
+            .html('<div class="suggest-empty">Search failed — try again</div>')
+            .addClass('open');
+        });
+    }, 160);
+  }
+
+  $(document).on('input', '#search-wrapper input[name=keyword]', function () {
+    runLiveSearch(this.value, $('#search-wrapper .search-suggest'), null);
+  });
+
+  $(document).on('input', '#search-sheet-input', function () {
+    runLiveSearch(this.value, $('#search-sheet .search-sheet-suggest'), $('#search-sheet'));
+  });
+
+  $(document).on('click', function (e) {
+    if ($(e.target).closest('#search, #search-sheet').length) return;
+    $('#search-wrapper .search-suggest').removeClass('open').empty();
+  });
+
+  $(document).on('keydown', function (e) {
+    if (e.key === 'Escape') {
+      $('#search-wrapper .search-suggest').removeClass('open').empty();
+      closeSearchSheet();
+      closeBrowseSheet();
+    }
+  });
+
+  // Tabs
+  $(document).on('click', '[data-tabs] .tab', function (e) {
+    var $tab = $(this);
+    if ($tab.is('a')) return; // real links
+    e.preventDefault();
+    var name = $tab.data('name');
+    var $wrap = $tab.closest('.section, .head').parent();
+    if (!$wrap.find('.tab-content').length) {
+      $wrap = $tab.closest('.section');
+    }
+    $tab.addClass('active').siblings('.tab').removeClass('active');
+    var $section = $tab.closest('.section');
+    $section.find('.tab-content').each(function () {
+      var $pane = $(this);
+      var on = $pane.data('name') === name;
+      if (!on) {
+        $pane.hide();
+        return;
+      }
+      // Sidebar lists need flex so row gaps render; rails can use block/flex fine
+      if ($pane.hasClass('movie-sidebar')) $pane.css('display', 'flex').show();
+      else $pane.show();
+    });
+    setTimeout(function () {
+      syncAllRails();
+      // Cinema-reveal cards in the newly shown rail
+      $section.find('.tab-content:visible .cf-cinema-item').addClass('cf-cinema-in');
+    }, 0);
+  });
+
+  // Horizontal rails (Top 10 + homepage Recommended/Movies/TV)
+  function syncRailNav($rail) {
+    if (!$rail || !$rail.length) return;
+    var el = $rail.get(0);
+    var $wrap = $rail.closest('.top10-rail-wrap, .media-rail-wrap');
+    if (!$wrap.length) return;
+    var max = el.scrollWidth - el.clientWidth - 2;
+    $wrap.find('.top10-nav-prev, .media-rail-nav-prev').prop('disabled', el.scrollLeft <= 2);
+    $wrap.find('.top10-nav-next, .media-rail-nav-next').prop('disabled', el.scrollLeft >= max);
+  }
+
+  function syncAllRails() {
+    $('.top10-items, .media-rail-items').each(function () {
+      syncRailNav($(this));
+    });
+  }
+
+  function initCinemaReveal() {
+    if (!$('body').hasClass('home')) return;
+
+    var $rails = $('body.home .top10-items, body.home .media-rail-items, body.home .episode-rail-items');
+    if (!$rails.length) return;
+
+    $rails.each(function () {
+      $(this).children('.movie-item, .episode-card').each(function (idx) {
+        $(this)
+          .addClass('cf-cinema-item')
+          .css('--cf-i', String(Math.min(idx, 10)));
+      });
+    });
+
+    if (prefersReducedMotion()) {
+      $rails.children('.cf-cinema-item').addClass('cf-cinema-in');
+      return;
+    }
+
+    if (window.__cinemaRevealIO) {
+      try {
+        window.__cinemaRevealIO.disconnect();
+      } catch (e) {}
+    }
+
+    if (!('IntersectionObserver' in window)) {
+      $rails.children('.cf-cinema-item').addClass('cf-cinema-in');
+      return;
+    }
+
+    window.__cinemaRevealIO = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          if (!entry.isIntersecting) return;
+          $(entry.target).children('.cf-cinema-item').addClass('cf-cinema-in');
+          window.__cinemaRevealIO.unobserve(entry.target);
+        });
+      },
+      { rootMargin: '48px 0px', threshold: 0.1 }
+    );
+
+    $rails.each(function () {
+      var rect = this.getBoundingClientRect();
+      var onScreen = rect.top < window.innerHeight * 0.94 && rect.bottom > 40;
+      if (onScreen) {
+        var rail = this;
+        // Slight beat after paint, then cascade 1→2→3…
+        setTimeout(function () {
+          $(rail).children('.cf-cinema-item').addClass('cf-cinema-in');
+        }, 120);
+      } else {
+        window.__cinemaRevealIO.observe(this);
+      }
+    });
+  }
+
+  $(document).on('click', '.top10-nav, .media-rail-nav', function (e) {
+    e.preventDefault();
+    var $btn = $(this);
+    var $wrap = $btn.closest('.top10-rail-wrap, .media-rail-wrap');
+    var $rail = $wrap.find('.top10-items, .media-rail-items').first();
+    if (!$rail.length) return;
+    var step = Math.max($rail.width() * 0.85, 220);
+    var goingNext = $btn.hasClass('top10-nav-next') || $btn.hasClass('media-rail-nav-next');
+    $rail.get(0).scrollBy({ left: goingNext ? step : -step, behavior: 'smooth' });
+  });
+
+  $(document).on('scroll', '.top10-items, .media-rail-items', function () {
+    syncRailNav($(this));
+  });
+
+  syncAllRails();
+
+  // Favorites buttons
+  $(document).on('click', '.user-bookmark-toggle', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFav($(this));
+  });
+
+  function isLowEndDevice() {
+    try {
+      if (navigator.connection && (navigator.connection.saveData || /2g/.test(navigator.connection.effectiveType || ''))) {
+        return true;
+      }
+    } catch (e) {}
+    return (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) ||
+      (navigator.deviceMemory && navigator.deviceMemory <= 4);
+  }
+
+  function prefersReducedMotion() {
+    try {
+      return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Featured swiper (Swiper 5 uses .swiper-container)
+  function initSwiper() {
+    if (!window.Swiper || !$('#featured').length) return;
+    if (window.__featuredSwiper) {
+      try {
+        window.__featuredSwiper.destroy(true, true);
+      } catch (e) {}
+      window.__featuredSwiper = null;
+    }
+    if (window.__featuredSwiperIO) {
+      try {
+        window.__featuredSwiperIO.disconnect();
+      } catch (e) {}
+      window.__featuredSwiperIO = null;
+    }
+
+    var lowEnd = isLowEndDevice();
+    var reduceMotion = prefersReducedMotion();
+    var useAutoplay = !reduceMotion && !lowEnd;
+
+    window.__featuredSwiper = new Swiper('#featured', {
+      loop: true,
+      effect: lowEnd ? 'slide' : 'fade',
+      fadeEffect: { crossFade: true },
+      speed: lowEnd ? 450 : 900,
+      autoplay: useAutoplay ? { delay: 6500, disableOnInteraction: false } : false,
+      pagination: { el: '#featured .swiper-pagination', clickable: true },
+      navigation: {
+        nextEl: '#featured .swiper-button-next',
+        prevEl: '#featured .swiper-button-prev'
+      },
+      on: {
+        slideChange: function () {
+          // Unveil nearby hero backgrounds only when needed
+          var swiper = this;
+          [swiper.realIndex, swiper.realIndex + 1].forEach(function (idx) {
+            var slide = swiper.slides[idx];
+            if (!slide) return;
+            var bg = slide.getAttribute('data-bgset');
+            if (bg && !slide.style.backgroundImage) {
+              slide.style.backgroundImage = 'url(' + bg + ')';
+              slide.classList.add('lazyloaded');
+              slide.classList.remove('lazyload');
+            }
+          });
+        }
+      }
+    });
+
+    // Pause autoplay when hero leaves viewport (saves GPU while scrolling rails)
+    if (useAutoplay && 'IntersectionObserver' in window) {
+      window.__featuredSwiperIO = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            if (!window.__featuredSwiper || !window.__featuredSwiper.autoplay) return;
+            if (entry.isIntersecting) window.__featuredSwiper.autoplay.start();
+            else window.__featuredSwiper.autoplay.stop();
+          });
+        },
+        { threshold: 0.2 }
+      );
+      window.__featuredSwiperIO.observe(document.getElementById('featured'));
+    }
+  }
+
+  // Recently updated sidebar scroller
+  function initRecentlyUpdated() {
+    var $wrap = $('.recently-updated-scrollable');
+    var $list = $('#recently-updated-list');
+    if (!$wrap.length || !$list.length) return;
+    var step = 280;
+    var offset = 0;
+    function maxOffset() {
+      return Math.max(0, $list.outerHeight() - $wrap.height());
+    }
+    function apply() {
+      offset = Math.max(0, Math.min(offset, maxOffset()));
+      $list.css('transform', 'translateY(' + (-offset) + 'px)');
+      $('#recently-updated-prev').prop('disabled', offset <= 0);
+      $('#recently-updated-next').prop('disabled', offset >= maxOffset() - 1);
+    }
+    $('#recently-updated-prev').off('click.softnav').on('click.softnav', function () {
+      offset -= step;
+      apply();
+    });
+    $('#recently-updated-next').off('click.softnav').on('click.softnav', function () {
+      offset += step;
+      apply();
+    });
+    apply();
+  }
+
+  // Keep filter dropdown open when clicking inside (noclose) — legacy
+  $(document).on('click', '#site-filters .noclose', function (e) {
+    e.stopPropagation();
+  });
+
+  // Filter dropdowns (works with BS4 data-toggle or as fallback) — legacy
+  $(document).on('click', '#site-filters .dropdown-toggle', function (e) {
+    if ($(this).hasClass('reset-filters')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    var $dd = $(this).closest('.dropdown');
+    var open = $dd.hasClass('show');
+    $('#site-filters .dropdown').removeClass('show').find('.dropdown-menu').removeClass('show');
+    if (!open) {
+      $dd.addClass('show').find('.dropdown-menu').addClass('show');
+    }
+  });
+  $(document).on('click', function (e) {
+    if (!$(e.target).closest('#site-filters .dropdown').length) {
+      $('#site-filters .dropdown').removeClass('show').find('.dropdown-menu').removeClass('show');
+    }
+  });
+
+  function updateFilterLabel($input) {
+    var $btn = $input.closest('.dropdown').find('.site-filter .value');
+    if (!$btn.length) return;
+    var ph = $btn.data('placeholder') || 'Select';
+    var $menu = $input.closest('.dropdown-menu, .noclose');
+    var checked = $menu.find('input:checked').filter(function () {
+      return this.name !== 'genre_mode';
+    });
+    if (!checked.length) {
+      $btn.text(ph);
+      return;
+    }
+    if (checked.first().attr('type') === 'checkbox') {
+      var n = checked.length;
+      $btn.text(n + (ph.toLowerCase().indexOf('genre') >= 0 ? ' Genre(s)' : ' selected'));
+    } else {
+      $btn.text($.trim(checked.first().next('label').text()) || $.trim(checked.first().closest('label').find('span').text()));
+    }
+  }
+
+  function openFiltersSheet() {
+    var $sheet = $('#filters-sheet');
+    if (!$sheet.length) return;
+    closeBrowseSheet();
+    closeSearchSheet();
+    clearTimeout(window.__filtersCloseTimer);
+    $sheet.removeClass('is-closing').removeAttr('hidden');
+    // Force reflow so enter transition plays
+    void $sheet[0].offsetWidth;
+    $sheet.addClass('is-open');
+    $('body').addClass('filters-open');
+    $('#filters-open').attr('aria-expanded', 'true');
+    syncTriInputs();
+    syncYearTimeline();
+    syncRatingTimeline();
+  }
+
+  function closeFiltersSheet() {
+    var $sheet = $('#filters-sheet');
+    if (!$sheet.length || (!$sheet.hasClass('is-open') && !$sheet.hasClass('is-closing'))) return;
+    closeFilterPicker();
+    $sheet.removeClass('is-open').addClass('is-closing');
+    $('#filters-open').attr('aria-expanded', 'false');
+    $('body').removeClass('filters-open');
+    clearTimeout(window.__filtersCloseTimer);
+    window.__filtersCloseTimer = setTimeout(function () {
+      $sheet.removeClass('is-closing').attr('hidden', true);
+    }, 380);
+  }
+
+  $(document).on('click', '#filters-open', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if ($('#filters-sheet').hasClass('is-open')) closeFiltersSheet();
+    else openFiltersSheet();
+  });
+
+  $(document).on('click', '.filters-sheet-backdrop, .filters-sheet-close', function (e) {
+    e.preventDefault();
+    closeFiltersSheet();
+  });
+
+  $(document).on('keydown', function (e) {
+    if (e.key === 'Escape' && $('#filters-sheet').hasClass('is-open')) {
+      if ($('#filters-sheet').hasClass('has-picker')) closeFilterPicker();
+      else closeFiltersSheet();
+    }
+  });
+
+  var filterSubmitTimer = null;
+  function submitFiltersSoon(delay) {
+    clearTimeout(filterSubmitTimer);
+    filterSubmitTimer = setTimeout(function () {
+      var $form = $('#site-filters');
+      if (!$form.length) return;
+      // Drop type[] so it doesn't pollute the query string
+      $form.find('input[name="type[]"]').prop('disabled', true);
+      // Reset to page 1 when filters change
+      $form.find('input[name="page"]').remove();
+      closeFiltersSheet();
+      $form.trigger('submit');
+    }, delay || 280);
+  }
+
+  $(document).on('change', '#site-filters input[type=radio], #site-filters input[type=checkbox]', function () {
+    var $input = $(this);
+    // Type switches between Movies / TV pages
+    if ($input.attr('name') === 'type[]') {
+      var href = $input.data('href');
+      if (href) {
+        var view = $('#view-mode-input').val();
+        location.href = href + (view && view !== 'grid' ? ('?view=' + encodeURIComponent(view)) : '');
+      }
+      return;
+    }
+    updateFilterLabel($input);
+    // While the sheet is open, let the user pick multiple filters and hit Apply
+    if ($('#filters-sheet').hasClass('is-open')) {
+      return;
+    }
+    // Legacy dropdown mode: auto-submit
+    if ($input.attr('type') === 'radio') {
+      $('#site-filters .dropdown').removeClass('show').find('.dropdown-menu').removeClass('show');
+      submitFiltersSoon(120);
+    } else {
+      submitFiltersSoon(650);
+    }
+  });
+
+  $(document).on('submit', '#site-filters', function () {
+    $(this).find('input[name="type[]"]').prop('disabled', true);
+    closeFiltersSheet();
+  });
+
+  function updatePickerSummary(pickerId) {
+    var $group = $('#' + pickerId + ' [data-summary-target]');
+    var $box = $('[data-summary-for="' + pickerId + '"]');
+    if (!$group.length || !$box.length) return;
+    var html = '';
+    $group.find('.filter-tri').each(function () {
+      var $btn = $(this);
+      var label = String($btn.data('label') || $.trim($btn.find('.filter-list-label, span').last().text()) || '');
+      var val = String($btn.data('value'));
+      if (!label) return;
+      var tone = $btn.hasClass('is-in') ? 'in' : ($btn.hasClass('is-out') ? 'out' : '');
+      if (!tone) return;
+      var lead = '';
+      var flag = $btn.data('flag');
+      var mark = $btn.data('mark');
+      var iconTone = $btn.data('tone');
+      if (flag) {
+        lead = '<span class="filter-bubble-lead" aria-hidden="true">' + String(flag) + '</span>';
+      } else if (mark != null && String(mark) !== '') {
+        lead = '<span class="filter-bubble-lead tone-' + $('<div>').text(String(iconTone || 'default')).html() + '" aria-hidden="true">' + $('<div>').text(String(mark)).html() + '</span>';
+      } else if (iconTone) {
+        lead = '<span class="filter-bubble-lead tone-' + $('<div>').text(String(iconTone)).html() + '" aria-hidden="true"></span>';
+      }
+      html += '<button type="button" class="filter-bubble is-' + tone + '" data-picker="' + pickerId + '" data-value="' + $('<div>').text(val).html() + '" title="Clear">' +
+        lead +
+        '<span>' + $('<div>').text(label).html() + '</span><i class="uil uil-times" aria-hidden="true"></i></button>';
+    });
+    $box.html(html);
+    if (html) $box.removeAttr('hidden');
+    else $box.attr('hidden', true);
+  }
+
+  $(document).on('click', '.filter-bubble', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var pickerId = String($(this).data('picker') || '');
+    var value = String($(this).data('value'));
+    var $tri = $('#' + pickerId + ' .filter-tri').filter(function () {
+      return String($(this).data('value')) === value;
+    }).first();
+    if ($tri.length) setTriState($tri, 'off');
+  });
+
+  function openFilterPicker(id) {
+    var $picker = $('#' + id);
+    if (!$picker.length) return;
+    $('.filter-picker').removeClass('is-open').attr('hidden', true);
+    $picker.removeAttr('hidden');
+    void $picker[0].offsetWidth;
+    $picker.addClass('is-open');
+    $('#filters-sheet').addClass('has-picker');
+    $('#filter-home').addClass('is-away');
+  }
+
+  function closeFilterPicker() {
+    $('.filter-picker').removeClass('is-open');
+    $('#filters-sheet').removeClass('has-picker');
+    $('#filter-home').removeClass('is-away');
+    setTimeout(function () {
+      $('.filter-picker').not('.is-open').attr('hidden', true);
+    }, 280);
+  }
+
+  $(document).on('click', '[data-open-picker]', function (e) {
+    e.preventDefault();
+    openFilterPicker($(this).data('open-picker'));
+  });
+
+  $(document).on('click', '.filter-picker-back, .filter-picker-done', function (e) {
+    e.preventDefault();
+    closeFilterPicker();
+  });
+
+  function syncTriInputs() {
+    var $box = $('#filter-tri-inputs');
+    if (!$box.length) return;
+    $box.empty();
+    $('.filter-tri').each(function () {
+      var $btn = $(this);
+      var state = $btn.hasClass('is-in') ? 'in' : ($btn.hasClass('is-out') ? 'out' : 'off');
+      if (state === 'off') return;
+      var name = state === 'in' ? $btn.data('include') : $btn.data('exclude');
+      var val = $btn.data('value');
+      if (!name) return;
+      $('<input>', { type: 'hidden', name: String(name), value: String(val) }).appendTo($box);
+    });
+  }
+
+  function setTriState($btn, state) {
+    $btn.removeClass('is-off is-in is-out').addClass('is-' + state);
+    $btn.attr('aria-pressed', state === 'off' ? 'false' : 'true');
+    syncTriInputs();
+    var pickerId = $btn.closest('.filter-picker').attr('id');
+    if (pickerId) updatePickerSummary(pickerId);
+  }
+
+  $(document).on('click', '.filter-tri', function (e) {
+    e.preventDefault();
+    var $btn = $(this);
+    var state = $btn.hasClass('is-in') ? 'in' : ($btn.hasClass('is-out') ? 'out' : 'off');
+    var next = state === 'off' ? 'in' : (state === 'in' ? 'out' : 'off');
+    setTriState($btn, next);
+  });
+
+  syncTriInputs();
+
+  function formatTimelineValue(n, step) {
+    if (step < 1) {
+      var s = (Math.round(n * 10) / 10).toFixed(1);
+      return s.replace(/\.0$/, '');
+    }
+    return String(Math.round(n));
+  }
+
+  function syncRangeTimeline(opts) {
+    var $wrap = $(opts.wrap);
+    if (!$wrap.length) return;
+    var min = parseFloat($wrap.data('min'));
+    var max = parseFloat($wrap.data('max'));
+    var step = parseFloat($wrap.data('step')) || 1;
+    var $from = $(opts.fromRange);
+    var $to = $(opts.toRange);
+    var from = parseFloat($from.val());
+    var to = parseFloat($to.val());
+    if (isNaN(from) || isNaN(to)) return;
+    if (from > to) {
+      if (document.activeElement === $from[0]) {
+        to = from;
+        $to.val(String(to));
+      } else {
+        from = to;
+        $from.val(String(from));
+      }
+    }
+    var span = Math.max(step, max - min);
+    var left = ((from - min) / span) * 100;
+    var right = ((to - min) / span) * 100;
+    $(opts.fill).css({ left: left + '%', width: Math.max(0, right - left) + '%' });
+    $(opts.fromLabel).text(formatTimelineValue(from, step));
+    $(opts.toLabel).text(formatTimelineValue(to, step));
+    if (from <= min && to >= max) {
+      $(opts.fromHidden).val('');
+      $(opts.toHidden).val('');
+    } else {
+      $(opts.fromHidden).val(formatTimelineValue(from, step));
+      $(opts.toHidden).val(formatTimelineValue(to, step));
+    }
+  }
+
+  function syncYearTimeline() {
+    syncRangeTimeline({
+      wrap: '#year-timeline',
+      fromRange: '#year-from-range',
+      toRange: '#year-to-range',
+      fill: '#year-timeline-range',
+      fromLabel: '#year-timeline-from-label',
+      toLabel: '#year-timeline-to-label',
+      fromHidden: '#year-from',
+      toHidden: '#year-to'
+    });
+  }
+
+  function syncRatingTimeline() {
+    syncRangeTimeline({
+      wrap: '#rating-timeline',
+      fromRange: '#rating-from-range',
+      toRange: '#rating-to-range',
+      fill: '#rating-timeline-range',
+      fromLabel: '#rating-timeline-from-label',
+      toLabel: '#rating-timeline-to-label',
+      fromHidden: '#rating-from',
+      toHidden: '#rating-to'
+    });
+  }
+
+  $(document).on('input change', '#year-from-range, #year-to-range', syncYearTimeline);
+  $(document).on('input change', '#rating-from-range, #rating-to-range', syncRatingTimeline);
+  syncYearTimeline();
+  syncRatingTimeline();
+
+  // Discover view switcher — update class + persist via query
+  $(document).on('click', '.btn-view-switcher', function () {
+    var view = $(this).data('view');
+    $('.btn-view-switcher').removeClass('active');
+    $(this).addClass('active');
+    $('#view-mode-input').val(view);
+    $('#discover-results').removeClass('view-grid view-list').addClass('view-' + view);
+    var url = new URL(location.href);
+    url.searchParams.set('view', view);
+    history.replaceState(null, '', url.toString());
+  });
+
+  // Watch page player (official YouTube trailers)
+  function playTrailer() {
+    var key = $('.watch-wrap').data('trailer');
+    var $frame = $('#player-frame');
+    var $btn = $('#btn-play');
+    if (!key) {
+      $('#player .message').removeClass('d-none');
+      $btn.addClass('d-none');
+      return;
+    }
+    $btn.addClass('d-none');
+    $('.player-bg').addClass('d-none');
+    $frame.removeClass('d-none').html(
+      '<iframe src="https://www.youtube.com/embed/' + key + '?autoplay=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="Trailer"></iframe>'
+    );
+    $('#movie-player').removeClass('no-player').addClass('playing');
+  }
+
+  $(document).on('click', '#btn-play, #btn-trailer', function (e) {
+    e.preventDefault();
+    playTrailer();
+  });
+
+  $(document).on('click', '#btn-share', function () {
+    var url = location.href;
+    if (navigator.clipboard) navigator.clipboard.writeText(url);
+    else prompt('Copy link', url);
+  });
+
+  // Watch: season dropdown + episode play
+  $(document).on('click', '#movie-episode .dropdown-toggle', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var $dd = $(this).closest('.dropdown');
+    $dd.toggleClass('show').find('.dropdown-menu').toggleClass('show');
+  });
+  $(document).on('click', function (e) {
+    if (!$(e.target).closest('#movie-episode .dropdown').length) {
+      $('#movie-episode .dropdown').removeClass('show').find('.dropdown-menu').removeClass('show');
+    }
+  });
+  $(document).on('click', '#btn-ep-play, .horizontal-episode-play-btn', function (e) {
+    e.preventDefault();
+    playTrailer();
+  });
+
+  // Favorites page render
+  function renderFavoritesPage() {
+    var $grid = $('#favorites-grid');
+    if (!$grid.length) return;
+    var typeFilter = $('[data-tabs][data-id="fav-type"] .tab.active').data('name') || 'all';
+    var map = favStore();
+    var items = Object.keys(map).map(function (k) { return map[k]; });
+    items.sort(function (a, b) {
+      return new Date(b.saved_at || 0) - new Date(a.saved_at || 0);
+    });
+    if (typeFilter !== 'all') {
+      items = items.filter(function (i) { return (i.type || i.mediaType) === typeFilter; });
+    }
+    if (!items.length) {
+      $grid.empty();
+      $('#favorites-empty').removeAttr('hidden');
+      return;
+    }
+    $('#favorites-empty').attr('hidden', true);
+    var html = items.map(function (it) {
+      var type = it.type || it.mediaType || 'movie';
+      var title = it.title || it.name || 'Untitled';
+      var year = it.year || '';
+      var poster = it.poster || ((window.APP && APP.imgBase) + '/w600_and_h900_bestv2' + (it.poster_path || ''));
+      var slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'item';
+      var href = (window.APP && APP.baseUrl ? APP.baseUrl : '') + '/' + (type === 'tv' ? 'tv' : 'movie') + '/' + slug + '/' + it.id;
+      return '<div class="movie-item"><div class="inner">' +
+        '<a class="item-poster" href="' + href + '"><div><img src="' + poster + '" alt="' + $('<div>').text(title).html() + '"></div></a>' +
+        '<div class="meta"><div class="meta-bg"><span class="dot">' + (type === 'tv' ? 'TV' : 'Movie') + '</span>' +
+        (year ? '<span class="dot">' + year + '</span>' : '') + '</div>' +
+        '<a class="name" href="' + href + '">' + $('<div>').text(title).html() + '</a></div>' +
+        '<button type="button" class="btn btn-sm btn-danger remove-fav mt-2" data-id="' + it.id + '">Remove</button>' +
+        '</div></div>';
+    }).join('');
+    $grid.html(html);
+  }
+
+  $(document).on('click', '[data-tabs][data-id="fav-type"] .tab', function () {
+    setTimeout(renderFavoritesPage, 0);
+  });
+
+  $(document).on('click', '#clearAllFavorites', function () {
+    if (confirm('Clear all favorites?')) {
+      localStorage.removeItem(FAV_KEY);
+      updateFavCounter();
+      renderFavoritesPage();
+    }
+  });
+
+  $(document).on('click', '.remove-fav', function () {
+    var map = favStore();
+    delete map[String($(this).data('id'))];
+    saveFavs(map);
+    renderFavoritesPage();
+  });
+
+  var tipCache = {};
+
+  function esc(s) {
+    return $('<div>').text(s == null ? '' : String(s)).html();
+  }
+
+  function buildTipHtml(d) {
+    var metaRows = '';
+    if (d.country) {
+      metaRows += '<div><span>Country:</span> <span>' + esc(d.country) + '</span></div>';
+    }
+    if (d.genre) {
+      metaRows += '<div><span>Genre:</span> <span>' + esc(d.genre) + '</span></div>';
+    }
+    if (d.rating != null) {
+      metaRows += '<div><span>Scores:</span> <span> ' + esc(d.rating) + ' by ' + esc(d.votes_label || d.votes || '0') + ' reviews</span></div>';
+    }
+    return '' +
+      '<div class="head">' +
+        '<div class="name">' + esc(d.title) + '</div>' +
+        '<div class="info">' +
+          '<span class="rating status-icon">' + esc(d.cert || (d.type === 'tv' ? 'TV' : 'Movie')) + '</span>' +
+          (d.rating != null ? '<span><i class="uil uil-star"></i> ' + esc(d.rating) + '</span>' : '') +
+          (d.year ? '<span><i class="uil uil-calender"></i> ' + esc(d.year) + '</span>' : '') +
+          (d.runtime ? '<span dir="ltr"><i class="uil uil-clock"></i> ' + esc(d.runtime) + '</span>' : '') +
+        '</div>' +
+        '<div class="dropdown limit-h limit-w user-bookmark">' +
+          '<button type="button" class="favo user-bookmark-toggle" aria-label="Add to favorites" data-id="' + esc(d.id) + '" data-media-type="' + esc(d.type) + '" data-title="' + esc(d.title) + '" data-poster="' + esc(d.poster || '') + '" data-year="' + esc(d.year || '') + '">' +
+            '<i class="uil uil-plus-circle"></i>' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="body">' +
+        '<div class="meta">' + metaRows + '</div>' +
+        (d.overview ? '<div class="text-muted">' + esc(d.overview) + '</div>' : '') +
+      '</div>' +
+      '<a href="' + esc(d.url) + '" class="btn btn-lg w-100 mt-2 btn-gardient">Watch Now <i class="uil uil-play"></i></a>';
+  }
+
+  function initMediaTips() {
+    if (!$.fn.tooltipster) return;
+    // Tooltips are desktop-hover UX — skip on touch / narrow screens
+    try {
+      if (window.matchMedia('(hover: none), (max-width: 991.98px)').matches) return;
+    } catch (e) {}
+
+    var $targets = $('.movies.items .item-poster[data-tip], .scaff.movies .item-poster[data-tip]');
+    if (!$targets.length) return;
+
+    $targets.tooltipster({
+      theme: 'tooltipster-sidetip',
+      animation: 'fade',
+      delay: 180,
+      side: ['right', 'left', 'top', 'bottom'],
+      interactive: true,
+      contentAsHTML: true,
+      minWidth: 260,
+      maxWidth: 260,
+      trigger: 'hover',
+      content: '<div class="body"><div class="text-muted">Loading…</div></div>',
+      functionBefore: function (instance, helper) {
+        var $el = $(helper.origin);
+        var id = String($el.data('tip') || '');
+        var type = $el.data('media-type') || 'movie';
+        var key = type + ':' + id;
+        if (!id) return false;
+
+        if (tipCache[key]) {
+          instance.content(buildTipHtml(tipCache[key]));
+          return true;
+        }
+
+        instance.content('<div class="body"><div class="text-muted">Loading…</div></div>');
+        var base = (window.APP && APP.baseUrl) ? APP.baseUrl : '';
+        $.getJSON(base + '/api/tip/' + encodeURIComponent(type) + '/' + encodeURIComponent(id))
+          .done(function (data) {
+            if (!data || data.error) {
+              instance.content('<div class="body"><div class="text-muted">Details unavailable</div></div>');
+              return;
+            }
+            tipCache[key] = data;
+            instance.content(buildTipHtml(data));
+          })
+          .fail(function () {
+            instance.content('<div class="body"><div class="text-muted">Details unavailable</div></div>');
+          });
+      }
+    });
+  }
+
+  // Instant Home / Movies / TV switching (prefetch + soft navigation)
+  var pageCache = Object.create(null);
+  var pageInflight = Object.create(null);
+  var softNavBusy = false;
+  var softNavToken = 0;
+
+  function absoluteUrl(href) {
+    try {
+      return new URL(href, window.location.href).href;
+    } catch (e) {
+      return href;
+    }
+  }
+
+  function samePage(a, b) {
+    try {
+      var ua = new URL(absoluteUrl(a));
+      var ub = new URL(absoluteUrl(b));
+      return ua.pathname.replace(/\/$/, '') === ub.pathname.replace(/\/$/, '') && ua.search === ub.search;
+    } catch (e) {
+      return absoluteUrl(a) === absoluteUrl(b);
+    }
+  }
+
+  function prefetchPage(url) {
+    url = absoluteUrl(url);
+    if (pageCache[url]) return Promise.resolve(pageCache[url]);
+    if (pageInflight[url]) return pageInflight[url];
+    pageInflight[url] = fetch(url, {
+      credentials: 'same-origin',
+      headers: { Accept: 'text/html' }
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('prefetch failed');
+        return res.text();
+      })
+      .then(function (html) {
+        pageCache[url] = html;
+        delete pageInflight[url];
+        return html;
+      })
+      .catch(function () {
+        delete pageInflight[url];
+        return null;
+      });
+    return pageInflight[url];
+  }
+
+  function prefetchBottomNavTargets() {
+    $('.bottom-nav-item[href]').each(function () {
+      prefetchPage(this.href);
+    });
+  }
+
+  function isInternalSoftUrl(href) {
+    try {
+      var u = new URL(absoluteUrl(href));
+      if (u.origin !== window.location.origin) return false;
+      var path = u.pathname || '';
+      // Stay inside newsite app routes only
+      return /\/(home|movies|tv-series|movie\/|tv\/|search|favorites|top-imdb|filters|contact|request)(\/|$|\?)/.test(path)
+        || /\/newsite\/?$/.test(path)
+        || path.endsWith('/newsite')
+        || path.endsWith('/newsite/');
+    } catch (e) {
+      return false;
+    }
+  }
+
+  var mediaSoftLinkSelector = [
+    '.movie-item a.item-poster[href]',
+    '.movie-item a.name[href]',
+    '.media-card a.card-meta-title[href]',
+    '#featured a.btn[href]',
+    '.search-suggest a.suggest-item[href]',
+    '.movie-sidebar .movie-item a[href]',
+    '.browse-sheet a[href]',
+    'header #menu a[href]'
+  ].join(', ');
+
+  function prefetchVisibleMediaLinks() {
+    $(mediaSoftLinkSelector).each(function () {
+      if (this.href && isInternalSoftUrl(this.href)) prefetchPage(this.href);
+    });
+  }
+
+  function bindMediaPrefetchObserver() {
+    // Scroll-time HTML prefetch fights image loading on weak devices — disabled.
+    // Intent prefetch still runs on pointerdown (see handlers below).
+    if (window.__mediaPrefetchObs) {
+      try {
+        window.__mediaPrefetchObs.disconnect();
+      } catch (e) {}
+      window.__mediaPrefetchObs = null;
+    }
+  }
+
+
+  function refreshLazyMedia() {
+    // Only ask lazysizes to check viewport — never force-load every image
+    if (window.lazySizes && lazySizes.loader && typeof lazySizes.loader.checkElems === 'function') {
+      lazySizes.loader.checkElems();
+    }
+  }
+
+  function afterSoftNav() {
+    $('.movie-item.is-opening').removeClass('is-opening');
+    updateFavCounter();
+    initSwiper();
+    initRecentlyUpdated();
+    if ($.fn.tooltipster) {
+      try {
+        $('.tooltipstered').tooltipster('destroy');
+      } catch (e) {}
+    }
+    initMediaTips();
+    renderFavoritesPage();
+    syncAllRails();
+    refreshLazyMedia();
+    initCinemaReveal();
+    prefetchBottomNavTargets();
+    bindMediaPrefetchObserver();
+    syncTriInputs();
+    syncYearTimeline();
+    syncRatingTimeline();
+  }
+
+  function applySoftNavHtml(html, url, push) {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var nextWrapper = doc.querySelector('.wrapper');
+    var curWrapper = document.querySelector('.wrapper');
+    if (!nextWrapper || !curWrapper) {
+      window.location.href = url;
+      return;
+    }
+    if ($.fn.tooltipster) {
+      try {
+        $('.tooltipstered').tooltipster('destroy');
+      } catch (e) {}
+    }
+    if (window.__featuredSwiper) {
+      try {
+        window.__featuredSwiper.destroy(true, true);
+      } catch (e) {}
+      window.__featuredSwiper = null;
+    }
+    document.title = doc.title || document.title;
+    if (doc.body && doc.body.className != null) {
+      document.body.className = doc.body.className;
+    }
+    curWrapper.innerHTML = nextWrapper.innerHTML;
+    if (push) {
+      history.pushState({ softnav: 1 }, '', url);
+    }
+    window.scrollTo(0, 0);
+    afterSoftNav();
+  }
+
+  function softNavigate(url, push) {
+    url = absoluteUrl(url);
+    var token = ++softNavToken;
+
+    function done(html) {
+      if (token !== softNavToken) return;
+      softNavBusy = false;
+      if (!html) {
+        window.location.href = url;
+        return;
+      }
+      applySoftNavHtml(html, url, push);
+    }
+
+    softNavBusy = true;
+    if (pageCache[url]) {
+      done(pageCache[url]);
+      // Refresh cache in background for next time
+      delete pageCache[url];
+      prefetchPage(url);
+      return;
+    }
+
+    prefetchPage(url).then(done);
+  }
+
+  $(document).on('pointerdown', '.bottom-nav-item[href]', function () {
+    prefetchPage(this.href);
+  });
+
+  $(document).on('pointerdown', mediaSoftLinkSelector, function () {
+    if (this.href && isInternalSoftUrl(this.href)) prefetchPage(this.href);
+  });
+
+  $(document).on('click', '.bottom-nav-item[href]', function (e) {
+    var href = this.href;
+    if (!href) return;
+    try {
+      if (new URL(absoluteUrl(href)).origin !== window.location.origin) return;
+    } catch (err) {
+      return;
+    }
+    e.preventDefault();
+    closeSearchSheet();
+    closeBrowseSheet();
+    if (samePage(href, window.location.href)) return;
+
+    $('.bottom-nav-item').removeClass('active').removeAttr('aria-current');
+    $(this).addClass('active').attr('aria-current', 'page');
+
+    softNavigate(href, true);
+  });
+
+  $(document).on('click', mediaSoftLinkSelector, function (e) {
+    var href = this.href;
+    if (!href || !isInternalSoftUrl(href)) return;
+    // Let modified clicks behave normally
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.which === 2) return;
+    e.preventDefault();
+    closeSearchSheet();
+    closeBrowseSheet();
+    if (samePage(href, window.location.href)) return;
+
+    var $card = $(this).closest('.movie-item');
+    $('.movie-item.is-opening').removeClass('is-opening');
+    if ($card.length) $card.addClass('is-opening');
+
+    softNavigate(href, true);
+  });
+
+  function openBrowseSheet() {
+    closeSearchSheet();
+    closeFiltersSheet();
+    var $sheet = $('#browse-sheet');
+    if (!$sheet.length) return;
+    $sheet.removeAttr('hidden').addClass('is-open');
+    $('body').addClass('browse-open');
+    $('.bottom-nav-browse').addClass('is-open').attr('aria-expanded', 'true');
+  }
+
+  function closeBrowseSheet() {
+    var $sheet = $('#browse-sheet');
+    if (!$sheet.length) return;
+    $sheet.removeClass('is-open').attr('hidden', true);
+    $('body').removeClass('browse-open');
+    $('.bottom-nav-browse').removeClass('is-open').attr('aria-expanded', 'false');
+  }
+
+  function openSearchSheet() {
+    closeBrowseSheet();
+    closeFiltersSheet();
+    var $sheet = $('#search-sheet');
+    if (!$sheet.length) return;
+    $sheet.removeAttr('hidden').addClass('is-open');
+    $('body').addClass('search-open');
+    $('.bottom-nav-search').addClass('is-open').attr('aria-expanded', 'true');
+    setTimeout(function () {
+      $('#search-sheet-input').trigger('focus');
+    }, 80);
+  }
+
+  function closeSearchSheet() {
+    var $sheet = $('#search-sheet');
+    if (!$sheet.length) return;
+    $sheet.removeClass('is-open has-results').attr('hidden', true);
+    $('body').removeClass('search-open');
+    $('.bottom-nav-search').removeClass('is-open').attr('aria-expanded', 'false');
+    $('#search-sheet .search-sheet-suggest').removeClass('open').empty();
+  }
+
+  $(document).on('click', '.bottom-nav-browse', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if ($('#browse-sheet').hasClass('is-open')) closeBrowseSheet();
+    else openBrowseSheet();
+  });
+
+  $(document).on('click', '.bottom-nav-search', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if ($('#search-sheet').hasClass('is-open')) closeSearchSheet();
+    else openSearchSheet();
+  });
+
+  $(document).on('click', '.browse-sheet-backdrop, .browse-sheet-close', function (e) {
+    e.preventDefault();
+    closeBrowseSheet();
+  });
+
+  $(document).on('click', '.search-sheet-backdrop, .search-sheet-close', function (e) {
+    e.preventDefault();
+    closeSearchSheet();
+  });
+
+  $(document).on('click', '.browse-sheet-panel a, .search-sheet-panel a', function () {
+    closeBrowseSheet();
+    closeSearchSheet();
+  });
+
+  $(document).on('click', '[data-search-chip]', function (e) {
+    e.preventDefault();
+    var q = String($(this).data('search-chip') || '');
+    var $input = $('#search-sheet-input');
+    $input.val(q).trigger('input').trigger('focus');
+  });
+
+
+  // ——— Browse auth (main-site /api/auth) ———
+  var browseAuthUser = null;
+  var browseTurnstile = { login: null, register: null, loginToken: '', registerToken: '' };
+
+  function authApi(path, options) {
+    var origin = (window.APP && APP.mainOrigin) || (location.origin || '');
+    return fetch(origin + path, Object.assign({
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+    }, options || {}));
+  }
+
+  function setBrowseAuthMode(mode) {
+    var isLogin = mode !== 'register';
+    $('#browse-login-form').prop('hidden', !isLogin);
+    $('#browse-register-form').prop('hidden', isLogin);
+    $('.browse-auth-tab').removeClass('is-active').attr('aria-selected', 'false');
+    $('.browse-auth-tab[data-auth-tab="' + (isLogin ? 'login' : 'register') + '"]')
+      .addClass('is-active').attr('aria-selected', 'true');
+    $('#browse-auth-kicker').text(isLogin ? 'Welcome back' : 'Join Chillflix');
+    $('#browse-auth-title').text(isLogin ? 'Sign in to Chillflix' : 'Create your account');
+    $('#browse-auth-sub').text(
+      isLogin
+        ? 'Pick up your watchlist, favorites, and profile anywhere.'
+        : 'Save favorites and keep your Chillflix profile in sync.'
+    );
+    $('#browse-login-error, #browse-register-error').prop('hidden', true).text('');
+    renderBrowseTurnstile(isLogin ? 'login' : 'register');
+  }
+
+  function openBrowseAuth(mode) {
+    $('#browse-home-view').attr('hidden', true);
+    $('#browse-auth-view').removeAttr('hidden').addClass('is-open');
+    $('#browse-sheet').addClass('auth-open');
+    setBrowseAuthMode(mode || 'login');
+  }
+
+  function closeBrowseAuth() {
+    $('#browse-auth-view').removeClass('is-open').attr('hidden', true);
+    $('#browse-home-view').removeAttr('hidden');
+    $('#browse-sheet').removeClass('auth-open');
+    $('#browse-login-error, #browse-register-error').prop('hidden', true).text('');
+  }
+
+  function renderBrowseTurnstile( whichtarget ) {
+    var key = (window.APP && APP.turnstileSiteKey) || '';
+    if (!key || !window.turnstile) return;
+    var id = whichtarget === 'register' ? 'browse-turnstile-register' : 'browse-turnstile-login';
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '';
+    try {
+      var wid = window.turnstile.render(el, {
+        sitekey: key,
+        theme: 'dark',
+        callback: function (token) {
+          if (whichtarget === 'register') browseTurnstile.registerToken = token;
+          else browseTurnstile.loginToken = token;
+        },
+        'expired-callback': function () {
+          if (whichtarget === 'register') browseTurnstile.registerToken = '';
+          else browseTurnstile.loginToken = '';
+        },
+        'error-callback': function () {
+          if (whichtarget === 'register') browseTurnstile.registerToken = '';
+          else browseTurnstile.loginToken = '';
+        }
+      });
+      if (whichtarget === 'register') browseTurnstile.register = wid;
+      else browseTurnstile.login = wid;
+    } catch (err) {
+      console.warn('Turnstile render failed', err);
+    }
+  }
+
+  function resetBrowseTurnstile(which) {
+    if (which === 'register') browseTurnstile.registerToken = '';
+    else browseTurnstile.loginToken = '';
+    if (!window.turnstile) return;
+    var wid = which === 'register' ? browseTurnstile.register : browseTurnstile.login;
+    if (wid != null) {
+      try { window.turnstile.reset(wid); } catch (e) {}
+    } else {
+      renderBrowseTurnstile(which);
+    }
+  }
+
+  function applyBrowseAuthUser(user) {
+    browseAuthUser = user || null;
+    if (user) {
+      $('#browse-auth-guest').attr('hidden', true);
+      $('#browse-auth-user').removeAttr('hidden');
+      var name = user.name || user.email || 'Member';
+      $('#browse-auth-name').text(name);
+      $('#browse-auth-email').text(user.email || '');
+      $('#browse-auth-avatar').text(String(name).charAt(0).toUpperCase());
+    } else {
+      $('#browse-auth-user').attr('hidden', true);
+      $('#browse-auth-guest').removeAttr('hidden');
+    }
+  }
+
+  function refreshBrowseAuthUser() {
+    return authApi('/api/auth/me', { method: 'GET', headers: { 'Accept': 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) { applyBrowseAuthUser(data && data.user ? data.user : null); })
+      .catch(function () { applyBrowseAuthUser(null); });
+  }
+
+  var _openBrowseSheet = openBrowseSheet;
+  openBrowseSheet = function () {
+    _openBrowseSheet();
+    closeBrowseAuth();
+    refreshBrowseAuthUser();
+  };
+
+  var _closeBrowseSheet = closeBrowseSheet;
+  closeBrowseSheet = function () {
+    closeBrowseAuth();
+    _closeBrowseSheet();
+  };
+
+  $(document).on('click', '[data-browse-auth]', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    openBrowseAuth($(this).data('browse-auth') || 'login');
+  });
+
+  $(document).on('click', '#browse-auth-back', function (e) {
+    e.preventDefault();
+    closeBrowseAuth();
+  });
+
+  $(document).on('click', '.browse-auth-tab', function (e) {
+    e.preventDefault();
+    setBrowseAuthMode($(this).data('auth-tab') || 'login');
+  });
+
+  $(document).on('submit', '#browse-login-form', function (e) {
+    e.preventDefault();
+    var $form = $(this);
+    var email = String($form.find('[name=email]').val() || '').trim();
+    var password = String($form.find('[name=password]').val() || '');
+    var $err = $('#browse-login-error');
+    var $btn = $('#browse-login-submit');
+    $err.prop('hidden', true).text('');
+    if ((window.APP && APP.turnstileSiteKey) && !browseTurnstile.loginToken) {
+      $err.text('Complete the captcha verification.').prop('hidden', false);
+      return;
+    }
+    $btn.prop('disabled', true).addClass('is-loading');
+    authApi('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: email,
+        password: password,
+        turnstileToken: browseTurnstile.loginToken || undefined
+      })
+    }).then(function (r) {
+      return r.json().then(function (data) { return { ok: r.ok, data: data }; });
+    }).then(function (res) {
+      if (!res.ok) {
+        $err.text((res.data && res.data.error) || 'Login failed').prop('hidden', false);
+        resetBrowseTurnstile('login');
+        return;
+      }
+      applyBrowseAuthUser(res.data.user);
+      closeBrowseAuth();
+    }).catch(function () {
+      $err.text('Network error — try again').prop('hidden', false);
+      resetBrowseTurnstile('login');
+    }).finally(function () {
+      $btn.prop('disabled', false).removeClass('is-loading');
+    });
+  });
+
+  $(document).on('submit', '#browse-register-form', function (e) {
+    e.preventDefault();
+    var $form = $(this);
+    var name = String($form.find('[name=name]').val() || '').trim();
+    var email = String($form.find('[name=email]').val() || '').trim();
+    var password = String($form.find('[name=password]').val() || '');
+    var $err = $('#browse-register-error');
+    var $btn = $('#browse-register-submit');
+    $err.prop('hidden', true).text('');
+    if ((window.APP && APP.turnstileSiteKey) && !browseTurnstile.registerToken) {
+      $err.text('Complete the captcha verification.').prop('hidden', false);
+      return;
+    }
+    $btn.prop('disabled', true).addClass('is-loading');
+    authApi('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: name,
+        email: email,
+        password: password,
+        turnstileToken: browseTurnstile.registerToken || undefined
+      })
+    }).then(function (r) {
+      return r.json().then(function (data) { return { ok: r.ok, data: data }; });
+    }).then(function (res) {
+      if (!res.ok) {
+        $err.text((res.data && res.data.error) || 'Registration failed').prop('hidden', false);
+        resetBrowseTurnstile('register');
+        return;
+      }
+      applyBrowseAuthUser(res.data.user);
+      closeBrowseAuth();
+    }).catch(function () {
+      $err.text('Network error — try again').prop('hidden', false);
+      resetBrowseTurnstile('register');
+    }).finally(function () {
+      $btn.prop('disabled', false).removeClass('is-loading');
+    });
+  });
+
+  $(document).on('click', '#browse-auth-logout', function (e) {
+    e.preventDefault();
+    authApi('/api/auth/logout', { method: 'POST', body: '{}' })
+      .catch(function () {})
+      .then(function () { applyBrowseAuthUser(null); });
+  });
+
+  $(document).on('click', '[data-browse-mock]', function (e) {
+    e.preventDefault();
+    var label = $.trim($(this).find('.browse-tile-label, .browse-card-copy strong, span').first().text()) || 'This';
+    var $note = $('#browse-mock-toast');
+    if (!$note.length) {
+      $note = $('<div id="browse-mock-toast" class="browse-mock-toast" role="status"></div>').appendTo('body');
+    }
+    $note.text(label + ' is mock data for now').addClass('is-visible');
+    clearTimeout(window.__browseMockToastTimer);
+    window.__browseMockToastTimer = setTimeout(function () {
+      $note.removeClass('is-visible');
+    }, 1600);
+  });
+
+  window.addEventListener('popstate', function () {
+    softNavigate(window.location.href, false);
+  });
+
+  $(function () {
+    updateFavCounter();
+    initSwiper();
+    initRecentlyUpdated();
+    renderFavoritesPage();
+    syncAllRails();
+    initCinemaReveal();
+    document.addEventListener('lazybeforeunveil', function (e) {
+      var bg = e.target.getAttribute('data-bgset');
+      if (bg) e.target.style.backgroundImage = 'url(' + bg + ')';
+    });
+    // Desktop tip widgets after first paint / idle
+    var bootTips = function () {
+      initMediaTips();
+    };
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(bootTips, { timeout: 1800 });
+    } else {
+      setTimeout(bootTips, 600);
+    }
+    try {
+      history.replaceState({ softnav: 1 }, '', window.location.href);
+    } catch (e) {}
+    // Only warm primary nav routes when idle — not every media card HTML
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(function () {
+        prefetchBottomNavTargets();
+      }, { timeout: 2000 });
+    } else {
+      setTimeout(prefetchBottomNavTargets, 900);
+    }
+  });
+})(jQuery);
