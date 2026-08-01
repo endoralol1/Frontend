@@ -116,13 +116,14 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(26.5rem, calc(100% - 24px));
+  /* Keep original outer size — only inset content inside */
+  width: min(28rem, calc(100% - 1.25rem));
   max-height: min(86vh, 40rem);
   overflow: auto;
-  background: linear-gradient(180deg, #1a1f2a 0%, #12161e 100%);
+  background: linear-gradient(180deg, #1c202a 0%, #141820 100%);
   border: 1px solid rgba(255,255,255,.1);
-  border-radius: 1.05rem;
-  box-shadow: 0 24px 60px rgba(0,0,0,.55);
+  border-radius: 1rem;
+  box-shadow: 0 20px 50px rgba(0,0,0,.5);
   padding: 20px 22px 22px;
   color: #eef1f6;
   box-sizing: border-box;
