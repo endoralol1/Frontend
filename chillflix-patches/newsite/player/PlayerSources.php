@@ -86,12 +86,6 @@ final class PlayerSources
                 }
                 $quality = (string) ($src['quality'] ?? '');
                 $name = $pname !== '' ? $pname : ucfirst($pid);
-                // Huhu streams are commonly German/EU dubs when available
-                if ($pid === 'huhu' && $quality === 'Auto') {
-                    $label = 'Huhu · Auto';
-                } else {
-                    $label = trim($name . ($quality !== '' ? (' · ' . $quality) : ''));
-                }
                 $audioTracks = [];
                 foreach ($src['audioTracks'] ?? [] as $at) {
                     if (!is_array($at)) {
@@ -103,14 +97,48 @@ final class PlayerSources
                         'label' => (string) ($at['label'] ?? $at['name'] ?? $at['language'] ?? 'Audio'),
                     ];
                 }
-                // Prefer showing a helpful default for Huhu when API omits tracks
-                if ($pid === 'huhu' && !$audioTracks) {
-                    $audioTracks[] = [
-                        'id' => 'huhu-default',
-                        'language' => 'de',
-                        'label' => 'German / Default',
+
+                // Huhu exposes separate DE / EN resolves via ?lang=
+                if ($pid === 'huhu') {
+                    $huhuLangs = [
+                        ['code' => 'de', 'label' => 'German'],
+                        ['code' => 'en', 'label' => 'English'],
                     ];
+                    foreach ($huhuLangs as $hl) {
+                        $langUrl = self::withQueryParam($streamUrl, 'lang', $hl['code']);
+                        $langKey = $pid . '|' . $hl['code'] . '|' . $langUrl;
+                        if (isset($merged[$langKey])) {
+                            continue;
+                        }
+                        $merged[$langKey] = [
+                            'id' => substr(sha1($langKey), 0, 12),
+                            'provider' => $pid,
+                            'providerName' => 'Huhu',
+                            'label' => 'Huhu · ' . $hl['label'],
+                            'quality' => $quality !== '' ? $quality : 'Auto',
+                            'type' => (string) ($src['type'] ?? 'hls'),
+                            'url' => $langUrl,
+                            'language' => $hl['code'],
+                            'audioTracks' => [
+                                [
+                                    'id' => 'huhu-de',
+                                    'language' => 'de',
+                                    'label' => 'German',
+                                    'switchUrl' => self::withQueryParam($streamUrl, 'lang', 'de'),
+                                ],
+                                [
+                                    'id' => 'huhu-en',
+                                    'language' => 'en',
+                                    'label' => 'English',
+                                    'switchUrl' => self::withQueryParam($streamUrl, 'lang', 'en'),
+                                ],
+                            ],
+                        ];
+                    }
+                    continue;
                 }
+
+                $label = trim($name . ($quality !== '' ? (' · ' . $quality) : ''));
                 $merged[$key] = [
                     'id' => substr(sha1($key), 0, 12),
                     'provider' => $pid,
@@ -345,6 +373,28 @@ final class PlayerSources
             return 'https://' . substr($url, 7);
         }
         return $url;
+    }
+
+    private static function withQueryParam(string $url, string $key, string $value): string
+    {
+        $parts = parse_url($url);
+        if ($parts === false) {
+            return $url;
+        }
+        $query = [];
+        if (!empty($parts['query'])) {
+            parse_str($parts['query'], $query);
+        }
+        $query[$key] = $value;
+        $rebuilt = (isset($parts['scheme']) ? $parts['scheme'] . '://' : '')
+            . ($parts['host'] ?? '')
+            . (isset($parts['port']) ? ':' . $parts['port'] : '')
+            . ($parts['path'] ?? '')
+            . '?' . http_build_query($query);
+        if (!empty($parts['fragment'])) {
+            $rebuilt .= '#' . $parts['fragment'];
+        }
+        return $rebuilt;
     }
 
     private static function absolutizeUrl(string $url, string $origin): string

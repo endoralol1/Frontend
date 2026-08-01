@@ -308,9 +308,11 @@
           title: s.providerName || s.provider || `Source ${i + 1}`,
           sub:
             s.provider === "huhu"
-              ? s.quality && s.quality !== "Auto"
-                ? String(s.quality)
-                : "Auto · DE/EU audio when available"
+              ? s.language
+                ? String(s.language).toUpperCase() + " audio"
+                : s.quality && s.quality !== "Auto"
+                  ? String(s.quality)
+                  : "DE / EN"
               : s.quality
                 ? String(s.quality)
                 : s.type
@@ -398,7 +400,36 @@
     function setAudio(idx) {
       state.audioIndex = idx;
       const track = state.audioTracks[idx];
-      if (track && track.switchable !== false && state.hls && state.hls.audioTracks) {
+      if (!track) {
+        refreshMenus();
+        return;
+      }
+      // Huhu: German/English are separate resolves — reload stream with lang=
+      if (track.switchUrl || (track.lang && String(state.sources[state.sourceIndex]?.provider || "").toLowerCase() === "huhu")) {
+        const src = state.sources[state.sourceIndex];
+        let nextUrl = track.switchUrl || "";
+        if (!nextUrl && src?.url) {
+          try {
+            const u = new URL(absoluteUrl(src.url));
+            u.searchParams.set("lang", String(track.lang).toLowerCase().slice(0, 2));
+            nextUrl = u.toString();
+          } catch (_) {
+            nextUrl = "";
+          }
+        }
+        if (nextUrl) {
+          // Keep source entry in sync so quality/source lists stay correct
+          if (src) {
+            src.url = nextUrl;
+            src.language = track.lang || src.language;
+            src.label = `Huhu · ${track.name || track.label || String(track.lang || "").toUpperCase()}`;
+          }
+          refreshMenus();
+          playUrl(nextUrl, src);
+          return;
+        }
+      }
+      if (track.switchable !== false && state.hls && state.hls.audioTracks) {
         const hlsIdx = Number.isInteger(track.id) ? track.id : idx;
         state.hls.audioTrack = hlsIdx;
       }
@@ -411,14 +442,18 @@
             id: a.id || `src-${i}`,
             name: a.label || a.language || a.name || `Audio ${i + 1}`,
             lang: a.language || a.lang || "",
-            switchable: false,
+            switchUrl: a.switchUrl || "",
+            switchable: Boolean(a.switchUrl) || false,
             from: "source",
           }))
         : [];
       if (srcAudio.length) return srcAudio;
       const provider = String(source?.provider || "").toLowerCase();
       if (provider === "huhu") {
-        return [{ id: "huhu-default", name: "German / Default", lang: "de", switchable: false, from: "source" }];
+        return [
+          { id: "huhu-de", name: "German", lang: "de", switchable: true, from: "source" },
+          { id: "huhu-en", name: "English", lang: "en", switchable: true, from: "source" },
+        ];
       }
       return [{ id: "default", name: "Default", lang: "", switchable: false, from: "source" }];
     }
@@ -634,11 +669,15 @@
             from: "hls",
           }));
           state.audioTracks = hlsAudio.length ? hlsAudio : fallbackAudioTracks(source);
-          state.audioIndex = state.audioTracks.length
-            ? hlsAudio.length && hls.audioTrack >= 0
-              ? hls.audioTrack
-              : 0
-            : 0;
+          if (hlsAudio.length && hls.audioTrack >= 0) {
+            state.audioIndex = hls.audioTrack;
+          } else {
+            const want = String(source?.language || "").toLowerCase();
+            const hit = want
+              ? state.audioTracks.findIndex((a) => String(a.lang || "").toLowerCase().startsWith(want))
+              : -1;
+            state.audioIndex = hit >= 0 ? hit : state.audioTracks.length ? 0 : 0;
+          }
 
           if (hls.subtitleTracks && hls.subtitleTracks.length) {
             const native = hls.subtitleTracks.map((t, i) => ({
