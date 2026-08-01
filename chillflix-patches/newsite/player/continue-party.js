@@ -210,7 +210,11 @@
   }
 
   function ensurePartyPanel() {
-    if ($("#cf-party-panel").length) return $("#cf-party-panel");
+    var $existing = $("#cf-party-panel");
+    if ($existing.length) {
+      if ($existing.find(".cf-party-body").length) return $existing;
+      $existing.remove();
+    }
     var $panel = $(
       '<div id="cf-party-panel" class="cf-party-panel" hidden>' +
         '<div class="cf-party-scrim" data-party-close></div>' +
@@ -222,6 +226,7 @@
         "</div>" +
         '<button type="button" class="cf-party-x" data-party-close aria-label="Close">&times;</button>' +
         "</header>" +
+        '<div class="cf-party-body">' +
         '<div class="cf-party-tabs" role="tablist" aria-label="Watch Party mode">' +
         '<button type="button" class="is-active" data-party-tab="create" role="tab" aria-selected="true">Create</button>' +
         '<button type="button" data-party-tab="join" role="tab" aria-selected="false">Join</button>' +
@@ -240,7 +245,7 @@
         '<button type="button" class="cf-party-btn is-primary" id="cf-party-join">Join party</button>' +
         '<p id="cf-party-join-err" class="cf-party-err" hidden></p>' +
         "</section>" +
-        "</div></div>"
+        "</div></div></div>"
     );
     $("body").append($panel);
     return $panel;

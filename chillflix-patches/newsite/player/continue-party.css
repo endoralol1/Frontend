@@ -116,7 +116,6 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  /* Same outer width as original — inset is padding only */
   width: min(28rem, calc(100% - 1.25rem)) !important;
   max-height: min(86vh, 40rem);
   overflow: auto;
@@ -124,26 +123,35 @@
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 1rem;
   box-shadow: 0 20px 50px rgba(0,0,0,.5);
-  /* Push title + X away from the modal wall */
-  padding: 24px 32px 28px !important;
+  /* No sheet padding — header bar stays full-width inside the modal */
+  padding: 0 !important;
   color: #eef1f6;
   box-sizing: border-box;
 }
+/* Inner header background (the 2nd edge). Keep bar full width; pad content inside it. */
 .cf-party-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  margin: 0 0 1rem;
-  padding: 0;
+  margin: 0;
   width: 100%;
   box-sizing: border-box;
+  background: #161a23;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  border-radius: 1rem 1rem 0 0;
+  /* THIS is the spacing from the inner header edges */
+  padding: 16px 18px;
 }
 .cf-party-copy {
   min-width: 0;
   flex: 1 1 auto;
   padding: 0;
   margin: 0;
+}
+.cf-party-body {
+  padding: 16px 18px 20px;
+  box-sizing: border-box;
 }
 .cf-party-kicker {
   margin: 0;
