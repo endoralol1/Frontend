@@ -7,7 +7,7 @@
   --live-muted: #9aa3b2;
   --live-accent: #db6937;
   --live-accent-2: #c43c2e;
-  --live-gutter: 32px;
+  --live-gutter: 16px;
   padding: 1rem var(--live-gutter) 5.5rem;
   color: var(--live-text);
 }
@@ -20,9 +20,9 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0.4rem;
+  gap: 0.35rem;
   margin-bottom: 1rem;
-  padding: 18px 20px;
+  padding: 14px 16px;
   border-radius: 1rem;
   background: rgba(20, 24, 32, 0.72);
   border: 1px solid var(--live-line);
@@ -41,8 +41,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  margin: 0 0 0.4rem;
-  font-size: 0.78rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -62,14 +62,14 @@
 }
 .live-hero h1 {
   margin: 0;
-  font-size: clamp(1.7rem, 3.2vw, 2.25rem);
+  font-size: clamp(1.55rem, 3vw, 2.1rem);
   font-weight: 800;
   letter-spacing: -0.02em;
 }
 .live-lead {
   margin: 0;
   color: var(--live-muted);
-  font-size: 0.98rem;
+  font-size: 0.9rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -77,27 +77,27 @@
 .live-hero-stats {
   display: flex;
   flex: 0 0 auto;
-  gap: 0.5rem;
-  margin-top: 1.45rem; /* align with h1 under kicker */
+  gap: 0.4rem;
+  margin-top: 1.25rem; /* align with h1 under kicker */
 }
 .live-hero-stats > div {
-  min-width: 4.6rem;
-  padding: 0.55rem 0.7rem;
-  border-radius: 0.7rem;
+  min-width: 0;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.55rem;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--live-line);
   text-align: center;
-  line-height: 1.15;
+  line-height: 1.1;
 }
 .live-hero-stats strong {
   display: block;
-  font-size: 1.15rem;
+  font-size: 1rem;
   font-weight: 800;
 }
 .live-hero-stats span {
   display: block;
-  margin-top: 0.15rem;
-  font-size: 0.66rem;
+  margin-top: 0.12rem;
+  font-size: 0.6rem;
   color: var(--live-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -111,36 +111,35 @@
 }
 @media (max-width: 991.98px) {
   .live-p {
-    --live-gutter: 32px;
+    --live-gutter: 16px;
     padding-top: 0.85rem;
   }
   .live-hero {
-    gap: 0.4rem;
-    padding: 18px 20px;
+    gap: 0.3rem;
+    padding: 14px 16px;
   }
-  .live-now { padding: 0.9rem 1.15rem; }
-  .live-toolbar { padding: 0.85rem 1rem 0.5rem; }
-  .live-cats { padding: 0.4rem 1rem 0.75rem; }
-  .live-list { padding: 0.2rem 0.8rem 1rem; }
-  .live-hero-top { gap: 0.65rem; }
-  .live-hero h1 { font-size: clamp(1.55rem, 6.8vw, 1.9rem); }
+  .live-now { padding: 0.85rem 1rem; }
+  .live-toolbar { padding: 0.75rem 0.85rem 0.45rem; }
+  .live-cats { padding: 0.35rem 0.85rem 0.65rem; }
+  .live-list { padding: 0.15rem 0.7rem 0.85rem; }
+  .live-hero-top { gap: 0.55rem; }
+  .live-hero h1 { font-size: clamp(1.4rem, 6.2vw, 1.75rem); }
   .live-lead {
-    font-size: 0.9rem;
+    font-size: 0.84rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .live-hero-stats {
-    margin-top: 1.35rem;
-    gap: 0.4rem;
+    margin-top: 1.2rem;
+    gap: 0.35rem;
   }
   .live-hero-stats > div {
-    min-width: 4.2rem;
-    padding: 0.48rem 0.58rem;
-    border-radius: 0.6rem;
+    padding: 0.35rem 0.48rem;
+    border-radius: 0.5rem;
   }
-  .live-hero-stats strong { font-size: 1.05rem; }
-  .live-hero-stats span { font-size: 0.6rem; }
+  .live-hero-stats strong { font-size: 0.95rem; }
+  .live-hero-stats span { font-size: 0.56rem; }
   .live-stage { grid-template-columns: 1fr; }
 }
 
