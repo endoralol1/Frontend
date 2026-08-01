@@ -116,7 +116,7 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(26.5rem, calc(100% - 1.5rem));
+  width: min(26.5rem, calc(100% - 24px));
   max-height: min(86vh, 40rem);
   overflow: auto;
   background:
@@ -125,7 +125,7 @@
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 1.05rem;
   box-shadow: 0 24px 60px rgba(0,0,0,.55);
-  padding: 1.05rem 1.1rem 1.2rem;
+  padding: 18px 18px 20px;
   color: #eef1f6;
   box-sizing: border-box;
 }

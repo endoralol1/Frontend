@@ -260,8 +260,8 @@
 
   function switchPartyTab(tab) {
     var $p = $("#cf-party-panel");
-    $p.find("[data-party-tab]").removeClass("is-active");
-    $p.find('[data-party-tab="' + tab + '"]').addClass("is-active");
+    $p.find("[data-party-tab]").removeClass("is-active").attr("aria-selected", "false");
+    $p.find('[data-party-tab="' + tab + '"]').addClass("is-active").attr("aria-selected", "true");
     $p.find("[data-party-pane]").removeClass("is-active");
     $p.find('[data-party-pane="' + tab + '"]').addClass("is-active");
   }
