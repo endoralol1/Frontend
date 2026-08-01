@@ -21,21 +21,22 @@
 }
 
 #continue-watching .cw-ep.episode-card {
-  flex: 0 0 14.25rem;
-  width: 14.25rem;
-  min-width: 14.25rem;
-  max-width: 72vw;
-  margin: 0 0.3rem;
-  border-radius: 0.85rem;
+  /* Match Latest Episodes card size */
+  flex: 0 0 17.5rem;
+  width: 17.5rem;
+  min-width: 17.5rem;
+  max-width: 78vw;
+  margin: 0 0.4rem;
+  border-radius: 1rem;
   overflow: hidden;
   background: #1a1c23;
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 @media (min-width: 992px) {
   #continue-watching .cw-ep.episode-card {
-    flex-basis: 15.5rem;
-    width: 15.5rem;
-    min-width: 15.5rem;
+    flex-basis: 22rem;
+    width: 22rem;
+    min-width: 22rem;
   }
 }
 
@@ -43,19 +44,19 @@
   aspect-ratio: 16 / 9;
 }
 #continue-watching .cw-ep .episode-card-badge {
-  left: 0.55rem;
-  top: 0.55rem;
-  padding: 0.24rem 0.48rem;
-  font-size: 0.62rem;
+  left: 0.7rem;
+  top: 0.7rem;
+  padding: 0.3rem 0.58rem;
+  font-size: 0.68rem;
 }
 #continue-watching .cw-ep .episode-card-meta {
-  padding: 0.65rem 0.65rem 0.7rem;
+  padding: 0.85rem 0.85rem 0.9rem;
 }
 #continue-watching .cw-ep .episode-card-show {
-  font-size: 0.86rem;
+  font-size: 0.95rem;
 }
 #continue-watching .cw-ep .episode-card-ep {
-  font-size: 0.72rem;
+  font-size: 0.78rem;
 }
 
 /* Centered watched % */
@@ -65,14 +66,14 @@
   top: 46%;
   transform: translate(-50%, -50%);
   z-index: 3;
-  min-width: 2.55rem;
-  height: 2.55rem;
-  padding: 0 0.35rem;
+  min-width: 2.85rem;
+  height: 2.85rem;
+  padding: 0 0.4rem;
   border-radius: 999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.78rem;
+  font-size: 0.86rem;
   font-weight: 800;
   letter-spacing: 0.01em;
   color: #fff;
