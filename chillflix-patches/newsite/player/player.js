@@ -63,43 +63,56 @@
       </div>
     </div>
   </div>
+  <div class="np-scrim" id="np-scrim" hidden></div>
   <aside class="np-panel" id="np-panel" hidden>
     <div class="np-panel-head">
-      <h2>Player settings</h2>
-      <button type="button" class="np-btn" id="np-panel-close" aria-label="Close">✕</button>
+      <div class="np-panel-titles">
+        <p class="np-panel-kicker">Controls</p>
+        <h2>Settings</h2>
+      </div>
+      <button type="button" class="np-btn np-panel-x" id="np-panel-close" aria-label="Close">✕</button>
     </div>
-    <div class="np-panel-tabs" id="np-panel-tabs">
-      <button type="button" data-tab="source" class="is-active">Source</button>
-      <button type="button" data-tab="quality">Quality</button>
-      <button type="button" data-tab="audio">Audio</button>
-      <button type="button" data-tab="subs">Subtitles</button>
-      <button type="button" data-tab="style">Captions</button>
+    <div class="np-seg" id="np-panel-tabs" role="tablist">
+      <button type="button" data-tab="source" class="is-active" role="tab">Source</button>
+      <button type="button" data-tab="quality" role="tab">Quality</button>
+      <button type="button" data-tab="audio" role="tab">Audio</button>
+      <button type="button" data-tab="subs" role="tab">Subs</button>
+      <button type="button" data-tab="style" role="tab">Style</button>
     </div>
     <div class="np-panel-body">
       <section data-panel="source" class="is-active">
-        <p class="np-panel-hint">Choose a stream source</p>
+        <p class="np-panel-hint">Stream source</p>
         <div class="np-list" id="np-source-list"></div>
       </section>
       <section data-panel="quality">
-        <p class="np-panel-hint">Playback quality</p>
-        <div class="np-list" id="np-quality-list"></div>
+        <p class="np-panel-hint">Video quality</p>
+        <div class="np-list np-list--grid" id="np-quality-list"></div>
       </section>
       <section data-panel="audio">
         <p class="np-panel-hint">Audio track</p>
         <div class="np-list" id="np-audio-list"></div>
       </section>
       <section data-panel="subs">
-        <p class="np-panel-hint">Subtitle track</p>
+        <p class="np-panel-hint">Subtitle language</p>
         <div class="np-list" id="np-sub-list"></div>
       </section>
       <section data-panel="style">
         <p class="np-panel-hint">Caption timing & look</p>
-        <div class="np-sliders">
-          <label><span>Delay</span><input type="range" id="np-delay" min="-10" max="10" step="0.1" value="0"><span class="np-slider-val" id="np-delay-val">0.0s</span></label>
-          <label><span>Size</span><input type="range" id="np-size" min="0.75" max="1.75" step="0.05" value="1"><span class="np-slider-val" id="np-size-val">100%</span></label>
-          <label><span>BG</span><input type="range" id="np-bg" min="0" max="0.9" step="0.05" value="0.7"><span class="np-slider-val" id="np-bg-val">70%</span></label>
+        <div class="np-style-cards">
+          <label class="np-style-card">
+            <span class="np-style-top"><span>Delay</span><span class="np-slider-val" id="np-delay-val">0.0s</span></span>
+            <input type="range" id="np-delay" min="-10" max="10" step="0.1" value="0">
+          </label>
+          <label class="np-style-card">
+            <span class="np-style-top"><span>Size</span><span class="np-slider-val" id="np-size-val">100%</span></span>
+            <input type="range" id="np-size" min="0.75" max="1.75" step="0.05" value="1">
+          </label>
+          <label class="np-style-card">
+            <span class="np-style-top"><span>Background</span><span class="np-slider-val" id="np-bg-val">70%</span></span>
+            <input type="range" id="np-bg" min="0" max="0.9" step="0.05" value="0.7">
+          </label>
         </div>
-        ${isTv ? `<div class="np-toggle-row"><span>Auto Next episode</span><button type="button" class="np-switch" id="np-autonext-switch" aria-checked="true" role="switch" aria-label="Auto next"></button></div>` : ""}
+        ${isTv ? `<div class="np-toggle-row"><div class="np-toggle-copy"><span>Auto Next</span><small>Jump to the next episode when this one ends</small></div><button type="button" class="np-switch" id="np-autonext-switch" aria-checked="true" role="switch" aria-label="Auto next"></button></div>` : ""}
       </section>
     </div>
   </aside>
@@ -123,6 +136,7 @@
       progress: $("#np-progress", root),
       time: $("#np-time", root),
       settingsBtn: $("#np-settings-btn", root),
+      scrim: $("#np-scrim", root),
       panel: $("#np-panel", root),
       panelClose: $("#np-panel-close", root),
       panelTabs: $("#np-panel-tabs", root),
@@ -202,27 +216,33 @@
       clearTimeout(state.hideTimer);
       if (temp !== false) {
         state.hideTimer = setTimeout(() => {
+          if (els.shell?.classList.contains("np-settings-open")) return;
           if (!els.video?.paused) els.shell?.classList.remove("show-controls");
         }, 2800);
       }
     }
 
-    function renderList(container, items, activeIndex, onPick, labelFn) {
+    function renderList(container, items, activeIndex, onPick, metaFn) {
       if (!container) return;
       container.innerHTML = "";
       if (!items.length) {
-        const empty = document.createElement("button");
-        empty.type = "button";
-        empty.disabled = true;
-        empty.textContent = "None";
+        const empty = document.createElement("div");
+        empty.className = "np-empty";
+        empty.textContent = "Nothing available yet";
         container.appendChild(empty);
         return;
       }
       items.forEach((item, idx) => {
+        const meta = metaFn(item, idx) || {};
         const b = document.createElement("button");
         b.type = "button";
-        b.className = idx === activeIndex ? "is-active" : "";
-        b.textContent = labelFn(item, idx);
+        b.className = "np-option" + (idx === activeIndex ? " is-active" : "");
+        b.innerHTML = `
+          <span class="np-option-main">
+            <span class="np-option-title">${esc(meta.title || "Option")}</span>
+            ${meta.sub ? `<span class="np-option-sub">${esc(meta.sub)}</span>` : ""}
+          </span>
+          <span class="np-option-check" aria-hidden="true"></span>`;
         b.addEventListener("click", () => onPick(idx));
         container.appendChild(b);
       });
@@ -234,7 +254,10 @@
         state.sources,
         state.sourceIndex,
         (i) => loadSource(i),
-        (s) => s.label || `${s.providerName || s.provider || "src"}${s.quality ? " · " + s.quality : ""}`
+        (s, i) => ({
+          title: s.providerName || s.provider || `Source ${i + 1}`,
+          sub: s.quality ? String(s.quality) : s.type ? String(s.type).toUpperCase() : "Stream",
+        })
       );
       const qualities = [{ id: -1, height: 0, name: "Auto" }, ...state.levels];
       const qActive = state.levelIndex < 0 ? 0 : state.levelIndex + 1;
@@ -243,23 +266,32 @@
         qualities,
         qActive,
         (i) => setQuality(i === 0 ? -1 : i - 1),
-        (l) => l.name || (l.height ? `${l.height}p` : "Auto")
+        (l) => ({
+          title: l.name || (l.height ? `${l.height}p` : "Auto"),
+          sub: l.id === -1 || !l.height ? "Adaptive" : `${l.height}p`,
+        })
       );
       renderList(
         els.audioList,
         state.audioTracks,
         state.audioIndex,
         (i) => setAudio(i),
-        (a) => a.name || a.lang || `Audio ${(a.id ?? 0) + 1}`
+        (a, i) => ({
+          title: a.name || a.lang || `Audio ${i + 1}`,
+          sub: a.lang && a.name ? String(a.lang).toUpperCase() : "Track",
+        })
       );
-      const subs = [{ name: "Off" }, ...state.textTracks];
+      const subs = [{ name: "Off", lang: "" }, ...state.textTracks];
       const sActive = state.textIndex < 0 ? 0 : state.textIndex + 1;
       renderList(
         els.subList,
         subs,
         sActive,
         (i) => setSubtitle(i - 1),
-        (t) => t.name || t.lang || "Track"
+        (t) => ({
+          title: t.name || t.lang || "Track",
+          sub: t.name === "Off" ? "Hidden" : t.lang ? String(t.lang).toUpperCase() : "Caption",
+        })
       );
     }
 
@@ -546,12 +578,16 @@
 
     function openPanel(tab) {
       if (els.panel) els.panel.hidden = false;
+      if (els.scrim) els.scrim.hidden = false;
+      els.shell?.classList.add("np-settings-open");
       if (tab) switchTab(tab);
       showControls(false);
     }
 
     function closePanel() {
       if (els.panel) els.panel.hidden = true;
+      if (els.scrim) els.scrim.hidden = true;
+      els.shell?.classList.remove("np-settings-open");
     }
 
     function switchTab(tab) {
@@ -587,6 +623,7 @@
       });
       els.settingsBtn?.addEventListener("click", () => openPanel());
       els.panelClose?.addEventListener("click", closePanel);
+      els.scrim?.addEventListener("click", closePanel);
 
       els.back?.addEventListener("click", () => {
         if (cfg.embed) {
