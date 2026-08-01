@@ -7,7 +7,7 @@ from pathlib import Path
 
 LOCAL = Path(__file__).resolve().parent
 ROOT = Path("/var/www/chillflix-newsite")
-ASSET_V = "20260801-ui34"
+ASSET_V = "20260801-ui35"
 
 
 def write_files() -> None:
