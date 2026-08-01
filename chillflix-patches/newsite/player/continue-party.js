@@ -72,12 +72,12 @@
     if (!$rail.length) return;
     var items = readContinue().slice(0, 24);
     if (!items.length) {
-      $rail.attr("hidden", true).addClass("d-none");
+      $rail.attr("hidden", true).addClass("d-none").css("display", "none");
       $rail.find(".media-rail-items").empty();
       return;
     }
     $rail.removeAttr("hidden").removeClass("d-none");
-    $rail.css("display", "");
+    $rail.css("display", "block");
     var html = items
       .map(function (row) {
         var href = watchHref(row);

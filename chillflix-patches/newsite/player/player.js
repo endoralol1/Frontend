@@ -51,7 +51,7 @@
     let d = Number(duration) || 0;
     if (!Number.isFinite(d) || d === Infinity) d = 0;
     // Persist early so homepage rail fills quickly
-    if (t < 8) return;
+    if (t < 5) return;
     if (d > 0 && (d - t < 90 || t / d > 0.96)) {
       // finished — drop from continue list
       const map = cwReadAll();
@@ -89,7 +89,7 @@
     if (!row) return 0;
     const t = Number(row.t) || 0;
     const d = Number(row.d) || 0;
-    if (t < 8) return 0;
+    if (t < 5) return 0;
     if (d > 0 && Number.isFinite(d) && d !== Infinity && (d - t < 90 || t / d > 0.96)) return 0;
     return t;
   }
@@ -1034,7 +1034,7 @@
         const now = Date.now();
         const t = v.currentTime || 0;
         // First eligible save should not wait on the throttle
-        const firstOk = t >= 8 && state.lastCwSave === 0;
+        const firstOk = t >= 5 && state.lastCwSave === 0;
         if (!force && !firstOk && now - state.lastCwSave < 4000) return;
         state.lastCwSave = now;
         cwSave(cfg, t, v.duration);
