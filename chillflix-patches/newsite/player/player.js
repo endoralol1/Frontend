@@ -18,6 +18,102 @@
       .replace(/"/g, "&quot;");
   }
 
+  /* -------- Continue Watching (local, throttled) -------- */
+  const CW_KEY = "cf_continue_v1";
+  const CW_MAX = 36;
+
+  function cwProgressKey(cfg) {
+    const type = cfg.type === "tv" ? "tv" : "movie";
+    if (type === "tv") return `tv:${cfg.id}:s${cfg.season || 1}e${cfg.episode || 1}`;
+    return `movie:${cfg.id}`;
+  }
+
+  function cwReadAll() {
+    try {
+      const raw = localStorage.getItem(CW_KEY);
+      const data = raw ? JSON.parse(raw) : {};
+      return data && typeof data === "object" ? data : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function cwWriteAll(map) {
+    try {
+      localStorage.setItem(CW_KEY, JSON.stringify(map));
+    } catch (_) {}
+  }
+
+  function cwSave(cfg, watched, duration) {
+    const id = Number(cfg.id) || 0;
+    if (!id) return;
+    const t = Number(watched) || 0;
+    const d = Number(duration) || 0;
+    if (t < 20) return;
+    if (d > 0 && (d - t < 90 || t / d > 0.96)) {
+      // finished — drop from continue list
+      const map = cwReadAll();
+      delete map[cwProgressKey(cfg)];
+      cwWriteAll(map);
+      return;
+    }
+    const map = cwReadAll();
+    const key = cwProgressKey(cfg);
+    map[key] = {
+      id,
+      type: cfg.type === "tv" ? "tv" : "movie",
+      title: cfg.title || "Untitled",
+      poster: cfg.poster || "",
+      year: cfg.year || "",
+      season: cfg.type === "tv" ? Number(cfg.season) || 1 : null,
+      episode: cfg.type === "tv" ? Number(cfg.episode) || 1 : null,
+      t,
+      d,
+      updated: Date.now(),
+      url: cfg.watchUrl || cfg.backUrl || location.pathname + location.search,
+    };
+    // prune oldest
+    const keys = Object.keys(map).sort((a, b) => (map[b].updated || 0) - (map[a].updated || 0));
+    keys.slice(CW_MAX).forEach((k) => delete map[k]);
+    cwWriteAll(map);
+  }
+
+  function cwResumeTime(cfg) {
+    // URL ?t= wins
+    const params = new URLSearchParams(location.search);
+    const qt = Number(params.get("t") || 0);
+    if (qt > 0) return qt;
+    const row = cwReadAll()[cwProgressKey(cfg)];
+    if (!row) return 0;
+    const t = Number(row.t) || 0;
+    const d = Number(row.d) || 0;
+    if (t < 20) return 0;
+    if (d > 0 && (d - t < 90 || t / d > 0.96)) return 0;
+    return t;
+  }
+
+  /* -------- Watch Party (host report / guest poll) -------- */
+  function partyPeerId() {
+    try {
+      let id = sessionStorage.getItem("cf_party_peer");
+      if (!id) {
+        id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        sessionStorage.setItem("cf_party_peer", id);
+      }
+      return id;
+    } catch (_) {
+      return "anon";
+    }
+  }
+
+  function partyFromUrl() {
+    const p = new URLSearchParams(location.search);
+    const code = (p.get("party") || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (!code) return null;
+    const role = p.get("host") === "1" ? "host" : "guest";
+    return { code, role };
+  }
+
 
   const QUALITY_LADDER = [
     { key: "360", label: "360p", height: 360 },
@@ -223,6 +319,12 @@
       subsLoading: false,
       subsLoaded: false,
       bound: false,
+      resumeApplied: false,
+      lastCwSave: 0,
+      party: partyFromUrl(),
+      partyTimer: null,
+      partyApplying: false,
+      partyHostId: null,
     };
 
     function fmt(t) {
@@ -629,6 +731,16 @@
 
       const onReady = () => {
         setStatus("");
+        if (!state.resumeApplied) {
+          const resumeAt = cwResumeTime(cfg);
+          if (resumeAt > 0 && Number.isFinite(v.duration) && resumeAt < v.duration - 5) {
+            try {
+              v.currentTime = resumeAt;
+            } catch (_) {}
+          }
+          state.resumeApplied = true;
+        }
+        ensureParty();
         if (!state.autoplay) return;
         const tryPlay = () =>
           v.play().catch(() => {
@@ -916,20 +1028,38 @@
       }
 
       const v = els.video;
-      v.addEventListener("timeupdate", syncUi);
+      const maybeSaveProgress = (force) => {
+        const now = Date.now();
+        if (!force && now - state.lastCwSave < 5000) return;
+        state.lastCwSave = now;
+        cwSave(cfg, v.currentTime, v.duration);
+      };
+      v.addEventListener("timeupdate", () => {
+        syncUi();
+        maybeSaveProgress(false);
+      });
       v.addEventListener("play", () => {
         syncUi();
         showControls();
+        partyReport(true);
       });
       v.addEventListener("pause", () => {
         syncUi();
         showControls(false);
+        maybeSaveProgress(true);
+        partyReport(true);
+      });
+      v.addEventListener("seeked", () => {
+        maybeSaveProgress(true);
+        partyReport(true);
       });
       v.addEventListener("volumechange", syncUi);
       v.addEventListener("ended", () => {
+        maybeSaveProgress(true);
         if (cfg.type === "tv" && state.autoNext) goNextEpisode();
       });
       v.addEventListener("click", togglePlay);
+      window.addEventListener("pagehide", () => maybeSaveProgress(true));
 
       els.shell?.addEventListener("mousemove", () => showControls());
       els.shell?.addEventListener("touchstart", () => showControls(), { passive: true });
@@ -951,12 +1081,121 @@
       });
     }
 
+    function partyApiBase() {
+      return (cfg.partyApi || ((window.APP && window.APP.baseUrl) || "") + "/api/party").replace(/\/$/, "");
+    }
+
+    async function ensureParty() {
+      if (!state.party || state.partyTimer) return;
+      const base = partyApiBase();
+      const peer = partyPeerId();
+      try {
+        if (state.party.role === "host") {
+          // hostId from create flow, or claim via first update using session peer
+          state.partyHostId = sessionStorage.getItem("cf_party_host_" + state.party.code) || peer;
+          sessionStorage.setItem("cf_party_host_" + state.party.code, state.partyHostId);
+          setStatus("Watch Party host · " + state.party.code);
+          state.partyTimer = setInterval(() => partyReport(false), 2000);
+          partyReport(true);
+        } else {
+          await fetch(`${base}/${encodeURIComponent(state.party.code)}/join`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({ peerId: peer }),
+          });
+          setStatus("Watch Party · synced to host · " + state.party.code);
+          state.partyTimer = setInterval(() => partyPoll(), 2000);
+          partyPoll();
+        }
+        paintPartyChip();
+      } catch (_) {}
+    }
+
+    function paintPartyChip() {
+      if (!state.party || !els.shell) return;
+      let chip = els.shell.querySelector("#np-party-chip");
+      if (!chip) {
+        chip = document.createElement("div");
+        chip.id = "np-party-chip";
+        chip.className = "np-party-chip";
+        els.shell.querySelector(".np-top-actions")?.appendChild(chip);
+      }
+      chip.textContent =
+        state.party.role === "host"
+          ? `Party ${state.party.code} · Host`
+          : `Party ${state.party.code}`;
+    }
+
+    async function partyReport(force) {
+      if (!state.party || state.party.role !== "host") return;
+      const v = els.video;
+      if (!v) return;
+      const base = partyApiBase();
+      try {
+        await fetch(`${base}/${encodeURIComponent(state.party.code)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({
+            hostId: state.partyHostId || partyPeerId(),
+            paused: !!v.paused,
+            t: v.currentTime || 0,
+            duration: v.duration || 0,
+            content: {
+              type: cfg.type,
+              id: cfg.id,
+              title: cfg.title,
+              poster: cfg.poster,
+              year: cfg.year,
+              season: cfg.season,
+              episode: cfg.episode,
+              url: cfg.watchUrl || location.href,
+            },
+          }),
+          keepalive: !!force,
+        });
+      } catch (_) {}
+    }
+
+    async function partyPoll() {
+      if (!state.party || state.party.role === "host" || state.partyApplying) return;
+      const v = els.video;
+      if (!v) return;
+      const base = partyApiBase();
+      try {
+        const res = await fetch(`${base}/${encodeURIComponent(state.party.code)}`, {
+          headers: { Accept: "application/json" },
+          credentials: "same-origin",
+        });
+        const data = await res.json();
+        if (!data?.ok || !data.room) return;
+        const room = data.room;
+        const target = Number(room.t) || 0;
+        const drift = Math.abs((v.currentTime || 0) - target);
+        state.partyApplying = true;
+        if (drift > 2.5 && target >= 0) {
+          try {
+            v.currentTime = target;
+          } catch (_) {}
+        }
+        if (room.paused && !v.paused) v.pause();
+        else if (!room.paused && v.paused) v.play().catch(() => {});
+      } catch (_) {
+      } finally {
+        state.partyApplying = false;
+      }
+    }
+
     bind();
     syncUi();
     fetchSources();
 
     return {
       destroy() {
+        if (state.partyTimer) clearInterval(state.partyTimer);
+        try {
+          const v = els.video;
+          if (v) cwSave(cfg, v.currentTime, v.duration);
+        } catch (_) {}
         destroyHls();
         els.shell?.remove();
       },
@@ -1006,6 +1245,19 @@
         frame.innerHTML = "";
       }
       ensureHls(() => mount(host, cfg));
+    },
+    continueList() {
+      const map = cwReadAll();
+      return Object.keys(map)
+        .map((k) => map[k])
+        .filter(Boolean)
+        .sort((a, b) => (b.updated || 0) - (a.updated || 0));
+    },
+    clearContinue(key) {
+      const map = cwReadAll();
+      if (key) delete map[key];
+      else Object.keys(map).forEach((k) => delete map[k]);
+      cwWriteAll(map);
     },
   };
 
