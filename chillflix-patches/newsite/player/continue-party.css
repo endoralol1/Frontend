@@ -114,22 +114,24 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(28rem, calc(100% - 1.25rem));
+  width: min(28rem, calc(100% - 1.75rem));
   max-height: min(86vh, 40rem);
   overflow: auto;
   background: linear-gradient(180deg, #1c202a 0%, #141820 100%);
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 1rem;
+  border-radius: 1.1rem;
   box-shadow: 0 20px 50px rgba(0,0,0,.5);
-  padding: 1rem 1rem 1.15rem;
+  padding: 1.25rem 1.35rem 1.35rem;
   color: #e9ecef;
+  box-sizing: border-box;
 }
 .cf-party-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: .75rem;
-  margin-bottom: .75rem;
+  gap: 1rem;
+  margin: 0 0 .9rem;
+  padding: 0 .1rem;
 }
 .cf-party-kicker {
   margin: 0;
@@ -147,12 +149,15 @@
 .cf-party-x {
   appearance: none;
   border: 0;
+  flex: 0 0 auto;
+  margin: .1rem 0 0;
   background: rgba(255,255,255,.06);
   color: #fff;
-  width: 2rem;
-  height: 2rem;
-  border-radius: .5rem;
+  width: 2.15rem;
+  height: 2.15rem;
+  border-radius: .55rem;
   font-size: 1.25rem;
+  line-height: 1;
   cursor: pointer;
 }
 .cf-party-tabs {
