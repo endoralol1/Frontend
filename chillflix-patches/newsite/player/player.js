@@ -42,6 +42,17 @@
     try {
       localStorage.setItem(CW_KEY, JSON.stringify(map));
     } catch (_) {}
+    // cookie mirror for home recovery
+    try {
+      const keys = Object.keys(map || {}).sort(
+        (a, b) => (map[b].updated || 0) - (map[a].updated || 0)
+      );
+      const compact = keys.slice(0, 8).map((k) => map[k]).filter(Boolean);
+      document.cookie =
+        "cf_continue_v1=" +
+        encodeURIComponent(JSON.stringify(compact)) +
+        ";path=/;max-age=31536000;SameSite=Lax";
+    } catch (_) {}
   }
 
   function cwSave(cfg, watched, duration, opts) {

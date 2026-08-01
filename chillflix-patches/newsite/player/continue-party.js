@@ -13,24 +13,57 @@
     return $("<div>").text(s == null ? "" : String(s)).html();
   }
 
+  function readCookieMirror() {
+    try {
+      var m = document.cookie.match(/(?:^|;\s*)cf_continue_v1=([^;]+)/);
+      if (!m) return [];
+      var arr = JSON.parse(decodeURIComponent(m[1]));
+      return Array.isArray(arr) ? arr.filter(Boolean) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
   function readContinue() {
     try {
       var raw = localStorage.getItem(CW_KEY);
       var map = raw ? JSON.parse(raw) : {};
-      if (!map || typeof map !== "object") return [];
-      return Object.keys(map)
+      if (!map || typeof map !== "object") map = {};
+      var items = Object.keys(map)
         .map(function (k) {
           var row = map[k];
           if (!row) return null;
           row._key = k;
           return row;
         })
-        .filter(Boolean)
-        .sort(function (a, b) {
-          return (b.updated || 0) - (a.updated || 0);
-        });
+        .filter(Boolean);
+      // Recover from cookie mirror if LS empty (private mode quirks / wiped LS)
+      if (!items.length) {
+        var cookieItems = readCookieMirror();
+        if (cookieItems.length) {
+          cookieItems.forEach(function (row) {
+            if (!row || !row.id) return;
+            var k =
+              (row.type === "tv" ? "tv" : "movie") +
+              ":" +
+              row.id +
+              (row.type === "tv"
+                ? ":s" + (row.season || 1) + "e" + (row.episode || 1)
+                : "");
+            map[k] = row;
+            row._key = k;
+            items.push(row);
+          });
+          try {
+            localStorage.setItem(CW_KEY, JSON.stringify(map));
+          } catch (e2) {}
+        }
+      }
+      return items.sort(function (a, b) {
+        return (b.updated || 0) - (a.updated || 0);
+      });
     } catch (e) {
-      return [];
+      return readCookieMirror();
     }
   }
 
