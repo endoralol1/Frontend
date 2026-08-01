@@ -7,7 +7,7 @@
   --live-muted: #9aa3b2;
   --live-accent: #db6937;
   --live-accent-2: #c43c2e;
-  --live-gutter: 22px;
+  --live-gutter: 28px;
   padding: 1rem var(--live-gutter) 5.5rem;
   color: var(--live-text);
 }
@@ -22,7 +22,7 @@
   align-items: stretch;
   gap: 0.4rem;
   margin-bottom: 1rem;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border-radius: 1rem;
   background: rgba(20, 24, 32, 0.72);
   border: 1px solid var(--live-line);
@@ -111,12 +111,12 @@
 }
 @media (max-width: 991.98px) {
   .live-p {
-    --live-gutter: 24px;
+    --live-gutter: 28px;
     padding-top: 0.85rem;
   }
   .live-hero {
     gap: 0.3rem;
-    padding: 14px 16px;
+    padding: 16px 18px;
   }
   .live-hero-top { gap: 0.55rem; }
   .live-hero h1 { font-size: clamp(1.3rem, 6vw, 1.65rem); }
