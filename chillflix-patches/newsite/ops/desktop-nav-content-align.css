@@ -1,0 +1,11 @@
+/* Desktop nav pill: align with content column (Most Commented right edge), not viewport edge */
+@media (min-width: 992px) {
+  .bottom-nav {
+    left: auto !important;
+    /* Container max-width 1800px + 15px padding — same end line as page content */
+    right: max(
+      15px,
+      calc((100vw - min(100vw, 1800px)) / 2 + 15px)
+    ) !important;
+  }
+}
