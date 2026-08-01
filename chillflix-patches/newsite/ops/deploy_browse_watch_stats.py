@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 ROOT = Path("/var/www/chillflix-newsite")
-ASSET_V = "20260801-ui58"
+ASSET_V = "20260801-ui59"
 
 
 STATS_HTML = """
@@ -188,26 +188,24 @@ STATS_JS = r"""
 
 STATS_CSS = """/* browse-watch-stats */
 .browse-stats-section {
-  margin: 0 0 0.65rem;
+  margin: 0 0 0.75rem;
 }
 .browse-stats-card {
-  padding: 0.7rem 0.75rem 0.65rem;
-  border-radius: 0.95rem;
+  padding: 0.65rem 0.7rem 0.6rem;
+  border-radius: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  background:
-    linear-gradient(135deg, rgba(219, 105, 55, 0.14), rgba(220, 53, 69, 0.08)),
-    rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.03);
 }
 .browse-stats-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  margin-bottom: 0.55rem;
+  margin-bottom: 0.5rem;
 }
 .browse-stats-kicker {
   margin: 0;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.45);
   font-size: 0.62rem;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -219,28 +217,28 @@ STATS_CSS = """/* browse-watch-stats */
   min-height: 1.35rem;
   padding: 0.12rem 0.5rem;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.28);
+  background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #ffd2b8;
+  color: rgba(255, 255, 255, 0.72);
   font-size: 0.68rem;
   font-weight: 700;
 }
 .browse-stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 .browse-stat {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.12rem;
+  gap: 0.15rem;
   min-height: 3.1rem;
   padding: 0.4rem 0.25rem;
-  border-radius: 0.75rem;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   text-align: center;
 }
 .browse-stat strong {
@@ -251,26 +249,28 @@ STATS_CSS = """/* browse-watch-stats */
   letter-spacing: -0.02em;
 }
 .browse-stat span {
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.5);
   font-size: 0.62rem;
   font-weight: 650;
 }
 .browse-stats-time {
   margin: 0.5rem 0 0;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 210, 184, 0.75);
   font-size: 0.72rem;
-  font-weight: 550;
+  font-weight: 600;
   text-align: center;
 }
 @media (min-width: 992px) {
   .browse-stats-section {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.55rem;
   }
   .browse-stats-card {
-    padding: 0.6rem 0.65rem 0.55rem;
+    padding: 0.55rem 0.6rem 0.5rem;
+    border-radius: 0.9rem;
   }
   .browse-stat {
     min-height: 2.75rem;
+    border-radius: 0.8rem;
   }
   .browse-stat strong {
     font-size: 1.05rem;
