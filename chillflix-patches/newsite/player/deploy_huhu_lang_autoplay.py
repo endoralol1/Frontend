@@ -342,10 +342,13 @@ def patch_watch_autoplay() -> None:
         else:
             raise SystemExit("btn-autoplay not found")
 
-    # Inline bootstrap so toggle works even if app.js cache is stale
+    # Inline bootstrap so toggle works even if app.js cache is stale.
+    # IMPORTANT: close the PLAYER <script> before opening a second script —
+    # nested <script> tags break JS parsing and kill both PLAYER + autoplay.
     marker = "/* newsite-autoplay-inline */"
-    if marker not in text:
-        inline = """
+    inline = """    <script>
+        window.PLAYER = <?= json_encode($playerConfig ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+    </script>
     <script>
     /* newsite-autoplay-inline */
     (function () {
@@ -367,35 +370,73 @@ def patch_watch_autoplay() -> None:
         if (icon) icon.className = on ? 'uil uil-check-circle' : 'uil uil-circle';
         return on;
       }
+      function startIfNeeded() {
+        if (!window.PLAYER) return;
+        window.PLAYER.autoplay = true;
+        if (document.getElementById('np-shell')) return;
+        if (window.ChillflixPlayer && typeof window.ChillflixPlayer.startOnWatch === 'function') {
+          window.ChillflixPlayer.startOnWatch(window.PLAYER);
+          return;
+        }
+        var tries = 0;
+        var t = setInterval(function () {
+          tries += 1;
+          if (window.ChillflixPlayer && typeof window.ChillflixPlayer.startOnWatch === 'function') {
+            clearInterval(t);
+            window.ChillflixPlayer.startOnWatch(window.PLAYER);
+          } else if (tries > 40) {
+            clearInterval(t);
+          }
+        }, 100);
+      }
       function toggle(e) {
         if (e) { e.preventDefault(); e.stopPropagation(); }
         var on = !readPref();
         writePref(on);
         sync();
-        if (on && window.PLAYER) {
-          window.PLAYER.autoplay = true;
-          if (!document.getElementById('np-shell') && window.ChillflixPlayer && window.ChillflixPlayer.startOnWatch) {
-            window.ChillflixPlayer.startOnWatch(window.PLAYER);
-          }
-        }
+        if (on) startIfNeeded();
       }
       function bind() {
         var btn = document.getElementById('btn-autoplay');
         if (!btn || btn.dataset.cfBound === '1') return;
         btn.dataset.cfBound = '1';
-        btn.addEventListener('click', toggle, true);
+        btn.addEventListener('click', toggle);
         sync();
+        var wrap = document.querySelector('.watch-wrap');
+        var forced = wrap && wrap.getAttribute('data-autoplay') === '1';
+        if (readPref() || forced) setTimeout(startIfNeeded, 150);
       }
       if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
       else bind();
       window.__cfSyncWatchAutoplay = sync;
+      window.__cfStartWatchAutoplay = startIfNeeded;
     })();
-    </script>
-"""
-        anchor = "        window.PLAYER = <?= json_encode($playerConfig ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;"
+    </script>"""
+    if marker in text and "window.PLAYER" in text:
+        import re as _re
+        text2, n = _re.subn(
+            r"<script>\s*window\.PLAYER[\s\S]*?/\* newsite-autoplay-inline \*/[\s\S]*?</script>(?:\s*</script>)?",
+            inline,
+            text,
+            count=1,
+        )
+        if n:
+            text = text2
+            print("repaired PLAYER + autoplay script blocks")
+        else:
+            print("autoplay inline present (left as-is)")
+    else:
+        anchor = """    <script>
+        window.PLAYER = <?= json_encode($playerConfig ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
+    </script>"""
         if anchor not in text:
-            raise SystemExit("PLAYER config missing in watch.php")
-        text = text.replace(anchor, anchor + "\n" + inline, 1)
+            # older single-line / unclosed form
+            anchor_old = "        window.PLAYER = <?= json_encode($playerConfig ?? [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;"
+            if anchor_old not in text:
+                raise SystemExit("PLAYER config missing in watch.php")
+            text = text.replace(anchor_old, inline, 1)
+        else:
+            text = text.replace(anchor, inline, 1)
         print("added inline autoplay bootstrap")
 
     watch.write_text(text)
