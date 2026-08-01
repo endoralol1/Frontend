@@ -1,4 +1,3 @@
-
 /* Watch Now CTA on newsite details */
 #movie-managers .watch-now-btn {
   background: linear-gradient(180deg, #e4573d 0%, #dc3545 100%) !important;
@@ -14,4 +13,22 @@
   pointer-events: auto;
   border: 0;
   font: inherit;
+}
+
+/* Inline watch player CTAs */
+#btn-watch-now.movie-manager {
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  cursor: pointer;
+  color: #fff;
+  border: 0;
+}
+#movie-player .btn-play {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+}
+#movie-player.np-active #movie-managers {
+  opacity: .85;
 }

@@ -16,8 +16,7 @@
 
         <div class="np-top">
             <a class="np-back" href="<?= e($backUrl) ?>" aria-label="Back">
-                <i class="np-ico">←</i>
-                <span>Details</span>
+                <span>←</span><span>Details</span>
             </a>
             <div class="np-titleblock">
                 <h1 class="np-title"><?= e($title) ?></h1>
@@ -47,14 +46,14 @@
             <div class="np-bar">
                 <div class="np-bar-left">
                     <button type="button" class="np-btn" id="np-play" aria-label="Play/Pause">▶</button>
-                    <button type="button" class="np-btn" id="np-mute" aria-label="Mute">🔊</button>
+                    <button type="button" class="np-btn np-mute-btn" id="np-mute" aria-label="Mute"></button>
                     <span class="np-time" id="np-time">0:00 / 0:00</span>
                 </div>
                 <div class="np-bar-right">
                     <?php if ($type === 'tv' && !empty($nextEpisode['url'])): ?>
-                    <a class="np-btn" id="np-next" href="<?= e($nextEpisode['url']) ?>" title="Next episode">Next ▶</a>
+                    <a class="np-btn" id="np-next" href="<?= e($nextEpisode['url']) ?>" title="Next episode">Next</a>
                     <?php endif; ?>
-                    <button type="button" class="np-btn" id="np-source-btn" title="Source">Source</button>
+                    <button type="button" class="np-btn" id="np-source-btn" title="Source">Src</button>
                     <button type="button" class="np-btn" id="np-fs" aria-label="Fullscreen">⛶</button>
                 </div>
             </div>
@@ -63,35 +62,25 @@
 
     <aside class="np-panel" id="np-panel" hidden>
         <div class="np-panel-head">
-            <h2>Player settings</h2>
+            <h2>Settings</h2>
             <button type="button" class="np-btn" id="np-panel-close" aria-label="Close">✕</button>
         </div>
+        <div class="np-panel-tabs" id="np-panel-tabs">
+            <button type="button" data-tab="source" class="is-active">Source</button>
+            <button type="button" data-tab="quality">Quality</button>
+            <button type="button" data-tab="audio">Audio</button>
+            <button type="button" data-tab="subs">Subs</button>
+        </div>
         <div class="np-panel-body">
-            <section>
-                <h3>Source</h3>
-                <div class="np-list" id="np-source-list"></div>
-            </section>
-            <section>
-                <h3>Quality</h3>
-                <div class="np-list" id="np-quality-list"></div>
-            </section>
-            <section>
-                <h3>Audio</h3>
-                <div class="np-list" id="np-audio-list"></div>
-            </section>
-            <section>
-                <h3>Subtitles</h3>
+            <section data-panel="source" class="is-active"><div class="np-list" id="np-source-list"></div></section>
+            <section data-panel="quality"><div class="np-list" id="np-quality-list"></div></section>
+            <section data-panel="audio"><div class="np-list" id="np-audio-list"></div></section>
+            <section data-panel="subs">
                 <div class="np-list" id="np-sub-list"></div>
                 <div class="np-sliders">
-                    <label>Delay <span id="np-delay-val">0.0s</span>
-                        <input type="range" id="np-delay" min="-10" max="10" step="0.1" value="0">
-                    </label>
-                    <label>Size <span id="np-size-val">100%</span>
-                        <input type="range" id="np-size" min="0.75" max="1.75" step="0.05" value="1">
-                    </label>
-                    <label>Background <span id="np-bg-val">70%</span>
-                        <input type="range" id="np-bg" min="0" max="0.9" step="0.05" value="0.7">
-                    </label>
+                    <label><span>Delay</span><input type="range" id="np-delay" min="-10" max="10" step="0.1" value="0"><span class="np-slider-val" id="np-delay-val">0.0s</span></label>
+                    <label><span>Size</span><input type="range" id="np-size" min="0.75" max="1.75" step="0.05" value="1"><span class="np-slider-val" id="np-size-val">100%</span></label>
+                    <label><span>BG</span><input type="range" id="np-bg" min="0" max="0.9" step="0.05" value="0.7"><span class="np-slider-val" id="np-bg-val">70%</span></label>
                 </div>
             </section>
         </div>
