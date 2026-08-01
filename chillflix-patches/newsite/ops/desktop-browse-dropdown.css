@@ -1,0 +1,77 @@
+/* Desktop: Browse as dropdown under nav pill; hide search scrollbars */
+@media (min-width: 992px) {
+  /* Browse — dropdown anchored to nav, not centered modal */
+  .browse-sheet-backdrop {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .browse-sheet-handle {
+    display: none !important;
+  }
+
+  .browse-sheet-panel {
+    left: auto !important;
+    right: max(
+      15px,
+      calc((100vw - min(100vw, 1800px)) / 2 + 15px)
+    ) !important;
+    top: 4.35rem !important;
+    bottom: auto !important;
+    width: min(22.5rem, calc(100vw - 2.5rem)) !important;
+    max-height: min(72vh, 34rem) !important;
+    transform: translateY(-6px) scale(0.98) !important;
+    border-radius: 1.1rem !important;
+    overflow: auto !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .browse-sheet-panel::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .browse-sheet.is-open .browse-sheet-panel {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+
+  .browse-sheet-head {
+    padding: 0.85rem 0.95rem 0.45rem !important;
+  }
+
+  .browse-sheet-head h2 {
+    font-size: 1.1rem !important;
+  }
+
+  .browse-sheet-body {
+    padding: 0 0.85rem 0.95rem !important;
+    max-height: none;
+  }
+
+  /* Search — keep modal, but never show scrollbars on PC */
+  .search-sheet-panel,
+  .search-sheet-suggest,
+  .search-sheet-chips,
+  .search-sheet .search-suggest,
+  #search #search-wrapper .search-suggest,
+  .search-suggest {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .search-sheet-panel::-webkit-scrollbar,
+  .search-sheet-suggest::-webkit-scrollbar,
+  .search-sheet-chips::-webkit-scrollbar,
+  .search-sheet .search-suggest::-webkit-scrollbar,
+  #search #search-wrapper .search-suggest::-webkit-scrollbar,
+  .search-suggest::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+}
