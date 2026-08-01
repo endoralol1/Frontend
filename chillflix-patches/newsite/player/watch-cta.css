@@ -1,0 +1,17 @@
+
+/* Watch Now CTA on newsite details */
+#movie-managers .watch-now-btn {
+  background: linear-gradient(180deg, #e4573d 0%, #dc3545 100%) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  font-weight: 800;
+}
+#movie-managers .watch-now-btn:hover {
+  filter: brightness(1.05);
+}
+#movie-player .player-trailer-label {
+  cursor: pointer;
+  pointer-events: auto;
+  border: 0;
+  font: inherit;
+}
