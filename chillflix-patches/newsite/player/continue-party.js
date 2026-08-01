@@ -73,9 +73,11 @@
     var items = readContinue().slice(0, 24);
     if (!items.length) {
       $rail.attr("hidden", true).addClass("d-none");
+      $rail.find(".media-rail-items").empty();
       return;
     }
     $rail.removeAttr("hidden").removeClass("d-none");
+    $rail.css("display", "");
     var html = items
       .map(function (row) {
         var href = watchHref(row);
@@ -433,7 +435,24 @@
   window.ChillflixContinue = { render: renderContinueRail, list: readContinue };
   window.ChillflixParty = { open: openPartyPanel, close: closePartyPanel };
 
-  $(function () {
+  function bootContinue() {
     renderContinueRail();
+    if (location.hash === "#continue-watching" && !$("#continue-watching").is("[hidden]")) {
+      try {
+        document.getElementById("continue-watching").scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (e) {}
+    }
+  }
+
+  $(function () {
+    bootContinue();
   });
+  // Soft-nav / bfcache / tab focus — re-render when homepage content comes back
+  window.addEventListener("pageshow", bootContinue);
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible") bootContinue();
+  });
+  window.addEventListener("focus", bootContinue);
+  // Custom hook used by app.js afterSoftNav
+  window.addEventListener("cf:softnav", bootContinue);
 })();

@@ -1,6 +1,10 @@
 /* Continue Watching + Watch Party */
 #continue-watching[hidden],
 #continue-watching.d-none { display: none !important; }
+#continue-watching:not([hidden]) {
+  display: block !important;
+  margin-top: 0.5rem;
+}
 
 .cw-card .poster-media { position: relative; }
 .cw-progress {

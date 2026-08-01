@@ -48,8 +48,10 @@
     const id = Number(cfg.id) || 0;
     if (!id) return;
     const t = Number(watched) || 0;
-    const d = Number(duration) || 0;
-    if (t < 20) return;
+    let d = Number(duration) || 0;
+    if (!Number.isFinite(d) || d === Infinity) d = 0;
+    // Persist early so homepage rail fills quickly
+    if (t < 8) return;
     if (d > 0 && (d - t < 90 || t / d > 0.96)) {
       // finished — drop from continue list
       const map = cwReadAll();
@@ -87,8 +89,8 @@
     if (!row) return 0;
     const t = Number(row.t) || 0;
     const d = Number(row.d) || 0;
-    if (t < 20) return 0;
-    if (d > 0 && (d - t < 90 || t / d > 0.96)) return 0;
+    if (t < 8) return 0;
+    if (d > 0 && Number.isFinite(d) && d !== Infinity && (d - t < 90 || t / d > 0.96)) return 0;
     return t;
   }
 
@@ -1030,9 +1032,12 @@
       const v = els.video;
       const maybeSaveProgress = (force) => {
         const now = Date.now();
-        if (!force && now - state.lastCwSave < 5000) return;
+        const t = v.currentTime || 0;
+        // First eligible save should not wait on the throttle
+        const firstOk = t >= 8 && state.lastCwSave === 0;
+        if (!force && !firstOk && now - state.lastCwSave < 4000) return;
         state.lastCwSave = now;
-        cwSave(cfg, v.currentTime, v.duration);
+        cwSave(cfg, t, v.duration);
       };
       v.addEventListener("timeupdate", () => {
         syncUi();
