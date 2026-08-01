@@ -3,44 +3,158 @@
 #continue-watching.d-none { display: none !important; }
 #continue-watching:not([hidden]) {
   display: block !important;
-  margin-top: 0.5rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.35rem;
 }
 
-.cw-card .poster-media { position: relative; }
-.cw-progress {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 3px;
-  background: rgba(255,255,255,.15);
-  z-index: 2;
+/* Dedicated resume tiles — not generic media-cards */
+#continue-watching .media-rail-items.cw-track {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 0.75rem !important;
+  align-items: stretch !important;
+  padding-bottom: 0.15rem;
 }
-.cw-progress i {
+#continue-watching .media-rail-items.cw-track::after {
+  content: "";
+  flex: 0 0 0.75rem;
+}
+
+.cw-tile {
+  --cw-accent: #e50914;
+  flex: 0 0 auto;
+  width: min(72vw, 16.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  color: inherit;
+  text-decoration: none !important;
+  border-radius: 0.7rem;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.18s ease;
+}
+.cw-tile:active { transform: scale(0.985); }
+@media (min-width: 768px) {
+  .cw-tile { width: 15.5rem; }
+}
+@media (min-width: 1200px) {
+  .cw-tile { width: 16.75rem; }
+}
+
+.cw-tile-art {
+  position: relative;
   display: block;
-  height: 100%;
-  background: #dc3545;
+  aspect-ratio: 16 / 9;
+  border-radius: 0.7rem;
+  overflow: hidden;
+  background: linear-gradient(145deg, #1a1f2b 0%, #0e1117 100%);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
-.cw-resume {
+.cw-tile-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 18%;
+  display: block;
+  transform: scale(1.02);
+  transition: transform 0.35s ease;
+}
+.cw-tile:hover .cw-tile-art img,
+.cw-tile:focus-visible .cw-tile-art img {
+  transform: scale(1.06);
+}
+.cw-tile-shade {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,.28);
-  opacity: 0;
-  transition: opacity .15s ease;
-  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.05) 35%, rgba(0,0,0,0.55) 100%),
+    linear-gradient(90deg, rgba(0,0,0,0.2) 0%, transparent 45%);
+  pointer-events: none;
 }
-.cw-card:hover .cw-resume { opacity: 1; }
-.cw-resume i {
-  width: 2.4rem;
-  height: 2.4rem;
+.cw-tile-play {
+  position: absolute;
+  left: 0.55rem;
+  bottom: 0.7rem;
+  width: 1.85rem;
+  height: 1.85rem;
   border-radius: 999px;
-  background: #dc3545;
+  background: rgba(229, 9, 20, 0.95);
   color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+.cw-tile-play i { margin-left: 1px; }
+.cw-tile:hover .cw-tile-play,
+.cw-tile:focus-visible .cw-tile-play {
+  transform: scale(1.06);
+  background: #ff1b2a;
+}
+.cw-tile-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.18);
+  z-index: 3;
+}
+.cw-tile-progress i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #ff3b4a, var(--cw-accent));
+  box-shadow: 0 0 10px rgba(229, 9, 20, 0.45);
+}
+
+.cw-tile-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  padding: 0 0.1rem;
+}
+.cw-tile-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #f3f5f8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cw-tile-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #9aa3b2;
+  letter-spacing: 0.01em;
+}
+.cw-tile-meta em {
+  font-style: normal;
+  color: #ff6b76;
+  background: rgba(229, 9, 20, 0.12);
+  border: 1px solid rgba(229, 9, 20, 0.22);
+  border-radius: 0.35rem;
+  padding: 0.08rem 0.35rem;
+  line-height: 1.2;
+  flex: 0 0 auto;
+}
+.cw-tile-meta span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (hover: none) {
+  .cw-tile-art img { transform: none; }
 }
 
 .cf-party-panel[hidden] { display: none !important; }

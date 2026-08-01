@@ -13,7 +13,7 @@
               id: Number(cfg.id) || 0,
               type: cfg.type === 'tv' ? 'tv' : 'movie',
               title: cfg.title || prev.title || 'Untitled',
-              poster: cfg.poster || prev.poster || '',
+              poster: cfg.backdrop || cfg.poster || prev.poster || '',
               year: cfg.year || prev.year || '',
               season: cfg.type === 'tv' ? (Number(cfg.season) || 1) : null,
               episode: cfg.type === 'tv' ? (Number(cfg.episode) || 1) : null,

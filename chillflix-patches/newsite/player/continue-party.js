@@ -100,63 +100,78 @@
     return Math.max(2, Math.min(98, Math.round((t / d) * 100)));
   }
 
+  function remainLabel(row) {
+    var t = Number(row.t) || 0;
+    var d = Number(row.d) || 0;
+    if (d > 60 && t >= 0 && t < d) {
+      var left = Math.max(1, Math.round((d - t) / 60));
+      if (left >= 60) {
+        var h = Math.floor(left / 60);
+        var m = left % 60;
+        return h + "h " + (m ? m + "m left" : "left");
+      }
+      return left + "m left";
+    }
+    if (row.type === "tv") return "S" + (row.season || 1) + " · E" + (row.episode || 1);
+    return row.year ? String(row.year) : "Resume";
+  }
+
   function renderContinueRail() {
     var $rail = $("#continue-watching");
     if (!$rail.length) return;
     var items = readContinue().slice(0, 24);
+    var $track = $rail.find(".media-rail-items");
     if (!items.length) {
       $rail.attr("hidden", true).addClass("d-none").css("display", "none");
-      $rail.find(".media-rail-items").empty();
+      $track.empty().removeClass("cw-track");
       return;
     }
     $rail.removeAttr("hidden").removeClass("d-none");
     $rail.css("display", "block");
+    $track.addClass("cw-track");
     var html = items
       .map(function (row) {
         var href = watchHref(row);
-        var meta =
-          row.type === "tv"
-            ? "S" + (row.season || 1) + " · E" + (row.episode || 1)
-            : row.year || "Movie";
+        var progress = pct(row);
+        var meta = remainLabel(row);
+        var kind = row.type === "tv" ? "TV" : "Movie";
         var poster =
           row.poster ||
-          "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='450'%3E%3Crect width='100%25' height='100%25' fill='%231a1c23'/%3E%3C/svg%3E";
+          "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='270'%3E%3Crect width='100%25' height='100%25' fill='%23141820'/%3E%3C/svg%3E";
         return (
-          '<div class="movie-item media-card cw-card" data-id="' +
+          '<a class="cw-tile" href="' +
+          esc(href) +
+          '" data-id="' +
           esc(row.id) +
           '" data-type="' +
           esc(row.type) +
-          '">' +
-          '<div class="inner">' +
-          '<a class="item-poster" href="' +
-          esc(href) +
-          '" aria-label="' +
+          '" aria-label="Resume ' +
           esc(row.title) +
           '">' +
-          '<div class="poster-media">' +
+          '<span class="cw-tile-art">' +
           '<img src="' +
           esc(poster) +
-          '" alt="' +
-          esc(row.title) +
-          '" width="300" height="450" loading="lazy" decoding="async">' +
-          '<span class="cw-progress"><i style="width:' +
-          pct(row) +
+          '" alt="" width="480" height="270" loading="lazy" decoding="async">' +
+          '<span class="cw-tile-shade" aria-hidden="true"></span>' +
+          '<span class="cw-tile-play" aria-hidden="true"><i class="uil uil-play"></i></span>' +
+          '<span class="cw-tile-progress" aria-hidden="true"><i style="width:' +
+          progress +
           '%"></i></span>' +
-          '<span class="cw-resume"><i class="uil uil-play"></i></span>' +
-          "</div></a>" +
-          '<div class="meta"><a class="name" href="' +
-          esc(href) +
-          '">' +
+          "</span>" +
+          '<span class="cw-tile-copy">' +
+          '<span class="cw-tile-title">' +
           esc(row.title) +
-          "</a>" +
-          '<div class="meta-bg"><span class="dot">' +
+          "</span>" +
+          '<span class="cw-tile-meta"><em>' +
+          esc(kind) +
+          "</em><span>" +
           esc(meta) +
-          "</span></div></div>" +
-          "</div></div>"
+          "</span></span>" +
+          "</span></a>"
         );
       })
       .join("");
-    $rail.find(".media-rail-items").html(html);
+    $track.html(html);
   }
 
   /* -------- Watch Party panel -------- */
