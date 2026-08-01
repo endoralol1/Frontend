@@ -44,40 +44,48 @@
     } catch (_) {}
   }
 
-  function cwSave(cfg, watched, duration) {
+  function cwSave(cfg, watched, duration, opts) {
     const id = Number(cfg.id) || 0;
-    if (!id) return;
-    const t = Number(watched) || 0;
+    if (!id) return false;
+    const seed = !!(opts && opts.seed);
+    let t = Number(watched) || 0;
     let d = Number(duration) || 0;
     if (!Number.isFinite(d) || d === Infinity) d = 0;
-    // Persist early so homepage rail fills quickly
-    if (t < 5) return;
-    if (d > 0 && (d - t < 90 || t / d > 0.96)) {
+    // Seed on Watch Now / first play; otherwise require ~1s so rail fills quickly
+    if (seed) t = Math.max(t, 1);
+    else if (t < 1) return false;
+    if (!seed && d > 0 && (d - t < 90 || t / d > 0.96)) {
       // finished — drop from continue list
       const map = cwReadAll();
       delete map[cwProgressKey(cfg)];
       cwWriteAll(map);
-      return;
+      return true;
     }
     const map = cwReadAll();
     const key = cwProgressKey(cfg);
+    const prev = map[key] || {};
     map[key] = {
       id,
       type: cfg.type === "tv" ? "tv" : "movie",
-      title: cfg.title || "Untitled",
-      poster: cfg.poster || "",
-      year: cfg.year || "",
+      title: cfg.title || prev.title || "Untitled",
+      poster: cfg.poster || prev.poster || "",
+      year: cfg.year || prev.year || "",
       season: cfg.type === "tv" ? Number(cfg.season) || 1 : null,
       episode: cfg.type === "tv" ? Number(cfg.episode) || 1 : null,
-      t,
-      d,
+      t: Math.max(t, Number(prev.t) || 0),
+      d: d || Number(prev.d) || 0,
       updated: Date.now(),
-      url: cfg.watchUrl || cfg.backUrl || location.pathname + location.search,
+      url: cfg.watchUrl || cfg.backUrl || prev.url || location.pathname + location.search,
     };
     // prune oldest
     const keys = Object.keys(map).sort((a, b) => (map[b].updated || 0) - (map[a].updated || 0));
     keys.slice(CW_MAX).forEach((k) => delete map[k]);
     cwWriteAll(map);
+    return true;
+  }
+
+  function cwSeed(cfg) {
+    return cwSave(cfg, 1, 0, { seed: true });
   }
 
   function cwResumeTime(cfg) {
@@ -89,7 +97,7 @@
     if (!row) return 0;
     const t = Number(row.t) || 0;
     const d = Number(row.d) || 0;
-    if (t < 5) return 0;
+    if (t < 5) return 0; // only auto-resume after a meaningful watch
     if (d > 0 && Number.isFinite(d) && d !== Infinity && (d - t < 90 || t / d > 0.96)) return 0;
     return t;
   }
@@ -1030,15 +1038,17 @@
       }
 
       const v = els.video;
-      const maybeSaveProgress = (force) => {
+      const maybeSaveProgress = (force, seed) => {
         const now = Date.now();
         const t = v.currentTime || 0;
         // First eligible save should not wait on the throttle
-        const firstOk = t >= 5 && state.lastCwSave === 0;
-        if (!force && !firstOk && now - state.lastCwSave < 4000) return;
-        state.lastCwSave = now;
-        cwSave(cfg, t, v.duration);
+        const firstOk = (seed || t >= 1) && state.lastCwSave === 0;
+        if (!force && !seed && !firstOk && now - state.lastCwSave < 4000) return;
+        const ok = cwSave(cfg, Math.max(t, seed ? 1 : 0), v.duration, seed ? { seed: true } : null);
+        if (ok) state.lastCwSave = now;
       };
+      // Ensure homepage rail can show even if stream stalls after start
+      maybeSaveProgress(true, true);
       v.addEventListener("timeupdate", () => {
         syncUi();
         maybeSaveProgress(false);
@@ -1046,6 +1056,7 @@
       v.addEventListener("play", () => {
         syncUi();
         showControls();
+        maybeSaveProgress(true, true);
         partyReport(true);
       });
       v.addEventListener("pause", () => {
@@ -1249,6 +1260,10 @@
         frame.classList.add("d-none");
         frame.innerHTML = "";
       }
+      // Seed Continue Watching immediately on Watch Now (before stream buffers)
+      try {
+        cwSeed(cfg || {});
+      } catch (_) {}
       ensureHls(() => mount(host, cfg));
     },
     continueList() {

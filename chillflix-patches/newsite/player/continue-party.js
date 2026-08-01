@@ -446,6 +446,9 @@
 
   $(function () {
     bootContinue();
+    // Re-check shortly after load in case watch tab wrote storage just before nav
+    setTimeout(bootContinue, 250);
+    setTimeout(bootContinue, 1200);
   });
   // Soft-nav / bfcache / tab focus — re-render when homepage content comes back
   window.addEventListener("pageshow", bootContinue);
@@ -453,6 +456,9 @@
     if (document.visibilityState === "visible") bootContinue();
   });
   window.addEventListener("focus", bootContinue);
+  window.addEventListener("storage", function (e) {
+    if (!e.key || e.key === "cf_continue_v1") bootContinue();
+  });
   // Custom hook used by app.js afterSoftNav
   window.addEventListener("cf:softnav", bootContinue);
 })();
