@@ -114,14 +114,14 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(28rem, calc(100% - 28px));
+  width: min(28rem, calc(100% - 40px));
   max-height: min(86vh, 40rem);
   overflow: auto;
   background: linear-gradient(180deg, #1c202a 0%, #141820 100%);
   border: 1px solid rgba(255,255,255,.08);
-  border-radius: 1.1rem;
+  border-radius: 1.2rem;
   box-shadow: 0 20px 50px rgba(0,0,0,.5);
-  padding: 20px 22px 22px;
+  padding: 26px 28px 28px;
   color: #e9ecef;
   box-sizing: border-box;
 }
@@ -129,9 +129,13 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 1rem;
-  margin: 0 0 16px;
+  gap: 1.1rem;
+  margin: 0 0 18px;
   padding: 0;
+}
+.cf-party-head > div {
+  min-width: 0;
+  padding-right: 0.25rem;
 }
 .cf-party-kicker {
   margin: 0;
@@ -142,7 +146,7 @@
   font-weight: 700;
 }
 .cf-party-head h3 {
-  margin: .15rem 0 0;
+  margin: .2rem 0 0;
   font-size: 1.25rem;
   font-weight: 800;
 }
@@ -150,14 +154,17 @@
   appearance: none;
   border: 0;
   flex: 0 0 auto;
-  margin: .1rem 0 0;
-  background: rgba(255,255,255,.06);
+  margin: 0;
+  background: rgba(255,255,255,.08);
   color: #fff;
-  width: 2.15rem;
-  height: 2.15rem;
-  border-radius: .55rem;
-  font-size: 1.25rem;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: .65rem;
+  font-size: 1.2rem;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
 .cf-party-tabs {
