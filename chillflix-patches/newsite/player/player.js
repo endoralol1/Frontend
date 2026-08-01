@@ -18,6 +18,53 @@
       .replace(/"/g, "&quot;");
   }
 
+
+  const QUALITY_LADDER = [
+    { key: "360", label: "360p", height: 360 },
+    { key: "480", label: "480p", height: 480 },
+    { key: "720", label: "720p", height: 720 },
+    { key: "1080", label: "1080p", height: 1080 },
+    { key: "4k", label: "4K", height: 2160 },
+  ];
+
+  function heightToQuality(height) {
+    const h = Number(height) || 0;
+    if (!h) return null;
+    const exact = { 360: "360", 480: "480", 720: "720", 1080: "1080", 1440: "1080", 2160: "4k" };
+    if (exact[h]) {
+      return QUALITY_LADDER.find((q) => q.key === exact[h]) || null;
+    }
+    // Pick the closest standard rung (266→360, 534→480, 800→720, 872→720, etc.)
+    let best = QUALITY_LADDER[0];
+    let bestDist = Math.abs(h - best.height);
+    for (const q of QUALITY_LADDER) {
+      const dist = Math.abs(h - q.height);
+      if (dist < bestDist) {
+        best = q;
+        bestDist = dist;
+      }
+    }
+    return best;
+  }
+
+  function normalizeHlsLevels(levels) {
+    // Map to standard rungs and keep the best matching level index per rung
+    const best = new Map();
+    (levels || []).forEach((l, idx) => {
+      const q = heightToQuality(l.height);
+      if (!q) return;
+      const prev = best.get(q.key);
+      const score = Number(l.height) || 0;
+      if (!prev || score > prev.score) {
+        best.set(q.key, { key: q.key, label: q.label, levelIndex: idx, height: l.height, score });
+      }
+    });
+    const order = ["360", "480", "720", "1080", "4k"];
+    return order
+      .filter((k) => best.has(k))
+      .map((k) => best.get(k));
+  }
+
   function buildMarkup(cfg) {
     const isTv = cfg.type === "tv";
     const meta = isTv
@@ -159,6 +206,7 @@
       sourceIndex: 0,
       hls: null,
       levels: [],
+      qualityOptions: [],
       levelIndex: -1,
       audioTracks: [],
       audioIndex: -1,
@@ -172,6 +220,8 @@
       hideTimer: null,
       cueBases: new WeakMap(),
       payloadSubtitles: [],
+      subsLoading: false,
+      subsLoaded: false,
       bound: false,
     };
 
@@ -256,32 +306,59 @@
         (i) => loadSource(i),
         (s, i) => ({
           title: s.providerName || s.provider || `Source ${i + 1}`,
-          sub: s.quality ? String(s.quality) : s.type ? String(s.type).toUpperCase() : "Stream",
+          sub:
+            s.provider === "huhu"
+              ? s.quality && s.quality !== "Auto"
+                ? String(s.quality)
+                : "Auto · DE/EU audio when available"
+              : s.quality
+                ? String(s.quality)
+                : s.type
+                  ? String(s.type).toUpperCase()
+                  : "Stream",
         })
       );
-      const qualities = [{ id: -1, height: 0, name: "Auto" }, ...state.levels];
-      const qActive = state.levelIndex < 0 ? 0 : state.levelIndex + 1;
+
+      const qualities = [{ key: "auto", label: "Auto", levelIndex: -1 }, ...state.qualityOptions];
+      let qActive = 0;
+      if (state.levelIndex >= 0) {
+        const hit = state.qualityOptions.findIndex((q) => q.levelIndex === state.levelIndex);
+        qActive = hit >= 0 ? hit + 1 : 0;
+      }
       renderList(
         els.qualityList,
         qualities,
         qActive,
-        (i) => setQuality(i === 0 ? -1 : i - 1),
+        (i) => {
+          const q = qualities[i];
+          setQuality(q.key === "auto" ? -1 : q.levelIndex);
+        },
         (l) => ({
-          title: l.name || (l.height ? `${l.height}p` : "Auto"),
-          sub: l.id === -1 || !l.height ? "Adaptive" : `${l.height}p`,
+          title: l.label || "Auto",
+          sub: l.key === "auto" ? "Adaptive" : "Closest match",
         })
       );
+
+      const audios = state.audioTracks.length
+        ? state.audioTracks
+        : [{ id: "default", name: "Default", lang: "", switchable: false }];
+      const audioActive = state.audioIndex >= 0 ? state.audioIndex : 0;
       renderList(
         els.audioList,
-        state.audioTracks,
-        state.audioIndex,
+        audios,
+        audioActive,
         (i) => setAudio(i),
         (a, i) => ({
-          title: a.name || a.lang || `Audio ${i + 1}`,
-          sub: a.lang && a.name ? String(a.lang).toUpperCase() : "Track",
+          title: a.name || a.label || a.lang || `Audio ${i + 1}`,
+          sub: a.lang
+            ? String(a.lang).toUpperCase()
+            : a.switchable === false
+              ? "Embedded"
+              : "Track",
         })
       );
-      const subs = [{ name: "Off", lang: "" }, ...state.textTracks];
+
+      const subs = [{ name: "Off", lang: "", external: false }, ...state.textTracks];
       const sActive = state.textIndex < 0 ? 0 : state.textIndex + 1;
       renderList(
         els.subList,
@@ -289,8 +366,8 @@
         sActive,
         (i) => setSubtitle(i - 1),
         (t) => ({
-          title: t.name || t.lang || "Track",
-          sub: t.name === "Off" ? "Hidden" : t.lang ? String(t.lang).toUpperCase() : "Caption",
+          title: t.name || t.label || t.lang || "Track",
+          sub: t.name === "Off" ? "Hidden" : t.source ? String(t.source) : t.lang ? String(t.lang).toUpperCase() : "Caption",
         })
       );
     }
@@ -320,8 +397,80 @@
 
     function setAudio(idx) {
       state.audioIndex = idx;
-      if (state.hls && state.hls.audioTracks) state.hls.audioTrack = idx;
+      const track = state.audioTracks[idx];
+      if (track && track.switchable !== false && state.hls && state.hls.audioTracks) {
+        const hlsIdx = Number.isInteger(track.id) ? track.id : idx;
+        state.hls.audioTrack = hlsIdx;
+      }
       refreshMenus();
+    }
+
+    function fallbackAudioTracks(source) {
+      const srcAudio = Array.isArray(source?.audioTracks)
+        ? source.audioTracks.map((a, i) => ({
+            id: a.id || `src-${i}`,
+            name: a.label || a.language || a.name || `Audio ${i + 1}`,
+            lang: a.language || a.lang || "",
+            switchable: false,
+            from: "source",
+          }))
+        : [];
+      if (srcAudio.length) return srcAudio;
+      const provider = String(source?.provider || "").toLowerCase();
+      if (provider === "huhu") {
+        return [{ id: "huhu-default", name: "German / Default", lang: "de", switchable: false, from: "source" }];
+      }
+      return [{ id: "default", name: "Default", lang: "", switchable: false, from: "source" }];
+    }
+
+    async function fetchExternalSubtitleCatalog() {
+      if (state.subsLoading || state.subsLoaded) return;
+      if (!cfg.id) return;
+      state.subsLoading = true;
+      try {
+        const api =
+          cfg.subsApi ||
+          ((window.APP && window.APP.baseUrl) || "") + "/api/player/subtitles";
+        const q = new URLSearchParams({
+          type: cfg.type || "movie",
+          tmdbId: String(cfg.id || ""),
+        });
+        if (cfg.imdbId) q.set("imdbId", String(cfg.imdbId));
+        if (cfg.type === "tv") {
+          q.set("season", String(cfg.season || 1));
+          q.set("episode", String(cfg.episode || 1));
+        }
+        const res = await fetch(`${api}?${q.toString()}`, {
+          headers: { Accept: "application/json" },
+          credentials: "same-origin",
+        });
+        const data = await res.json();
+        if (!data?.ok || !Array.isArray(data.subtitles) || !data.subtitles.length) {
+          state.subsLoaded = true;
+          return;
+        }
+        const captionBase =
+          cfg.captionApi ||
+          ((window.APP && window.APP.baseUrl) || "") + "/api/player/caption";
+        state.payloadSubtitles = data.subtitles.map((sub) => {
+          const raw = sub.src || sub.url || sub.file || "";
+          return {
+            id: sub.id,
+            label: sub.label || sub.language || "Subtitle",
+            language: sub.language || sub.lang || "",
+            lang: sub.language || sub.lang || "",
+            source: sub.source || "",
+            // Always proxy — remote VTT hosts often block browser track loads (CORS)
+            src: raw ? `${captionBase}?url=${encodeURIComponent(raw)}` : "",
+          };
+        });
+        loadExternalSubtitles(state.payloadSubtitles, state.sources[state.sourceIndex]);
+        state.subsLoaded = true;
+      } catch (_) {
+        state.subsLoaded = true;
+      } finally {
+        state.subsLoading = false;
+      }
     }
 
     function paintCue(text) {
@@ -445,7 +594,19 @@
 
       const onReady = () => {
         setStatus("");
-        if (state.autoplay) v.play().catch(() => setStatus("Tap play to start"));
+        if (!state.autoplay) return;
+        const tryPlay = () =>
+          v.play().catch(() => {
+            // Browsers often block unmuted autoplay — retry muted, user can unmute
+            v.muted = true;
+            return v.play()
+              .then(() => {
+                syncUi();
+                setStatus("Muted autoplay — tap volume to unmute");
+              })
+              .catch(() => setStatus("Tap play to start"));
+          });
+        tryPlay();
       };
 
       if (isHls && window.Hls && window.Hls.isSupported()) {
@@ -460,28 +621,38 @@
         hls.loadSource(abs);
         hls.attachMedia(v);
         hls.on(window.Hls.Events.MANIFEST_PARSED, (_e, data) => {
-          state.levels = (data.levels || []).map((l, i) => ({
-            id: i,
-            height: l.height,
-            name: l.height ? `${l.height}p` : `Level ${i}`,
-          }));
+          state.levels = data.levels || [];
+          state.qualityOptions = normalizeHlsLevels(state.levels);
           state.levelIndex = -1;
           hls.currentLevel = -1;
-          state.audioTracks = (hls.audioTracks || []).map((a, i) => ({
+
+          const hlsAudio = (hls.audioTracks || []).map((a, i) => ({
             id: i,
             name: a.name || a.lang || `Audio ${i + 1}`,
             lang: a.lang || "",
+            switchable: true,
+            from: "hls",
           }));
-          state.audioIndex = hls.audioTrack >= 0 ? hls.audioTrack : state.audioTracks.length ? 0 : -1;
+          state.audioTracks = hlsAudio.length ? hlsAudio : fallbackAudioTracks(source);
+          state.audioIndex = state.audioTracks.length
+            ? hlsAudio.length && hls.audioTrack >= 0
+              ? hls.audioTrack
+              : 0
+            : 0;
+
           if (hls.subtitleTracks && hls.subtitleTracks.length) {
-            state.textTracks = hls.subtitleTracks.map((t, i) => ({
-              id: i,
+            const native = hls.subtitleTracks.map((t, i) => ({
+              id: `hls-${i}`,
               name: t.name || t.lang || `Sub ${i + 1}`,
               lang: t.lang || "",
+              from: "hls",
             }));
+            // keep external list; prefer merging later
+            state.hlsTextTracks = native;
           }
           refreshMenus();
           loadExternalSubtitles(state.payloadSubtitles, source);
+          fetchExternalSubtitleCatalog();
           onReady();
         });
         hls.on(window.Hls.Events.ERROR, (_e, data) => {
@@ -499,11 +670,21 @@
         });
       } else if (v.canPlayType("application/vnd.apple.mpegurl") && isHls) {
         v.src = abs;
+        state.audioTracks = fallbackAudioTracks(source);
+        state.audioIndex = 0;
+        state.qualityOptions = [];
+        refreshMenus();
         loadExternalSubtitles(state.payloadSubtitles, source);
+        fetchExternalSubtitleCatalog();
         v.addEventListener("loadedmetadata", onReady, { once: true });
       } else {
         v.src = abs;
+        state.audioTracks = fallbackAudioTracks(source);
+        state.audioIndex = 0;
+        state.qualityOptions = [];
+        refreshMenus();
         loadExternalSubtitles(state.payloadSubtitles, source);
+        fetchExternalSubtitleCatalog();
         v.addEventListener("loadedmetadata", onReady, { once: true });
       }
     }

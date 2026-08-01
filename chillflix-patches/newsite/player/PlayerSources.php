@@ -4,6 +4,7 @@ declare(strict_types=1);
 /**
  * Thin, clean sources client for newsite /player.
  * Pulls VAPlayer + Huhu from the main Chillflix API and normalizes the payload.
+ * Also fetches external subtitle lists (VDRK + OpenSubtitles).
  */
 final class PlayerSources
 {
@@ -85,7 +86,31 @@ final class PlayerSources
                 }
                 $quality = (string) ($src['quality'] ?? '');
                 $name = $pname !== '' ? $pname : ucfirst($pid);
-                $label = trim($name . ($quality !== '' ? (' · ' . $quality) : ''));
+                // Huhu streams are commonly German/EU dubs when available
+                if ($pid === 'huhu' && $quality === 'Auto') {
+                    $label = 'Huhu · Auto';
+                } else {
+                    $label = trim($name . ($quality !== '' ? (' · ' . $quality) : ''));
+                }
+                $audioTracks = [];
+                foreach ($src['audioTracks'] ?? [] as $at) {
+                    if (!is_array($at)) {
+                        continue;
+                    }
+                    $audioTracks[] = [
+                        'id' => (string) ($at['id'] ?? ''),
+                        'language' => (string) ($at['language'] ?? $at['lang'] ?? ''),
+                        'label' => (string) ($at['label'] ?? $at['name'] ?? $at['language'] ?? 'Audio'),
+                    ];
+                }
+                // Prefer showing a helpful default for Huhu when API omits tracks
+                if ($pid === 'huhu' && !$audioTracks) {
+                    $audioTracks[] = [
+                        'id' => 'huhu-default',
+                        'language' => 'de',
+                        'label' => 'German / Default',
+                    ];
+                }
                 $merged[$key] = [
                     'id' => substr(sha1($key), 0, 12),
                     'provider' => $pid,
@@ -94,19 +119,25 @@ final class PlayerSources
                     'quality' => $quality,
                     'type' => (string) ($src['type'] ?? 'hls'),
                     'url' => $streamUrl,
+                    'audioTracks' => $audioTracks,
                 ];
             }
             foreach ($payload['subtitles'] ?? [] as $sub) {
-                if (!is_array($sub) || empty($sub['src'])) {
+                if (!is_array($sub)) {
                     continue;
                 }
-                $sid = (string) ($sub['id'] ?? sha1((string) $sub['src']));
+                $srcUrl = (string) ($sub['src'] ?? $sub['url'] ?? $sub['file'] ?? '');
+                if ($srcUrl === '') {
+                    continue;
+                }
+                $sid = (string) ($sub['id'] ?? sha1($srcUrl));
                 $subtitles[$sid] = [
                     'id' => $sid,
-                    'label' => (string) ($sub['label'] ?? 'Subtitle'),
-                    'language' => (string) ($sub['language'] ?? ''),
+                    'label' => (string) ($sub['label'] ?? $sub['display'] ?? 'Subtitle'),
+                    'language' => (string) ($sub['language'] ?? $sub['lang'] ?? ''),
                     'kind' => (string) ($sub['kind'] ?? 'subtitles'),
-                    'src' => self::absolutizeUrl((string) $sub['src'], $origin),
+                    'type' => (string) ($sub['type'] ?? 'vtt'),
+                    'src' => self::absolutizeUrl($srcUrl, $origin),
                 ];
             }
         }
@@ -136,6 +167,178 @@ final class PlayerSources
         ];
     }
 
+    /**
+     * External subtitle catalogue (VDRK VTT + OpenSubtitles).
+     * @return array{ok:bool,subtitles:list<array<string,mixed>>,error?:string}
+     */
+    public static function fetchSubtitles(string $type, int $tmdbId, ?string $imdbId = null, int $season = 1, int $episode = 1): array
+    {
+        $type = $type === 'tv' ? 'tv' : 'movie';
+        if ($tmdbId < 1) {
+            return ['ok' => false, 'subtitles' => [], 'error' => 'Invalid tmdbId'];
+        }
+        $subs = [];
+
+        // VDRK — ready-to-use VTT
+        $vdrkUrl = $type === 'tv'
+            ? "https://sub.vdrk.site/v1/tv/{$tmdbId}/" . max(1, $season) . '/' . max(1, $episode)
+            : "https://sub.vdrk.site/v1/movie/{$tmdbId}";
+        $vdrk = self::httpGetJsonRaw($vdrkUrl);
+        if (is_array($vdrk)) {
+            foreach ($vdrk as $row) {
+                if (!is_array($row) || empty($row['file']) || empty($row['label'])) {
+                    continue;
+                }
+                $label = trim((string) $row['label']);
+                $lang = self::labelToLangCode($label);
+                $id = 'vdrk:' . sha1((string) $row['file']);
+                $subs[$id] = [
+                    'id' => $id,
+                    'label' => $label,
+                    'language' => $lang,
+                    'type' => 'vtt',
+                    'src' => (string) $row['file'],
+                    'source' => 'granite',
+                ];
+            }
+        }
+
+        // OpenSubtitles (needs imdb)
+        $imdb = $imdbId ? trim($imdbId) : '';
+        if ($imdb !== '' && str_starts_with($imdb, 'tt')) {
+            $path = 'https://rest.opensubtitles.org/search/';
+            if ($type === 'tv') {
+                $path .= 'episode-' . max(1, $episode) . '/imdbid-' . substr($imdb, 2) . '/season-' . max(1, $season);
+            } else {
+                $path .= 'imdbid-' . substr($imdb, 2);
+            }
+            $os = self::httpGetJsonRaw($path, [
+                'X-User-Agent: VLSub 0.10.2',
+                'Accept: application/json',
+            ]);
+            if (is_array($os)) {
+                foreach ($os as $row) {
+                    if (!is_array($row) || empty($row['SubDownloadLink'])) {
+                        continue;
+                    }
+                    $download = str_replace(
+                        ['download/', '.gz'],
+                        ['download/subencoding-utf8/', ''],
+                        (string) $row['SubDownloadLink']
+                    );
+                    $langName = (string) ($row['LanguageName'] ?? '');
+                    $lang = self::labelToLangCode($langName);
+                    if ($download === '' || $lang === '') {
+                        continue;
+                    }
+                    $id = 'os:' . sha1($download);
+                    if (isset($subs[$id])) {
+                        continue;
+                    }
+                    $subs[$id] = [
+                        'id' => $id,
+                        'label' => $langName !== '' ? $langName : strtoupper($lang),
+                        'language' => $lang,
+                        'type' => strtolower((string) ($row['SubFormat'] ?? 'srt')) ?: 'srt',
+                        'src' => $download,
+                        'source' => 'opensubs',
+                    ];
+                }
+            }
+        }
+
+        $list = array_values($subs);
+        // Prefer common languages first
+        usort($list, static function (array $a, array $b): int {
+            $prio = ['en' => 0, 'de' => 1, 'es' => 2, 'fr' => 3, 'it' => 4, 'pt' => 5, 'nl' => 6];
+            $pa = $prio[$a['language'] ?? ''] ?? 50;
+            $pb = $prio[$b['language'] ?? ''] ?? 50;
+            if ($pa !== $pb) {
+                return $pa <=> $pb;
+            }
+            return strcasecmp((string) $a['label'], (string) $b['label']);
+        });
+
+        return [
+            'ok' => true,
+            'subtitles' => $list,
+            'count' => count($list),
+        ];
+    }
+
+    /** Proxy remote caption file as VTT text/vtt */
+    public static function proxyCaption(string $url): void
+    {
+        $url = trim($url);
+        if ($url === '' || !preg_match('#^https?://#i', $url)) {
+            http_response_code(400);
+            header('Content-Type: application/json');
+            echo json_encode(['ok' => false, 'error' => 'Invalid url']);
+            exit;
+        }
+        $raw = self::httpGetRaw($url, [
+            'User-Agent: ChillflixNewsitePlayer/1.0',
+            'Accept: text/vtt, text/plain, */*',
+        ]);
+        if ($raw === null || $raw === '') {
+            http_response_code(502);
+            header('Content-Type: application/json');
+            echo json_encode(['ok' => false, 'error' => 'Caption fetch failed']);
+            exit;
+        }
+        $body = $raw;
+        if (!str_starts_with(ltrim($body), 'WEBVTT')) {
+            $body = self::srtToVtt($body);
+        }
+        header('Content-Type: text/vtt; charset=utf-8');
+        header('Cache-Control: public, max-age=3600');
+        header('Access-Control-Allow-Origin: *');
+        echo $body;
+        exit;
+    }
+
+    private static function srtToVtt(string $srt): string
+    {
+        $srt = preg_replace("/^\xEF\xBB\xBF/", '', $srt) ?? $srt;
+        $srt = str_replace("\r\n", "\n", $srt);
+        $srt = preg_replace('/(\d{2}:\d{2}:\d{2}),(\d{3})/', '$1.$2', $srt) ?? $srt;
+        return "WEBVTT\n\n" . trim($srt) . "\n";
+    }
+
+    private static function labelToLangCode(string $label): string
+    {
+        $l = strtolower(trim($label));
+        $l = preg_replace('/\s*hi\d*$/', '', $l) ?? $l;
+        $l = preg_replace('/\d+$/', '', $l) ?? $l;
+        $l = trim($l);
+        $map = [
+            'english' => 'en', 'german' => 'de', 'deutsch' => 'de', 'spanish' => 'es',
+            'spanish (eu)' => 'es', 'spanish (la)' => 'es', 'french' => 'fr', 'italian' => 'it',
+            'portuguese' => 'pt', 'dutch' => 'nl', 'russian' => 'ru', 'arabic' => 'ar',
+            'turkish' => 'tr', 'polish' => 'pl', 'swedish' => 'sv', 'norwegian' => 'no',
+            'danish' => 'da', 'finnish' => 'fi', 'greek' => 'el', 'hebrew' => 'he',
+            'hindi' => 'hi', 'japanese' => 'ja', 'korean' => 'ko', 'chinese' => 'zh',
+            'vietnamese' => 'vi', 'thai' => 'th', 'indonesian' => 'id', 'romanian' => 'ro',
+            'hungarian' => 'hu', 'czech' => 'cs', 'slovak' => 'sk', 'ukrainian' => 'uk',
+            'croatian' => 'hr', 'serbian' => 'sr', 'bulgarian' => 'bg', 'albanian' => 'sq',
+            'estonian' => 'et', 'latvian' => 'lv', 'lithuanian' => 'lt', 'slovenian' => 'sl',
+            'original' => 'orig', 'org' => 'orig',
+        ];
+        if (isset($map[$l])) {
+            return $map[$l];
+        }
+        // "Spanish (LA)2" etc
+        foreach ($map as $name => $code) {
+            if (str_starts_with($l, $name)) {
+                return $code;
+            }
+        }
+        if (preg_match('/^[a-z]{2}(-[a-z]{2})?$/', $l)) {
+            return substr($l, 0, 2);
+        }
+        return $l !== '' ? substr(preg_replace('/[^a-z]/', '', $l) ?? 'und', 0, 8) : 'und';
+    }
+
     private static function forceHttps(string $url): string
     {
         if (str_starts_with($url, 'http://')) {
@@ -159,19 +362,42 @@ final class PlayerSources
         return self::forceHttps($url);
     }
 
-    /** @return array<string,mixed>|null */
+    /** @return array<string,mixed>|list<mixed>|null */
     private static function httpGetJson(string $url, string $origin): ?array
     {
+        return self::httpGetJsonRaw($url, [
+            'Accept: application/json',
+            'User-Agent: ChillflixNewsitePlayer/1.0',
+            'Origin: ' . $origin,
+            'Referer: ' . $origin . '/',
+        ], $origin);
+    }
+
+    /**
+     * @param list<string> $headers
+     * @return array<string,mixed>|list<mixed>|null
+     */
+    private static function httpGetJsonRaw(string $url, array $headers = [], ?string $origin = null): ?array
+    {
+        $raw = self::httpGetRaw($url, $headers, $origin);
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+        $data = json_decode($raw, true);
+        return is_array($data) ? $data : null;
+    }
+
+    /** @param list<string> $headers */
+    private static function httpGetRaw(string $url, array $headers = [], ?string $origin = null): ?string
+    {
+        if (!$headers) {
+            $headers = ['Accept: */*', 'User-Agent: ChillflixNewsitePlayer/1.0'];
+        }
         $ctx = stream_context_create([
             'http' => [
                 'method' => 'GET',
                 'timeout' => 18,
-                'header' => implode("\r\n", [
-                    'Accept: application/json',
-                    'User-Agent: ChillflixNewsitePlayer/1.0',
-                    'Origin: ' . $origin,
-                    'Referer: ' . $origin . '/',
-                ]),
+                'header' => implode("\r\n", $headers),
                 'ignore_errors' => true,
             ],
             'ssl' => [
@@ -180,20 +406,15 @@ final class PlayerSources
             ],
         ]);
         $raw = @file_get_contents($url, false, $ctx);
-        if ($raw === false || $raw === '') {
-            // retry via loopback Host header if public DNS is awkward from VPS
+        if (($raw === false || $raw === '') && $origin && str_contains($url, 'chillflix.lol')) {
             $loop = preg_replace('@^https?://[^/]+@', 'http://127.0.0.1:3000', $url) ?? $url;
+            $hdrs = $headers;
+            array_unshift($hdrs, 'Host: www.chillflix.lol');
             $ctx2 = stream_context_create([
                 'http' => [
                     'method' => 'GET',
                     'timeout' => 18,
-                    'header' => implode("\r\n", [
-                        'Accept: application/json',
-                        'Host: www.chillflix.lol',
-                        'User-Agent: ChillflixNewsitePlayer/1.0',
-                        'Origin: ' . $origin,
-                        'Referer: ' . $origin . '/',
-                    ]),
+                    'header' => implode("\r\n", $hdrs),
                     'ignore_errors' => true,
                 ],
             ]);
@@ -202,7 +423,6 @@ final class PlayerSources
         if ($raw === false || $raw === '') {
             return null;
         }
-        $data = json_decode($raw, true);
-        return is_array($data) ? $data : null;
+        return $raw;
     }
 }
