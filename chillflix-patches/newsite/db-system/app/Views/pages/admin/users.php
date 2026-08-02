@@ -15,20 +15,21 @@ $isAdmin = Auth::isAdmin($adminUser);
       <h1>Users</h1>
       <p>Preview, edit role/status, or remove accounts.</p>
     </div>
-    <div class="cf-admin-panel">
+
+    <section class="cf-admin-work">
       <div class="cf-admin-toolbar">
         <input id="users-q" type="search" placeholder="Search name, email, id…">
         <button type="button" class="cf-admin-btn" id="users-search">Search</button>
       </div>
       <div class="cf-admin-msg" id="users-msg" hidden></div>
-      <div style="overflow:auto;">
+      <div class="cf-admin-table-wrap">
         <table class="cf-admin-table">
           <thead><tr><th>User</th><th>Role</th><th>Status</th><th></th></tr></thead>
           <tbody id="users-body"><tr><td colspan="4">Loading…</td></tr></tbody>
         </table>
       </div>
       <div class="cf-admin-drawer" id="user-drawer" hidden></div>
-    </div>
+    </section>
   </div>
 </main>
 <script>
@@ -45,9 +46,9 @@ $isAdmin = Auth::isAdmin($adminUser);
         if(!d||!d.ok){ body.innerHTML='<tr><td colspan="4">Failed</td></tr>'; return; }
         body.innerHTML = (d.users||[]).map(function(u){
           return '<tr>'+
-            '<td><strong style="color:#fff">'+(u.name||'')+'</strong><div style="color:rgba(255,255,255,.45);font-size:.75rem">'+(u.email||'')+'</div></td>'+
+            '<td><div class="cf-admin-usercell"><span class="cf-admin-avatar">'+(String(u.name||'?').charAt(0).toUpperCase())+'</span><span><strong>'+(u.name||'')+'</strong><em>'+(u.email||'')+'</em></span></div></td>'+
             '<td><span class="cf-admin-role '+(u.role||'')+'">'+(u.role||'')+'</span></td>'+
-            '<td>'+(u.status||'')+'</td>'+
+            '<td><span class="cf-admin-status '+(u.status||'')+'">'+(u.status||'')+'</span></td>'+
             '<td><button type="button" class="cf-admin-btn ghost" data-open="'+(u.id||'')+'">Open</button></td>'+
           '</tr>';
         }).join('') || '<tr><td colspan="4">No users</td></tr>';
@@ -59,22 +60,25 @@ $isAdmin = Auth::isAdmin($adminUser);
       var u=d.user||{};
       drawer.hidden=false;
       drawer.innerHTML =
-        '<h3 style="margin:0 0 .75rem;color:#fff">Edit user</h3>'+
+        '<div class="cf-admin-drawer-head"><h3>Edit user</h3><button type="button" class="cf-admin-btn ghost" id="eu-close">Close</button></div>'+
+        '<div class="cf-admin-drawer-grid">'+
         '<label class="cf-admin-field"><span>Name</span><input id="eu-name" value="'+(u.name||'').replace(/"/g,'&quot;')+'"></label>'+
         '<label class="cf-admin-field"><span>Email</span><input id="eu-email" value="'+(u.email||'').replace(/"/g,'&quot;')+'"></label>'+
         '<label class="cf-admin-field"><span>Status</span><select id="eu-status"><option value="active">active</option><option value="suspended">suspended</option></select></label>'+
         (canRole ? '<label class="cf-admin-field"><span>Role</span><select id="eu-role"><option value="user">user</option><option value="moderator">moderator</option><option value="admin">admin</option></select></label>' : '')+
-        '<label class="cf-admin-field"><span>New password</span><input id="eu-pass" type="password" placeholder="Leave blank to keep"></label>'+
-        '<div style="display:flex;flex-wrap:wrap;gap:.5rem;margin:.4rem 0 1rem">'+
+        '<label class="cf-admin-field cf-admin-field-wide"><span>New password</span><input id="eu-pass" type="password" placeholder="Leave blank to keep"></label>'+
+        '</div>'+
+        '<div class="cf-admin-drawer-actions">'+
           '<button type="button" class="cf-admin-btn" id="eu-save">Save</button>'+
           (canRole ? '<button type="button" class="cf-admin-btn danger" id="eu-del">Delete</button>' : '')+
         '</div>'+
-        '<p style="color:rgba(255,255,255,.5);font-size:.8rem;margin:0 0 .35rem">Favorites: '+((d.favorites||[]).length)+' · Continue: '+((d.continueWatching||[]).length)+'</p>'+
-        '<pre style="max-height:14rem;overflow:auto;font-size:.72rem;color:rgba(255,255,255,.55);background:rgba(0,0,0,.25);padding:.7rem;border-radius:.8rem">'+(
+        '<p class="cf-admin-drawer-meta">Favorites: '+((d.favorites||[]).length)+' · Continue: '+((d.continueWatching||[]).length)+'</p>'+
+        '<pre class="cf-admin-pre">'+(
           JSON.stringify({favorites:d.favorites||[], continueWatching:d.continueWatching||[]}, null, 2)
         )+'</pre>';
       drawer.querySelector('#eu-status').value = u.status || 'active';
       if (canRole) drawer.querySelector('#eu-role').value = u.role || 'user';
+      drawer.querySelector('#eu-close').onclick = function(){ drawer.hidden=true; };
       drawer.querySelector('#eu-save').onclick = function(){
         var payload = {
           name: drawer.querySelector('#eu-name').value,

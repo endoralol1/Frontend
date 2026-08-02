@@ -14,19 +14,20 @@ $adminUser = $adminUser ?? Auth::user();
       <h1>Sources</h1>
       <p>Enable/disable, drag order (top = tested first), and probe with any movie/TV TMDB id. Users see Alpha/Beta labels.</p>
     </div>
-    <div class="cf-admin-panel">
-      <div class="cf-admin-toolbar">
+
+    <section class="cf-admin-work">
+      <div class="cf-admin-toolbar cf-admin-toolbar-sources">
         <select id="test-type"><option value="movie">Movie</option><option value="tv">TV</option></select>
-        <input id="test-tmdb" type="number" min="1" placeholder="TMDB id (e.g. 550)" style="flex:0 1 10rem">
-        <input id="test-season" type="number" min="1" value="1" placeholder="S" style="flex:0 0 4.5rem" title="Season">
-        <input id="test-episode" type="number" min="1" value="1" placeholder="E" style="flex:0 0 4.5rem" title="Episode">
+        <input id="test-tmdb" type="number" min="1" placeholder="TMDB id (e.g. 550)">
+        <input id="test-season" type="number" min="1" value="1" placeholder="S" title="Season">
+        <input id="test-episode" type="number" min="1" value="1" placeholder="E" title="Episode">
       </div>
       <div class="cf-admin-msg" id="src-msg" hidden></div>
-      <div id="src-list">Loading…</div>
-      <div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap">
+      <div class="cf-admin-source-list" id="src-list">Loading…</div>
+      <div class="cf-admin-work-foot">
         <button type="button" class="cf-admin-btn" id="src-save-order">Save order</button>
       </div>
-    </div>
+    </section>
   </div>
 </main>
 <script>
@@ -37,15 +38,16 @@ $adminUser = $adminUser ?? Auth::user();
   var dragId = null;
   function show(t, ok){ msg.hidden=false; msg.textContent=t; msg.className='cf-admin-msg'+(ok?' ok':''); }
   function render(sources){
-    list.innerHTML = (sources||[]).map(function(s){
+    list.innerHTML = (sources||[]).map(function(s, idx){
       return '<div class="cf-admin-source'+(s.enabled?'':' is-off')+'" draggable="true" data-id="'+s.id+'">'+
-        '<div class="meta"><strong>'+s.name+' <span style="color:rgba(255,255,255,.4)">('+s.id+')</span></strong>'+
+        '<span class="cf-admin-source-handle" aria-hidden="true"><i class="uil uil-draggabledots"></i><em>'+(idx+1)+'</em></span>'+
+        '<div class="meta"><strong>'+s.name+' <span>('+s.id+')</span></strong>'+
         '<em>Public: '+s.publicLabel+(s.enabled?' · enabled':' · disabled')+'</em></div>'+
         '<button type="button" class="cf-admin-switch'+(s.enabled?' on':'')+'" data-toggle="'+s.id+'" aria-label="Toggle"></button>'+
         '<button type="button" class="cf-admin-btn ghost" data-test="'+s.id+'">Test</button>'+
-        '<input data-label="'+s.id+'" value="'+(s.publicLabel||'').replace(/"/g,'&quot;')+'" style="width:7rem;min-height:2.3rem;border-radius:.7rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.28);color:#fff;padding:.35rem .5rem" title="Public label">'+
+        '<input class="cf-admin-label-input" data-label="'+s.id+'" value="'+(s.publicLabel||'').replace(/"/g,'&quot;')+'" title="Public label">'+
       '</div>';
-    }).join('');
+    }).join('') || '<p class="cf-admin-empty">No sources configured.</p>';
   }
   function load(){
     fetch(API,{credentials:'same-origin'}).then(r=>r.json()).then(d=>{
@@ -59,6 +61,11 @@ $adminUser = $adminUser ?? Auth::user();
   list.addEventListener('dragstart', function(e){
     var row=e.target.closest('.cf-admin-source'); if(!row) return;
     dragId=row.getAttribute('data-id'); e.dataTransfer.effectAllowed='move';
+    row.classList.add('is-dragging');
+  });
+  list.addEventListener('dragend', function(){
+    var row=list.querySelector('.is-dragging'); if(row) row.classList.remove('is-dragging');
+    dragId=null;
   });
   list.addEventListener('dragover', function(e){
     e.preventDefault();
