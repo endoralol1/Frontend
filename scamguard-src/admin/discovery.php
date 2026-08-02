@@ -9,8 +9,7 @@ $flash = null;
 
 function discovery_start_background(): bool
 {
-    $lockFile = __DIR__ . '/../storage/discovery.lock';
-    if (is_file($lockFile)) {
+    if (discovery_is_running()) {
         return false;
     }
 
@@ -21,6 +20,9 @@ function discovery_start_background(): bool
             break;
         }
     }
+
+    discovery_clear_stop_flag();
+    @unlink(discovery_lock_path());
 
     $script = realpath(__DIR__ . '/../cron/discover.php');
     $logDir = __DIR__ . '/../storage/logs';
@@ -37,28 +39,6 @@ function discovery_start_background(): bool
     return true;
 }
 
-function discovery_stop_running(): bool
-{
-    $lockFile = __DIR__ . '/../storage/discovery.lock';
-    $stopped = false;
-    if (is_file($lockFile)) {
-        $pid = (int) trim((string) @file_get_contents($lockFile));
-        if ($pid > 0) {
-            $args = trim((string) shell_exec('ps -p ' . $pid . ' -o args= 2>/dev/null'));
-            if ($args !== '' && str_contains($args, 'cron/discover.php')) {
-                if (function_exists('posix_kill')) {
-                    @posix_kill($pid, SIGTERM);
-                } else {
-                    @exec('kill -TERM ' . $pid . ' 2>/dev/null');
-                }
-                $stopped = true;
-            }
-        }
-        @unlink($lockFile);
-    }
-    return $stopped;
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && Auth::verifyCsrf($_POST['csrf'] ?? null)) {
     $action = $_POST['action'] ?? 'save';
     if ($action === 'save') {
@@ -68,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && Auth::verifyCsrf($_POST['csrf'] ?? 
         set_setting('discovery_batch_size', (string) $batch);
         set_setting('discovery_interval_minutes', (string) $interval);
         set_setting('discovery_rate_limit_per_hour', (string) $rate);
-        set_setting('discovery_auto_enabled', isset($_POST['discovery_auto_enabled']) ? '1' : '0');
+        $autoOn = isset($_POST['discovery_auto_enabled']);
         set_setting('discovery_turbo_fast', isset($_POST['discovery_turbo_fast']) ? '1' : '0');
 
         $sourceRows = $db->query('SELECT name FROM discovery_sources')->fetchAll(PDO::FETCH_COLUMN);
@@ -77,18 +57,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && Auth::verifyCsrf($_POST['csrf'] ?? 
         foreach ($sourceRows as $name) {
             $stmt->execute([in_array((string) $name, $enabled, true) ? 1 : 0, $name]);
         }
+
+        if ($autoOn) {
+            set_setting('discovery_auto_enabled', '1');
+            discovery_clear_stop_flag();
+            $flash = 'Discovery settings saved.';
+        } else {
+            $result = discovery_disable_and_stop();
+            $flash = $result['killed'] > 0
+                ? 'Discovery settings saved. Running pull stopped and automatic puller disabled.'
+                : 'Discovery settings saved. Automatic puller disabled.';
+        }
         log_admin_activity(Auth::id(), 'update_discovery_settings');
-        $flash = 'Discovery settings saved.';
     } elseif ($action === 'start') {
         set_setting('discovery_auto_enabled', '1');
+        discovery_clear_stop_flag();
         $flash = discovery_start_background()
             ? 'Discovery pull started in the background.'
             : 'A discovery pull is already running.';
         log_admin_activity(Auth::id(), 'discovery_pull_now');
     } elseif ($action === 'stop') {
-        set_setting('discovery_auto_enabled', '0');
-        $stopped = discovery_stop_running();
-        $flash = $stopped ? 'Running pull stopped and automatic discovery disabled.' : 'Automatic discovery disabled.';
+        $result = discovery_disable_and_stop();
+        $flash = $result['killed'] > 0
+            ? 'Running pull stopped and automatic discovery disabled.'
+            : 'Automatic discovery disabled.';
         log_admin_activity(Auth::id(), 'discovery_stop');
     }
 }
@@ -97,8 +89,7 @@ require __DIR__ . '/includes/layout_top.php';
 
 $sources = $db->query('SELECT * FROM discovery_sources ORDER BY name')->fetchAll();
 $runs = $db->query('SELECT * FROM discovery_runs ORDER BY started_at DESC LIMIT 12')->fetchAll();
-$lockFile = __DIR__ . '/../storage/discovery.lock';
-$running = is_file($lockFile);
+$running = discovery_is_running();
 $lastHour = (int) $db->query(
     "SELECT COUNT(*) FROM domains
      WHERE discovered_via IN ('threat_feeds','ct_logs','user_reports','popular_seed')
@@ -173,19 +164,23 @@ foreach (glob($feedDir . '/*.txt') ?: [] as $file) {
     </form>
 </div>
 
-<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px;">
+<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; align-items:center;">
+    <form method="post">
+        <input type="hidden" name="csrf" value="<?= h(Auth::csrfToken()) ?>">
+        <input type="hidden" name="action" value="stop">
+        <button class="btn btn-danger" type="submit">Stop Puller Now</button>
+    </form>
     <form method="post">
         <input type="hidden" name="csrf" value="<?= h(Auth::csrfToken()) ?>">
         <input type="hidden" name="action" value="start">
         <button class="btn btn-primary" type="submit">Start Pull Now</button>
     </form>
-    <form method="post">
-        <input type="hidden" name="csrf" value="<?= h(Auth::csrfToken()) ?>">
-        <input type="hidden" name="action" value="stop">
-        <button class="btn btn-danger" type="submit">Stop Puller</button>
-    </form>
     <a class="btn" href="<?= BASE_PATH ?>/admin/discovery.php">Refresh Status</a>
 </div>
+<p style="color:var(--faint); font-size:13px; margin:-8px 0 18px;">
+    Uncheck <strong>Automatic puller enabled</strong> and Save, or press <strong>Stop Puller Now</strong> — both kill any in-flight batch.
+    <strong>Start Pull Now</strong> turns the automatic puller back on.
+</p>
 
 <div class="card" style="margin-bottom:18px;">
     <h3 style="margin-top:0;">Feed files</h3>

@@ -110,7 +110,7 @@ if ($action === 'dashboard') {
             'auto_enabled' => get_setting('discovery_auto_enabled', '1') === '1',
             'turbo_fast' => get_setting('discovery_turbo_fast', '1') === '1',
             'last_run_at' => get_setting('discovery_last_run_at', ''),
-            'pull_running' => is_file(__DIR__ . '/../storage/discovery.lock'),
+            'pull_running' => discovery_is_running(),
         ],
     ]);
 }
@@ -118,7 +118,6 @@ if ($action === 'dashboard') {
 if ($action === 'discovery_get') {
     $sources = $db->query('SELECT * FROM discovery_sources ORDER BY name')->fetchAll();
     $runs = $db->query('SELECT * FROM discovery_runs ORDER BY started_at DESC LIMIT 30')->fetchAll();
-    $lockFile = __DIR__ . '/../storage/discovery.lock';
     api_json([
         'ok' => true,
         'csrf' => $csrf,
@@ -132,7 +131,7 @@ if ($action === 'discovery_get') {
             'discovery_turbo_fast' => get_setting('discovery_turbo_fast', '1'),
             'discovery_last_run_at' => get_setting('discovery_last_run_at', ''),
         ],
-        'pull_running' => is_file($lockFile),
+        'pull_running' => discovery_is_running(),
     ]);
 }
 
@@ -146,8 +145,15 @@ if ($action === 'discovery_save' && $method === 'POST') {
     set_setting('discovery_rate_limit_per_hour', (string) $rate);
     // Only update auto/turbo when explicitly provided — React used to omit them,
     // which forced discovery_auto_enabled=0 on every "Save settings".
+    $stoppedRunning = false;
     if (array_key_exists('discovery_auto_enabled', $body)) {
-        set_setting('discovery_auto_enabled', !empty($body['discovery_auto_enabled']) ? '1' : '0');
+        if (!empty($body['discovery_auto_enabled'])) {
+            set_setting('discovery_auto_enabled', '1');
+            discovery_clear_stop_flag();
+        } else {
+            $result = discovery_disable_and_stop();
+            $stoppedRunning = ($result['killed'] ?? 0) > 0;
+        }
     }
     if (array_key_exists('discovery_turbo_fast', $body)) {
         set_setting('discovery_turbo_fast', !empty($body['discovery_turbo_fast']) ? '1' : '0');
@@ -155,9 +161,16 @@ if ($action === 'discovery_save' && $method === 'POST') {
     $auto = get_setting('discovery_auto_enabled', '1');
     $turbo = get_setting('discovery_turbo_fast', '1');
     log_admin_activity(Auth::id(), 'update_discovery_settings', null, "batch=$batch interval={$interval}m rate=$rate auto=$auto turbo=$turbo");
+    $message = 'Discovery settings saved.';
+    if ($auto !== '1' && $stoppedRunning) {
+        $message = 'Discovery settings saved. Running pull stopped and automatic puller disabled.';
+    } elseif ($auto !== '1') {
+        $message = 'Discovery settings saved. Automatic puller disabled.';
+    }
     api_json([
         'ok' => true,
-        'message' => 'Discovery settings saved.',
+        'message' => $message,
+        'pull_running' => discovery_is_running(),
         'settings' => [
             'discovery_batch_size' => $batch,
             'discovery_interval_minutes' => $interval,
@@ -172,33 +185,22 @@ if ($action === 'discovery_save' && $method === 'POST') {
 if ($action === 'discovery_start' && $method === 'POST') {
     api_require_csrf($body['csrf'] ?? null);
     set_setting('discovery_auto_enabled', '1');
+    discovery_clear_stop_flag();
     log_admin_activity(Auth::id(), 'discovery_start', null, 'enabled automatic puller');
     api_json(['ok' => true, 'message' => 'Automatic discovery enabled.', 'discovery_auto_enabled' => '1']);
 }
 
 if ($action === 'discovery_stop' && $method === 'POST') {
     api_require_csrf($body['csrf'] ?? null);
-    set_setting('discovery_auto_enabled', '0');
-    $lockFile = __DIR__ . '/../storage/discovery.lock';
-    $stopped = false;
-    if (is_file($lockFile)) {
-        $pid = (int) trim((string) @file_get_contents($lockFile));
-        if ($pid > 0) {
-            $cmd = 'ps -p ' . $pid . ' -o args= 2>/dev/null';
-            $args = trim((string) shell_exec($cmd));
-            if ($args !== '' && str_contains($args, 'cron/discover.php')) {
-                if (function_exists('posix_kill')) {
-                    @posix_kill($pid, SIGTERM);
-                } else {
-                    @exec('kill -TERM ' . $pid . ' 2>/dev/null');
-                }
-                $stopped = true;
-            }
-        }
-        @unlink($lockFile);
-    }
+    $result = discovery_disable_and_stop();
+    $stopped = ($result['killed'] ?? 0) > 0;
     log_admin_activity(Auth::id(), 'discovery_stop', null, $stopped ? 'terminated running pull' : 'disabled auto puller');
-    api_json(['ok' => true, 'message' => $stopped ? 'Discovery stopped and automatic pulling disabled.' : 'Automatic discovery disabled.']);
+    api_json([
+        'ok' => true,
+        'message' => $stopped ? 'Discovery stopped and automatic pulling disabled.' : 'Automatic discovery disabled.',
+        'pull_running' => discovery_is_running(),
+        'discovery_auto_enabled' => '0',
+    ]);
 }
 
 if ($action === 'discovery_toggle' && $method === 'POST') {
@@ -215,14 +217,15 @@ if ($action === 'discovery_toggle' && $method === 'POST') {
 
 if ($action === 'discovery_pull_now' && $method === 'POST') {
     api_require_csrf($body['csrf'] ?? null);
-    $lockFile = __DIR__ . '/../storage/discovery.lock';
-    if (is_file($lockFile)) {
-        $age = time() - (int) filemtime($lockFile);
-        if ($age < 900) {
-            api_json(['ok' => false, 'error' => 'A discovery pull is already running.', 'pull_running' => true], 409);
-        }
-        @unlink($lockFile);
+    if (discovery_is_running()) {
+        api_json(['ok' => false, 'error' => 'A discovery pull is already running.', 'pull_running' => true], 409);
     }
+
+    // Pull now also arms the automatic puller (otherwise mid-run disable logic
+    // would immediately abort a --force batch).
+    set_setting('discovery_auto_enabled', '1');
+    discovery_clear_stop_flag();
+    @unlink(discovery_lock_path());
 
     // PHP_BINARY under php-fpm is often php-fpm itself — prefer a real CLI binary.
     $candidates = ['/usr/bin/php', '/usr/bin/php8.1', '/usr/bin/php8.2', '/usr/bin/php8.3', 'php'];

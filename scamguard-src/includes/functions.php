@@ -49,6 +49,21 @@ function get_setting(string $key, string $default = ''): string
     return $cache[$key] ?? $default;
 }
 
+/** Read a setting directly from DB (ignores request cache — for long cron loops). */
+function get_setting_fresh(string $key, string $default = ''): string
+{
+    $db = Database::getConnection();
+    $stmt = $db->prepare('SELECT setting_value FROM site_settings WHERE setting_key = ? LIMIT 1');
+    $stmt->execute([$key]);
+    $value = $stmt->fetchColumn();
+    if ($value === false || $value === null) {
+        return $default;
+    }
+    $cache = &settings_cache();
+    $cache[$key] = (string) $value;
+    return (string) $value;
+}
+
 /** Upsert a site_settings value and refresh the in-request cache */
 function set_setting(string $key, string $value): void
 {
@@ -61,6 +76,125 @@ function set_setting(string $key, string $value): void
 
     $cache = &settings_cache();
     $cache[$key] = $value;
+}
+
+function discovery_lock_path(): string
+{
+    return __DIR__ . '/../storage/discovery.lock';
+}
+
+function discovery_stop_flag_path(): string
+{
+    return __DIR__ . '/../storage/discovery.stop';
+}
+
+function discovery_is_running(): bool
+{
+    $lock = discovery_lock_path();
+    if (!is_file($lock)) {
+        return false;
+    }
+    // Stale lock with no process = not running
+    $pid = (int) trim((string) @file_get_contents($lock));
+    if ($pid > 1) {
+        $args = trim((string) shell_exec('ps -p ' . $pid . ' -o args= 2>/dev/null'));
+        if ($args !== '' && str_contains($args, 'discover.php')) {
+            return true;
+        }
+    }
+    // Any php discover.php worker for this install still counts (avoid matching shells)
+    $out = trim((string) shell_exec("pgrep -f 'php.*/scamguard/cron/discover\\.php' 2>/dev/null"));
+    return $out !== '';
+}
+
+function discovery_request_stop(): void
+{
+    @file_put_contents(discovery_stop_flag_path(), (string) time());
+}
+
+function discovery_clear_stop_flag(): void
+{
+    @unlink(discovery_stop_flag_path());
+}
+
+function discovery_is_stop_requested(): bool
+{
+    return is_file(discovery_stop_flag_path());
+}
+
+/**
+ * Kill every running discover.php worker for this install and clear the lock.
+ * Returns number of PIDs signaled.
+ */
+function discovery_kill_running(): int
+{
+    discovery_request_stop();
+    $killed = 0;
+    $lock = discovery_lock_path();
+    $pids = [];
+
+    if (is_file($lock)) {
+        $pid = (int) trim((string) @file_get_contents($lock));
+        if ($pid > 1) {
+            $pids[$pid] = true;
+        }
+    }
+
+    $listed = trim((string) shell_exec("pgrep -f 'php.*/scamguard/cron/discover\\.php' 2>/dev/null"));
+    if ($listed !== '') {
+        foreach (preg_split('/\s+/', $listed) as $p) {
+            $pid = (int) $p;
+            if ($pid > 1) {
+                $pids[$pid] = true;
+            }
+        }
+    }
+
+    foreach (array_keys($pids) as $pid) {
+        $args = trim((string) shell_exec('ps -p ' . $pid . ' -o args= 2>/dev/null'));
+        // Require a real php worker, not a shell that merely mentions the path.
+        if ($args === '' || !str_contains($args, 'discover.php') || !preg_match('/php(?:\\d+(?:\\.\\d+)*)?\\b/i', $args)) {
+            continue;
+        }
+        if (function_exists('posix_kill')) {
+            @posix_kill($pid, SIGTERM);
+        } else {
+            @exec('kill -TERM ' . $pid . ' 2>/dev/null');
+        }
+        $killed++;
+    }
+
+    // Give cooperative/TERM a moment, then SIGKILL leftovers
+    if ($killed > 0) {
+        usleep(400000);
+        foreach (array_keys($pids) as $pid) {
+            $alive = trim((string) shell_exec('ps -p ' . $pid . ' -o pid= 2>/dev/null'));
+            if ($alive === '') {
+                continue;
+            }
+            if (function_exists('posix_kill')) {
+                @posix_kill($pid, SIGKILL);
+            } else {
+                @exec('kill -KILL ' . $pid . ' 2>/dev/null');
+            }
+        }
+    }
+
+    @unlink($lock);
+    return $killed;
+}
+
+/** Disable auto puller and terminate any in-flight discovery batch. */
+function discovery_disable_and_stop(): array
+{
+    set_setting('discovery_auto_enabled', '0');
+    $killed = discovery_kill_running();
+    discovery_clear_stop_flag();
+    return [
+        'auto_enabled' => '0',
+        'killed' => $killed,
+        'running' => discovery_is_running(),
+    ];
 }
 
 /** Fetch a scoring_config value as a float, with fallback default */

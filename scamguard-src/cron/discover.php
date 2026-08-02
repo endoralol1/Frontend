@@ -35,12 +35,22 @@ $batchSize = max(1, min(10000, (int) get_setting('discovery_batch_size', '1000')
 $intervalMinutes = max(1, (int) get_setting('discovery_interval_minutes', '1'));
 $rateLimit = max(10, (int) get_setting('discovery_rate_limit_per_hour', '50000'));
 
-if (!$force && get_setting('discovery_auto_enabled', '1') !== '1') {
+if (discovery_is_stop_requested()) {
+    cron_log('Stop flag present — skipping.');
+    exit(0);
+}
+
+// Auto-off blocks cron AND leftover --force workers. Admin "Pull now"/"Start"
+// always sets discovery_auto_enabled=1 before spawning.
+if (get_setting_fresh('discovery_auto_enabled', '1') !== '1') {
     cron_log('Automatic discovery is disabled in Admin — skipping.');
     exit(0);
 }
 
-$lockFile = __DIR__ . '/../storage/discovery.lock';
+// Fresh start clears any previous stop request (Pull now / cron when enabled).
+discovery_clear_stop_flag();
+
+$lockFile = discovery_lock_path();
 $lockFp = fopen($lockFile, 'c+');
 if (!$lockFp || !flock($lockFp, LOCK_EX | LOCK_NB)) {
     cron_log('Another discovery run is already in progress — skipping.');
@@ -53,6 +63,16 @@ register_shutdown_function(static function () use ($lockFp, $lockFile): void {
     fclose($lockFp);
     @unlink($lockFile);
 });
+
+/** Stop mid-batch when admin presses Stop or turns automatic puller off. */
+function discovery_should_abort(bool $force): bool
+{
+    unset($force); // force does not ignore admin disable/stop
+    if (discovery_is_stop_requested()) {
+        return true;
+    }
+    return get_setting_fresh('discovery_auto_enabled', '1') !== '1';
+}
 
 if (!$force) {
     $lastRunAt = get_setting('discovery_last_run_at', '');
@@ -92,8 +112,14 @@ $sources = $db->query(
 )->fetchAll();
 $totalQueued = 0;
 
+$aborted = false;
 foreach ($sources as $source) {
     if ($totalQueued >= $runBudget) {
+        break;
+    }
+    if (discovery_should_abort($force)) {
+        $aborted = true;
+        cron_log('Stop/disable requested — aborting discovery run.');
         break;
     }
 
@@ -124,6 +150,12 @@ foreach ($sources as $source) {
             if ($queued >= $slot) {
                 break;
             }
+            // Check every domain so admin Stop takes effect immediately.
+            if (discovery_should_abort($force)) {
+                $aborted = true;
+                cron_log('Stop/disable requested — leaving batch early.');
+                break;
+            }
             $domain = normalize_domain((string) $domain);
             if (!$domain) {
                 continue;
@@ -150,7 +182,7 @@ foreach ($sources as $source) {
             }
         }
 
-        $status = 'completed';
+        $status = $aborted ? 'stopped' : 'completed';
     } catch (Throwable $e) {
         $status = 'failed';
         $logOutput = $e->getMessage();
@@ -164,6 +196,9 @@ foreach ($sources as $source) {
        ->execute([$status, $found, $source['name']]);
 
     cron_log("Source '{$source['name']}' done: found=$found queued=$queued status=$status");
+    if ($aborted) {
+        break;
+    }
 }
 
 $elapsed = max(0.001, microtime(true) - $startedAt);
