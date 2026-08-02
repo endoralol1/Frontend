@@ -547,7 +547,86 @@
   });
 
   // Also expose host create from watch page settings later if needed
-  window.ChillflixContinue = { render: renderContinueRail, list: readContinue };
+
+  /* cw-server-pull-ui102 */
+  function pullServerContinue() {
+    try {
+      var url = base() + "/api/user/library";
+      fetch(url, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      })
+        .then(function (r) {
+          if (!r.ok) return null;
+          return r.json();
+        })
+        .then(function (data) {
+          if (!data || !data.ok || !data.user) return;
+          var serverItems = data.continueWatching || [];
+          if (!serverItems.length) return;
+          var map = normalizeMap({});
+          try {
+            map = normalizeMap(JSON.parse(localStorage.getItem(CW_KEY) || "{}") || {});
+          } catch (e) {
+            map = {};
+          }
+          // merge cookie too
+          try {
+            readCookieMirror().forEach(function (row) {
+              var k = rowKey(row);
+              if (!k) return;
+              if (!map[k] || (Number(row.updated) || 0) > (Number(map[k].updated) || 0)) map[k] = row;
+            });
+          } catch (e2) {}
+          serverItems.forEach(function (item) {
+            if (!item || !item.key) return;
+            var cur = map[item.key];
+            var row = {
+              id: item.id,
+              type: item.type === "tv" ? "tv" : "movie",
+              title: item.title || "",
+              poster: item.poster || "",
+              backdrop: item.backdrop || "",
+              year: item.year || "",
+              season: item.season,
+              episode: item.episode,
+              t: item.t || 0,
+              d: item.d || 0,
+              updated: (Number(item.updated) || 0) < 1e12 ? (Number(item.updated) || 0) * 1000 : Number(item.updated) || Date.now(),
+            };
+            if (!cur || (Number(row.updated) || 0) >= (Number(cur.updated) || 0) || (Number(row.t) || 0) > (Number(cur.t) || 0) + 2) {
+              map[item.key] = Object.assign({}, cur || {}, row);
+            }
+          });
+          try {
+            localStorage.setItem(CW_KEY, JSON.stringify(map));
+          } catch (e3) {}
+          try {
+            var keys = Object.keys(map).sort(function (a, b) {
+              return (map[b].updated || 0) - (map[a].updated || 0);
+            });
+            var compact = keys.slice(0, 16).map(function (k) {
+              var row = map[k] || {};
+              return {
+                id: row.id, type: row.type, title: row.title || "",
+                poster: row.poster || "", backdrop: "",
+                year: row.year || "", season: row.season, episode: row.episode,
+                t: row.t || 0, d: row.d || 0, updated: row.updated || Date.now()
+              };
+            });
+            document.cookie =
+              "cf_continue_v1=" +
+              encodeURIComponent(JSON.stringify(compact)) +
+              ";path=/;max-age=31536000;SameSite=Lax";
+          } catch (e4) {}
+          renderContinueRail();
+    pullServerContinue();
+        })
+        .catch(function () {});
+    } catch (e) {}
+  }
+
+  window.ChillflixContinue = { render: renderContinueRail, list: readContinue, pull: pullServerContinue };
   window.ChillflixParty = { open: openPartyPanel, close: closePartyPanel };
 
   function bootContinue() {

@@ -1567,8 +1567,8 @@
     initRecentlyUpdated();
     try {
       /* ns-softnav-cw-sync-ui101 */
-      if (typeof nsSyncLibrary === 'function' && /\/(home)(\/|$|\?)/.test(location.pathname || '')) {
-        nsSyncLibrary();
+      if (typeof window.nsSyncLibrary === 'function' && /\/(home)(\/|$|\?)/.test(location.pathname || '')) {
+        window.nsSyncLibrary();
       } else if (window.ChillflixContinue && typeof window.ChillflixContinue.render === 'function') {
         window.ChillflixContinue.render();
       }
@@ -1971,6 +1971,23 @@
           } catch (eCookie) {}
           var merge = nsMergeContinueMaps(localCw, data.continueWatching || []);
           try { localStorage.setItem('cf_continue_v1', JSON.stringify(merge.merged)); } catch (e3) {}
+          // Keep cookie mirror in sync so home recovery has the FULL list, not one title
+          try {
+            var mKeys = Object.keys(merge.merged || {}).sort(function (a, b) {
+              return (Number(merge.merged[b].updated) || 0) - (Number(merge.merged[a].updated) || 0);
+            });
+            var compact = mKeys.slice(0, 16).map(function (k) {
+              var row = merge.merged[k] || {};
+              return {
+                id: row.id, type: row.type, title: row.title || '',
+                poster: row.poster || '', backdrop: '',
+                year: row.year || '', season: row.season, episode: row.episode,
+                t: row.t || 0, d: row.d || 0, updated: row.updated || Date.now()
+              };
+            }).filter(function (r) { return r && r.id; });
+            document.cookie = 'cf_continue_v1=' + encodeURIComponent(JSON.stringify(compact))
+              + ';path=/;max-age=31536000;SameSite=Lax';
+          } catch (eCookieMirror) {}
           // Upload only local-newer / local-only rows (max 12 per sync)
           (merge.toPush || []).slice(0, 12).forEach(function (item) {
             nsPushContinueItem(item);
@@ -2763,16 +2780,38 @@
 })();
 
 
-  /* ns-boot-sync-ui100 */
-  try {
-    authApi('/api/auth/me', { method: 'GET', headers: { 'Accept': 'application/json' } })
+
+/* ns-boot-sync-ui102
+ * Previous boot called authApi()/nsSyncLibrary() OUTSIDE their IIFE scope, so
+ * authApi threw ReferenceError and logged-in library sync never ran on home.
+ * That left Continue Watching stuck on whatever was in the local cookie (often 1 item)
+ * even when MySQL had the full history.
+ */
+(function () {
+  function base() {
+    return (window.CF_BASE || (window.APP && APP.baseUrl) || '').replace(/\/$/, '');
+  }
+  function bootSync() {
+    if (typeof window.nsSyncLibrary !== 'function') return;
+    fetch(base() + '/api/auth/me', {
+      credentials: 'same-origin',
+      headers: { 'Accept': 'application/json' }
+    })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (d && d.user) {
-          try { nsSyncLibrary(); } catch (e) {}
+          try { window.nsSyncLibrary(); } catch (e) {}
         }
-      }).catch(function () {});
-  } catch (eBoot) {}
+      })
+      .catch(function () {});
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootSync);
+  } else {
+    bootSync();
+  }
+})();
+
 
 /* newsite-admin-menu-ui96 */
 (function () {
