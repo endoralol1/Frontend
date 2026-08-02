@@ -382,7 +382,11 @@
       })
         .done(function (res) {
           $box.html(renderSearchSuggest(res && res.results)).addClass('open');
-          if ($sheet) $sheet.addClass('has-results');
+          if ($sheet) {
+            $sheet.addClass('has-results');
+            // Remember this query once results arrive
+            try { if (q.length >= 2) saveRecentSearch(q); } catch (eRecent) {}
+          }
         })
         .fail(function (xhr, status) {
           if (status === 'abort') return;
@@ -413,7 +417,7 @@
     if (v.length >= 2) {
       recentSearchTimer = setTimeout(function () {
         try { saveRecentSearch(v); } catch (eS) {}
-      }, 700);
+      }, 400);
     }
   });
 
@@ -1888,13 +1892,20 @@
 
 
 
-  function closeSearchSheet() {
+    function closeSearchSheet() {
     var $sheet = $('#search-sheet');
     if (!$sheet.length) return;
-    $sheet.removeClass('is-open has-results').attr('hidden', true);
+    try {
+      var qClose = $.trim($('#search-sheet-input').val() || '');
+      if (qClose.length >= 2) saveRecentSearch(qClose);
+    } catch (eCloseSave) {}
+    $sheet.removeClass('is-open has-results is-typing').attr('hidden', true);
     $('body').removeClass('search-open');
     $('.bottom-nav-search').removeClass('is-open').attr('aria-expanded', 'false');
-    $('#search-sheet .search-sheet-suggest').removeClass('open').empty();
+    // Delay wipe so click handlers can still read suggest-item text/title
+    setTimeout(function () {
+      $('#search-sheet .search-sheet-suggest').removeClass('open').empty();
+    }, 0);
   }
 
   $(document).on('click', '.bottom-nav-browse', function (e) {
@@ -1924,6 +1935,16 @@
   });
 
   $(document).on('click', '.browse-sheet-panel a, .search-sheet-panel a', function () {
+    var $a = $(this);
+    // Save BEFORE closeSearchSheet empties suggestions (that was wiping recent saves)
+    if ($a.hasClass('suggest-item')) {
+      try {
+        var typed = $.trim($('#search-sheet-input').val() || '');
+        var title = $.trim($a.find('strong').first().text() || '');
+        if (typed.length >= 2) saveRecentSearch(typed);
+        if (title) saveRecentSearch(title);
+      } catch (eSave) {}
+    }
     closeBrowseSheet();
     closeSearchSheet();
   });
@@ -1932,9 +1953,29 @@
   var RECENT_SEARCH_KEY = 'cf_recent_searches_v1';
   var RECENT_SEARCH_MAX = 8;
 
+  function recentStoreReadRaw() {
+    try {
+      var ls = localStorage.getItem(RECENT_SEARCH_KEY);
+      if (ls) return ls;
+    } catch (e0) {}
+    try {
+      var m = document.cookie.match(/(?:^|;\s*)cf_recent_searches_v1=([^;]*)/);
+      if (m) return decodeURIComponent(m[1]);
+    } catch (e1) {}
+    return '[]';
+  }
+
+  function recentStoreWriteRaw(raw) {
+    try { localStorage.setItem(RECENT_SEARCH_KEY, raw); } catch (e0) {}
+    try {
+      document.cookie = 'cf_recent_searches_v1=' + encodeURIComponent(raw)
+        + '; path=/; max-age=31536000; SameSite=Lax';
+    } catch (e1) {}
+  }
+
   function getRecentSearches() {
     try {
-      var raw = JSON.parse(localStorage.getItem(RECENT_SEARCH_KEY) || '[]');
+      var raw = JSON.parse(recentStoreReadRaw() || '[]');
       return Array.isArray(raw) ? raw.filter(function (x) { return typeof x === 'string' && x.trim(); }).slice(0, RECENT_SEARCH_MAX) : [];
     } catch (e) {
       return [];
@@ -1949,12 +1990,13 @@
     });
     list.unshift(q);
     list = list.slice(0, RECENT_SEARCH_MAX);
-    try { localStorage.setItem(RECENT_SEARCH_KEY, JSON.stringify(list)); } catch (e) {}
+    recentStoreWriteRaw(JSON.stringify(list));
     renderRecentSearches();
   }
 
   function clearRecentSearches() {
     try { localStorage.removeItem(RECENT_SEARCH_KEY); } catch (e) {}
+    try { document.cookie = 'cf_recent_searches_v1=; path=/; max-age=0; SameSite=Lax'; } catch (e2) {}
     renderRecentSearches();
   }
 
