@@ -203,7 +203,6 @@
         ${meta ? `<p class="np-meta">${esc(meta)}</p>` : ""}
       </div>
       <div class="np-top-actions">
-        ${isTv ? `<button type="button" class="np-chip" id="np-autonext" aria-pressed="true" title="Auto next episode">Auto Next</button>` : ""}
         <button type="button" class="np-chip" id="np-settings-btn" aria-haspopup="dialog">Settings</button>
       </div>
     </div>

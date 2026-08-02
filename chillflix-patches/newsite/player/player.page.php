@@ -27,9 +27,6 @@
                 <?php endif; ?>
             </div>
             <div class="np-top-actions">
-                <?php if ($type === 'tv'): ?>
-                <button type="button" class="np-chip" id="np-autonext" aria-pressed="true" title="Auto next episode">Auto Next</button>
-                <?php endif; ?>
                 <button type="button" class="np-chip" id="np-settings-btn" aria-haspopup="dialog">Settings</button>
             </div>
         </div>
