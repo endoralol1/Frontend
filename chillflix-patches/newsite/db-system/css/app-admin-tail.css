@@ -1,3 +1,21 @@
+  justify-content: flex-end;
+  gap: 0.35rem;
+  min-width: auto;
+}
+.header-admin-link {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  margin: 0;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(219, 105, 55, 0.55);
+  background: rgba(219, 105, 55, 0.22);
+  color: #ffd2b8 !important;
+  text-decoration: none !important;
+  flex-shrink: 0;
+}
 .header-admin-link[hidden] { display: none !important; }
 .header-admin-link i { font-size: 1.25rem; line-height: 1; }
 .header-admin-link:hover {
@@ -19,11 +37,13 @@
   border-radius: 0 !important;
 }
 .cf-admin-signed { color: rgba(255,255,255,.55); font-size: .88rem; margin: 0; }
-/* ui92: never let admin title inherit site header gray bar */
+
+/* ui93: admin title text stays; gray backgrounds die */
 header.cf-admin-head,
 .cf-admin-head {
   background: transparent !important;
   border: 0 !important;
+  box-shadow: none !important;
   margin: 0 0 1rem !important;
   padding: 0 !important;
   width: auto !important;
@@ -36,5 +56,35 @@ header.cf-admin-head,
 .cf-admin-head h1 {
   font-size: clamp(1.35rem, 3.5vw, 1.7rem) !important;
   margin: 0 0 .2rem !important;
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+.cf-admin-signed {
+  margin: 0;
+  color: rgba(255,255,255,.55);
+  font-size: .88rem;
+}
+
+/* Top site header on admin: no gray bar behind logo */
+body.page-admin > header.relative,
+body.page-admin header.relative {
+  background: transparent !important;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Footer: remove gray panel under Chillflix logo on admin */
+body.page-admin .footer-v3-panel {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      backdrop-filter: none !important;
+    }
+body.page-admin .footer--v3,
+body.page-admin .footer {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
 }
 

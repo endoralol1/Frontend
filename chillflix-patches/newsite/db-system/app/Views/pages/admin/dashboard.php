@@ -10,6 +10,10 @@ $adminUser = $adminUser ?? Auth::user();
       <a href="<?= e(url('/admin/sources')) ?>">Sources</a>
       <a href="<?= e(url('/home')) ?>">← Site</a>
     </nav>
+    <div class="cf-admin-head">
+      <h1>Admin</h1>
+      <p class="cf-admin-signed">Signed in as <?= e((string) ($adminUser['name'] ?? '')) ?> · <?= e((string) ($adminUser['role'] ?? '')) ?></p>
+    </div>
     <div class="cf-admin-grid" id="admin-stats">
       <div class="cf-admin-stat"><strong>—</strong><span>Users</span></div>
       <div class="cf-admin-stat"><strong>—</strong><span>Favorites</span></div>
