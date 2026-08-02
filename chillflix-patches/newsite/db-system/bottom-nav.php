@@ -1,5 +1,7 @@
 <?php
 $path = current_path();
+$searchGenresMovie = config('genres_movie') ?: [];
+$searchGenresTv = config('genres_tv') ?: [];
 $navHome = is_active('/home') || $path === '/' || $path === '';
 $navMovies = is_active('/movies') || (bool) preg_match('#^/movie(/|$)#', $path);
 $navTv = is_active('/tv-series') || (bool) preg_match('#^/tv(/|$)#', $path);
@@ -45,15 +47,31 @@ $navAnime = is_active('/anime');
             </div>
             <button type="button" class="search-sheet-close" aria-label="Close search"><i class="uil uil-times"></i></button>
         </div>
-        <form class="search-sheet-form" action="<?= e(url('/search')) ?>" method="get" autocomplete="off" role="search">
+        <form class="search-sheet-form" id="search-sheet-form" action="<?= e(url('/search')) ?>" method="get" autocomplete="off" role="search">
             <div class="search-sheet-field">
                 <i class="uil uil-search" aria-hidden="true"></i>
                 <input id="search-sheet-input" type="search" name="keyword" placeholder="Movies, TV shows, anime…" aria-label="Search movies and TV shows" enterkeyhint="search">
                 <button type="submit" class="search-sheet-go">Go</button>
             </div>
+            <input type="hidden" name="type" id="sf-type" value="all">
+            <input type="hidden" name="with_genres" id="sf-genres" value="">
+            <input type="hidden" name="year_from" id="sf-year-from" value="">
+            <input type="hidden" name="year_to" id="sf-year-to" value="">
+            <input type="hidden" name="rating_from" id="sf-rating" value="">
+            <input type="hidden" name="rating_to" id="sf-rating-to" value="">
         </form>
 
         <div class="search-sheet-idle" id="search-sheet-idle">
+            <div class="search-filters-toolbar">
+                <button type="button" class="filters-open-btn" id="search-filters-open" aria-haspopup="dialog" aria-controls="search-filters-sheet" aria-expanded="false">
+                    <i class="uil uil-filter" aria-hidden="true"></i>
+                    <span>Filters</span>
+                    <span class="filters-count" id="search-filters-count" hidden>0</span>
+                </button>
+                <div class="filters-chips" id="search-filters-chips" aria-label="Active filters"></div>
+                <button type="button" class="filters-reset-link" id="search-filters-reset" hidden>Reset</button>
+            </div>
+
             <section class="search-sheet-section" aria-label="Recently searched">
                 <div class="search-sheet-section-head">
                     <h3>Recently searched</h3>
@@ -62,48 +80,172 @@ $navAnime = is_active('/anime');
                 <div class="search-recent-list" id="search-recent-list"></div>
                 <p class="search-recent-empty" id="search-recent-empty">No recent searches yet</p>
             </section>
-
-            <section class="search-sheet-section" aria-label="Filters">
-                <div class="search-sheet-section-head">
-                    <h3>Filters</h3>
-                </div>
-                <div class="search-filter-rows">
-                    <div class="search-filter-row">
-                        <span class="search-filter-label"><i class="uil uil-clapper-board" aria-hidden="true"></i> Type</span>
-                        <div class="search-filter-options">
-                            <a class="search-filter-pill" href="<?= e(url('/movies')) ?>">Movies</a>
-                            <a class="search-filter-pill" href="<?= e(url('/tv-series')) ?>">TV Shows</a>
-                        </div>
-                    </div>
-                    <div class="search-filter-row">
-                        <span class="search-filter-label"><i class="uil uil-sort" aria-hidden="true"></i> Sort</span>
-                        <div class="search-filter-options">
-                            <a class="search-filter-pill" href="<?= e(url('/movies') . '?sort_by=popularity.desc') ?>">Popular</a>
-                            <a class="search-filter-pill" href="<?= e(url('/movies') . '?sort_by=vote_average.desc') ?>">Top rated</a>
-                            <a class="search-filter-pill" href="<?= e(url('/movies') . '?sort_by=primary_release_date.desc') ?>">Newest</a>
-                        </div>
-                    </div>
-                    <div class="search-filter-row">
-                        <span class="search-filter-label"><i class="uil uil-calendar-alt" aria-hidden="true"></i> Year</span>
-                        <div class="search-filter-options">
-                            <a class="search-filter-pill" href="<?= e(url('/movies') . '?year_from=2026&year_to=2026') ?>">2026</a>
-                            <a class="search-filter-pill" href="<?= e(url('/movies') . '?year_from=2025&year_to=2025') ?>">2025</a>
-                            <a class="search-filter-pill" href="<?= e(url('/movies') . '?year_from=2020&year_to=2026') ?>">2020+</a>
-                        </div>
-                    </div>
-                </div>
-                <a class="search-filter-more" href="<?= e(url('/filters')) ?>">
-                    <i class="uil uil-filter" aria-hidden="true"></i>
-                    <span>Open all filters</span>
-                    <i class="uil uil-angle-right" aria-hidden="true"></i>
-                </a>
-            </section>
         </div>
 
         <div class="search-sheet-suggest search-suggest" role="listbox" aria-label="Search suggestions"></div>
         <div class="search-sheet-empty-hint">
             <i class="uil uil-bolt-alt"></i>
             <span>Start typing — results show up instantly</span>
+        </div>
+    </div>
+</div>
+
+<div class="filters-sheet" id="search-filters-sheet" hidden>
+    <button type="button" class="filters-sheet-backdrop" aria-label="Close filters"></button>
+    <div class="filters-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="search-filters-sheet-title">
+        <div class="filters-sheet-handle" aria-hidden="true"></div>
+        <div class="filters-sheet-head">
+            <div>
+                <p class="filters-sheet-kicker">Refine search</p>
+                <h2 id="search-filters-sheet-title">Filters</h2>
+            </div>
+            <button type="button" class="filters-sheet-close" aria-label="Close filters"><i class="uil uil-times"></i></button>
+        </div>
+
+        <div class="filters-sheet-body">
+            <div class="filter-home" id="search-filter-home">
+                <div class="filter-rows">
+                    <div class="filter-row-block">
+                        <div class="filter-row-card">
+                            <button type="button" class="filter-row" data-open-picker="sf-picker-type">
+                                <span class="filter-row-icon"><i class="uil uil-clapper-board" aria-hidden="true"></i></span>
+                                <span class="filter-row-copy">
+                                    <strong>Type</strong>
+                                    <em class="filter-row-hint" id="sf-type-hint">All</em>
+                                </span>
+                                <i class="uil uil-angle-right filter-row-chevron" aria-hidden="true"></i>
+                            </button>
+                            <div class="filter-bubbles" id="sf-type-bubbles" data-summary-for="sf-picker-type" hidden></div>
+                        </div>
+                    </div>
+
+                    <div class="filter-row-block">
+                        <div class="filter-row-card">
+                            <button type="button" class="filter-row" data-open-picker="sf-picker-genre">
+                                <span class="filter-row-icon"><i class="uil uil-apps" aria-hidden="true"></i></span>
+                                <span class="filter-row-copy">
+                                    <strong>Genre</strong>
+                                    <em class="filter-row-hint" id="sf-genre-hint">Add genres</em>
+                                </span>
+                                <i class="uil uil-angle-right filter-row-chevron" aria-hidden="true"></i>
+                            </button>
+                            <div class="filter-bubbles" id="sf-genre-bubbles" data-summary-for="sf-picker-genre" hidden></div>
+                        </div>
+                    </div>
+                </div>
+
+                <section class="filter-section filter-section-inline">
+                    <h3 class="filter-section-title">Year</h3>
+                    <div class="range-timeline year-timeline" id="sf-year-timeline" data-min="1970" data-max="2026" data-step="1">
+                        <div class="range-timeline-values">
+                            <strong id="sf-year-from-label">1970</strong>
+                            <span>to</span>
+                            <strong id="sf-year-to-label">2026</strong>
+                        </div>
+                        <div class="range-timeline-track">
+                            <div class="range-timeline-rail" aria-hidden="true"></div>
+                            <div class="range-timeline-fill" id="sf-year-range" aria-hidden="true"></div>
+                            <input type="range" class="range-timeline-thumb range-timeline-thumb-from" id="sf-year-from-range" min="1970" max="2026" value="1970" step="1" aria-label="From year">
+                            <input type="range" class="range-timeline-thumb range-timeline-thumb-to" id="sf-year-to-range" min="1970" max="2026" value="2026" step="1" aria-label="To year">
+                        </div>
+                        <div class="range-timeline-ticks" aria-hidden="true">
+                            <?php for ($y = 1970; $y <= 2026; $y += 10): ?>
+                            <span style="left: <?= (($y - 1970) / max(1, 2026 - 1970)) * 100 ?>%"><?= $y ?></span>
+                            <?php endfor; ?>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="filter-section filter-section-inline">
+                    <h3 class="filter-section-title">Rating</h3>
+                    <div class="range-timeline rating-timeline" id="sf-rating-timeline" data-min="0" data-max="10" data-step="0.5">
+                        <div class="range-timeline-values">
+                            <strong id="sf-rating-from-label">0</strong>
+                            <span>to</span>
+                            <strong id="sf-rating-to-label">10</strong>
+                        </div>
+                        <div class="range-timeline-track">
+                            <div class="range-timeline-rail" aria-hidden="true"></div>
+                            <div class="range-timeline-fill" id="sf-rating-range" aria-hidden="true"></div>
+                            <input type="range" class="range-timeline-thumb range-timeline-thumb-from" id="sf-rating-from-range" min="0" max="10" value="0" step="0.5" aria-label="Minimum rating">
+                            <input type="range" class="range-timeline-thumb range-timeline-thumb-to" id="sf-rating-to-range" min="0" max="10" value="10" step="0.5" aria-label="Maximum rating">
+                        </div>
+                        <div class="range-timeline-ticks" aria-hidden="true">
+                            <?php for ($r = 0; $r <= 10; $r += 2): ?>
+                            <span style="left: <?= ($r / 10) * 100 ?>%"><?= $r ?></span>
+                            <?php endfor; ?>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="filter-picker" id="sf-picker-type" hidden>
+                <div class="filter-picker-head">
+                    <button type="button" class="filter-picker-back" aria-label="Back"><i class="uil uil-angle-left"></i></button>
+                    <div>
+                        <p class="filters-sheet-kicker">Choose type</p>
+                        <h3>Type</h3>
+                    </div>
+                </div>
+                <div class="filter-picker-body">
+                    <div class="filter-list">
+                        <button type="button" class="filter-list-item is-on" data-sf-type="all">
+                            <span class="filter-list-lead"><i class="uil uil-apps" aria-hidden="true"></i></span>
+                            <span class="filter-list-label">All</span>
+                            <span class="filter-list-check" aria-hidden="true"><i class="uil uil-check"></i></span>
+                        </button>
+                        <button type="button" class="filter-list-item" data-sf-type="movie">
+                            <span class="filter-list-lead"><i class="uil uil-clapper-board" aria-hidden="true"></i></span>
+                            <span class="filter-list-label">Movies</span>
+                            <span class="filter-list-check" aria-hidden="true"><i class="uil uil-check"></i></span>
+                        </button>
+                        <button type="button" class="filter-list-item" data-sf-type="tv">
+                            <span class="filter-list-lead"><i class="uil uil-tv-retro" aria-hidden="true"></i></span>
+                            <span class="filter-list-label">TV Shows</span>
+                            <span class="filter-list-check" aria-hidden="true"><i class="uil uil-check"></i></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="filter-picker-foot">
+                    <button type="button" class="filter-picker-done">Done</button>
+                </div>
+            </div>
+
+            <div class="filter-picker" id="sf-picker-genre" hidden>
+                <div class="filter-picker-head">
+                    <button type="button" class="filter-picker-back" aria-label="Back"><i class="uil uil-angle-left"></i></button>
+                    <div>
+                        <p class="filters-sheet-kicker">Choose genres</p>
+                        <h3>Genre</h3>
+                    </div>
+                </div>
+                <div class="filter-picker-body">
+                    <div class="filter-list" id="sf-genre-list">
+                        <?php foreach ($searchGenresMovie as $gid => $gname): ?>
+                        <button type="button" class="filter-list-item" data-sf-genre="<?= (int) $gid ?>" data-sf-genre-type="movie" data-label="<?= e($gname) ?>">
+                            <span class="filter-list-lead"><i class="uil uil-film" aria-hidden="true"></i></span>
+                            <span class="filter-list-label"><?= e($gname) ?></span>
+                            <span class="filter-list-check" aria-hidden="true"><i class="uil uil-check"></i></span>
+                        </button>
+                        <?php endforeach; ?>
+                        <?php foreach ($searchGenresTv as $gid => $gname): ?>
+                        <button type="button" class="filter-list-item" data-sf-genre="<?= (int) $gid ?>" data-sf-genre-type="tv" data-label="<?= e($gname) ?>" hidden>
+                            <span class="filter-list-lead"><i class="uil uil-tv-retro" aria-hidden="true"></i></span>
+                            <span class="filter-list-label"><?= e($gname) ?></span>
+                            <span class="filter-list-check" aria-hidden="true"><i class="uil uil-check"></i></span>
+                        </button>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                <div class="filter-picker-foot">
+                    <button type="button" class="filter-picker-done">Done</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="filters-sheet-foot">
+            <button type="button" class="filters-sheet-reset" id="search-filters-sheet-reset">Reset all</button>
+            <button type="button" class="filters-sheet-apply" id="search-filters-apply">Show results</button>
         </div>
     </div>
 </div>
