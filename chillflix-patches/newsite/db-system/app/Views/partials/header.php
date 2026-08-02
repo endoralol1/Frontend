@@ -2,7 +2,10 @@
 $headerClass = $headerClass ?? 'absolute';
 $site = (string) config('site_name');
 $headerStaff = class_exists('Auth') ? Auth::isStaff() : false;
+$adminUser = $headerStaff && class_exists('Auth') ? Auth::user() : null;
 $adminPath = (string) (parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '');
+$adminRole = (string) (($adminUser['role'] ?? '') ?: 'staff');
+$adminName = (string) (($adminUser['name'] ?? '') ?: 'Admin');
 ?>
 <header class="<?= e($headerClass) ?>">
     <div class="container">
@@ -24,7 +27,6 @@ $adminPath = (string) (parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?:
                         <li><a href="#" data-lang="ru">Русский</a></li>
                     </ul>
                 </div>
-                <?php /* Same top links as before — desktop only; phone keeps bottom nav */ ?>
                 <nav id="menu" class="header-nav" aria-label="Main">
                     <ul>
                         <li><a href="<?= e(url('/home')) ?>" class="<?= is_active('/home') ? 'active' : '' ?>">Home</a></li>
@@ -62,16 +64,29 @@ $adminPath = (string) (parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?:
                         <i class="uil uil-shield-check" aria-hidden="true"></i>
                     </button>
                     <div id="header-admin-dropdown" class="header-admin-dropdown" role="menu" hidden>
-                        <a role="menuitem" href="<?= e(url('/admin')) ?>" class="<?= str_ends_with($adminPath, '/admin') ? 'is-active' : '' ?>">
-                            <i class="uil uil-dashboard" aria-hidden="true"></i><span>Dashboard</span>
-                        </a>
-                        <a role="menuitem" href="<?= e(url('/admin/users')) ?>" class="<?= str_contains($adminPath, '/admin/users') ? 'is-active' : '' ?>">
-                            <i class="uil uil-users-alt" aria-hidden="true"></i><span>Users</span>
-                        </a>
-                        <a role="menuitem" href="<?= e(url('/admin/sources')) ?>" class="<?= str_contains($adminPath, '/admin/sources') ? 'is-active' : '' ?>">
-                            <i class="uil uil-server" aria-hidden="true"></i><span>Sources</span>
-                        </a>
-                        <a role="menuitem" class="is-muted" href="<?= e(url('/home')) ?>">
+                        <div class="header-admin-dropdown-top">
+                            <span class="header-admin-dropdown-kicker">Control</span>
+                            <strong><?= e($adminName) ?></strong>
+                            <em><?= e(ucfirst($adminRole)) ?></em>
+                        </div>
+                        <div class="header-admin-dropdown-list">
+                            <a role="menuitem" href="<?= e(url('/admin')) ?>" class="<?= preg_match('#/admin/?$#', $adminPath) ? 'is-active' : '' ?>">
+                                <span class="header-admin-ico"><i class="uil uil-chart" aria-hidden="true"></i></span>
+                                <span class="header-admin-copy"><strong>Dashboard</strong><small>Overview & health</small></span>
+                                <i class="uil uil-angle-right" aria-hidden="true"></i>
+                            </a>
+                            <a role="menuitem" href="<?= e(url('/admin/users')) ?>" class="<?= str_contains($adminPath, '/admin/users') ? 'is-active' : '' ?>">
+                                <span class="header-admin-ico"><i class="uil uil-users-alt" aria-hidden="true"></i></span>
+                                <span class="header-admin-copy"><strong>Users</strong><small>Roles & accounts</small></span>
+                                <i class="uil uil-angle-right" aria-hidden="true"></i>
+                            </a>
+                            <a role="menuitem" href="<?= e(url('/admin/sources')) ?>" class="<?= str_contains($adminPath, '/admin/sources') ? 'is-active' : '' ?>">
+                                <span class="header-admin-ico"><i class="uil uil-server" aria-hidden="true"></i></span>
+                                <span class="header-admin-copy"><strong>Sources</strong><small>Order, labels, tests</small></span>
+                                <i class="uil uil-angle-right" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                        <a role="menuitem" class="header-admin-back" href="<?= e(url('/home')) ?>">
                             <i class="uil uil-arrow-left" aria-hidden="true"></i><span>Back to site</span>
                         </a>
                     </div>

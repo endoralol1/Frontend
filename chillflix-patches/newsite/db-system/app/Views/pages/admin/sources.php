@@ -8,7 +8,7 @@ $adminUser = $adminUser ?? Auth::user();
       <a href="<?= e(url('/admin')) ?>">Dashboard</a>
       <a href="<?= e(url('/admin/users')) ?>">Users</a>
       <a class="is-active" href="<?= e(url('/admin/sources')) ?>">Sources</a>
-      <a href="<?= e(url('/home')) ?>">← Site</a>
+      <a href="<?= e(url('/home')) ?>">Site</a>
     </nav>
     <div class="cf-admin-head">
       <h1>Sources</h1>
