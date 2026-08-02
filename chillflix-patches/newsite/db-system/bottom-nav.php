@@ -52,13 +52,54 @@ $navAnime = is_active('/anime');
                 <button type="submit" class="search-sheet-go">Go</button>
             </div>
         </form>
-        <div class="search-sheet-chips" aria-label="Quick searches">
-            <button type="button" class="search-chip" data-search-chip="action">Action</button>
-            <button type="button" class="search-chip" data-search-chip="comedy">Comedy</button>
-            <button type="button" class="search-chip" data-search-chip="horror">Horror</button>
-            <button type="button" class="search-chip" data-search-chip="anime">Anime</button>
-            <button type="button" class="search-chip" data-search-chip="marvel">Marvel</button>
+
+        <div class="search-sheet-idle" id="search-sheet-idle">
+            <section class="search-sheet-section" aria-label="Recently searched">
+                <div class="search-sheet-section-head">
+                    <h3>Recently searched</h3>
+                    <button type="button" class="search-recent-clear" id="search-recent-clear" hidden>Clear</button>
+                </div>
+                <div class="search-recent-list" id="search-recent-list"></div>
+                <p class="search-recent-empty" id="search-recent-empty">No recent searches yet</p>
+            </section>
+
+            <section class="search-sheet-section" aria-label="Filters">
+                <div class="search-sheet-section-head">
+                    <h3>Filters</h3>
+                </div>
+                <div class="search-filter-rows">
+                    <div class="search-filter-row">
+                        <span class="search-filter-label"><i class="uil uil-clapper-board" aria-hidden="true"></i> Type</span>
+                        <div class="search-filter-options">
+                            <a class="search-filter-pill" href="<?= e(url('/movies')) ?>">Movies</a>
+                            <a class="search-filter-pill" href="<?= e(url('/tv-series')) ?>">TV Shows</a>
+                        </div>
+                    </div>
+                    <div class="search-filter-row">
+                        <span class="search-filter-label"><i class="uil uil-sort" aria-hidden="true"></i> Sort</span>
+                        <div class="search-filter-options">
+                            <a class="search-filter-pill" href="<?= e(url('/movies') . '?sort_by=popularity.desc') ?>">Popular</a>
+                            <a class="search-filter-pill" href="<?= e(url('/movies') . '?sort_by=vote_average.desc') ?>">Top rated</a>
+                            <a class="search-filter-pill" href="<?= e(url('/movies') . '?sort_by=primary_release_date.desc') ?>">Newest</a>
+                        </div>
+                    </div>
+                    <div class="search-filter-row">
+                        <span class="search-filter-label"><i class="uil uil-calendar-alt" aria-hidden="true"></i> Year</span>
+                        <div class="search-filter-options">
+                            <a class="search-filter-pill" href="<?= e(url('/movies') . '?year_from=2026&year_to=2026') ?>">2026</a>
+                            <a class="search-filter-pill" href="<?= e(url('/movies') . '?year_from=2025&year_to=2025') ?>">2025</a>
+                            <a class="search-filter-pill" href="<?= e(url('/movies') . '?year_from=2020&year_to=2026') ?>">2020+</a>
+                        </div>
+                    </div>
+                </div>
+                <a class="search-filter-more" href="<?= e(url('/filters')) ?>">
+                    <i class="uil uil-filter" aria-hidden="true"></i>
+                    <span>Open all filters</span>
+                    <i class="uil uil-angle-right" aria-hidden="true"></i>
+                </a>
+            </section>
         </div>
+
         <div class="search-sheet-suggest search-suggest" role="listbox" aria-label="Search suggestions"></div>
         <div class="search-sheet-empty-hint">
             <i class="uil uil-bolt-alt"></i>
