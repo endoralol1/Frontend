@@ -19,7 +19,7 @@ $router->get('/live', function () {
         'totalAll' => (int) ($pack['totalAll'] ?? count($channels)),
         'extraCss' => [
             asset('css/live.css') . '?v=20260801-ui67',
-            asset('css/player.css') . '?v=20260802-ui103',
+            asset('css/player.css') . '?v=20260802-ui104',
         ],
         'extraJs' => [
             'https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js',
@@ -1117,10 +1117,10 @@ function watch_page(Tmdb $tmdb, string $type, int $id, string $slug): void
         'autoPlay' => $autoPlay,
         'playerConfig' => $playerConfig,
         'nextEpisode' => $nextEpisode,
-        'extraCss' => [asset('css/player.css') . '?v=20260802-ui103'],
+        'extraCss' => [asset('css/player.css') . '?v=20260802-ui104'],
         'extraJs' => [
             'https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js',
-            asset('js/player.js') . '?v=20260802-ui103',
+            asset('js/player.js') . '?v=20260802-ui104',
         ],
         'bodyClass' => 'page-watch',
         'headerClass' => 'absolute',
