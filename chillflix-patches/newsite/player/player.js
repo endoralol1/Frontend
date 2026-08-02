@@ -56,6 +56,9 @@
   }
 
   function cwSave(cfg, watched, duration, opts) {
+    try {
+      if (localStorage.getItem("cf_pref_continue") === "0") return false;
+    } catch (_) {}
     const id = Number(cfg.id) || 0;
     if (!id) return false;
     const seed = !!(opts && opts.seed);

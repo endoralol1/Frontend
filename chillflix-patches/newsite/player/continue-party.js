@@ -133,6 +133,13 @@
   function renderContinueRail() {
     var $rail = $("#continue-watching");
     if (!$rail.length) return;
+    try {
+      if (localStorage.getItem("cf_pref_continue") === "0") {
+        $rail.attr("hidden", true).addClass("d-none").css("display", "none");
+        $rail.find(".media-rail-items").empty().removeClass("cw-track");
+        return;
+      }
+    } catch (e) {}
     var items = readContinue().slice(0, 24);
     var $track = $rail.find(".media-rail-items");
     if (!items.length) {
