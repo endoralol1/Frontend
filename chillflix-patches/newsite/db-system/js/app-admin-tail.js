@@ -1,7 +1,3 @@
-  // Also hook jQuery-bound open if exposed later
-  document.addEventListener("click", function (e) {
-    if (e.target && e.target.closest && e.target.closest(".bottom-nav-browse")) {
-      setTimeout(function () {
         try { refreshBrowseStats(); } catch (err) {}
       }, 0);
     }
@@ -23,20 +19,47 @@
   }
 })();
 
-/* newsite-admin-link-ui91 */
+/* newsite-admin-menu-ui94 */
 (function () {
   function base() {
     return (window.CF_BASE || (window.APP && APP.baseUrl) || '').replace(/\/$/, '');
   }
-  function meUrl() {
-    return base() + '/api/auth/me';
+  function menuRoot() {
+    return document.getElementById('header-admin-menu');
+  }
+  function dropdown() {
+    return document.getElementById('header-admin-dropdown');
+  }
+  function toggleBtn() {
+    return document.getElementById('header-admin-link');
+  }
+  function closeMenu() {
+    var root = menuRoot();
+    var dd = dropdown();
+    var btn = toggleBtn();
+    if (!root || !dd || !btn) return;
+    dd.hidden = true;
+    root.classList.remove('is-open');
+    btn.setAttribute('aria-expanded', 'false');
+  }
+  function openMenu() {
+    var root = menuRoot();
+    var dd = dropdown();
+    var btn = toggleBtn();
+    if (!root || !dd || !btn || root.hidden) return;
+    dd.hidden = false;
+    root.classList.add('is-open');
+    btn.setAttribute('aria-expanded', 'true');
   }
   function ensureAdminChrome(user) {
     var staff = !!(user && (user.role === 'admin' || user.role === 'moderator'));
-    var header = document.getElementById('header-admin-link');
-    if (header) {
-      if (staff) header.removeAttribute('hidden');
-      else header.setAttribute('hidden', 'hidden');
+    var root = menuRoot();
+    if (root) {
+      if (staff) root.removeAttribute('hidden');
+      else {
+        root.setAttribute('hidden', 'hidden');
+        closeMenu();
+      }
     }
     var existing = document.getElementById('browse-admin-link');
     if (!staff) {
@@ -60,11 +83,27 @@
     if (list) list.insertBefore(a, list.firstChild);
   }
   function refreshAdminChrome() {
-    fetch(meUrl(), { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+    fetch(base() + '/api/auth/me', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
       .then(function (r) { return r.json(); })
       .then(function (d) { ensureAdminChrome(d && d.user ? d.user : null); })
       .catch(function () { ensureAdminChrome(null); });
   }
+  document.addEventListener('click', function (e) {
+    var root = menuRoot();
+    var btn = toggleBtn();
+    if (!root || !btn || root.hidden) return;
+    var t = e.target;
+    if (btn === t || btn.contains(t)) {
+      e.preventDefault();
+      if (root.classList.contains('is-open')) closeMenu();
+      else openMenu();
+      return;
+    }
+    if (!root.contains(t)) closeMenu();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeMenu();
+  });
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', refreshAdminChrome);
   } else {
@@ -77,4 +116,5 @@
   }
   window.__cfEnsureAdminChrome = ensureAdminChrome;
 })();
+
 

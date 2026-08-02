@@ -2,6 +2,7 @@
 $headerClass = $headerClass ?? 'absolute';
 $site = (string) config('site_name');
 $headerStaff = class_exists('Auth') ? Auth::isStaff() : false;
+$adminPath = (string) (parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '');
 ?>
 <header class="<?= e($headerClass) ?>">
     <div class="container">
@@ -56,15 +57,25 @@ $headerStaff = class_exists('Auth') ? Auth::isStaff() : false;
                 </div>
             </div>
             <div class="end">
-                <?php if ($headerStaff): ?>
-                <a id="header-admin-link" class="header-admin-link" href="<?= e(url('/admin')) ?>" title="Admin" aria-label="Admin panel">
-                    <i class="uil uil-shield-check" aria-hidden="true"></i>
-                </a>
-                <?php else: ?>
-                <a id="header-admin-link" class="header-admin-link" href="<?= e(url('/admin')) ?>" title="Admin" aria-label="Admin panel" hidden>
-                    <i class="uil uil-shield-check" aria-hidden="true"></i>
-                </a>
-                <?php endif; ?>
+                <div class="header-admin-menu<?= $headerStaff ? ' is-staff' : '' ?>" id="header-admin-menu"<?= $headerStaff ? '' : ' hidden' ?>>
+                    <button type="button" id="header-admin-link" class="header-admin-link" title="Admin" aria-label="Admin menu" aria-haspopup="menu" aria-expanded="false" aria-controls="header-admin-dropdown">
+                        <i class="uil uil-shield-check" aria-hidden="true"></i>
+                    </button>
+                    <div id="header-admin-dropdown" class="header-admin-dropdown" role="menu" hidden>
+                        <a role="menuitem" href="<?= e(url('/admin')) ?>" class="<?= str_ends_with($adminPath, '/admin') ? 'is-active' : '' ?>">
+                            <i class="uil uil-dashboard" aria-hidden="true"></i><span>Dashboard</span>
+                        </a>
+                        <a role="menuitem" href="<?= e(url('/admin/users')) ?>" class="<?= str_contains($adminPath, '/admin/users') ? 'is-active' : '' ?>">
+                            <i class="uil uil-users-alt" aria-hidden="true"></i><span>Users</span>
+                        </a>
+                        <a role="menuitem" href="<?= e(url('/admin/sources')) ?>" class="<?= str_contains($adminPath, '/admin/sources') ? 'is-active' : '' ?>">
+                            <i class="uil uil-server" aria-hidden="true"></i><span>Sources</span>
+                        </a>
+                        <a role="menuitem" class="is-muted" href="<?= e(url('/home')) ?>">
+                            <i class="uil uil-arrow-left" aria-hidden="true"></i><span>Back to site</span>
+                        </a>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
