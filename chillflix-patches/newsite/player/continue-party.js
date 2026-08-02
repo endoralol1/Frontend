@@ -68,28 +68,28 @@
   }
 
   function watchHref(row) {
-    var url = row.url || "";
-    if (!url && row.id) {
-      var slug = String(row.title || "title")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/(^-|-$)/g, "");
-      url =
-        base() +
-        "/" +
-        (row.type === "tv" ? "tv" : "movie") +
-        "/" +
-        (slug || "title") +
-        "/" +
-        row.id;
-      if (row.type === "tv") {
-        url += "?s=" + (row.season || 1) + "&e=" + (row.episode || 1);
-      }
+    // Rebuild from type/id/season/episode so each CW card resumes THAT episode,
+    // not a stale stored URL from another episode choice.
+    if (!row || !row.id) return base() || "/";
+    var slug = String(row.title || "title")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+    var url =
+      base() +
+      "/" +
+      (row.type === "tv" ? "tv" : "movie") +
+      "/" +
+      (slug || "title") +
+      "/" +
+      row.id;
+    if (row.type === "tv") {
+      url += "?s=" + (row.season || 1) + "&e=" + (row.episode || 1);
     }
     var sep = url.indexOf("?") >= 0 ? "&" : "?";
     var t = Math.floor(Number(row.t) || 0);
-    if (t > 20) url += sep + "t=" + t + "&play=1";
-    else if (url.indexOf("play=") < 0) url += sep + "play=1";
+    if (t >= 5) url += sep + "t=" + t + "&play=1";
+    else url += sep + "play=1";
     return url;
   }
 

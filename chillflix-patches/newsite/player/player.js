@@ -55,6 +55,76 @@
     } catch (_) {}
   }
 
+  const CW_PUSH_MIN_MS = 12000;
+  const cwPushAt = Object.create(null);
+  let cwAuthed = null; // null unknown, true/false after first API response
+
+  function cwApiBase() {
+    return (window.APP && APP.baseUrl) || "";
+  }
+
+  function cwPushContinue(item, force) {
+    try {
+      if (!item || !item.key) return;
+      if (cwAuthed === false) return;
+      const now = Date.now();
+      const last = cwPushAt[item.key] || 0;
+      if (!force && now - last < CW_PUSH_MIN_MS) return;
+      cwPushAt[item.key] = now;
+      const payload = {
+        key: item.key,
+        type: item.type === "tv" ? "tv" : "movie",
+        id: item.id,
+        season: item.season,
+        episode: item.episode,
+        title: item.title || "",
+        poster: item.poster || "",
+        backdrop: item.backdrop || "",
+        year: item.year || "",
+        t: item.t || 0,
+        d: item.d || 0,
+      };
+      if (typeof window.nsPushContinue === "function") {
+        window.nsPushContinue(payload);
+        return;
+      }
+      fetch(cwApiBase() + "/api/user/continue", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+        keepalive: !!force,
+      })
+        .then((r) => {
+          if (r.status === 401) cwAuthed = false;
+          else if (r.ok) cwAuthed = true;
+        })
+        .catch(() => {});
+    } catch (_) {}
+  }
+
+  function cwRemoveContinue(key) {
+    try {
+      if (!key || cwAuthed === false) return;
+      if (typeof window.nsRemoveContinue === "function") {
+        window.nsRemoveContinue(key);
+        return;
+      }
+      fetch(cwApiBase() + "/api/user/continue/remove", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ key: key }),
+        keepalive: true,
+      })
+        .then((r) => {
+          if (r.status === 401) cwAuthed = false;
+          else if (r.ok) cwAuthed = true;
+        })
+        .catch(() => {});
+    } catch (_) {}
+  }
+
   function cwSave(cfg, watched, duration, opts) {
     try {
       if (localStorage.getItem("cf_pref_continue") === "0") return false;
@@ -62,23 +132,27 @@
     const id = Number(cfg.id) || 0;
     if (!id) return false;
     const seed = !!(opts && opts.seed);
+    const forcePush = !!(opts && opts.forcePush);
     let t = Number(watched) || 0;
     let d = Number(duration) || 0;
     if (!Number.isFinite(d) || d === Infinity) d = 0;
     // Seed on Watch Now / first play; otherwise require ~1s so rail fills quickly
     if (seed) t = Math.max(t, 1);
     else if (t < 1) return false;
+    const key = cwProgressKey(cfg);
     if (!seed && d > 0 && (d - t < 90 || t / d > 0.96)) {
       // finished — drop from continue list
       const map = cwReadAll();
-      delete map[cwProgressKey(cfg)];
+      delete map[key];
       cwWriteAll(map);
+      cwRemoveContinue(key);
       return true;
     }
     const map = cwReadAll();
-    const key = cwProgressKey(cfg);
     const prev = map[key] || {};
-    map[key] = {
+    // Per-episode keys (tv:{id}:sXeY) keep each episode independent.
+    // Use current position (not max) so resume matches where the user left off.
+    const entry = {
       id,
       type: cfg.type === "tv" ? "tv" : "movie",
       title: cfg.title || prev.title || "Untitled",
@@ -87,15 +161,17 @@
       year: cfg.year || prev.year || "",
       season: cfg.type === "tv" ? Number(cfg.season) || 1 : null,
       episode: cfg.type === "tv" ? Number(cfg.episode) || 1 : null,
-      t: Math.max(t, Number(prev.t) || 0),
+      t: seed ? Math.max(t, Number(prev.t) || 0) : t,
       d: d || Number(prev.d) || 0,
       updated: Date.now(),
       url: cfg.watchUrl || cfg.backUrl || prev.url || location.pathname + location.search,
     };
+    map[key] = entry;
     // prune oldest
     const keys = Object.keys(map).sort((a, b) => (map[b].updated || 0) - (map[a].updated || 0));
     keys.slice(CW_MAX).forEach((k) => delete map[k]);
     cwWriteAll(map);
+    cwPushContinue(Object.assign({ key }, entry), forcePush || seed);
     return true;
   }
 
@@ -1058,7 +1134,10 @@
         // First eligible save should not wait on the throttle
         const firstOk = (seed || t >= 1) && state.lastCwSave === 0;
         if (!force && !seed && !firstOk && now - state.lastCwSave < 4000) return;
-        const ok = cwSave(cfg, Math.max(t, seed ? 1 : 0), v.duration, seed ? { seed: true } : null);
+        const opts = {};
+        if (seed) opts.seed = true;
+        if (force || seed) opts.forcePush = true;
+        const ok = cwSave(cfg, Math.max(t, seed ? 1 : 0), v.duration, opts);
         if (ok) state.lastCwSave = now;
       };
       // Ensure homepage rail can show even if stream stalls after start
@@ -1224,7 +1303,7 @@
         if (state.partyTimer) clearInterval(state.partyTimer);
         try {
           const v = els.video;
-          if (v) cwSave(cfg, v.currentTime, v.duration);
+          if (v) cwSave(cfg, v.currentTime, v.duration, { forcePush: true });
         } catch (_) {}
         destroyHls();
         els.shell?.remove();
