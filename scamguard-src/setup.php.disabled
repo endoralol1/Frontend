@@ -1,0 +1,71 @@
+<?php
+require_once __DIR__ . '/includes/functions.php';
+
+$db = Database::getConnection();
+$adminCount = (int) $db->query('SELECT COUNT(*) FROM admin_users')->fetchColumn();
+
+// Lock this page once an admin account already exists.
+if ($adminCount > 0) {
+    http_response_code(403);
+    die('Setup has already been completed. Delete or rename setup.php from your server for security, and log in at /admin/login.php.');
+}
+
+$error = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $username = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $confirm = $_POST['confirm'] ?? '';
+
+    if (strlen($username) < 3) {
+        $error = 'Username must be at least 3 characters.';
+    } elseif (strlen($password) < 10) {
+        $error = 'Password must be at least 10 characters.';
+    } elseif ($password !== $confirm) {
+        $error = 'Passwords do not match.';
+    } else {
+        $hash = password_hash($password, PASSWORD_BCRYPT);
+        $stmt = $db->prepare('INSERT INTO admin_users (username, password_hash, role) VALUES (?, ?, ?)');
+        $stmt->execute([$username, $hash, 'superadmin']);
+
+        echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Setup Complete</title><link rel="stylesheet" href="<?= BASE_PATH ?>/assets/css/style.css"></head><body style="display:flex;align-items:center;justify-content:center;min-height:100vh;">
+        <div class="card" style="max-width:480px;">
+        <h2>✅ Admin account created</h2>
+        <p style="color:var(--text-muted);">You can now log in. For security, please delete or rename <code>setup.php</code> from your server.</p>
+        <a href="<?= BASE_PATH ?>/admin/login.php" class="btn btn-primary">Go to Admin Login</a>
+        </div></body></html>';
+        exit;
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Initial Setup — <?= h(get_setting('site_name', 'ScamGuard')) ?></title>
+<link rel="stylesheet" href="<?= BASE_PATH ?>/assets/css/style.css">
+</head>
+<body style="display:flex; align-items:center; justify-content:center; min-height:100vh;">
+<div class="card" style="max-width:440px; width:100%;">
+    <h2 style="margin-top:0;">Create your admin account</h2>
+    <p style="color:var(--text-muted); font-size:14px;">This runs once. It creates the first superadmin account for <code>/admin</code>.</p>
+    <?php if ($error): ?><div class="alert alert-error"><?= h($error) ?></div><?php endif; ?>
+    <form method="post">
+        <div class="field">
+            <label>Username</label>
+            <input type="text" name="username" required minlength="3">
+        </div>
+        <div class="field">
+            <label>Password (min. 10 characters)</label>
+            <input type="password" name="password" required minlength="10">
+        </div>
+        <div class="field">
+            <label>Confirm password</label>
+            <input type="password" name="confirm" required minlength="10">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Create Admin Account</button>
+    </form>
+</div>
+</body>
+</html>

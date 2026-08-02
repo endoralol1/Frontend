@@ -1,0 +1,21 @@
+# ScamGuard root .htaccess
+
+# Never allow directory listing
+Options -Indexes
+
+# Block access to dotfiles (.env, .git, etc.) and this file itself
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Block direct access to raw SQL files anywhere under the web root
+<FilesMatch "\.sql$">
+    Require all denied
+</FilesMatch>
+
+# Basic security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
