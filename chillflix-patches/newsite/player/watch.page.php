@@ -110,15 +110,13 @@ $starFill = $rating !== null ? min(5, max(0, (int) round($rating / 2))) : 0;
             var cfg = window.PLAYER;
             if (!cfg || !cfg.id) return;
             var key = (cfg.type === 'tv' ? 'tv' : 'movie') + ':' + cfg.id;
-            if (cfg.type === 'tv') key += ':s' + (cfg.season || 1) + 'e' + (cfg.episode || 1);
             var map = {};
             try { map = JSON.parse(localStorage.getItem('cf_continue_v1') || '{}') || {}; } catch (e) { map = {}; }
             if (Array.isArray(map)) {
               var tmp = {};
               map.forEach(function (row) {
                 if (!row || !row.id) return;
-                var k = (row.type === 'tv' ? 'tv' : 'movie') + ':' + row.id +
-                  (row.type === 'tv' ? (':s' + (row.season || 1) + 'e' + (row.episode || 1)) : '');
+                var k = (row.type === 'tv' ? 'tv' : 'movie') + ':' + row.id;
                 tmp[k] = row;
               });
               map = tmp;
@@ -131,8 +129,7 @@ $starFill = $rating !== null ? min(5, max(0, (int) round($rating / 2))) : 0;
                 if (Array.isArray(carr)) {
                   carr.forEach(function (row) {
                     if (!row || !row.id) return;
-                    var k = (row.type === 'tv' ? 'tv' : 'movie') + ':' + row.id +
-                      (row.type === 'tv' ? (':s' + (row.season || 1) + 'e' + (row.episode || 1)) : '');
+                    var k = (row.type === 'tv' ? 'tv' : 'movie') + ':' + row.id;
                     if (!map[k]) map[k] = row;
                   });
                 }
@@ -157,11 +154,11 @@ $starFill = $rating !== null ? min(5, max(0, (int) round($rating / 2))) : 0;
             var keys = Object.keys(map).sort(function (a, b) {
               return (map[b].updated || 0) - (map[a].updated || 0);
             });
-            keys.slice(36).forEach(function (k) { delete map[k]; });
+            keys.slice(5).forEach(function (k) { delete map[k]; });
             try { localStorage.setItem('cf_continue_v1', JSON.stringify(map)); } catch (eLs) {}
             // cookie mirror (compact) so home can recover if LS quirks
             try {
-              var compact = keys.slice(0, 12).map(function (k) { return map[k]; });
+              var compact = keys.slice(0, 5).map(function (k) { return map[k]; });
               document.cookie = 'cf_continue_v1=' + encodeURIComponent(JSON.stringify(compact))
                 + ';path=/;max-age=31536000;SameSite=Lax';
             } catch (e2) {}

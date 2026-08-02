@@ -20,20 +20,39 @@
 
   /* -------- Continue Watching (local, throttled) -------- */
   const CW_KEY = "cf_continue_v1";
-  const CW_MAX = 36;
+  const CW_MAX = 5;
 
   function cwProgressKey(cfg) {
     const type = cfg.type === "tv" ? "tv" : "movie";
-    if (type === "tv") return `tv:${cfg.id}:s${cfg.season || 1}e${cfg.episode || 1}`;
+    // One slot per movie/show (not per episode) — last 5 titles only
+    if (type === "tv") return `tv:${cfg.id}`;
     return `movie:${cfg.id}`;
   }
 
   function cwRowKey(row) {
     if (!row || !row.id) return "";
-    if (row.type === "tv") {
-      return "tv:" + row.id + ":s" + (row.season || 1) + "e" + (row.episode || 1);
-    }
-    return "movie:" + row.id;
+    // One slot per movie/show (legacy episode keys collapse via cwCollapseToTitles)
+    return (row.type === "tv" ? "tv:" : "movie:") + row.id;
+  }
+
+  function cwTitleKey(row) {
+    if (!row || !row.id) return "";
+    return (row.type === "tv" ? "tv:" : "movie:") + row.id;
+  }
+
+  function cwCollapseToTitles(map) {
+    const out = Object.create(null);
+    Object.keys(map || {}).forEach((k) => {
+      const row = map[k];
+      if (!row || !row.id) return;
+      const tk = cwTitleKey(row);
+      if (!tk) return;
+      const prev = out[tk];
+      if (!prev || (Number(row.updated) || 0) >= (Number(prev.updated) || 0)) {
+        out[tk] = Object.assign({}, row);
+      }
+    });
+    return out;
   }
 
   function cwNormalizeMap(input) {
@@ -100,6 +119,9 @@
         if (!L || (Number(C.updated) || 0) > (Number(L.updated) || 0)) map[k] = C;
       });
     }
+    map = cwCollapseToTitles(map);
+    const ordered = Object.keys(map).sort((a, b) => (map[b].updated || 0) - (map[a].updated || 0));
+    ordered.slice(CW_MAX).forEach((k) => delete map[k]);
     return map;
   }
 
@@ -113,7 +135,7 @@
       const keys = Object.keys(map || {}).sort(
         (a, b) => (map[b].updated || 0) - (map[a].updated || 0)
       );
-      const compact = keys.slice(0, 12).map((k) => {
+      const compact = keys.slice(0, 5).map((k) => {
         const row = map[k] || {};
         return {
           id: row.id,
@@ -231,7 +253,7 @@
     }
     const map = cwReadAll();
     const prev = map[key] || {};
-    // Per-episode keys (tv:{id}:sXeY) keep each episode independent.
+    // One row per title; season/episode on the row track the latest episode.
     // Use current position (not max) so resume matches where the user left off.
     const entry = {
       id,

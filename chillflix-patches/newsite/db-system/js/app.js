@@ -1013,15 +1013,13 @@
       var cfg = window.PLAYER;
       if (!cfg || !cfg.id) return;
       var key = (cfg.type === 'tv' ? 'tv' : 'movie') + ':' + cfg.id;
-      if (cfg.type === 'tv') key += ':s' + (cfg.season || 1) + 'e' + (cfg.episode || 1);
       var map = {};
       try { map = JSON.parse(localStorage.getItem('cf_continue_v1') || '{}') || {}; } catch (e) { map = {}; }
       if (Array.isArray(map)) {
         var tmp = {};
         map.forEach(function (row) {
           if (!row || !row.id) return;
-          var k = (row.type === 'tv' ? 'tv' : 'movie') + ':' + row.id +
-            (row.type === 'tv' ? (':s' + (row.season || 1) + 'e' + (row.episode || 1)) : '');
+          var k = (row.type === 'tv' ? 'tv' : 'movie') + ':' + row.id;
           tmp[k] = row;
         });
         map = tmp;
@@ -1033,8 +1031,7 @@
           if (Array.isArray(carr)) {
             carr.forEach(function (row) {
               if (!row || !row.id) return;
-              var k = (row.type === 'tv' ? 'tv' : 'movie') + ':' + row.id +
-                (row.type === 'tv' ? (':s' + (row.season || 1) + 'e' + (row.episode || 1)) : '');
+              var k = (row.type === 'tv' ? 'tv' : 'movie') + ':' + row.id;
               if (!map[k]) map[k] = row;
             });
           }
@@ -1059,7 +1056,7 @@
         var keys = Object.keys(map).sort(function (a, b) {
           return (map[b].updated || 0) - (map[a].updated || 0);
         });
-        var compact = keys.slice(0, 12).map(function (k) { return map[k]; });
+        var compact = keys.slice(0, 5).map(function (k) { return map[k]; });
         document.cookie = 'cf_continue_v1=' + encodeURIComponent(JSON.stringify(compact))
           + ';path=/;max-age=31536000;SameSite=Lax';
       } catch (eCookieSet) {}
@@ -1867,14 +1864,21 @@
     }).catch(function () {});
   }
 
+  function nsTitleContinueKey(row) {
+    if (!row || !row.id) return '';
+    return (row.type === 'tv' ? 'tv' : 'movie') + ':' + row.id;
+  }
+
   function nsMergeContinueMaps(localMap, serverItems) {
     var local = localMap && typeof localMap === 'object' ? localMap : {};
     var server = {};
     (serverItems || []).forEach(function (item) {
-      if (!item || !item.key) return;
-      server[item.key] = {
+      if (!item || !item.id) return;
+      var type = item.type === 'tv' ? 'tv' : 'movie';
+      var k = type + ':' + item.id;
+      server[k] = {
         id: item.id,
-        type: item.type === 'tv' ? 'tv' : 'movie',
+        type: type,
         title: item.title || '',
         poster: item.poster || '',
         backdrop: item.backdrop || '',
@@ -1886,6 +1890,16 @@
         updated: nsNormUpdated(item.updated)
       };
     });
+    var localTitles = {};
+    Object.keys(local).forEach(function (k) {
+      var row = local[k];
+      if (!row || !row.id) return;
+      var tk = nsTitleContinueKey(row);
+      if (!tk) return;
+      var prev = localTitles[tk];
+      if (!prev || (nsNormUpdated(row.updated) >= nsNormUpdated(prev.updated))) localTitles[tk] = row;
+    });
+    local = localTitles;
     var keys = {};
     Object.keys(local).forEach(function (k) { keys[k] = 1; });
     Object.keys(server).forEach(function (k) { keys[k] = 1; });
@@ -1906,7 +1920,7 @@
     var ordered = Object.keys(merged).sort(function (a, b) {
       return (nsNormUpdated(merged[b].updated) || 0) - (nsNormUpdated(merged[a].updated) || 0);
     });
-    ordered.slice(36).forEach(function (k) { delete merged[k]; });
+    ordered.slice(5).forEach(function (k) { delete merged[k]; });
     return { merged: merged, toPush: toPush };
   }
 
@@ -1948,8 +1962,7 @@
             var list = Array.isArray(localCw) ? localCw : [localCw];
             list.forEach(function (row) {
               if (!row || !row.id) return;
-              var k = (row.type === 'tv' ? 'tv' : 'movie') + ':' + row.id +
-                (row.type === 'tv' ? (':s' + (row.season || 1) + 'e' + (row.episode || 1)) : '');
+              var k = (row.type === 'tv' ? 'tv' : 'movie') + ':' + row.id;
               norm[k] = row;
             });
             localCw = norm;
@@ -1962,8 +1975,7 @@
               if (Array.isArray(carr)) {
                 carr.forEach(function (row) {
                   if (!row || !row.id) return;
-                  var k = (row.type === 'tv' ? 'tv' : 'movie') + ':' + row.id +
-                    (row.type === 'tv' ? (':s' + (row.season || 1) + 'e' + (row.episode || 1)) : '');
+                  var k = (row.type === 'tv' ? 'tv' : 'movie') + ':' + row.id;
                   if (!localCw[k] || (Number(row.updated) || 0) > (Number(localCw[k].updated) || 0)) localCw[k] = row;
                 });
               }
@@ -1976,7 +1988,7 @@
             var mKeys = Object.keys(merge.merged || {}).sort(function (a, b) {
               return (Number(merge.merged[b].updated) || 0) - (Number(merge.merged[a].updated) || 0);
             });
-            var compact = mKeys.slice(0, 16).map(function (k) {
+            var compact = mKeys.slice(0, 5).map(function (k) {
               var row = merge.merged[k] || {};
               return {
                 id: row.id, type: row.type, title: row.title || '',
@@ -1989,7 +2001,7 @@
               + ';path=/;max-age=31536000;SameSite=Lax';
           } catch (eCookieMirror) {}
           // Upload only local-newer / local-only rows (max 12 per sync)
-          (merge.toPush || []).slice(0, 12).forEach(function (item) {
+          (merge.toPush || []).slice(0, 5).forEach(function (item) {
             nsPushContinueItem(item);
           });
           try {

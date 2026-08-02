@@ -26,10 +26,8 @@
 
   function rowKey(row) {
     if (!row || !row.id) return "";
-    if (row.type === "tv") {
-      return "tv:" + row.id + ":s" + (row.season || 1) + "e" + (row.episode || 1);
-    }
-    return "movie:" + row.id;
+    // One card per movie/show
+    return (row.type === "tv" ? "tv:" : "movie:") + row.id;
   }
 
   function normalizeMap(input) {
@@ -165,7 +163,7 @@
         return;
       }
     } catch (e) {}
-    var items = readContinue().slice(0, 24);
+    var items = readContinue().slice(0, 5);
     var $track = $rail.find(".media-rail-items");
     if (!items.length) {
       $rail.attr("hidden", true).addClass("d-none").css("display", "none");
@@ -579,11 +577,13 @@
             });
           } catch (e2) {}
           serverItems.forEach(function (item) {
-            if (!item || !item.key) return;
-            var cur = map[item.key];
+            if (!item || !item.id) return;
+            var type = item.type === "tv" ? "tv" : "movie";
+            var k = type + ":" + item.id;
+            var cur = map[k];
             var row = {
               id: item.id,
-              type: item.type === "tv" ? "tv" : "movie",
+              type: type,
               title: item.title || "",
               poster: item.poster || "",
               backdrop: item.backdrop || "",
@@ -595,9 +595,13 @@
               updated: (Number(item.updated) || 0) < 1e12 ? (Number(item.updated) || 0) * 1000 : Number(item.updated) || Date.now(),
             };
             if (!cur || (Number(row.updated) || 0) >= (Number(cur.updated) || 0) || (Number(row.t) || 0) > (Number(cur.t) || 0) + 2) {
-              map[item.key] = Object.assign({}, cur || {}, row);
+              map[k] = Object.assign({}, cur || {}, row);
             }
           });
+          var keepKeys = Object.keys(map).sort(function (a, b) {
+            return (map[b].updated || 0) - (map[a].updated || 0);
+          });
+          keepKeys.slice(5).forEach(function (k) { delete map[k]; });
           try {
             localStorage.setItem(CW_KEY, JSON.stringify(map));
           } catch (e3) {}
@@ -605,7 +609,7 @@
             var keys = Object.keys(map).sort(function (a, b) {
               return (map[b].updated || 0) - (map[a].updated || 0);
             });
-            var compact = keys.slice(0, 16).map(function (k) {
+            var compact = keys.slice(0, 5).map(function (k) {
               var row = map[k] || {};
               return {
                 id: row.id, type: row.type, title: row.title || "",
