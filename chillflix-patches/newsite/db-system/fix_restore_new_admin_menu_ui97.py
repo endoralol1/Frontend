@@ -1,21 +1,20 @@
-  text-decoration: none !important;
-  font-size: 0.84rem;
-  font-weight: 600;
-}
-.header-admin-back:hover { color: #fff !important; background: rgba(255,255,255,.03); }
-.header-admin-back i { font-size: 1rem; }
+from pathlib import Path
+import re
 
-header .wrapper .end {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.35rem;
-  min-width: auto;
-  position: relative;
-  z-index: 60;
-}
+root = Path("/var/www/chillflix-newsite")
+ver = "20260802-ui97"
 
+# Remove ui96 pill-restore block entirely (it undid the new menu)
+css = root / "public/assets/css/app.css"
+t = css.read_text()
+marker96 = "/* ui96: restore pill admin nav"
+if marker96 in t:
+    t = t[: t.find(marker96)].rstrip() + "\n"
+    print("removed ui96 pill overrides")
 
+# Soften ui95 rules that scoped dashboard-only atmosphere away from users/sources
+# Ensure shared underline nav + new chrome apply to all admin pages
+extra = r'''
 /* ui97: keep NEW admin menu everywhere; users/sources get the new chrome too */
 /* Kill any leftover pill-nav forcing */
 .cf-admin-nav {
@@ -117,4 +116,41 @@ header:has(.header-admin-menu.is-open) { z-index: 120 !important; }
     0 0 0 1px rgba(219,105,55,.1);
 }
 .header-admin-dropdown[hidden] { display: none !important; }
+'''
 
+marker97 = "/* ui97: keep NEW admin menu everywhere"
+if marker97 in t:
+    t = t[: t.find(marker97)].rstrip() + "\n\n" + extra + "\n"
+    print("replaced ui97")
+else:
+    t = t.rstrip() + "\n\n" + extra + "\n"
+    print("appended ui97")
+css.write_text(t)
+
+# Users/Sources: Site label like new dashboard (no arrow clutter), keep content
+for rel in ["app/Views/pages/admin/users.php", "app/Views/pages/admin/sources.php"]:
+    p = root / rel
+    txt = p.read_text()
+    txt2 = txt.replace(">← Site</a>", ">Site</a>")
+    # ensure head uses same structure (already does)
+    p.write_text(txt2)
+    print(rel, "Site label", ">Site</a>" in txt2 and ">← Site</a>" not in txt2)
+
+# Keep placeDropdown JS (ui96) — still needed for full menu visibility
+js = root / "public/assets/js/app.js"
+jt = js.read_text()
+if "placeDropdown" not in jt:
+    print("WARN: placeDropdown missing")
+else:
+    print("placeDropdown ok")
+
+# Ensure header still has NEW dropdown markup next to logo
+h = (root / "app/Views/partials/header.php").read_text()
+print("new dropdown markup", "header-admin-dropdown-top" in h and "Overview & health" in h)
+print("next to logo", h.find("language-toggler") < h.find("header-admin-menu") < h.find('class="end"'))
+
+layout = root / "app/Views/layouts/main.php"
+lt = layout.read_text()
+lt2 = re.sub(r"(\?v=)2026080[12]-ui[0-9]+", r"\g<1>" + ver, lt)
+layout.write_text(lt2)
+print("assets", sorted(set(re.findall(r"\?v=([^\"&]+)", lt2)))[:8])
