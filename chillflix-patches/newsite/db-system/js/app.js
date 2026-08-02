@@ -1509,16 +1509,44 @@
       var u = new URL(absoluteUrl(href));
       if (u.origin !== window.location.origin) return false;
       var path = u.pathname || '';
-      // Watch pages excluded — soft-nav only swaps .wrapper and never loads extraJs
-      if (isWatchMediaUrl(href) || isLiveTvUrl(href)) return false;
-      // Stay inside newsite app routes only
-      return /\/(home|movies|tv-series|anime|search|favorites|top-imdb|filters|contact|request)(\/|$|\?)/.test(path)
+      // Watch pages excluded — soft-nav only swaps .wrapper and never loads player boot
+      if (isWatchMediaUrl(href)) return false;
+      // Stay inside newsite app routes only (includes /live — instant soft swap)
+      return /\/(home|movies|tv-series|anime|search|favorites|top-imdb|filters|contact|request|live)(\/|$|\?)/.test(path)
         || /\/newsite\/?$/.test(path)
         || path.endsWith('/newsite')
         || path.endsWith('/newsite/');
     } catch (e) {
       return false;
     }
+  }
+
+  /** Pull page-specific CSS/JS that live outside .wrapper (e.g. live.css / hls / live.js). */
+  function ensureSoftNavPageAssets(doc) {
+    if (!doc) return;
+    var sel = [
+      'link[rel="stylesheet"][href*="live.css"]',
+      'link[rel="stylesheet"][href*="/css/player.css"]',
+      'script[src*="hls.js"]',
+      'script[src*="/js/live.js"]'
+    ].join(',');
+    doc.querySelectorAll(sel).forEach(function (node) {
+      var href = node.getAttribute('href') || node.getAttribute('src') || '';
+      if (!href) return;
+      if (node.tagName === 'LINK') {
+        if (document.querySelector('link[rel="stylesheet"][href="' + href.replace(/"/g, '\\"') + '"]')) return;
+        var l = document.createElement('link');
+        l.rel = 'stylesheet';
+        l.href = href;
+        document.head.appendChild(l);
+        return;
+      }
+      if (document.querySelector('script[src="' + href.replace(/"/g, '\\"') + '"]')) return;
+      var s = document.createElement('script');
+      s.src = href;
+      s.async = false;
+      document.body.appendChild(s);
+    });
   }
 
   var mediaSoftLinkSelector = [
@@ -1626,6 +1654,7 @@
         old.parentNode.replaceChild(s, old);
       });
     } catch (e) {}
+    try { ensureSoftNavPageAssets(doc); } catch (eA) {}
     if (push) {
       history.pushState({ softnav: 1 }, '', url);
     }
@@ -1661,6 +1690,17 @@
 
   $(document).on('pointerdown', '.bottom-nav-item[href]', function () {
     prefetchPage(this.href);
+  });
+
+  // Prefetch Live TV HTML as soon as browse opens (instant soft-nav)
+  $(document).on('click', '.bottom-nav-browse', function () {
+    try {
+      var live = (window.CF_BASE || (window.APP && APP.baseUrl) || '').replace(/\/$/, '') + '/live';
+      prefetchPage(live);
+    } catch (e) {}
+  });
+  $(document).on('pointerdown', '.browse-sheet a[href*="/live"]', function () {
+    if (this.href) prefetchPage(this.href);
   });
 
   $(document).on('pointerdown', mediaSoftLinkSelector, function () {

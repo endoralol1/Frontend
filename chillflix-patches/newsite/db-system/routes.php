@@ -9,21 +9,23 @@ $router->get('/home', fn () => home($tmdb));
 
 
 $router->get('/live', function () {
+    // Catalog is file-cached with stale-while-revalidate — never blocks on huhu when cache exists.
     $pack = HuhuLiveTv::catalog();
     $channels = $pack['ok'] ? array_slice($pack['channels'] ?? [], 0, 60) : [];
     $categories = $pack['ok'] ? ($pack['categories'] ?? []) : [];
+    $liveAssetV = '20260802-ui105';
     view('pages/live', [
         'categories' => $categories,
         'channels' => $channels,
         'initial' => $channels[0] ?? null,
         'totalAll' => (int) ($pack['totalAll'] ?? count($channels)),
         'extraCss' => [
-            asset('css/live.css') . '?v=20260801-ui67',
-            asset('css/player.css') . '?v=20260802-ui104',
+            asset('css/live.css') . '?v=' . $liveAssetV,
+            asset('css/player.css') . '?v=' . $liveAssetV,
         ],
         'extraJs' => [
             'https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js',
-            asset('js/live.js') . '?v=20260801-ui67',
+            asset('js/live.js') . '?v=' . $liveAssetV,
         ],
         'bodyClass' => 'page-live',
         'seo' => [
