@@ -1,4 +1,14 @@
-<main class="page-pad-top favorites-page">
+#!/usr/bin/env python3
+"""Add 'Your Favorites' section title with the site's accent + right line."""
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+ROOT = Path("/var/www/chillflix-newsite")
+ASSET_V = "20260801-ui72"
+
+PAGE = r"""<main class="page-pad-top favorites-page">
     <div class="container favorites-wrap">
         <div class="section favorites-section">
             <div class="head">
@@ -50,3 +60,65 @@
         </div>
     </div>
 </main>
+"""
+
+CSS = r"""
+/* ——— Favorites section title (ui72) ——— */
+.favorites-page .favorites-section > .head {
+  margin-bottom: 0.85rem;
+}
+
+.favorites-page .favorites-section > .head .start .title {
+  overflow: visible;
+  text-overflow: unset;
+}
+
+/* Same orange accent bar as other rails, plus the right-side line */
+.favorites-page .favorites-section > .head .start .title::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  min-width: 2.5rem;
+  margin-left: 0.15rem;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.06) 55%,
+    transparent 100%
+  );
+}
+
+.favorites-sr-only {
+  display: none !important;
+}
+"""
+
+
+def bump(text: str) -> str:
+    return re.sub(r"20260801-ui\d+", ASSET_V, text)
+
+
+def main() -> None:
+    (ROOT / "app/Views/pages/favorites.php").write_text(PAGE)
+    print("favorites.php title added")
+
+    css_path = ROOT / "public/assets/css/app.css"
+    css = css_path.read_text()
+    marker = "/* ——— Favorites section title (ui72) ——— */"
+    if marker in css:
+        css = re.sub(
+            re.escape(marker) + r"[\s\S]*?(?=\n/\* ———|\Z)",
+            "",
+            css,
+            count=1,
+        )
+    css_path.write_text(css.rstrip() + "\n\n" + CSS.strip() + "\n")
+    print("title css added")
+
+    layout = ROOT / "app/Views/layouts/main.php"
+    layout.write_text(bump(layout.read_text()))
+    print("asset", ASSET_V)
+
+
+if __name__ == "__main__":
+    main()
