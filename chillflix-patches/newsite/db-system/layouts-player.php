@@ -7,7 +7,7 @@
     <meta name="robots" content="<?= e($seo['robots'] ?? 'noindex, follow') ?>">
     <meta name="theme-color" content="#07080c">
     <link rel="icon" href="<?= e(asset('img/logo.webp')) ?>" type="image/webp">
-    <link rel="stylesheet" href="<?= e(asset('css/player.css')) ?>?v=20260802-ui107">
+    <link rel="stylesheet" href="<?= e(asset('css/player.css')) ?>?v=20260802-ui108">
     <script>
         window.APP = {
             baseUrl: <?= json_encode(base_url(), JSON_UNESCAPED_SLASHES) ?>,
@@ -32,6 +32,6 @@
 <body class="page-player">
 <?php require $content; ?>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js" defer></script>
-<script src="<?= e(asset('js/player.js')) ?>?v=20260802-ui107" defer></script>
+<script src="<?= e(asset('js/player.js')) ?>?v=20260802-ui108" defer></script>
 </body>
 </html>

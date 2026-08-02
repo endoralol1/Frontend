@@ -344,6 +344,15 @@
     return html;
   }
 
+  function getSearchFilterParams() {
+    try {
+      if (typeof window.__getSearchFilters === 'function') {
+        return window.__getSearchFilters();
+      }
+    } catch (e) {}
+    return { type: 'all', with_genres: '', year_from: '', year_to: '', rating_from: '' };
+  }
+
   function runLiveSearch(q, $box, $sheet) {
     clearTimeout(suggestTimer);
     if (suggestReq && suggestReq.abort) {
@@ -361,8 +370,15 @@
     suggestTimer = setTimeout(function () {
       $box.html('<div class="suggest-empty">Searching movies &amp; TV…</div>').addClass('open');
       if ($sheet) $sheet.addClass('has-results');
+      var f = getSearchFilterParams();
       suggestReq = $.getJSON((window.APP && APP.baseUrl ? APP.baseUrl : '') + '/api/search', {
         q: q,
+        type: f.type || 'all',
+        with_genres: f.with_genres || '',
+        year_from: f.year_from || '',
+        year_to: f.year_to || '',
+        rating_from: f.rating_from || '',
+        rating_to: f.rating_to || ''
       })
         .done(function (res) {
           $box.html(renderSearchSuggest(res && res.results)).addClass('open');
@@ -381,8 +397,24 @@
     runLiveSearch(this.value, $('#search-wrapper .search-suggest'), null);
   });
 
+  var recentSearchTimer = null;
   $(document).on('input', '#search-sheet-input', function () {
-    runLiveSearch(this.value, $('#search-sheet .search-sheet-suggest'), $('#search-sheet'));
+    var v = $.trim(this.value || '');
+    var $sheet = $('#search-sheet');
+    if (v.length >= 2) $sheet.addClass('is-typing');
+    else {
+      $sheet.removeClass('is-typing has-results');
+      // Back to idle — show recently searched again
+      try { renderRecentSearches(); } catch (eR) {}
+    }
+    runLiveSearch(this.value, $('#search-sheet .search-sheet-suggest'), $sheet);
+    // Persist recent after user pauses typing (same as hitting Go)
+    clearTimeout(recentSearchTimer);
+    if (v.length >= 2) {
+      recentSearchTimer = setTimeout(function () {
+        try { saveRecentSearch(v); } catch (eS) {}
+      }, 700);
+    }
   });
 
   $(document).on('click', function (e) {
@@ -395,6 +427,7 @@
       $('#search-wrapper .search-suggest').removeClass('open').empty();
       closeSearchSheet();
       closeBrowseSheet();
+      try { closeSearchFiltersSheet(); } catch (eSf) {}
     }
   });
 
@@ -422,6 +455,7 @@
       else $pane.show();
     });
     setTimeout(function () {
+      bindRailScrollListeners();
       syncAllRails();
       // Cinema-reveal cards in the newly shown rail
       $section.find('.tab-content:visible .cf-cinema-item').addClass('cf-cinema-in');
@@ -434,15 +468,52 @@
     var el = $rail.get(0);
     var $wrap = $rail.closest('.top10-rail-wrap, .media-rail-wrap');
     if (!$wrap.length) return;
-    var max = el.scrollWidth - el.clientWidth - 2;
-    $wrap.find('.top10-nav-prev, .media-rail-nav-prev').prop('disabled', el.scrollLeft <= 2);
-    $wrap.find('.top10-nav-next, .media-rail-nav-next').prop('disabled', el.scrollLeft >= max);
+    var max = Math.max(0, el.scrollWidth - el.clientWidth);
+    var atStart = el.scrollLeft <= 2;
+    var atEnd = el.scrollLeft >= max - 2;
+    // If content fits, hide both
+    if (max <= 2) {
+      atStart = true;
+      atEnd = true;
+    }
+    $wrap.find('.top10-nav-prev, .media-rail-nav-prev').prop('disabled', atStart).attr('aria-disabled', atStart ? 'true' : 'false');
+    $wrap.find('.top10-nav-next, .media-rail-nav-next').prop('disabled', atEnd).attr('aria-disabled', atEnd ? 'true' : 'false');
   }
 
   function syncAllRails() {
     $('.top10-items, .media-rail-items').each(function () {
       syncRailNav($(this));
     });
+  }
+
+  // Scroll events do NOT bubble — bind directly so prev/next enable correctly
+  function bindRailScrollListeners() {
+    $('.top10-items, .media-rail-items').each(function () {
+      if (this.__railScrollBound) return;
+      this.__railScrollBound = true;
+      var el = this;
+      var onScroll = function () { syncRailNav($(el)); };
+      el.addEventListener('scroll', onScroll, { passive: true });
+      el.addEventListener('scrollend', onScroll);
+    });
+  }
+
+  function watchRailScrollSettle($rail) {
+    var el = $rail.get(0);
+    if (!el) return;
+    var frames = 0;
+    var last = el.scrollLeft;
+    function tick() {
+      syncRailNav($rail);
+      frames += 1;
+      if (el.scrollLeft !== last) {
+        last = el.scrollLeft;
+        frames = 0;
+      }
+      // keep syncing while smooth-scroll animates (~400ms)
+      if (frames < 24) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
   }
 
   function initCinemaReveal() {
@@ -504,19 +575,32 @@
   $(document).on('click', '.top10-nav, .media-rail-nav', function (e) {
     e.preventDefault();
     var $btn = $(this);
+    if ($btn.prop('disabled') || $btn.attr('aria-disabled') === 'true') return;
     var $wrap = $btn.closest('.top10-rail-wrap, .media-rail-wrap');
-    var $rail = $wrap.find('.top10-items, .media-rail-items').first();
+    var $rail = $wrap.find('.top10-items, .media-rail-items').filter(':visible').first();
+    if (!$rail.length) $rail = $wrap.find('.top10-items, .media-rail-items').first();
     if (!$rail.length) return;
-    var step = Math.max($rail.width() * 0.85, 220);
+    var el = $rail.get(0);
+    var step = Math.max($rail.innerWidth() * 0.85, 260);
     var goingNext = $btn.hasClass('top10-nav-next') || $btn.hasClass('media-rail-nav-next');
-    $rail.get(0).scrollBy({ left: goingNext ? step : -step, behavior: 'smooth' });
+    // Clamp so we always land cleanly at edges
+    var max = Math.max(0, el.scrollWidth - el.clientWidth);
+    var target = goingNext ? Math.min(el.scrollLeft + step, max) : Math.max(el.scrollLeft - step, 0);
+    if (typeof el.scrollTo === 'function') {
+      el.scrollTo({ left: target, behavior: 'smooth' });
+    } else {
+      el.scrollLeft = target;
+    }
+    watchRailScrollSettle($rail);
   });
 
-  $(document).on('scroll', '.top10-items, .media-rail-items', function () {
-    syncRailNav($(this));
-  });
-
+  bindRailScrollListeners();
   syncAllRails();
+  // Images can change scrollWidth after load
+  $(window).on('load resize', function () {
+    bindRailScrollListeners();
+    syncAllRails();
+  });
 
   // Favorites buttons
   $(document).on('click', '.user-bookmark-toggle', function (e) {
@@ -717,14 +801,22 @@
 
   $(document).on('click', '.filters-sheet-backdrop, .filters-sheet-close', function (e) {
     e.preventDefault();
-    closeFiltersSheet();
+    var $sheet = $(this).closest('.filters-sheet');
+    if ($sheet.attr('id') === 'search-filters-sheet') {
+      try { closeSearchFiltersSheet(); } catch (err) {}
+    } else {
+      closeFiltersSheet();
+    }
   });
 
   $(document).on('keydown', function (e) {
-    if (e.key === 'Escape' && $('#filters-sheet').hasClass('is-open')) {
-      if ($('#filters-sheet').hasClass('has-picker')) closeFilterPicker();
-      else closeFiltersSheet();
-    }
+    if (e.key !== 'Escape') return;
+    var $open = activeFiltersSheet();
+    if (!$open.length) return;
+    if ($open.hasClass('has-picker')) closeFilterPicker();
+    else if ($open.attr('id') === 'search-filters-sheet') {
+      try { closeSearchFiltersSheet(); } catch (err) {}
+    } else closeFiltersSheet();
   });
 
   var filterSubmitTimer = null;
@@ -815,23 +907,32 @@
     if ($tri.length) setTriState($tri, 'off');
   });
 
+  function activeFiltersSheet() {
+    return $('.filters-sheet.is-open').first();
+  }
+
   function openFilterPicker(id) {
     var $picker = $('#' + id);
     if (!$picker.length) return;
-    $('.filter-picker').removeClass('is-open').attr('hidden', true);
+    var $sheet = $picker.closest('.filters-sheet');
+    if (!$sheet.length) $sheet = activeFiltersSheet();
+    if (!$sheet.length) $sheet = $('#filters-sheet');
+    $sheet.find('.filter-picker').removeClass('is-open').attr('hidden', true);
     $picker.removeAttr('hidden');
     void $picker[0].offsetWidth;
     $picker.addClass('is-open');
-    $('#filters-sheet').addClass('has-picker');
-    $('#filter-home').addClass('is-away');
+    $sheet.addClass('has-picker');
+    $sheet.find('.filter-home').addClass('is-away');
   }
 
   function closeFilterPicker() {
-    $('.filter-picker').removeClass('is-open');
-    $('#filters-sheet').removeClass('has-picker');
-    $('#filter-home').removeClass('is-away');
+    var $sheet = activeFiltersSheet();
+    if (!$sheet.length) $sheet = $('#filters-sheet, #search-filters-sheet');
+    $sheet.find('.filter-picker').removeClass('is-open');
+    $sheet.removeClass('has-picker');
+    $sheet.find('.filter-home').removeClass('is-away');
     setTimeout(function () {
-      $('.filter-picker').not('.is-open').attr('hidden', true);
+      $sheet.find('.filter-picker').not('.is-open').attr('hidden', true);
     }, 280);
   }
 
@@ -1785,18 +1886,7 @@
     $('.bottom-nav-browse').removeClass('is-open').attr('aria-expanded', 'false');
   }
 
-  function openSearchSheet() {
-    closeBrowseSheet();
-    closeFiltersSheet();
-    var $sheet = $('#search-sheet');
-    if (!$sheet.length) return;
-    $sheet.removeAttr('hidden').addClass('is-open');
-    $('body').addClass('search-open');
-    $('.bottom-nav-search').addClass('is-open').attr('aria-expanded', 'true');
-    setTimeout(function () {
-      $('#search-sheet-input').trigger('focus');
-    }, 80);
-  }
+
 
   function closeSearchSheet() {
     var $sheet = $('#search-sheet');
@@ -1838,23 +1928,466 @@
     closeSearchSheet();
   });
 
-  $(document).on('click', '[data-search-chip]', function (e) {
-    /* anime-chip-route */
-    var chipQ = String($(this).data('search-chip') || '').toLowerCase();
-    if (chipQ === 'anime') {
-      e.preventDefault();
-      try { closeSearchSheet(); } catch (err) {}
-      var animeUrl = (window.CF_BASE || '') + '/anime';
-      if (typeof softNavigate === 'function') softNavigate(animeUrl);
-      else window.location.href = animeUrl;
+  // ——— Search sheet: recently searched ———
+  var RECENT_SEARCH_KEY = 'cf_recent_searches_v1';
+  var RECENT_SEARCH_MAX = 8;
+
+  function getRecentSearches() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(RECENT_SEARCH_KEY) || '[]');
+      return Array.isArray(raw) ? raw.filter(function (x) { return typeof x === 'string' && x.trim(); }).slice(0, RECENT_SEARCH_MAX) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveRecentSearch(q) {
+    q = $.trim(q || '');
+    if (q.length < 2) return;
+    var list = getRecentSearches().filter(function (x) {
+      return x.toLowerCase() !== q.toLowerCase();
+    });
+    list.unshift(q);
+    list = list.slice(0, RECENT_SEARCH_MAX);
+    try { localStorage.setItem(RECENT_SEARCH_KEY, JSON.stringify(list)); } catch (e) {}
+    renderRecentSearches();
+  }
+
+  function clearRecentSearches() {
+    try { localStorage.removeItem(RECENT_SEARCH_KEY); } catch (e) {}
+    renderRecentSearches();
+  }
+
+  function renderRecentSearches() {
+    var $list = $('#search-recent-list');
+    var $empty = $('#search-recent-empty');
+    var $clear = $('#search-recent-clear');
+    if (!$list.length) return;
+    var items = getRecentSearches();
+    if (!items.length) {
+      $list.empty();
+      $empty.removeAttr('hidden').show();
+      $clear.attr('hidden', true);
       return;
     }
+    $empty.attr('hidden', true).hide();
+    $clear.removeAttr('hidden');
+    $list.html(items.map(function (q) {
+      return (
+        '<button type="button" class="search-recent-item" data-recent-q="' +
+        $('<div>').text(q).html().replace(/"/g, '&quot;') +
+        '">' +
+        '<i class="uil uil-history" aria-hidden="true"></i>' +
+        '<span>' + $('<div>').text(q).html() + '</span>' +
+        '<i class="uil uil-arrow-up-left" aria-hidden="true"></i>' +
+        '</button>'
+      );
+    }).join(''));
+  }
 
+  function openSearchSheet() {
+    closeBrowseSheet();
+    closeFiltersSheet();
+    var $sheet = $('#search-sheet');
+    if (!$sheet.length) return;
+    $sheet.removeAttr('hidden').addClass('is-open');
+    $('body').addClass('search-open');
+    $('.bottom-nav-search').addClass('is-open').attr('aria-expanded', 'true');
+    renderRecentSearches();
+    setTimeout(function () {
+      $('#search-sheet-input').trigger('focus');
+    }, 80);
+  }
+
+  $(document).on('click', '#search-recent-clear', function (e) {
     e.preventDefault();
-    var q = String($(this).data('search-chip') || '');
+    clearRecentSearches();
+  });
+
+  $(document).on('click', '[data-recent-q]', function (e) {
+    e.preventDefault();
+    var q = String($(this).attr('data-recent-q') || '');
     var $input = $('#search-sheet-input');
     $input.val(q).trigger('input').trigger('focus');
   });
+
+  $(document).on('submit', '.search-sheet-form', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var q = $.trim($('#search-sheet-input').val() || '');
+    saveRecentSearch(q);
+    var $sheet = $('#search-sheet');
+    if (q.length >= 2) {
+      $sheet.addClass('is-typing');
+      runLiveSearch(q, $sheet.find('.search-sheet-suggest'), $sheet);
+    } else {
+      $sheet.removeClass('is-typing has-results');
+      $sheet.find('.search-sheet-suggest').removeClass('open').empty();
+    }
+    return false;
+  });
+
+  $(document).on('click', '#search-sheet .suggest-item', function () {
+    var typed = $.trim($('#search-sheet-input').val() || '');
+    if (typed.length >= 2) saveRecentSearch(typed);
+    var t = $(this).find('strong').first().text();
+    if (t) saveRecentSearch(t);
+  });
+
+  // ——— Search filters (Movies/TV-style sheet) ———
+  var SEARCH_FILTER_KEY = 'cf_search_filters_v1';
+  var searchFiltersDraft = null;
+
+  function defaultSearchFilters() {
+    return { type: 'all', genres: [], year_from: '', year_to: '', rating_from: '', rating_to: '' };
+  }
+
+  function normalizeSearchFilters(f) {
+    f = f || defaultSearchFilters();
+    var yf = f.year_from != null && f.year_from !== '' ? parseInt(f.year_from, 10) : NaN;
+    var yt = f.year_to != null && f.year_to !== '' ? parseInt(f.year_to, 10) : NaN;
+    // Full slider span = no year filter
+    if ((!isNaN(yf) && !isNaN(yt) && yf <= 1970 && yt >= 2026) || (yf === 1970 && yt === 2026)) {
+      f.year_from = '';
+      f.year_to = '';
+    }
+    var rf = f.rating_from != null && f.rating_from !== '' ? parseFloat(f.rating_from) : NaN;
+    var rt = f.rating_to != null && f.rating_to !== '' ? parseFloat(f.rating_to) : NaN;
+    // Full rating span or bare 0 = no rating filter
+    if ((!isNaN(rf) && !isNaN(rt) && rf <= 0 && rt >= 10) || (rf === 0 && (isNaN(rt) || rt >= 10))) {
+      f.rating_from = '';
+      f.rating_to = '';
+    }
+    if (!isNaN(rf) && rf <= 0 && (f.rating_to === '' || f.rating_to == null)) {
+      f.rating_from = '';
+    }
+    if (!Array.isArray(f.genres)) f.genres = [];
+    f.genres = f.genres.map(function (n) { return parseInt(n, 10); }).filter(Boolean);
+    if (['all', 'movie', 'tv'].indexOf(f.type) < 0) f.type = 'all';
+    return f;
+  }
+
+  function loadSearchFilters() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(SEARCH_FILTER_KEY) || 'null');
+      if (!raw || typeof raw !== 'object') return defaultSearchFilters();
+      // migrate old shape {year, rating}
+      var yf = raw.year_from || '';
+      var yt = raw.year_to || '';
+      if (!yf && !yt && raw.year) {
+        if (String(raw.year).indexOf('-') >= 0) {
+          var p = String(raw.year).split('-');
+          yf = p[0] || ''; yt = p[1] || '';
+        } else { yf = yt = String(raw.year); }
+      }
+      return normalizeSearchFilters({
+        type: ['all', 'movie', 'tv'].indexOf(raw.type) >= 0 ? raw.type : 'all',
+        genres: Array.isArray(raw.genres) ? raw.genres : [],
+        year_from: yf ? String(yf) : '',
+        year_to: yt ? String(yt) : '',
+        rating_from: raw.rating_from != null && raw.rating_from !== '' ? String(raw.rating_from) : (raw.rating ? String(raw.rating) : ''),
+        rating_to: raw.rating_to != null && raw.rating_to !== '' ? String(raw.rating_to) : ''
+      });
+    } catch (e) {
+      return defaultSearchFilters();
+    }
+  }
+
+  function saveSearchFilters(f) {
+    f = normalizeSearchFilters(f);
+    try { localStorage.setItem(SEARCH_FILTER_KEY, JSON.stringify(f)); } catch (e) {}
+    return f;
+  }
+
+  function filtersToParams(f) {
+    return {
+      type: f.type || 'all',
+      with_genres: (f.genres || []).join(','),
+      year_from: f.year_from || '',
+      year_to: f.year_to || '',
+      rating_from: f.rating_from || '',
+      rating_to: f.rating_to || ''
+    };
+  }
+
+  window.__getSearchFilters = function () {
+    return filtersToParams(loadSearchFilters());
+  };
+
+  function syncSearchFilterInputs(f) {
+    var p = filtersToParams(f);
+    $('#sf-type').val(p.type);
+    $('#sf-genres').val(p.with_genres);
+    $('#sf-year-from').val(p.year_from);
+    $('#sf-year-to').val(p.year_to);
+    $('#sf-rating').val(p.rating_from);
+    if (!$('#sf-rating-to').length) {
+      $('#search-sheet-form').append('<input type="hidden" name="rating_to" id="sf-rating-to" value="">');
+    }
+    $('#sf-rating-to').val(p.rating_to);
+  }
+
+  function countSearchFilters(f) {
+    var n = 0;
+    if (f.type && f.type !== 'all') n += 1;
+    if (f.genres && f.genres.length) n += 1;
+    if (f.year_from || f.year_to) n += 1;
+    if (f.rating_from || f.rating_to) n += 1;
+    return n;
+  }
+
+  function genreLabel(id) {
+    var $btn = $('#search-filters-sheet [data-sf-genre="' + id + '"]').first();
+    return $btn.length ? ($.trim($btn.data('label') || $btn.find('.filter-list-label').text()) || String(id)) : String(id);
+  }
+
+  function renderSearchFilterChips(f) {
+    var $chips = $('#search-filters-chips');
+    var $count = $('#search-filters-count');
+    var $reset = $('#search-filters-reset');
+    if (!$chips.length) return;
+    var html = '';
+    if (f.type === 'movie') html += '<button type="button" class="filters-chip" data-sf-clear="type"><span>Movies</span><i class="uil uil-times" aria-hidden="true"></i></button>';
+    if (f.type === 'tv') html += '<button type="button" class="filters-chip" data-sf-clear="type"><span>TV Shows</span><i class="uil uil-times" aria-hidden="true"></i></button>';
+    (f.genres || []).forEach(function (gid) {
+      html += '<button type="button" class="filters-chip" data-sf-clear-genre="' + gid + '"><span>' + $('<div>').text(genreLabel(gid)).html() + '</span><i class="uil uil-times" aria-hidden="true"></i></button>';
+    });
+    if (f.year_from || f.year_to) {
+      var yl = (f.year_from || '…') + '–' + (f.year_to || '…');
+      html += '<button type="button" class="filters-chip" data-sf-clear="year"><span>' + yl + '</span><i class="uil uil-times" aria-hidden="true"></i></button>';
+    }
+    if (f.rating_from || f.rating_to) {
+      var rl = (f.rating_from || '0') + '–' + (f.rating_to || '10');
+      html += '<button type="button" class="filters-chip" data-sf-clear="rating"><span>★ ' + rl + '</span><i class="uil uil-times" aria-hidden="true"></i></button>';
+    }
+    $chips.html(html);
+    var n = countSearchFilters(f);
+    if (n > 0) { $count.text(String(n)).removeAttr('hidden'); $reset.removeAttr('hidden'); }
+    else { $count.attr('hidden', true); $reset.attr('hidden', true); }
+    syncSearchFilterInputs(f);
+  }
+
+  function syncSfTimeline($wrap, fromVal, toVal, fromLabel, toLabel, fillId) {
+    if (!$wrap.length) return;
+    var min = parseFloat($wrap.data('min'));
+    var max = parseFloat($wrap.data('max'));
+    var $from = $wrap.find('.range-timeline-thumb-from');
+    var $to = $wrap.find('.range-timeline-thumb-to');
+    var a = fromVal === '' || fromVal == null ? min : parseFloat(fromVal);
+    var b = toVal === '' || toVal == null ? max : parseFloat(toVal);
+    if (isNaN(a)) a = min;
+    if (isNaN(b)) b = max;
+    if (a > b) { var t = a; a = b; b = t; }
+    $from.val(a);
+    $to.val(b);
+    $(fromLabel).text(String(a));
+    $(toLabel).text(String(b));
+    var left = ((a - min) / (max - min)) * 100;
+    var right = ((b - min) / (max - min)) * 100;
+    $wrap.find(fillId).css({ left: left + '%', width: Math.max(0, right - left) + '%' });
+  }
+
+  function readSfTimelinesInto(draft) {
+    var ymin = parseFloat($('#sf-year-timeline').data('min'));
+    var ymax = parseFloat($('#sf-year-timeline').data('max'));
+    var yf = parseFloat($('#sf-year-from-range').val());
+    var yt = parseFloat($('#sf-year-to-range').val());
+    draft.year_from = (yf <= ymin && yt >= ymax) ? '' : String(Math.round(yf));
+    draft.year_to = (yf <= ymin && yt >= ymax) ? '' : String(Math.round(yt));
+    if (draft.year_from && draft.year_to && parseInt(draft.year_from, 10) > parseInt(draft.year_to, 10)) {
+      var swap = draft.year_from; draft.year_from = draft.year_to; draft.year_to = swap;
+    }
+
+    var rmin = parseFloat($('#sf-rating-timeline').data('min'));
+    var rmax = parseFloat($('#sf-rating-timeline').data('max'));
+    var rf = parseFloat($('#sf-rating-from-range').val());
+    var rt = parseFloat($('#sf-rating-to-range').val());
+    draft.rating_from = (rf <= rmin && rt >= rmax) ? '' : String(rf);
+    draft.rating_to = (rf <= rmin && rt >= rmax) ? '' : String(rt);
+  }
+
+  function updateSfGenreVisibility(type) {
+    var $movie = $('#sf-genre-list [data-sf-genre-type="movie"]');
+    var $tv = $('#sf-genre-list [data-sf-genre-type="tv"]');
+    if (type === 'tv') {
+      $movie.attr('hidden', true);
+      $tv.removeAttr('hidden');
+    } else if (type === 'movie') {
+      $tv.attr('hidden', true);
+      $movie.removeAttr('hidden');
+    } else {
+      // All: show movie list primarily (shared ids overlap); hide tv-only duplicates visually by showing movie first
+      $movie.removeAttr('hidden');
+      $tv.attr('hidden', true);
+    }
+  }
+
+  function paintSearchFiltersSheet(f) {
+    searchFiltersDraft = {
+      type: f.type || 'all',
+      genres: (f.genres || []).slice(),
+      year_from: f.year_from || '',
+      year_to: f.year_to || '',
+      rating_from: f.rating_from || '',
+      rating_to: f.rating_to || ''
+    };
+
+    $('#sf-picker-type .filter-list-item').removeClass('is-on');
+    $('#sf-picker-type [data-sf-type="' + searchFiltersDraft.type + '"]').addClass('is-on');
+    var typeLabel = searchFiltersDraft.type === 'movie' ? 'Movies' : (searchFiltersDraft.type === 'tv' ? 'TV Shows' : 'All');
+    $('#sf-type-hint').text(typeLabel);
+    $('#sf-type-bubbles').html(searchFiltersDraft.type === 'all' ? '' : ('<span class="filter-bubble">' + typeLabel + '</span>'));
+
+    updateSfGenreVisibility(searchFiltersDraft.type);
+    $('#sf-genre-list [data-sf-genre]').removeClass('is-on');
+    searchFiltersDraft.genres.forEach(function (gid) {
+      $('#sf-genre-list [data-sf-genre="' + gid + '"]').addClass('is-on');
+    });
+    if (searchFiltersDraft.genres.length) {
+      $('#sf-genre-hint').text(searchFiltersDraft.genres.length + ' selected');
+      $('#sf-genre-bubbles').html(searchFiltersDraft.genres.map(function (gid) {
+        return '<span class="filter-bubble">' + $('<div>').text(genreLabel(gid)).html() + '</span>';
+      }).join(''));
+    } else {
+      $('#sf-genre-hint').text('Add genres');
+      $('#sf-genre-bubbles').empty();
+    }
+
+    syncSfTimeline($('#sf-year-timeline'), searchFiltersDraft.year_from || 1970, searchFiltersDraft.year_to || 2026, '#sf-year-from-label', '#sf-year-to-label', '#sf-year-range');
+    syncSfTimeline($('#sf-rating-timeline'), searchFiltersDraft.rating_from || 0, searchFiltersDraft.rating_to || 10, '#sf-rating-from-label', '#sf-rating-to-label', '#sf-rating-range');
+  }
+
+  function openSearchFiltersSheet() {
+    var $sheet = $('#search-filters-sheet');
+    if (!$sheet.length) return;
+    closeBrowseSheet();
+    // keep search sheet open underneath
+    clearTimeout(window.__searchFiltersCloseTimer);
+    paintSearchFiltersSheet(loadSearchFilters());
+    $sheet.removeClass('is-closing').removeAttr('hidden');
+    void $sheet[0].offsetWidth;
+    $sheet.addClass('is-open');
+    $('body').addClass('filters-open');
+    $('#search-filters-open').attr('aria-expanded', 'true');
+  }
+
+  function closeSearchFiltersSheet() {
+    var $sheet = $('#search-filters-sheet');
+    if (!$sheet.length || (!$sheet.hasClass('is-open') && !$sheet.hasClass('is-closing'))) return;
+    closeFilterPicker();
+    $sheet.removeClass('is-open').addClass('is-closing');
+    $('#search-filters-open').attr('aria-expanded', 'false');
+    // only remove filters-open if discover sheet isn't open
+    if (!$('#filters-sheet').hasClass('is-open')) $('body').removeClass('filters-open');
+    clearTimeout(window.__searchFiltersCloseTimer);
+    window.__searchFiltersCloseTimer = setTimeout(function () {
+      $sheet.removeClass('is-closing').attr('hidden', true);
+    }, 380);
+  }
+
+  function applySearchFilters(f) {
+    f = saveSearchFilters(f);
+    renderSearchFilterChips(f);
+    closeSearchFiltersSheet();
+    var q = $('#search-sheet-input').val();
+    var $sheet = $('#search-sheet');
+    // Stay in the search sheet — never bounce to full-page search
+    if (!$sheet.hasClass('is-open')) {
+      try { openSearchSheet(); } catch (eOpen) {}
+    }
+    if ($.trim(q || '').length >= 2) {
+      $sheet.addClass('is-typing');
+      runLiveSearch(q, $sheet.find('.search-sheet-suggest'), $sheet);
+    }
+  }
+
+  var _openSearchSheet = openSearchSheet;
+  openSearchSheet = function () {
+    _openSearchSheet();
+    renderSearchFilterChips(loadSearchFilters());
+    try { renderRecentSearches(); } catch (e) {}
+  };
+
+  $(document).on('click', '#search-filters-open', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if ($('#search-filters-sheet').hasClass('is-open')) closeSearchFiltersSheet();
+    else openSearchFiltersSheet();
+  });
+
+  $(document).on('click', '#sf-picker-type [data-sf-type]', function (e) {
+    e.preventDefault();
+    if (!searchFiltersDraft) searchFiltersDraft = defaultSearchFilters();
+    searchFiltersDraft.type = String($(this).data('sf-type') || 'all');
+    // prune genres not in visible list
+    updateSfGenreVisibility(searchFiltersDraft.type);
+    searchFiltersDraft.genres = searchFiltersDraft.genres.filter(function (gid) {
+      return $('#sf-genre-list [data-sf-genre="' + gid + '"]:not([hidden])').length > 0;
+    });
+    paintSearchFiltersSheet(searchFiltersDraft);
+  });
+
+  $(document).on('click', '#sf-genre-list [data-sf-genre]', function (e) {
+    e.preventDefault();
+    if (!searchFiltersDraft) searchFiltersDraft = defaultSearchFilters();
+    var gid = parseInt($(this).data('sf-genre'), 10);
+    if (!gid) return;
+    var idx = searchFiltersDraft.genres.indexOf(gid);
+    if (idx >= 0) searchFiltersDraft.genres.splice(idx, 1);
+    else searchFiltersDraft.genres.push(gid);
+    paintSearchFiltersSheet(searchFiltersDraft);
+  });
+
+  $(document).on('input change', '#sf-year-from-range, #sf-year-to-range, #sf-rating-from-range, #sf-rating-to-range', function () {
+    if (!searchFiltersDraft) searchFiltersDraft = defaultSearchFilters();
+    var $wrap = $(this).closest('.range-timeline');
+    var $from = $wrap.find('.range-timeline-thumb-from');
+    var $to = $wrap.find('.range-timeline-thumb-to');
+    var a = parseFloat($from.val());
+    var b = parseFloat($to.val());
+    if (a > b) {
+      if (this === $from[0]) $to.val(a);
+      else $from.val(b);
+    }
+    if ($wrap.is('#sf-year-timeline')) {
+      syncSfTimeline($wrap, $from.val(), $to.val(), '#sf-year-from-label', '#sf-year-to-label', '#sf-year-range');
+    } else {
+      syncSfTimeline($wrap, $from.val(), $to.val(), '#sf-rating-from-label', '#sf-rating-to-label', '#sf-rating-range');
+    }
+  });
+
+  $(document).on('click', '#search-filters-apply', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!searchFiltersDraft) searchFiltersDraft = defaultSearchFilters();
+    readSfTimelinesInto(searchFiltersDraft);
+    applySearchFilters(normalizeSearchFilters(searchFiltersDraft));
+  });
+
+  $(document).on('click', '#search-filters-sheet-reset, #search-filters-reset', function (e) {
+    e.preventDefault();
+    applySearchFilters(defaultSearchFilters());
+  });
+
+  $(document).on('click', '#search-filters-chips [data-sf-clear]', function (e) {
+    e.preventDefault();
+    var f = loadSearchFilters();
+    var key = String($(this).data('sf-clear') || '');
+    if (key === 'type') f.type = 'all';
+    if (key === 'year') { f.year_from = ''; f.year_to = ''; }
+    if (key === 'rating') { f.rating_from = ''; f.rating_to = ''; }
+    applySearchFilters(f);
+  });
+
+  $(document).on('click', '#search-filters-chips [data-sf-clear-genre]', function (e) {
+    e.preventDefault();
+    var f = loadSearchFilters();
+    var gid = parseInt($(this).data('sf-clear-genre'), 10);
+    f.genres = (f.genres || []).filter(function (x) { return x !== gid; });
+    applySearchFilters(f);
+  });
+
+  $(function () { renderSearchFilterChips(loadSearchFilters()); });
 
 
   // ——— Browse auth (main-site /api/auth) ———
