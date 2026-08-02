@@ -17,7 +17,9 @@ import textwrap
 HOST = "192.142.46.51"
 ROOT = "/var/www/chillflix-newsite"
 VER = "20260802-ui91"
-PW = os.environ.get("SSHPASS") or os.environ.get("SG_SSH_PASS") or "81xn1Ix2r57s9yu892ubPj"
+PW = os.environ.get("SSHPASS") or os.environ.get("SG_SSH_PASS") or ""
+if not PW:
+    raise SystemExit("Set SSHPASS or SG_SSH_PASS")
 
 
 def ssh(script: str) -> str:
