@@ -9,7 +9,7 @@ $isAdmin = Auth::isAdmin($adminUser);
       <a href="<?= e(url('/admin')) ?>">Dashboard</a>
       <a class="is-active" href="<?= e(url('/admin/users')) ?>">Users</a>
       <a href="<?= e(url('/admin/sources')) ?>">Sources</a>
-      <a href="<?= e(url('/home')) ?>">Site</a>
+      <a href="<?= e(url('/home')) ?>">← Site</a>
     </nav>
     <div class="cf-admin-head">
       <h1>Users</h1>

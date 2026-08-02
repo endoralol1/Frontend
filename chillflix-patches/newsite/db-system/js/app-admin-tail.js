@@ -1,9 +1,3 @@
-        try { refreshBrowseStats(); } catch (err) {}
-      }, 0);
-    }
-  }, true);
-
-  window.addEventListener("cf:softnav", function () {
     try { refreshBrowseStats(); } catch (e) {}
   });
   window.addEventListener("storage", function (e) {
@@ -19,20 +13,38 @@
   }
 })();
 
-/* newsite-admin-menu-ui94 */
+/* newsite-admin-menu-ui96 */
 (function () {
   function base() {
     return (window.CF_BASE || (window.APP && APP.baseUrl) || '').replace(/\/$/, '');
   }
-  function menuRoot() {
-    return document.getElementById('header-admin-menu');
+  function menuRoot() { return document.getElementById('header-admin-menu'); }
+  function dropdown() { return document.getElementById('header-admin-dropdown'); }
+  function toggleBtn() { return document.getElementById('header-admin-link'); }
+
+  function placeDropdown() {
+    var btn = toggleBtn();
+    var dd = dropdown();
+    if (!btn || !dd || dd.hidden) return;
+    var r = btn.getBoundingClientRect();
+    var pad = 8;
+    var width = Math.min(296, window.innerWidth - pad * 2);
+    var left = Math.min(Math.max(pad, r.left), window.innerWidth - width - pad);
+    // Prefer below; if not enough room, flip above
+    var below = r.bottom + 8;
+    var estHeight = Math.min(dd.scrollHeight || 320, window.innerHeight * 0.7);
+    var top = below;
+    if (below + estHeight > window.innerHeight - pad && r.top > estHeight + pad) {
+      top = Math.max(pad, r.top - estHeight - 8);
+    }
+    dd.style.position = 'fixed';
+    dd.style.top = Math.round(top) + 'px';
+    dd.style.left = Math.round(left) + 'px';
+    dd.style.right = 'auto';
+    dd.style.width = width + 'px';
+    dd.style.zIndex = '10050';
   }
-  function dropdown() {
-    return document.getElementById('header-admin-dropdown');
-  }
-  function toggleBtn() {
-    return document.getElementById('header-admin-link');
-  }
+
   function closeMenu() {
     var root = menuRoot();
     var dd = dropdown();
@@ -41,6 +53,7 @@
     dd.hidden = true;
     root.classList.remove('is-open');
     btn.setAttribute('aria-expanded', 'false');
+    document.documentElement.classList.remove('admin-menu-open');
   }
   function openMenu() {
     var root = menuRoot();
@@ -50,22 +63,20 @@
     dd.hidden = false;
     root.classList.add('is-open');
     btn.setAttribute('aria-expanded', 'true');
+    document.documentElement.classList.add('admin-menu-open');
+    placeDropdown();
+    // second pass after layout for accurate height
+    requestAnimationFrame(placeDropdown);
   }
   function ensureAdminChrome(user) {
     var staff = !!(user && (user.role === 'admin' || user.role === 'moderator'));
     var root = menuRoot();
     if (root) {
       if (staff) root.removeAttribute('hidden');
-      else {
-        root.setAttribute('hidden', 'hidden');
-        closeMenu();
-      }
+      else { root.setAttribute('hidden', 'hidden'); closeMenu(); }
     }
     var existing = document.getElementById('browse-admin-link');
-    if (!staff) {
-      if (existing) existing.remove();
-      return;
-    }
+    if (!staff) { if (existing) existing.remove(); return; }
     if (existing) return;
     var a = document.createElement('a');
     a.id = 'browse-admin-link';
@@ -91,6 +102,7 @@
   document.addEventListener('click', function (e) {
     var root = menuRoot();
     var btn = toggleBtn();
+    var dd = dropdown();
     if (!root || !btn || root.hidden) return;
     var t = e.target;
     if (btn === t || btn.contains(t)) {
@@ -99,11 +111,18 @@
       else openMenu();
       return;
     }
+    if (dd && !dd.hidden && dd.contains(t)) return;
     if (!root.contains(t)) closeMenu();
   });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') closeMenu();
   });
+  window.addEventListener('resize', function () {
+    if (menuRoot() && menuRoot().classList.contains('is-open')) placeDropdown();
+  });
+  window.addEventListener('scroll', function () {
+    if (menuRoot() && menuRoot().classList.contains('is-open')) placeDropdown();
+  }, true);
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', refreshAdminChrome);
   } else {
@@ -116,5 +135,6 @@
   }
   window.__cfEnsureAdminChrome = ensureAdminChrome;
 })();
+
 
 
