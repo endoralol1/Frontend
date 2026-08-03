@@ -833,7 +833,7 @@
   /* ——— Party chat (below video) ——— */
   var chatTimer = null;
   var chatAfter = 0;
-  var chatState = { code: "", role: "guest", writable: true, banned: false };
+  var chatState = { code: "", role: "guest", writable: true, banned: false, authRequired: true, user: null };
 
   function partyChatApi() {
     return ((window.APP && APP.partyApi) || ((window.APP && APP.baseUrl) || "") + "/api/party").replace(/\/$/, "");
@@ -932,11 +932,46 @@
     );
   }
 
+  function currentAuthUser() {
+    try {
+      if (typeof window.getBrowseAuthUser === "function") {
+        var u = window.getBrowseAuthUser();
+        if (u) return u;
+      }
+    } catch (e0) {}
+    try {
+      return (window.APP && APP.user) || null;
+    } catch (e1) {
+      return null;
+    }
+  }
+
   function syncChatForm() {
     var $form = $("#cf-party-chat-form");
     var $note = $("#cf-party-chat-note");
     var $lock = $("#cf-party-chat-lock");
+    var $login = $("#cf-party-chat-login");
     if (!$form.length) return;
+    var user = chatState.user || currentAuthUser();
+    chatState.user = user;
+    chatState.authRequired = !user;
+
+    if (!user) {
+      $form.attr("hidden", true).addClass("is-disabled");
+      $login.removeAttr("hidden");
+      $note.prop("hidden", true).text("");
+      $(".cf-party-chat-host").prop("hidden", chatState.role !== "host");
+      if (chatState.role === "host") {
+        $lock.attr("aria-pressed", chatState.writable ? "false" : "true");
+        $lock.text(chatState.writable ? "Mute guests" : "Allow chat");
+      }
+      return;
+    }
+
+    $login.attr("hidden", true);
+    $form.removeAttr("hidden");
+    $("#cf-party-chat-user").text(user.name || user.email || "Member");
+
     if (chatState.banned) {
       $form.addClass("is-disabled");
       $note.text("You were banned from this chat.").prop("hidden", false);
@@ -988,7 +1023,9 @@
       "/chat?after=" +
       encodeURIComponent(String(chatAfter)) +
       "&peerId=" +
-      encodeURIComponent(chatActorId());
+      encodeURIComponent(chatActorId()) +
+      "&hostId=" +
+      encodeURIComponent(chatHostId(chatState.code) || "");
     $.getJSON(url)
       .done(function (data) {
         if (!data || data.ok === false || data.closed) {
@@ -997,6 +1034,10 @@
         }
         chatState.writable = !!data.chatWritable;
         chatState.banned = !!data.banned;
+        chatState.authRequired = !!data.authRequired;
+        if (data.user) chatState.user = data.user;
+        else if (data.authRequired) chatState.user = null;
+        if (typeof data.isHost === "boolean" && data.isHost) chatState.role = "host";
         if (data.messages && data.messages.length) {
           data.messages.forEach(function (m) {
             if (m && m.id > chatAfter) chatAfter = m.id;
@@ -1024,14 +1065,18 @@
     var same = chatState.code === info.code && chatTimer;
     chatState.code = info.code;
     chatState.role = info.role;
+    chatState.user = currentAuthUser();
     $box.removeAttr("hidden");
     $box.find(".cf-party-chat-code").text(info.code);
-    var saved = chatNameGet();
-    if (saved) $("#cf-party-chat-name").val(saved);
-    else if (!$("#cf-party-chat-name").val()) {
-      $("#cf-party-chat-name").val("Guest " + chatPeerId().slice(-4));
-    }
     syncChatForm();
+    try {
+      if (typeof window.refreshBrowseAuthUser === "function") {
+        window.refreshBrowseAuthUser().then(function () {
+          chatState.user = currentAuthUser();
+          syncChatForm();
+        });
+      }
+    } catch (eAuthBoot) {}
     if (!same) {
       chatAfter = 0;
       $("#cf-party-chat-log").empty();
@@ -1044,11 +1089,13 @@
   $(document).on("submit", "#cf-party-chat-form", function (e) {
     e.preventDefault();
     if (!chatState.code || chatState.banned) return;
+    if (!currentAuthUser()) {
+      syncChatForm();
+      return;
+    }
     if (chatState.role !== "host" && !chatState.writable) return;
-    var name = $.trim($("#cf-party-chat-name").val() || "");
     var text = $.trim($("#cf-party-chat-input").val() || "");
     if (!text) return;
-    if (name) chatNameSet(name);
     $("#cf-party-chat-input").val("");
     $.ajax({
       url: partyChatApi() + "/" + encodeURIComponent(chatState.code) + "/chat",
@@ -1057,12 +1104,16 @@
       dataType: "json",
       data: JSON.stringify({
         peerId: chatActorId(),
-        hostId: chatState.role === "host" ? chatActorId() : undefined,
-        name: name || undefined,
+        hostId: chatState.role === "host" ? chatHostId(chatState.code) || chatPeerId() : undefined,
         text: text,
       }),
     })
       .done(function (data) {
+        if (data && data.authRequired) {
+          chatState.user = null;
+          syncChatForm();
+          return;
+        }
         if (data && data.message) {
           if (data.message.id > chatAfter) chatAfter = data.message.id;
           appendChatMessages([data.message]);
@@ -1077,9 +1128,15 @@
         }
       })
       .fail(function (xhr) {
-        var msg = (xhr.responseJSON && xhr.responseJSON.error) || "Could not send";
+        var body = xhr.responseJSON || {};
+        var msg = body.error || "Could not send";
+        if (body.authRequired) {
+          chatState.user = null;
+          syncChatForm();
+          return;
+        }
         $("#cf-party-chat-note").text(msg).prop("hidden", false);
-        if (xhr.responseJSON && xhr.responseJSON.banned) {
+        if (body.banned) {
           chatState.banned = true;
           syncChatForm();
         }
@@ -1171,6 +1228,11 @@
     if (!e.key || e.key === "cf_continue_v1") bootContinue();
   });
   // Custom hook used by app.js afterSoftNav
+  window.addEventListener("cf:auth", function () {
+    chatState.user = currentAuthUser();
+    syncChatForm();
+    if (chatState.code) pollPartyChat();
+  });
   window.addEventListener("cf:softnav", function () {
     bootContinue();
     paintPartyResume();

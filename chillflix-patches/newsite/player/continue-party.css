@@ -667,12 +667,22 @@ body.cf-party-open { overflow: hidden; }
 }
 .cf-party-chat-form {
   display: grid;
-  grid-template-columns: 5.5rem 1fr auto;
+  grid-template-columns: auto 1fr auto;
   gap: .4rem;
+  align-items: center;
   padding: .55rem .65rem .65rem;
   border-top: 1px solid rgba(255,255,255,.06);
 }
-.cf-party-chat-name,
+.cf-party-chat-form[hidden] { display: none !important; }
+.cf-party-chat-user {
+  max-width: 6.5rem;
+  font-size: .72rem;
+  font-weight: 750;
+  color: #ffb3bb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .cf-party-chat-input {
   width: 100%;
   border: 1px solid rgba(255,255,255,.1);
@@ -684,9 +694,34 @@ body.cf-party-open { overflow: hidden; }
   font-size: .86rem;
   outline: none;
 }
-.cf-party-chat-input:focus,
-.cf-party-chat-name:focus {
+.cf-party-chat-input:focus {
   border-color: rgba(239, 91, 69, .55);
+}
+.cf-party-chat-login {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+  padding: .7rem .75rem;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.cf-party-chat-login[hidden] { display: none !important; }
+.cf-party-chat-login p {
+  margin: 0;
+  color: #9aa3b2;
+  font-size: .84rem;
+}
+.cf-party-chat-login-btn {
+  appearance: none;
+  border: 0;
+  border-radius: .55rem;
+  padding: .5rem .8rem;
+  background: linear-gradient(180deg, #ef5b45, #c43c2e);
+  color: #fff;
+  font-weight: 750;
+  font-size: .8rem;
+  cursor: pointer;
+  flex: 0 0 auto;
 }
 .cf-party-chat-send {
   appearance: none;
@@ -708,5 +743,6 @@ body.cf-party-open { overflow: hidden; }
   .cf-party-chat-form {
     grid-template-columns: 1fr auto;
   }
-  .cf-party-chat-name { grid-column: 1 / -1; }
+  .cf-party-chat-user { grid-column: 1 / -1; max-width: none; }
+  .cf-party-chat-login { flex-direction: column; align-items: stretch; }
 }

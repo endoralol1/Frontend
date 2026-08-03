@@ -315,8 +315,12 @@ $starFill = $rating !== null ? min(5, max(0, (int) round($rating / 2))) : 0;
                         </div>
                         <div class="cf-party-chat-log" id="cf-party-chat-log" aria-live="polite"></div>
                         <p class="cf-party-chat-note" id="cf-party-chat-note" hidden></p>
-                        <form class="cf-party-chat-form" id="cf-party-chat-form" autocomplete="off">
-                            <input type="text" id="cf-party-chat-name" class="cf-party-chat-name" maxlength="20" placeholder="Name" aria-label="Chat name">
+                        <div class="cf-party-chat-login" id="cf-party-chat-login" hidden>
+                            <p>Log in to join the party chat.</p>
+                            <button type="button" class="cf-party-chat-login-btn" data-browse-auth="login">Log in</button>
+                        </div>
+                        <form class="cf-party-chat-form" id="cf-party-chat-form" autocomplete="off" hidden>
+                            <div class="cf-party-chat-user" id="cf-party-chat-user"></div>
                             <input type="text" id="cf-party-chat-input" class="cf-party-chat-input" maxlength="200" placeholder="Say something…" aria-label="Chat message">
                             <button type="submit" class="cf-party-chat-send" id="cf-party-chat-send">Send</button>
                         </form>

@@ -844,6 +844,9 @@ $router->get('/api/admin/stats', function () {
 
 $router->map(['POST'], '/api/party', function () {
     $body = WatchParty::readJsonBody();
+    if (!empty(config('turnstile_secret_key')) && !Auth::verifyTurnstile($body['turnstileToken'] ?? null)) {
+        json_response(['ok' => false, 'error' => 'Captcha verification failed.'], 400);
+    }
     json_response(WatchParty::create($body), 200);
 });
 $router->get('/api/party/{code}', function (array $p) {
@@ -855,7 +858,34 @@ $router->map(['POST'], '/api/party/{code}', function (array $p) {
 });
 $router->map(['POST'], '/api/party/{code}/join', function (array $p) {
     $body = WatchParty::readJsonBody();
+    if (!empty(config('turnstile_secret_key')) && !Auth::verifyTurnstile($body['turnstileToken'] ?? null)) {
+        json_response(['ok' => false, 'error' => 'Captcha verification failed.'], 400);
+    }
     json_response(WatchParty::join((string) $p['code'], $body));
+});
+$router->map(['POST'], '/api/party/{code}/leave', function (array $p) {
+    $body = WatchParty::readJsonBody();
+    json_response(WatchParty::leave((string) $p['code'], $body));
+});
+$router->map(['POST'], '/api/party/{code}/close', function (array $p) {
+    $body = WatchParty::readJsonBody();
+    json_response(WatchParty::close((string) $p['code'], $body));
+});
+
+$router->get('/api/party/{code}/chat', function (array $p) {
+    json_response(WatchParty::chatState((string) $p['code'], $_GET));
+});
+$router->map(['POST'], '/api/party/{code}/chat', function (array $p) {
+    $body = WatchParty::readJsonBody();
+    json_response(WatchParty::chatPost((string) $p['code'], $body));
+});
+$router->map(['POST'], '/api/party/{code}/chat/lock', function (array $p) {
+    $body = WatchParty::readJsonBody();
+    json_response(WatchParty::chatLock((string) $p['code'], $body));
+});
+$router->map(['POST'], '/api/party/{code}/chat/ban', function (array $p) {
+    $body = WatchParty::readJsonBody();
+    json_response(WatchParty::chatBan((string) $p['code'], $body));
 });
 
 $router->get('/movie/{slug}/{id}', function (array $p) use ($tmdb) {
@@ -1104,7 +1134,7 @@ function home(Tmdb $tmdb): void
             'title' => 'Home - Explore Thousands of Movies & Series | ' . config('site_name'),
             'description' => 'Start exploring our vast library of movies and TV series. Find new releases, popular titles, and browse by genre on ' . config('site_name') . '.',
             'canonical' => url('/home'),
-            'image' => asset('img/logo.webp'),
+            'image' => logo_url(),
             'schema' => 'home',
         ],
     ]);
@@ -1588,10 +1618,10 @@ function watch_page(Tmdb $tmdb, string $type, int $id, string $slug): void
         'autoPlay' => $autoPlay,
         'playerConfig' => $playerConfig,
         'nextEpisode' => $nextEpisode,
-        'extraCss' => [asset('css/player.css') . '?v=20260802-ui104'],
+        'extraCss' => [asset('css/player.css') . '?v=20260803-ui152'],
         'extraJs' => [
             'https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js',
-            asset('js/player.js') . '?v=20260802-ui104',
+            asset('js/player.js') . '?v=20260803-ui152',
         ],
         'bodyClass' => 'page-watch',
         'headerClass' => 'absolute',

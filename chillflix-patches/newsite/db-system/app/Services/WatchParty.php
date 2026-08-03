@@ -30,6 +30,7 @@ final class WatchParty
             'chatWritable' => true,
             'banned' => [],
             'names' => [],
+            'hostUserId' => (Auth::user()['id'] ?? null),
         ];
         self::write($code, $room);
         self::writeChat($code, ['seq' => 0, 'messages' => []]);
@@ -107,7 +108,9 @@ final class WatchParty
         if (!$room) {
             return ['ok' => false, 'error' => 'Room not found or expired', 'closed' => true];
         }
-        $peerId = self::str($payload['peerId'] ?? ($_GET['peerId'] ?? ''), 64);
+        $user = Auth::user();
+        $userId = $user ? self::str($user['id'] ?? '', 64) : '';
+        $peerId = $userId !== '' ? $userId : self::str($payload['peerId'] ?? ($_GET['peerId'] ?? ''), 64);
         $after = (int) ($payload['after'] ?? ($_GET['after'] ?? 0));
         $chat = self::readChat($code);
         $messages = [];
@@ -116,12 +119,17 @@ final class WatchParty
                 $messages[] = $m;
             }
         }
+        $sessionHost = self::str($payload['hostId'] ?? ($_GET['hostId'] ?? ''), 64);
+        $isHost = ($userId !== '' && $userId === (string) ($room['hostUserId'] ?? ''))
+            || ($sessionHost !== '' && $sessionHost === ($room['hostId'] ?? ''));
         return [
             'ok' => true,
             'closed' => false,
+            'authRequired' => $user === null,
+            'user' => $user ? ['id' => $userId, 'name' => (string) ($user['name'] ?? '')] : null,
             'chatWritable' => (bool) ($room['chatWritable'] ?? true),
             'banned' => $peerId !== '' && self::isBanned($room, $peerId),
-            'isHost' => $peerId !== '' && $peerId === ($room['hostId'] ?? ''),
+            'isHost' => $isHost,
             'messages' => $messages,
             'seq' => (int) ($chat['seq'] ?? 0),
         ];
@@ -133,14 +141,25 @@ final class WatchParty
         if (!$room) {
             return ['ok' => false, 'error' => 'Room not found or expired', 'closed' => true];
         }
-        $peerId = self::str($payload['peerId'] ?? '', 64);
+        $user = Auth::user();
+        if (!$user) {
+            return ['ok' => false, 'error' => 'Log in to chat', 'authRequired' => true];
+        }
+        $userId = self::str($user['id'] ?? '', 64);
+        $peerId = $userId !== '' ? $userId : self::str($payload['peerId'] ?? '', 64);
         if ($peerId === '') {
             return ['ok' => false, 'error' => 'Missing peer'];
         }
         if (self::isBanned($room, $peerId)) {
             return ['ok' => false, 'error' => 'You are banned from chat', 'banned' => true];
         }
-        $isHost = $peerId === ($room['hostId'] ?? '');
+        $sessionHost = self::str($payload['hostId'] ?? '', 64);
+        $isSessionHost = $sessionHost !== '' && $sessionHost === ($room['hostId'] ?? '');
+        if ($isSessionHost && empty($room['hostUserId'])) {
+            $room['hostUserId'] = $userId;
+        }
+        $isHost = ($userId !== '' && $userId === (string) ($room['hostUserId'] ?? ''))
+            || $isSessionHost;
         if (!$isHost && empty($room['chatWritable'])) {
             return ['ok' => false, 'error' => 'Host muted the chat'];
         }
@@ -148,7 +167,7 @@ final class WatchParty
         if ($text === '') {
             return ['ok' => false, 'error' => 'Empty message'];
         }
-        $name = self::str($payload['name'] ?? '', 20) ?: ('Guest ' . substr($peerId, -4));
+        $name = self::str($user['name'] ?? '', 20) ?: 'Member';
         $names = is_array($room['names'] ?? null) ? $room['names'] : [];
         $names[$peerId] = $name;
         $room['names'] = $names;
@@ -160,6 +179,7 @@ final class WatchParty
         $msg = [
             'id' => $seq,
             'peerId' => $peerId,
+            'userId' => $userId,
             'name' => $name,
             'text' => $text,
             'ts' => time(),
