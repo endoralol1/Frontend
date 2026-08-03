@@ -2664,6 +2664,14 @@
 
 
 
+  function siteName() {
+    try {
+      return (window.APP && APP.siteName) ? String(APP.siteName) : 'Chillflix';
+    } catch (e) {
+      return 'Chillflix';
+    }
+  }
+
   function setBrowseAuthMode(mode) {
     var isLogin = mode !== 'register';
     $('#browse-login-form').prop('hidden', !isLogin);
@@ -2671,12 +2679,13 @@
     $('.browse-auth-tab').removeClass('is-active').attr('aria-selected', 'false');
     $('.browse-auth-tab[data-auth-tab="' + (isLogin ? 'login' : 'register') + '"]')
       .addClass('is-active').attr('aria-selected', 'true');
-    $('#browse-auth-kicker').text(isLogin ? 'Welcome back' : 'Join Chillflix');
-    $('#browse-auth-title').text(isLogin ? 'Sign in to Chillflix' : 'Create your account');
+    var sn = siteName();
+    $('#browse-auth-kicker').text(isLogin ? 'Welcome back' : ('Join ' + sn));
+    $('#browse-auth-title').text(isLogin ? ('Sign in to ' + sn) : 'Create your account');
     $('#browse-auth-sub').text(
       isLogin
         ? 'Pick up your watchlist, favorites, and profile anywhere.'
-        : 'Save favorites and keep your Chillflix profile in sync.'
+        : ('Save favorites and keep your ' + sn + ' profile in sync.')
     );
     $('#browse-login-error, #browse-register-error').prop('hidden', true).text('');
     renderBrowseTurnstile(isLogin ? 'login' : 'register');

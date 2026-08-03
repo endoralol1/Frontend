@@ -1,4 +1,6 @@
 <?php
+$site = (string) config('site_name');
+
 $path = current_path();
 $searchGenresMovie = config('genres_movie') ?: [];
 $searchGenresTv = config('genres_tv') ?: [];
@@ -351,7 +353,7 @@ $navAnime = is_active('/anime');
                         <span class="browse-auth-cta-icon"><i class="uil uil-user-plus"></i></span>
                         <span class="browse-auth-cta-copy">
                             <strong>Create account</strong>
-                            <em>Join Chillflix in seconds</em>
+                            <em>Join <?= e($site) ?> in seconds</em>
                         </span>
                         <i class="uil uil-angle-right"></i>
                     </button>
@@ -462,7 +464,7 @@ $navAnime = is_active('/anime');
                     <div class="browse-auth-hero">
                         <div class="browse-auth-orb" aria-hidden="true"></div>
                         <p class="browse-auth-kicker" id="browse-auth-kicker">Welcome back</p>
-                        <h3 class="browse-auth-title" id="browse-auth-title">Sign in to Chillflix</h3>
+                        <h3 class="browse-auth-title" id="browse-auth-title">Sign in to <?= e($site) ?></h3>
                         <p class="browse-auth-sub" id="browse-auth-sub">Pick up your watchlist, favorites, and profile anywhere.</p>
                     </div>
 
