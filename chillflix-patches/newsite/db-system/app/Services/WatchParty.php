@@ -3,13 +3,15 @@ declare(strict_types=1);
 
 /**
  * Ultra-light watch-party rooms (file-backed JSON, no DB).
- * Host posts playhead; guests poll. TTL keeps storage tiny.
+ * Host posts playhead; guests poll. Chat is wiped when the room closes.
  */
 final class WatchParty
 {
     private const TTL_SEC = 21600; // 6h hard cap
     private const HOST_IDLE_CLOSE_SEC = 1200; // 20m without host updates
-    private const MAX_BODY = 4096;
+    private const MAX_BODY = 8192;
+    private const MAX_CHAT = 80;
+    private const MAX_MSG = 200;
 
     public static function create(array $payload): array
     {
@@ -25,8 +27,12 @@ final class WatchParty
             'duration' => 0.0,
             'content' => self::normalizeContent($payload['content'] ?? []),
             'peers' => 1,
+            'chatWritable' => true,
+            'banned' => [],
+            'names' => [],
         ];
         self::write($code, $room);
+        self::writeChat($code, ['seq' => 0, 'messages' => []]);
         return ['ok' => true, 'room' => self::publicRoom($room)];
     }
 
@@ -61,6 +67,9 @@ final class WatchParty
         if (isset($payload['content']) && is_array($payload['content'])) {
             $room['content'] = self::normalizeContent($payload['content']);
         }
+        if (array_key_exists('chatWritable', $payload)) {
+            $room['chatWritable'] = (bool) $payload['chatWritable'];
+        }
         $room['updatedAt'] = time();
         self::write($code, $room);
         return ['ok' => true, 'room' => self::publicRoom($room)];
@@ -72,14 +81,171 @@ final class WatchParty
         if (!$room) {
             return ['ok' => false, 'error' => 'Room not found or expired'];
         }
+        $peerId = self::str($payload['peerId'] ?? '', 64) ?: self::randId();
+        if (self::isBanned($room, $peerId)) {
+            return ['ok' => false, 'error' => 'You are banned from this party', 'banned' => true];
+        }
+        $name = self::str($payload['name'] ?? '', 20);
+        if ($name !== '') {
+            $names = is_array($room['names'] ?? null) ? $room['names'] : [];
+            $names[$peerId] = $name;
+            $room['names'] = $names;
+        }
         $room['peers'] = min(50, (int) ($room['peers'] ?? 1) + 1);
         $room['updatedAt'] = time();
         self::write($code, $room);
         return [
             'ok' => true,
             'room' => self::publicRoom($room),
-            'peerId' => self::str($payload['peerId'] ?? '', 64) ?: self::randId(),
+            'peerId' => $peerId,
         ];
+    }
+
+    public static function chatState(string $code, array $payload = []): array
+    {
+        $room = self::read($code);
+        if (!$room) {
+            return ['ok' => false, 'error' => 'Room not found or expired', 'closed' => true];
+        }
+        $peerId = self::str($payload['peerId'] ?? ($_GET['peerId'] ?? ''), 64);
+        $after = (int) ($payload['after'] ?? ($_GET['after'] ?? 0));
+        $chat = self::readChat($code);
+        $messages = [];
+        foreach ($chat['messages'] as $m) {
+            if ((int) ($m['id'] ?? 0) > $after) {
+                $messages[] = $m;
+            }
+        }
+        return [
+            'ok' => true,
+            'closed' => false,
+            'chatWritable' => (bool) ($room['chatWritable'] ?? true),
+            'banned' => $peerId !== '' && self::isBanned($room, $peerId),
+            'isHost' => $peerId !== '' && $peerId === ($room['hostId'] ?? ''),
+            'messages' => $messages,
+            'seq' => (int) ($chat['seq'] ?? 0),
+        ];
+    }
+
+    public static function chatPost(string $code, array $payload): array
+    {
+        $room = self::read($code);
+        if (!$room) {
+            return ['ok' => false, 'error' => 'Room not found or expired', 'closed' => true];
+        }
+        $peerId = self::str($payload['peerId'] ?? '', 64);
+        if ($peerId === '') {
+            return ['ok' => false, 'error' => 'Missing peer'];
+        }
+        if (self::isBanned($room, $peerId)) {
+            return ['ok' => false, 'error' => 'You are banned from chat', 'banned' => true];
+        }
+        $isHost = $peerId === ($room['hostId'] ?? '');
+        if (!$isHost && empty($room['chatWritable'])) {
+            return ['ok' => false, 'error' => 'Host muted the chat'];
+        }
+        $text = self::str($payload['text'] ?? '', self::MAX_MSG);
+        if ($text === '') {
+            return ['ok' => false, 'error' => 'Empty message'];
+        }
+        $name = self::str($payload['name'] ?? '', 20) ?: ('Guest ' . substr($peerId, -4));
+        $names = is_array($room['names'] ?? null) ? $room['names'] : [];
+        $names[$peerId] = $name;
+        $room['names'] = $names;
+        // Don't bump updatedAt on chat alone — host idle timer should track playback presence
+        self::write($code, $room);
+
+        $chat = self::readChat($code);
+        $seq = (int) ($chat['seq'] ?? 0) + 1;
+        $msg = [
+            'id' => $seq,
+            'peerId' => $peerId,
+            'name' => $name,
+            'text' => $text,
+            'ts' => time(),
+            'role' => $isHost ? 'host' : 'guest',
+        ];
+        $messages = is_array($chat['messages'] ?? null) ? $chat['messages'] : [];
+        $messages[] = $msg;
+        if (count($messages) > self::MAX_CHAT) {
+            $messages = array_values(array_slice($messages, -self::MAX_CHAT));
+        }
+        self::writeChat($code, ['seq' => $seq, 'messages' => $messages]);
+        return ['ok' => true, 'message' => $msg, 'chatWritable' => (bool) ($room['chatWritable'] ?? true)];
+    }
+
+    public static function chatLock(string $code, array $payload): array
+    {
+        $room = self::read($code);
+        if (!$room) {
+            return ['ok' => false, 'error' => 'Room not found or expired'];
+        }
+        $hostId = self::str($payload['hostId'] ?? '', 64);
+        if ($hostId === '' || $hostId !== ($room['hostId'] ?? '')) {
+            return ['ok' => false, 'error' => 'Only the host can change chat lock'];
+        }
+        $room['chatWritable'] = !empty($payload['chatWritable']);
+        self::write($code, $room);
+        // system line
+        $chat = self::readChat($code);
+        $seq = (int) ($chat['seq'] ?? 0) + 1;
+        $messages = is_array($chat['messages'] ?? null) ? $chat['messages'] : [];
+        $messages[] = [
+            'id' => $seq,
+            'peerId' => 'system',
+            'name' => 'System',
+            'text' => $room['chatWritable'] ? 'Host opened chat for everyone.' : 'Host muted guest chat.',
+            'ts' => time(),
+            'role' => 'system',
+        ];
+        if (count($messages) > self::MAX_CHAT) {
+            $messages = array_values(array_slice($messages, -self::MAX_CHAT));
+        }
+        self::writeChat($code, ['seq' => $seq, 'messages' => $messages]);
+        return ['ok' => true, 'chatWritable' => (bool) $room['chatWritable']];
+    }
+
+    public static function chatBan(string $code, array $payload): array
+    {
+        $room = self::read($code);
+        if (!$room) {
+            return ['ok' => false, 'error' => 'Room not found or expired'];
+        }
+        $hostId = self::str($payload['hostId'] ?? '', 64);
+        if ($hostId === '' || $hostId !== ($room['hostId'] ?? '')) {
+            return ['ok' => false, 'error' => 'Only the host can ban'];
+        }
+        $peerId = self::str($payload['peerId'] ?? '', 64);
+        if ($peerId === '' || $peerId === $hostId) {
+            return ['ok' => false, 'error' => 'Invalid peer'];
+        }
+        $banned = is_array($room['banned'] ?? null) ? $room['banned'] : [];
+        if (!in_array($peerId, $banned, true)) {
+            $banned[] = $peerId;
+        }
+        $room['banned'] = array_values($banned);
+        $name = self::str(
+            $payload['name'] ?? (($room['names'][$peerId] ?? null) ?: ('Guest ' . substr($peerId, -4))),
+            20
+        );
+        self::write($code, $room);
+
+        $chat = self::readChat($code);
+        $seq = (int) ($chat['seq'] ?? 0) + 1;
+        $messages = is_array($chat['messages'] ?? null) ? $chat['messages'] : [];
+        $messages[] = [
+            'id' => $seq,
+            'peerId' => 'system',
+            'name' => 'System',
+            'text' => $name . ' was banned from chat.',
+            'ts' => time(),
+            'role' => 'system',
+        ];
+        if (count($messages) > self::MAX_CHAT) {
+            $messages = array_values(array_slice($messages, -self::MAX_CHAT));
+        }
+        self::writeChat($code, ['seq' => $seq, 'messages' => $messages]);
+        return ['ok' => true, 'banned' => true];
     }
 
     /** @param array<string,mixed> $content */
@@ -110,8 +276,16 @@ final class WatchParty
             'duration' => (float) ($room['duration'] ?? 0),
             'updatedAt' => (int) ($room['updatedAt'] ?? 0),
             'peers' => (int) ($room['peers'] ?? 1),
+            'chatWritable' => (bool) ($room['chatWritable'] ?? true),
             'content' => is_array($room['content'] ?? null) ? $room['content'] : [],
         ];
+    }
+
+    /** @param array<string,mixed> $room */
+    private static function isBanned(array $room, string $peerId): bool
+    {
+        $banned = is_array($room['banned'] ?? null) ? $room['banned'] : [];
+        return $peerId !== '' && in_array($peerId, $banned, true);
     }
 
     private static function dir(): string
@@ -126,6 +300,11 @@ final class WatchParty
     private static function path(string $code): string
     {
         return self::dir() . '/' . preg_replace('/[^A-Z0-9]/', '', strtoupper($code)) . '.json';
+    }
+
+    private static function chatPath(string $code): string
+    {
+        return self::dir() . '/' . preg_replace('/[^A-Z0-9]/', '', strtoupper($code)) . '.chat.json';
     }
 
     private static function read(string $code): ?array
@@ -149,13 +328,18 @@ final class WatchParty
         $updated = (int) ($data['updatedAt'] ?? 0);
         $age = $updated > 0 ? (time() - $updated) : 0;
         if ($updated > 0 && $age > self::TTL_SEC) {
-            @unlink($path);
+            self::destroy($code);
             return null;
         }
-        // Host stopped reporting (left the player) — end for everyone after idle window
         if ($updated > 0 && $age > self::HOST_IDLE_CLOSE_SEC) {
-            @unlink($path);
+            self::destroy($code);
             return null;
+        }
+        if (!isset($data['chatWritable'])) {
+            $data['chatWritable'] = true;
+        }
+        if (!isset($data['banned']) || !is_array($data['banned'])) {
+            $data['banned'] = [];
         }
         return $data;
     }
@@ -177,8 +361,44 @@ final class WatchParty
             return;
         }
         @chmod($path, 0664);
-        // opportunistic cleanup of a few expired rooms
         self::gc();
+    }
+
+    /** @return array{seq:int,messages:list<array<string,mixed>>} */
+    private static function readChat(string $code): array
+    {
+        $path = self::chatPath($code);
+        if (!is_file($path)) {
+            return ['seq' => 0, 'messages' => []];
+        }
+        $raw = @file_get_contents($path);
+        $data = is_string($raw) && $raw !== '' ? json_decode($raw, true) : null;
+        if (!is_array($data)) {
+            return ['seq' => 0, 'messages' => []];
+        }
+        return [
+            'seq' => (int) ($data['seq'] ?? 0),
+            'messages' => is_array($data['messages'] ?? null) ? $data['messages'] : [],
+        ];
+    }
+
+    /** @param array{seq:int,messages:list<array<string,mixed>>} $chat */
+    private static function writeChat(string $code, array $chat): void
+    {
+        $path = self::chatPath($code);
+        $json = json_encode($chat, JSON_UNESCAPED_SLASHES);
+        if ($json === false) {
+            return;
+        }
+        $tmp = $path . '.tmp';
+        if (@file_put_contents($tmp, $json, LOCK_EX) === false) {
+            return;
+        }
+        if (!@rename($tmp, $path)) {
+            @unlink($tmp);
+            return;
+        }
+        @chmod($path, 0664);
     }
 
     private static function gc(): void
@@ -188,9 +408,14 @@ final class WatchParty
         }
         $dir = self::dir();
         foreach (glob($dir . '/*.json') ?: [] as $file) {
+            if (str_ends_with($file, '.chat.json')) {
+                continue;
+            }
             $mtime = @filemtime($file) ?: 0;
             if ($mtime && (time() - $mtime) > self::TTL_SEC) {
+                $base = basename($file, '.json');
                 @unlink($file);
+                @unlink($dir . '/' . $base . '.chat.json');
             }
         }
     }
@@ -220,7 +445,6 @@ final class WatchParty
         return $s;
     }
 
-
     /** Host ends the party for everyone. */
     public static function close(string $code, array $payload = []): array
     {
@@ -236,10 +460,6 @@ final class WatchParty
         return ['ok' => true, 'closed' => true];
     }
 
-    /**
-     * Guest leaves, or host leave closes the room.
-     * @return array{ok:bool,closed?:bool,left?:bool,error?:string}
-     */
     public static function leave(string $code, array $payload = []): array
     {
         $room = self::read($code);
@@ -263,8 +483,12 @@ final class WatchParty
     private static function destroy(string $code): void
     {
         $path = self::path($code);
+        $chat = self::chatPath($code);
         if (is_file($path)) {
             @unlink($path);
+        }
+        if (is_file($chat)) {
+            @unlink($chat);
         }
     }
 

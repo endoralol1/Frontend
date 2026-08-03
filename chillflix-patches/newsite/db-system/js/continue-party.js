@@ -829,12 +829,314 @@
     endHostingFromBar();
   });
 
+
+  /* ——— Party chat (below video) ——— */
+  var chatTimer = null;
+  var chatAfter = 0;
+  var chatState = { code: "", role: "guest", writable: true, banned: false };
+
+  function partyChatApi() {
+    return ((window.APP && APP.partyApi) || ((window.APP && APP.baseUrl) || "") + "/api/party").replace(/\/$/, "");
+  }
+
+  function partyFromLocation() {
+    try {
+      var p = new URLSearchParams(location.search);
+      var code = String(p.get("party") || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      if (!code) return null;
+      return { code: code, role: p.get("host") === "1" ? "host" : "guest" };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function chatPeerId() {
+    try {
+      var id = sessionStorage.getItem("cf_party_peer");
+      if (!id) {
+        id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        sessionStorage.setItem("cf_party_peer", id);
+      }
+      return id;
+    } catch (e) {
+      return "anon";
+    }
+  }
+
+  function chatHostId(code) {
+    try {
+      return sessionStorage.getItem("cf_party_host_" + code) || "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function chatNameGet() {
+    try {
+      return sessionStorage.getItem("cf_party_chat_name") || "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function chatNameSet(name) {
+    try {
+      sessionStorage.setItem("cf_party_chat_name", name);
+    } catch (e) {}
+  }
+
+  function escChat(s) {
+    return $("<div/>").text(s == null ? "" : String(s)).html();
+  }
+
+  function stopPartyChat(hide) {
+    if (chatTimer) {
+      clearInterval(chatTimer);
+      chatTimer = null;
+    }
+    chatAfter = 0;
+    if (hide) {
+      $("#cf-party-chat").attr("hidden", true);
+      $("#cf-party-chat-log").empty();
+    }
+  }
+
+  function renderChatMessage(m, isHostView) {
+    if (!m) return "";
+    if (m.role === "system") {
+      return '<div class="cf-party-chat-msg is-system">' + escChat(m.text) + "</div>";
+    }
+    var ban =
+      isHostView && m.role !== "host" && m.peerId
+        ? '<button type="button" class="cf-party-chat-ban" data-ban-peer="' +
+          escChat(m.peerId) +
+          '" data-ban-name="' +
+          escChat(m.name || "") +
+          '">Ban</button>'
+        : "";
+    return (
+      '<div class="cf-party-chat-msg' +
+      (m.role === "host" ? " is-host" : "") +
+      '" data-peer="' +
+      escChat(m.peerId || "") +
+      '">' +
+      '<div class="cf-party-chat-msg-meta"><span class="cf-party-chat-msg-name">' +
+      escChat(m.name || "Guest") +
+      (m.role === "host" ? " · Host" : "") +
+      "</span></div>" +
+      '<div class="cf-party-chat-msg-text">' +
+      escChat(m.text || "") +
+      "</div>" +
+      ban +
+      "</div>"
+    );
+  }
+
+  function syncChatForm() {
+    var $form = $("#cf-party-chat-form");
+    var $note = $("#cf-party-chat-note");
+    var $lock = $("#cf-party-chat-lock");
+    if (!$form.length) return;
+    if (chatState.banned) {
+      $form.addClass("is-disabled");
+      $note.text("You were banned from this chat.").prop("hidden", false);
+      return;
+    }
+    $note.prop("hidden", true).text("");
+    var muted = chatState.role !== "host" && !chatState.writable;
+    $form.toggleClass("is-disabled", muted);
+    if (muted) {
+      $note.text("Host muted guest chat.").prop("hidden", false);
+    }
+    if (chatState.role === "host") {
+      $(".cf-party-chat-host").prop("hidden", false);
+      $lock.attr("aria-pressed", chatState.writable ? "false" : "true");
+      $lock.text(chatState.writable ? "Mute guests" : "Allow chat");
+    } else {
+      $(".cf-party-chat-host").prop("hidden", true);
+    }
+  }
+
+  function appendChatMessages(rows) {
+    var $log = $("#cf-party-chat-log");
+    if (!$log.length) return;
+    $log.find(".cf-party-chat-empty").remove();
+    var isHostView = chatState.role === "host";
+    var html = rows.map(function (m) { return renderChatMessage(m, isHostView); }).join("");
+    if (html) {
+      $log.append(html);
+      $log.scrollTop($log[0].scrollHeight);
+    }
+    if (!$log.children().length) {
+      $log.html('<div class="cf-party-chat-empty">No messages yet — say hi.</div>');
+    }
+  }
+
+  function chatActorId() {
+    if (chatState.role === "host") {
+      return chatHostId(chatState.code) || chatPeerId();
+    }
+    return chatPeerId();
+  }
+
+  function pollPartyChat() {
+    if (!chatState.code) return;
+    var url =
+      partyChatApi() +
+      "/" +
+      encodeURIComponent(chatState.code) +
+      "/chat?after=" +
+      encodeURIComponent(String(chatAfter)) +
+      "&peerId=" +
+      encodeURIComponent(chatActorId());
+    $.getJSON(url)
+      .done(function (data) {
+        if (!data || data.ok === false || data.closed) {
+          stopPartyChat(true);
+          return;
+        }
+        chatState.writable = !!data.chatWritable;
+        chatState.banned = !!data.banned;
+        if (data.messages && data.messages.length) {
+          data.messages.forEach(function (m) {
+            if (m && m.id > chatAfter) chatAfter = m.id;
+          });
+          appendChatMessages(data.messages);
+        } else if (!$("#cf-party-chat-log").children().length) {
+          appendChatMessages([]);
+        }
+        syncChatForm();
+      })
+      .fail(function () {});
+  }
+
+  function bootPartyChat() {
+    var info = partyFromLocation();
+    var $box = $("#cf-party-chat");
+    if (!$box.length) {
+      stopPartyChat(true);
+      return;
+    }
+    if (!info) {
+      stopPartyChat(true);
+      return;
+    }
+    var same = chatState.code === info.code && chatTimer;
+    chatState.code = info.code;
+    chatState.role = info.role;
+    $box.removeAttr("hidden");
+    $box.find(".cf-party-chat-code").text(info.code);
+    var saved = chatNameGet();
+    if (saved) $("#cf-party-chat-name").val(saved);
+    else if (!$("#cf-party-chat-name").val()) {
+      $("#cf-party-chat-name").val("Guest " + chatPeerId().slice(-4));
+    }
+    syncChatForm();
+    if (!same) {
+      chatAfter = 0;
+      $("#cf-party-chat-log").empty();
+      if (chatTimer) clearInterval(chatTimer);
+      pollPartyChat();
+      chatTimer = setInterval(pollPartyChat, 1800);
+    }
+  }
+
+  $(document).on("submit", "#cf-party-chat-form", function (e) {
+    e.preventDefault();
+    if (!chatState.code || chatState.banned) return;
+    if (chatState.role !== "host" && !chatState.writable) return;
+    var name = $.trim($("#cf-party-chat-name").val() || "");
+    var text = $.trim($("#cf-party-chat-input").val() || "");
+    if (!text) return;
+    if (name) chatNameSet(name);
+    $("#cf-party-chat-input").val("");
+    $.ajax({
+      url: partyChatApi() + "/" + encodeURIComponent(chatState.code) + "/chat",
+      method: "POST",
+      contentType: "application/json",
+      dataType: "json",
+      data: JSON.stringify({
+        peerId: chatActorId(),
+        hostId: chatState.role === "host" ? chatActorId() : undefined,
+        name: name || undefined,
+        text: text,
+      }),
+    })
+      .done(function (data) {
+        if (data && data.message) {
+          if (data.message.id > chatAfter) chatAfter = data.message.id;
+          appendChatMessages([data.message]);
+        }
+        if (data && typeof data.chatWritable === "boolean") {
+          chatState.writable = data.chatWritable;
+          syncChatForm();
+        }
+        if (data && data.banned) {
+          chatState.banned = true;
+          syncChatForm();
+        }
+      })
+      .fail(function (xhr) {
+        var msg = (xhr.responseJSON && xhr.responseJSON.error) || "Could not send";
+        $("#cf-party-chat-note").text(msg).prop("hidden", false);
+        if (xhr.responseJSON && xhr.responseJSON.banned) {
+          chatState.banned = true;
+          syncChatForm();
+        }
+      });
+  });
+
+  $(document).on("click", "#cf-party-chat-lock", function () {
+    if (chatState.role !== "host" || !chatState.code) return;
+    var next = $(this).attr("aria-pressed") === "true"; // currently muted -> allow
+    $.ajax({
+      url: partyChatApi() + "/" + encodeURIComponent(chatState.code) + "/chat/lock",
+      method: "POST",
+      contentType: "application/json",
+      dataType: "json",
+      data: JSON.stringify({
+        hostId: chatActorId(),
+        chatWritable: next,
+      }),
+    }).done(function (data) {
+      if (data && data.ok) {
+        chatState.writable = !!data.chatWritable;
+        syncChatForm();
+        pollPartyChat();
+      }
+    });
+  });
+
+  $(document).on("click", "[data-ban-peer]", function () {
+    if (chatState.role !== "host" || !chatState.code) return;
+    var peer = $(this).data("ban-peer");
+    var name = $(this).data("ban-name") || "";
+    if (!peer) return;
+    if (!window.confirm("Ban " + (name || "this user") + " from chat?")) return;
+    $.ajax({
+      url: partyChatApi() + "/" + encodeURIComponent(chatState.code) + "/chat/ban",
+      method: "POST",
+      contentType: "application/json",
+      dataType: "json",
+      data: JSON.stringify({
+        hostId: chatActorId(),
+        peerId: peer,
+        name: name,
+      }),
+    }).done(function () {
+      pollPartyChat();
+    });
+  });
+
   window.ChillflixParty = {
     open: openPartyPanel,
     close: closePartyPanel,
     paintResume: paintPartyResume,
     clearHosting: clearHostingResume,
+    bootChat: bootPartyChat,
+    stopChat: stopPartyChat,
   };
+
 
 
   function bootContinue() {
@@ -849,10 +1151,12 @@
   $(function () {
     bootContinue();
     paintPartyResume();
+    bootPartyChat();
     // Re-check shortly after load in case watch tab wrote storage just before nav
     setTimeout(bootContinue, 250);
     setTimeout(bootContinue, 1200);
     setTimeout(paintPartyResume, 300);
+    setTimeout(bootPartyChat, 400);
   });
   // Soft-nav / bfcache / tab focus — re-render when homepage content comes back
   window.addEventListener("pageshow", bootContinue);
@@ -870,8 +1174,10 @@
   window.addEventListener("cf:softnav", function () {
     bootContinue();
     paintPartyResume();
+    bootPartyChat();
     setTimeout(paintPartyResume, 50);
     setTimeout(paintPartyResume, 300);
     setTimeout(paintPartyResume, 1000);
+    setTimeout(bootPartyChat, 200);
   });
 })();

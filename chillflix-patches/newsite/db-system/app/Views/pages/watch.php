@@ -302,6 +302,25 @@ $starFill = $rating !== null ? min(5, max(0, (int) round($rating / 2))) : 0;
                             <div id="player-frame" class="d-none"></div>
                         </div>
                     </div>
+                    <div id="cf-party-chat" class="cf-party-chat" hidden>
+                        <div class="cf-party-chat-head">
+                            <div class="cf-party-chat-title">
+                                <span class="cf-party-chat-dot" aria-hidden="true"></span>
+                                <strong>Party chat</strong>
+                                <em class="cf-party-chat-code"></em>
+                            </div>
+                            <div class="cf-party-chat-host" hidden>
+                                <button type="button" class="cf-party-chat-lock" id="cf-party-chat-lock" aria-pressed="false">Mute guests</button>
+                            </div>
+                        </div>
+                        <div class="cf-party-chat-log" id="cf-party-chat-log" aria-live="polite"></div>
+                        <p class="cf-party-chat-note" id="cf-party-chat-note" hidden></p>
+                        <form class="cf-party-chat-form" id="cf-party-chat-form" autocomplete="off">
+                            <input type="text" id="cf-party-chat-name" class="cf-party-chat-name" maxlength="20" placeholder="Name" aria-label="Chat name">
+                            <input type="text" id="cf-party-chat-input" class="cf-party-chat-input" maxlength="200" placeholder="Say something…" aria-label="Chat message">
+                            <button type="submit" class="cf-party-chat-send" id="cf-party-chat-send">Send</button>
+                        </form>
+                    </div>
                     <div id="movie-managers">
                         <div class="movie-managers-wrap">
                             <?php if (!empty($trailer)): ?>

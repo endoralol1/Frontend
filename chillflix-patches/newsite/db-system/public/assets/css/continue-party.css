@@ -529,3 +529,184 @@ body.cf-party-open { overflow: hidden; }
   color: #e8edf5;
   border: 1px solid rgba(255,255,255,.1);
 }
+
+
+/* ——— Watch Party chat (below video) ——— */
+.cf-party-chat[hidden] { display: none !important; }
+.cf-party-chat {
+  margin: 0.65rem 0 0.15rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255,255,255,.1);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.05), transparent 40%),
+    rgba(12, 14, 20, .88);
+  overflow: hidden;
+}
+.cf-party-chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .6rem;
+  padding: .55rem .7rem;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.22);
+}
+.cf-party-chat-title {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-width: 0;
+  color: #eef1f6;
+  font-size: .86rem;
+}
+.cf-party-chat-title strong { font-weight: 750; }
+.cf-party-chat-code {
+  font-style: normal;
+  color: #ff8b76;
+  font-weight: 800;
+  letter-spacing: .08em;
+  font-size: .72rem;
+}
+.cf-party-chat-dot {
+  width: .42rem;
+  height: .42rem;
+  border-radius: 50%;
+  background: #ff3b30;
+  box-shadow: 0 0 0 0 rgba(255,59,48,.4);
+  animation: cfPartyPulse 1.7s ease-out infinite;
+}
+.cf-party-chat-host { flex: 0 0 auto; }
+.cf-party-chat-lock {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: #e8edf5;
+  border-radius: .5rem;
+  padding: .35rem .55rem;
+  font-size: .7rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.cf-party-chat-lock[aria-pressed="true"] {
+  background: rgba(220,53,69,.22);
+  border-color: rgba(220,53,69,.45);
+  color: #ffc3c9;
+}
+.cf-party-chat-log {
+  height: min(38vh, 14.5rem);
+  overflow: auto;
+  padding: .55rem .65rem;
+  display: flex;
+  flex-direction: column;
+  gap: .4rem;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.cf-party-chat-empty {
+  margin: auto;
+  color: #8b93a3;
+  font-size: .82rem;
+  text-align: center;
+  padding: 1rem .5rem;
+}
+.cf-party-chat-msg {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .2rem .45rem;
+  align-items: start;
+  padding: .35rem .45rem;
+  border-radius: .55rem;
+  background: rgba(255,255,255,.03);
+}
+.cf-party-chat-msg.is-host { background: rgba(220,53,69,.10); }
+.cf-party-chat-msg.is-system {
+  background: transparent;
+  color: #8b93a3;
+  font-size: .78rem;
+  text-align: center;
+  display: block;
+}
+.cf-party-chat-msg-meta {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: .35rem;
+  min-width: 0;
+}
+.cf-party-chat-msg-name {
+  font-size: .72rem;
+  font-weight: 750;
+  color: #ffb3bb;
+}
+.cf-party-chat-msg.is-host .cf-party-chat-msg-name { color: #ff8b76; }
+.cf-party-chat-msg-text {
+  grid-column: 1 / 2;
+  color: #eef1f6;
+  font-size: .86rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.cf-party-chat-ban {
+  appearance: none;
+  border: 0;
+  background: rgba(255,255,255,.06);
+  color: #ffb3bb;
+  border-radius: .4rem;
+  padding: .2rem .4rem;
+  font-size: .65rem;
+  font-weight: 750;
+  cursor: pointer;
+  grid-column: 2;
+  grid-row: 2;
+}
+.cf-party-chat-note {
+  margin: 0;
+  padding: .35rem .7rem 0;
+  color: #ff8b96;
+  font-size: .78rem;
+}
+.cf-party-chat-form {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr auto;
+  gap: .4rem;
+  padding: .55rem .65rem .65rem;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.cf-party-chat-name,
+.cf-party-chat-input {
+  width: 100%;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(0,0,0,.28);
+  color: #fff;
+  border-radius: .55rem;
+  padding: .55rem .6rem;
+  font: inherit;
+  font-size: .86rem;
+  outline: none;
+}
+.cf-party-chat-input:focus,
+.cf-party-chat-name:focus {
+  border-color: rgba(239, 91, 69, .55);
+}
+.cf-party-chat-send {
+  appearance: none;
+  border: 0;
+  border-radius: .55rem;
+  padding: .55rem .8rem;
+  background: linear-gradient(180deg, #ef5b45, #c43c2e);
+  color: #fff;
+  font-weight: 750;
+  font-size: .82rem;
+  cursor: pointer;
+}
+.cf-party-chat-form.is-disabled .cf-party-chat-input,
+.cf-party-chat-form.is-disabled .cf-party-chat-send {
+  opacity: .45;
+  pointer-events: none;
+}
+@media (max-width: 520px) {
+  .cf-party-chat-form {
+    grid-template-columns: 1fr auto;
+  }
+  .cf-party-chat-name { grid-column: 1 / -1; }
+}
