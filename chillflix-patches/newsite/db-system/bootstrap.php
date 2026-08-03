@@ -24,6 +24,9 @@ require_once __DIR__ . '/helpers.php';
         // Player source APIs stay on Chillflix infra (proxies/player backend).
         'player_main_api' => 'https://www.chillflix.lol',
         'logo_asset' => 'img/logo-vuflix.webp',
+        // Cloudflare Turnstile (vuflix.co widget)
+        'turnstile_site_key' => '0x4AAAAAAEFQht9IWsnJ1Be9',
+        'turnstile_secret_key' => '0x4AAAAAAEFQhtSaJ-ba1P3rx2GRpPwgdsU',
     ];
 })();
 
