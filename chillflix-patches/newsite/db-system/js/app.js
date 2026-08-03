@@ -1617,7 +1617,8 @@
       // Watch pages excluded — soft-nav only swaps .wrapper and never loads player boot
       if (isWatchMediaUrl(href)) return false;
       // Stay inside newsite app routes only (includes /live — instant soft swap)
-      return /\/(home|movies|tv-series|anime|search|favorites|top-imdb|filters|contact|request|live)(\/|$|\?)/.test(path)
+      return /\/(home|movies|tv-series|anime|search|favorites|top-imdb|filters|contact|request|live|person)(\/|$|\?)/.test(path)
+        || /\/person\//.test(path)
         || /\/newsite\/?$/.test(path)
         || path.endsWith('/newsite')
         || path.endsWith('/newsite/');
