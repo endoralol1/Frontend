@@ -1,0 +1,412 @@
+/* Continue Watching + Watch Party */
+#continue-watching[hidden],
+#continue-watching.d-none { display: none !important; }
+#continue-watching:not([hidden]) {
+  display: block !important;
+  margin-top: 0.25rem;
+}
+
+/* Smaller Latest-Episodes-style resume cards */
+#continue-watching .media-rail-items.cw-track {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  padding: 0.15rem 0 0.35rem !important;
+  margin: 0 -0.25rem !important;
+}
+#continue-watching .media-rail-items.cw-track::after {
+  content: none !important;
+  display: none !important;
+}
+
+#continue-watching .cw-ep.episode-card {
+  /* Bigger than Latest Episodes */
+  flex: 0 0 20.5rem;
+  width: 20.5rem;
+  min-width: 20.5rem;
+  max-width: 86vw;
+  margin: 0 0.45rem;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #1a1c23;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+@media (min-width: 992px) {
+  #continue-watching .cw-ep.episode-card {
+    flex-basis: 26rem;
+    width: 26rem;
+    min-width: 26rem;
+  }
+}
+
+#continue-watching .cw-ep .episode-card-media {
+  aspect-ratio: 16 / 9;
+}
+#continue-watching .cw-ep .episode-card-badge {
+  left: 0.7rem;
+  top: 0.7rem;
+  padding: 0.3rem 0.58rem;
+  font-size: 0.68rem;
+}
+#continue-watching .cw-ep .episode-card-meta {
+  padding: 0.85rem 0.85rem 0.9rem;
+}
+#continue-watching .cw-ep .episode-card-show {
+  font-size: 0.95rem;
+}
+#continue-watching .cw-ep .episode-card-ep {
+  font-size: 0.78rem;
+}
+
+/* Centered watched % */
+#continue-watching .cw-ep-pct {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+  min-width: 2.85rem;
+  height: 2.85rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.86rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #fff;
+  background: rgba(10, 12, 18, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+/* Progress line below the image */
+#continue-watching .cw-ep-line {
+  display: block;
+  height: 3px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.12);
+}
+#continue-watching .cw-ep-line i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #db6937 0%, #c43c2e 100%);
+}
+
+.cf-party-panel[hidden] { display: none !important; }
+.cf-party-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+}
+.cf-party-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 8, 12, .72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.cf-party-sheet {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(28rem, calc(100% - 1.25rem)) !important;
+  max-height: min(86vh, 40rem);
+  overflow: auto;
+  background: linear-gradient(180deg, #1c202a 0%, #141820 100%);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 1rem;
+  box-shadow: 0 20px 50px rgba(0,0,0,.5);
+  /* No sheet padding — header bar stays full-width inside the modal */
+  padding: 0 !important;
+  color: #eef1f6;
+  box-sizing: border-box;
+}
+/* Inner header background (the 2nd edge). Keep bar full width; pad content inside it. */
+.cf-party-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  width: 100%;
+  box-sizing: border-box;
+  background: #161a23;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  border-radius: 1rem 1rem 0 0;
+  /* THIS is the spacing from the inner header edges */
+  padding: 16px 18px;
+}
+.cf-party-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 0;
+  margin: 0;
+}
+.cf-party-body {
+  padding: 16px 18px 20px;
+  box-sizing: border-box;
+}
+.cf-party-kicker {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  font-size: .68rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: #ff8b76;
+  font-weight: 800;
+}
+.cf-party-dot {
+  width: .45rem;
+  height: .45rem;
+  border-radius: 50%;
+  background: #ff3b30;
+  box-shadow: 0 0 0 0 rgba(255, 59, 48, .45);
+  animation: cfPartyPulse 1.7s ease-out infinite;
+}
+@keyframes cfPartyPulse {
+  70% { box-shadow: 0 0 0 .45rem rgba(255, 59, 48, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+}
+.cf-party-head h3 {
+  margin: .28rem 0 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  line-height: 1.15;
+}
+.cf-party-x {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.04);
+  color: #d7dce6;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: .55rem;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+.cf-party-x:hover {
+  background: rgba(255,255,255,.1);
+  color: #fff;
+  border-color: rgba(255,255,255,.16);
+}
+.cf-party-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .3rem;
+  margin-bottom: .95rem;
+  padding: .25rem;
+  border-radius: .75rem;
+  background: rgba(0,0,0,.28);
+  border: 1px solid rgba(255,255,255,.06);
+}
+.cf-party-tabs button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #9aa3b2;
+  border-radius: .55rem;
+  padding: .55rem .5rem;
+  font-weight: 750;
+  font-size: .92rem;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.cf-party-tabs button:hover { color: #e8edf5; }
+.cf-party-tabs button.is-active {
+  background: linear-gradient(180deg, rgba(239, 91, 69, .95), rgba(196, 60, 46, .95));
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(196, 60, 46, .28);
+}
+.cf-party-pane { display: none; }
+.cf-party-pane.is-active { display: block; }
+.cf-party-hint {
+  margin: 0 0 .85rem;
+  color: #9aa3b2;
+  font-size: .88rem;
+  line-height: 1.45;
+}
+.cf-party-label {
+  display: block;
+  font-size: .7rem;
+  font-weight: 750;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: #8b93a3;
+  margin-bottom: .4rem;
+}
+.cf-party-input {
+  width: 100%;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(0,0,0,.28);
+  color: #fff;
+  border-radius: .7rem;
+  padding: .72rem .85rem;
+  margin-bottom: .8rem;
+  font: inherit;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.cf-party-input::placeholder { color: #6f7888; }
+.cf-party-input:focus {
+  border-color: rgba(239, 91, 69, .55);
+  box-shadow: 0 0 0 3px rgba(239, 91, 69, .14);
+}
+.cf-party-results {
+  display: grid;
+  gap: .4rem;
+  max-height: 16rem;
+  overflow: auto;
+}
+.cf-party-result {
+  display: grid;
+  grid-template-columns: 2.4rem 1fr;
+  gap: .65rem;
+  align-items: center;
+  text-align: left;
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.06);
+  background: rgba(255,255,255,.03);
+  color: inherit;
+  border-radius: .7rem;
+  padding: .4rem;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+.cf-party-result:hover {
+  background: rgba(255,255,255,.06);
+  border-color: rgba(239, 91, 69, .35);
+}
+.cf-party-result img,
+.cf-party-ph {
+  width: 2.4rem;
+  height: 3.4rem;
+  object-fit: cover;
+  border-radius: .4rem;
+  background: #242832;
+}
+.cf-party-result strong {
+  display: block;
+  font-size: .9rem;
+  font-weight: 700;
+}
+.cf-party-result em {
+  display: block;
+  font-style: normal;
+  color: #8b93a3;
+  font-size: .75rem;
+  margin-top: .15rem;
+}
+.cf-party-empty {
+  padding: .9rem;
+  text-align: center;
+  color: #8b93a3;
+  font-size: .88rem;
+}
+.cf-party-btn {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  border-radius: .7rem;
+  padding: .72rem .95rem;
+  font-weight: 750;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  transition: filter .15s ease, transform .15s ease;
+}
+.cf-party-btn:hover { filter: brightness(1.06); }
+.cf-party-btn.is-primary {
+  background: linear-gradient(180deg, #ef5b45, #c43c2e);
+  border-color: transparent;
+}
+.cf-party-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .5rem;
+  margin-top: .75rem;
+}
+.cf-party-code-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: .65rem;
+  padding: .9rem 1rem;
+  border-radius: .8rem;
+  background: rgba(220,53,69,.12);
+  border: 1px solid rgba(220,53,69,.35);
+  margin-bottom: .55rem;
+}
+.cf-party-code-wrap span {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: #ffb3bb;
+  font-weight: 750;
+}
+.cf-party-code-wrap strong {
+  font-size: 1.55rem;
+  letter-spacing: .16em;
+}
+.cf-party-err {
+  color: #ff8b96;
+  font-size: .85rem;
+  margin-top: .5rem;
+}
+body.cf-party-open { overflow: hidden; }
+
+#browse-sheet .browse-tile[data-browse-mock="watch-party"] .browse-tile-badge,
+#browse-sheet .browse-tile[data-browse-open="watch-party"] .browse-tile-badge {
+  background: rgba(220,53,69,.25);
+  color: #ffc3c9;
+}
+
+
+/* ui101-cw-multi: keep rail scrollable and peek the next card */
+#continue-watching .media-rail-items.cw-track {
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  scroll-snap-type: x proximity;
+  padding-right: 1.25rem !important;
+}
+#continue-watching .cw-ep.episode-card {
+  scroll-snap-align: start;
+}
+@media (max-width: 991.98px) {
+  #continue-watching .cw-ep.episode-card {
+    flex: 0 0 min(18.5rem, 72vw);
+    width: min(18.5rem, 72vw);
+    min-width: min(18.5rem, 72vw);
+    max-width: 72vw;
+  }
+}
+
+.cf-party-turnstile {
+  display: flex;
+  justify-content: center;
+  margin: 0.75rem 0 0.35rem;
+  min-height: 0.25rem;
+}
+.cf-party-turnstile iframe {
+  max-width: 100%;
+}

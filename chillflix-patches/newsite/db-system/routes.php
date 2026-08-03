@@ -844,6 +844,9 @@ $router->get('/api/admin/stats', function () {
 
 $router->map(['POST'], '/api/party', function () {
     $body = WatchParty::readJsonBody();
+    if (!empty(config('turnstile_secret_key')) && !Auth::verifyTurnstile($body['turnstileToken'] ?? null)) {
+        json_response(['ok' => false, 'error' => 'Captcha verification failed.'], 400);
+    }
     json_response(WatchParty::create($body), 200);
 });
 $router->get('/api/party/{code}', function (array $p) {
@@ -855,6 +858,9 @@ $router->map(['POST'], '/api/party/{code}', function (array $p) {
 });
 $router->map(['POST'], '/api/party/{code}/join', function (array $p) {
     $body = WatchParty::readJsonBody();
+    if (!empty(config('turnstile_secret_key')) && !Auth::verifyTurnstile($body['turnstileToken'] ?? null)) {
+        json_response(['ok' => false, 'error' => 'Captcha verification failed.'], 400);
+    }
     json_response(WatchParty::join((string) $p['code'], $body));
 });
 
