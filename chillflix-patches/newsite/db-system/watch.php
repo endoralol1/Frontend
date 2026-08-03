@@ -288,8 +288,7 @@ $starFill = $rating !== null ? min(5, max(0, (int) round($rating / 2))) : 0;
         <div class="aside-wrapper swap">
             <aside class="main">
 <div id="movie-player" class="no-player playable" style="position:relative;">
-                    <div id="cf-party-chip-bar" class="cf-party-chip-bar" hidden></div>
-                    <div class="movie-player-wrap">
+<div class="movie-player-wrap">
                         <div class="player-bg" style="background-image:url('<?= e($backdrop) ?>');"></div>
                         <div id="player">
                             <div class="message d-none">

@@ -1333,13 +1333,15 @@
     function partyChipHost() {
       let host = document.getElementById("cf-party-chip-bar");
       if (host) return host;
-      const player = document.getElementById("movie-player");
-      if (!player || !player.parentNode) return null;
+      const end =
+        document.querySelector("header .wrapper .end") ||
+        document.querySelector("header .wrapper");
+      if (!end) return null;
       host = document.createElement("div");
       host.id = "cf-party-chip-bar";
       host.className = "cf-party-chip-bar";
       host.hidden = true;
-      player.insertAdjacentElement("afterbegin", host);
+      end.appendChild(host);
       return host;
     }
 
