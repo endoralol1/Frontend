@@ -7,7 +7,7 @@ root = Path("/var/www/chillflix-newsite")
 live_css = root / "public/assets/css/live.css"
 routes = root / "app/routes.php"
 live_php = root / "app/Views/pages/live.php"
-UI = "20260803-ui159"
+UI = "20260803-ui160"
 
 css = live_css.read_text()
 
@@ -34,11 +34,11 @@ new = """.live-p {
   --live-accent-2: #c43c2e;
   --live-gutter: 16px;
   /* Clear absolute site header (logo / EN / admin) */
-  padding: 3.55rem var(--live-gutter) 5.5rem;
+  padding: 3.85rem var(--live-gutter) 5.5rem;
   color: var(--live-text);
 }"""
 
-if "padding: 3.55rem var(--live-gutter)" in css:
+if "padding: 3.85rem var(--live-gutter)" in css:
     print("base clearance exists")
 elif old in css:
     css = css.replace(old, new, 1)
@@ -53,10 +53,10 @@ old_m = """  .live-p {
 
 new_m = """  .live-p {
     --live-gutter: 16px;
-    padding-top: 3.45rem;
+    padding-top: 3.75rem;
   }"""
 
-if "padding-top: 3.45rem" in css:
+if "padding-top: 3.75rem" in css:
     print("mobile clearance exists")
 elif old_m in css:
     css = css.replace(old_m, new_m, 1)
@@ -71,7 +71,7 @@ if marker not in css:
 {marker}
 @media (min-width: 992px) {{
   .live-p {{
-    padding-top: 3.9rem;
+    padding-top: 4.15rem;
   }}
 }}
 """
@@ -89,9 +89,9 @@ for p in (routes, live_php):
         print("bumped", p.name)
 
 c = live_css.read_text()
-assert "padding: 3.55rem" in c
-assert "padding-top: 3.45rem" in c
-assert "padding-top: 3.9rem" in c
+assert "padding: 3.85rem" in c
+assert "padding-top: 3.75rem" in c
+assert "padding-top: 4.15rem" in c
 assert re.search(
     r"@media \(max-width: 991\.98px\) \{\s*\.live-p \{[^}]+\}\s*\.live-hero",
     c,

@@ -9,7 +9,7 @@
   --live-accent-2: #c43c2e;
   --live-gutter: 16px;
   /* Clear absolute site header (logo / EN / admin) */
-  padding: 3.55rem var(--live-gutter) 5.5rem;
+  padding: 3.85rem var(--live-gutter) 5.5rem;
   color: var(--live-text);
 }
 .live-shell {
@@ -113,7 +113,7 @@
 @media (max-width: 991.98px) {
   .live-p {
     --live-gutter: 16px;
-    padding-top: 3.45rem;
+    padding-top: 3.75rem;
   }
   .live-hero {
     gap: 0.3rem;
@@ -434,6 +434,6 @@
 /* Clear absolute header on desktop Live TV */
 @media (min-width: 992px) {
   .live-p {
-    padding-top: 3.9rem;
+    padding-top: 4.15rem;
   }
 }
