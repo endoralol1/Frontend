@@ -29,7 +29,7 @@ $selectedNetworks = array_values(array_map('strval', (array) ($selectedNetworks 
 $excludedNetworks = array_values(array_map('strval', (array) ($excludedNetworks ?? ($_GET['without_networks'] ?? []))));
 $genreMode = '';
 $sortChosen = isset($_GET['sort_by']);
-$viewMode = 'list';
+$viewMode = 'grid';
 
 $countries = [
     'US' => 'United States', 'GB' => 'United Kingdom', 'CA' => 'Canada', 'AU' => 'Australia',

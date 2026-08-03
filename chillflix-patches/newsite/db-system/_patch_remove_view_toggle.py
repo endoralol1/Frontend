@@ -11,7 +11,7 @@ t = discover.read_text()
 
 t = t.replace(
     "$viewMode = (($_GET['view'] ?? 'grid') === 'list') ? 'list' : 'grid';",
-    "$viewMode = 'list';",
+    "$viewMode = 'grid';",
 )
 
 old_head_end = """                        <div class="end">
@@ -71,6 +71,6 @@ js.write_text(js_t.replace(js_old, "", 1))
 print("app.js: switcher handler removed")
 
 lt = layout.read_text()
-layout.write_text(re.sub(r"\?v=20260803-ui\d+", "?v=20260803-ui143", lt))
-print("layout ui143")
+layout.write_text(re.sub(r"\?v=20260803-ui\d+", "?v=20260803-ui144", lt))
+print("layout ui144")
 print("DONE")
