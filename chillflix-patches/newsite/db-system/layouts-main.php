@@ -5,7 +5,7 @@ $site = (string) config('site_name');
 $docTitle = $seo['title'] ?? $site;
 $desc = $seo['description'] ?? ($site . ' — ' . config('site_tagline'));
 $canonical = $seo['canonical'] ?? url(current_path());
-$image = $seo['image'] ?? asset('img/logo.webp');
+$image = $seo['image'] ?? logo_url();
 $robots = $seo['robots'] ?? 'index, follow';
 $ogType = $seo['type'] ?? 'website';
 $keywords = $seo['keywords'] ?? 'watch movies online, free movies, TV series, streaming, HD movies, ' . $site;
@@ -40,16 +40,16 @@ $extraJs = $extraJs ?? [];
     <meta name="twitter:description" content="<?= e($desc) ?>">
     <meta name="twitter:image" content="<?= e($image) ?>">
 
-    <link rel="icon" href="<?= e(asset('img/logo.webp')) ?>" type="image/webp">
-    <link rel="apple-touch-icon" href="<?= e(asset('img/logo.webp')) ?>">
+    <link rel="icon" href="<?= e(logo_url()) ?>" type="image/webp">
+    <link rel="apple-touch-icon" href="<?= e(logo_url()) ?>">
 
     <link rel="dns-prefetch" href="https://image.tmdb.org">
     <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
     <link rel="preconnect" href="https://image.tmdb.org" crossorigin>
-    <link rel="preload" href="<?= e(asset('img/logo.webp')) ?>" as="image" fetchpriority="high">
+    <link rel="preload" href="<?= e(logo_url()) ?>" as="image" fetchpriority="high">
 
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap">
-    <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=20260803-ui135" fetchpriority="high">
+    <link rel="stylesheet" href="<?= e(asset('css/style.css')) ?>?v=20260803-ui136" fetchpriority="high">
     <link rel="stylesheet" href="<?= e(asset('css/views.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/continue-watching.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/site-notice.css')) ?>">
@@ -57,7 +57,7 @@ $extraJs = $extraJs ?? [];
     <link rel="stylesheet" href="<?= e(asset('vendor/tooltipster.bundle.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/swiper.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/episode-carousel.css')) ?>">
-    <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=20260803-ui135">
+    <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>?v=20260803-ui136">
     <?php foreach ($extraCss as $css): ?>
         <link rel="stylesheet" href="<?= e($css) ?>">
     <?php endforeach; ?>
@@ -101,7 +101,7 @@ $extraJs = $extraJs ?? [];
                 '@type' => 'Organization',
                 'name' => $site,
                 'url' => base_url() . '/',
-                'logo' => asset('img/logo.webp'),
+                'logo' => logo_url(),
             ],
         ],
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) ?>
@@ -188,9 +188,9 @@ $extraJs = $extraJs ?? [];
 <script src="<?= e(asset('vendor/bootstrap.bundle.min.js')) ?>" defer></script>
 <script src="<?= e(asset('vendor/tooltipster.bundle.min.js')) ?>" defer></script>
 <script src="<?= e(asset('vendor/swiper.min.js')) ?>" defer></script>
-<link rel="stylesheet" href="<?= e(asset('css/continue-party.css')) ?>?v=20260803-ui135">
-<script src="<?= e(asset('js/continue-party.js')) ?>?v=20260803-ui135" defer></script>
-<script src="<?= e(asset('js/app.js')) ?>?v=20260803-ui135" defer></script>
+<link rel="stylesheet" href="<?= e(asset('css/continue-party.css')) ?>?v=20260803-ui136">
+<script src="<?= e(asset('js/continue-party.js')) ?>?v=20260803-ui136" defer></script>
+<script src="<?= e(asset('js/app.js')) ?>?v=20260803-ui136" defer></script>
 <?php foreach ($extraJs as $js): ?>
     <script src="<?= e($js) ?>" defer></script>
 <?php endforeach; ?>

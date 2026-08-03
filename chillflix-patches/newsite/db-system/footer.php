@@ -2,7 +2,7 @@
 <div class="container">
     <div class="footer footer--v3">
         <div class="footer-v3-brand">
-            <img src="<?= e(asset('img/logo.webp')) ?>?v=20260801-ui84" alt="<?= e($site) ?>" loading="lazy" width="280" height="150" decoding="async">
+            <img src="<?= e(logo_url()) ?>?v=20260803-vuflix1" alt="<?= e($site) ?>" loading="lazy" width="280" height="150" decoding="async">
         </div>
 
         <div class="footer-v3-panel">

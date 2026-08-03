@@ -50,6 +50,16 @@ function asset(string $path): string
     return base_url() . '/assets/' . ltrim($path, '/');
 }
 
+function logo_url(): string
+{
+    $path = (string) config('logo_asset', 'img/logo.webp');
+    if ($path === '') {
+        $path = 'img/logo.webp';
+    }
+    return asset($path);
+}
+
+
 function url(string $path = ''): string
 {
     $path = '/' . ltrim($path, '/');

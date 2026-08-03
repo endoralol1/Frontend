@@ -23,6 +23,7 @@ require_once __DIR__ . '/helpers.php';
         'main_origin' => $scheme . '://vuflix.co',
         // Player source APIs stay on Chillflix infra (proxies/player backend).
         'player_main_api' => 'https://www.chillflix.lol',
+        'logo_asset' => 'img/logo-vuflix.webp',
     ];
 })();
 
