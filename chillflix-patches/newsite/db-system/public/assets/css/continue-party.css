@@ -534,13 +534,47 @@ body.cf-party-open { overflow: hidden; }
 /* ——— Watch Party chat (below video) ——— */
 .cf-party-chat[hidden] { display: none !important; }
 .cf-party-chat {
-  margin: 0.65rem 0 0.15rem;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  margin: 0.75rem 0 0.35rem;
   border-radius: 0.9rem;
   border: 1px solid rgba(255,255,255,.1);
   background:
     linear-gradient(180deg, rgba(255,255,255,.05), transparent 40%),
     rgba(12, 14, 20, .88);
   overflow: hidden;
+}
+/* Phone: edge-to-edge under the player (cancel .container 15px gutters) */
+@media (max-width: 767.98px) {
+  .cf-party-chat {
+    width: calc(100% + 30px);
+    max-width: calc(100% + 30px);
+    margin-left: -15px;
+    margin-right: -15px;
+    margin-top: 0.55rem;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+  .cf-party-chat-log {
+    height: min(48vh, 20rem);
+    padding: .7rem .85rem;
+  }
+  .cf-party-chat-head {
+    padding: .65rem .85rem;
+  }
+  .cf-party-chat-form,
+  .cf-party-chat-login {
+    padding-left: .85rem;
+    padding-right: .85rem;
+  }
+  .cf-party-chat-msg-text { font-size: .92rem; }
+}
+@media (min-width: 768px) {
+  .cf-party-chat-log {
+    height: min(42vh, 18rem);
+  }
 }
 .cf-party-chat-head {
   display: flex;
@@ -593,9 +627,9 @@ body.cf-party-open { overflow: hidden; }
   color: #ffc3c9;
 }
 .cf-party-chat-log {
-  height: min(38vh, 14.5rem);
+  height: min(40vh, 16.5rem);
   overflow: auto;
-  padding: .55rem .65rem;
+  padding: .6rem .75rem;
   display: flex;
   flex-direction: column;
   gap: .4rem;
