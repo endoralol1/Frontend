@@ -116,8 +116,8 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(28rem, calc(100% - 1.25rem)) !important;
-  max-height: min(92dvh, 36rem);
+  width: min(30rem, calc(100% - 1rem)) !important;
+  max-height: min(96dvh, 48rem);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -135,7 +135,7 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 1rem;
   margin: 0;
   width: 100%;
   flex: 0 0 auto;
@@ -143,7 +143,7 @@
   background: #161a23;
   border-bottom: 1px solid rgba(255,255,255,.06);
   border-radius: 1rem 1rem 0 0;
-  padding: 12px 14px;
+  padding: 16px 18px;
 }
 .cf-party-copy {
   min-width: 0;
@@ -152,11 +152,13 @@
   margin: 0;
 }
 .cf-party-body {
-  padding: 12px 14px 14px;
+  padding: 16px 18px 18px;
   box-sizing: border-box;
   flex: 1 1 auto;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .cf-party-kicker {
   margin: 0;
@@ -182,8 +184,8 @@
   100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
 }
 .cf-party-head h3 {
-  margin: .18rem 0 0;
-  font-size: 1.2rem;
+  margin: .28rem 0 0;
+  font-size: 1.35rem;
   font-weight: 800;
   letter-spacing: -.02em;
   line-height: 1.15;
@@ -215,21 +217,22 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: .3rem;
-  margin-bottom: .7rem;
-  padding: .2rem;
-  border-radius: .7rem;
+  margin-bottom: .85rem;
+  padding: .25rem;
+  border-radius: .75rem;
   background: rgba(0,0,0,.28);
   border: 1px solid rgba(255,255,255,.06);
+  flex: 0 0 auto;
 }
 .cf-party-tabs button {
   appearance: none;
   border: 0;
   background: transparent;
   color: #9aa3b2;
-  border-radius: .5rem;
-  padding: .45rem .45rem;
+  border-radius: .55rem;
+  padding: .55rem .5rem;
   font-weight: 750;
-  font-size: .88rem;
+  font-size: .92rem;
   cursor: pointer;
   transition: background .15s ease, color .15s ease;
 }
@@ -240,12 +243,18 @@
   box-shadow: 0 6px 16px rgba(196, 60, 46, .28);
 }
 .cf-party-pane { display: none; }
-.cf-party-pane.is-active { display: block; }
+.cf-party-pane.is-active {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
 .cf-party-hint {
-  margin: 0 0 .55rem;
+  margin: 0 0 .75rem;
   color: #9aa3b2;
-  font-size: .82rem;
-  line-height: 1.35;
+  font-size: .88rem;
+  line-height: 1.45;
+  flex: 0 0 auto;
 }
 .cf-party-label {
   display: block;
@@ -261,12 +270,13 @@
   border: 1px solid rgba(255,255,255,.1);
   background: rgba(0,0,0,.28);
   color: #fff;
-  border-radius: .65rem;
-  padding: .62rem .8rem;
-  margin-bottom: .55rem;
+  border-radius: .7rem;
+  padding: .72rem .85rem;
+  margin-bottom: .7rem;
   font: inherit;
   outline: none;
   transition: border-color .15s ease, box-shadow .15s ease;
+  flex: 0 0 auto;
 }
 .cf-party-input::placeholder { color: #6f7888; }
 .cf-party-input:focus {
@@ -275,8 +285,10 @@
 }
 .cf-party-results {
   display: grid;
-  gap: .35rem;
-  max-height: min(34vh, 11.5rem);
+  gap: .4rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
   overflow: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
@@ -321,20 +333,19 @@
   margin-top: .15rem;
 }
 .cf-party-empty {
-  padding: .55rem .4rem;
+  padding: .9rem;
   text-align: center;
   color: #8b93a3;
-  font-size: .82rem;
+  font-size: .88rem;
 }
 .cf-party-btn {
   appearance: none;
   border: 1px solid rgba(255,255,255,.1);
   background: rgba(255,255,255,.06);
   color: #fff;
-  border-radius: .65rem;
-  padding: .62rem .8rem;
+  border-radius: .7rem;
+  padding: .72rem .95rem;
   font-weight: 750;
-  font-size: .9rem;
   cursor: pointer;
   text-decoration: none;
   display: inline-flex;
@@ -351,29 +362,33 @@
 .cf-party-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: .45rem;
-  margin-top: .55rem;
+  gap: .5rem;
+  margin-top: .75rem;
 }
 .cf-party-code-wrap {
   display: flex;
   align-items: baseline;
-  gap: .55rem;
-  padding: .7rem .85rem;
-  border-radius: .7rem;
+  gap: .65rem;
+  padding: .9rem 1rem;
+  border-radius: .8rem;
   background: rgba(220,53,69,.12);
   border: 1px solid rgba(220,53,69,.35);
-  margin-bottom: .4rem;
+  margin-bottom: .55rem;
 }
 .cf-party-code-wrap span {
-  font-size: .68rem;
+  font-size: .7rem;
   text-transform: uppercase;
   letter-spacing: .06em;
   color: #ffb3bb;
   font-weight: 750;
 }
 .cf-party-code-wrap strong {
-  font-size: 1.35rem;
+  font-size: 1.55rem;
   letter-spacing: .16em;
+}
+.cf-party-created {
+  flex: 0 0 auto;
+  margin-top: .35rem;
 }
 .cf-party-err {
   color: #ff8b96;
@@ -412,22 +427,13 @@ body.cf-party-open { overflow: hidden; }
 .cf-party-turnstile {
   display: flex;
   justify-content: center;
-  margin: 0.35rem 0 0.2rem;
+  margin: 0.55rem 0 0.25rem;
   min-height: 0;
-  transform: scale(0.92);
-  transform-origin: top center;
+  flex: 0 0 auto;
 }
 .cf-party-turnstile iframe {
   max-width: 100%;
 }
-
-/* After create: only show code + actions (no stacked form scroll) */
-.cf-party-pane.is-created > :not(#cf-party-created) {
-  display: none !important;
-}
-.cf-party-pane.is-created #cf-party-created {
-  display: block;
-}
-.cf-party-pane.is-created .cf-party-hint {
-  margin-bottom: 0.35rem;
+.cf-party-label {
+  flex: 0 0 auto;
 }
