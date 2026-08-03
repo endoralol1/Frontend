@@ -303,11 +303,11 @@ $navAnime = is_active('/anime');
                         <span class="browse-tile-label">Live TV</span>
                         <span class="browse-tile-badge">Live</span>
                     </a>
-                    <button type="button" class="browse-tile" data-browse-mock="games">
+                    <a class="browse-tile" href="<?= e(url('/games')) ?>">
                         <span class="browse-tile-icon tone-purple" aria-hidden="true"><svg class="browse-tile-svg" viewBox="0 0 24 24" width="1.15rem" height="1.15rem" fill="currentColor" focusable="false"><path d="M9 7h6a6 6 0 0 1 6 6v1.5a3.5 3.5 0 0 1-3.5 3.5h-.35a2 2 0 0 1-1.7-.95l-.55-.9a1 1 0 0 0-.85-.48H10a1 1 0 0 0-.85.48l-.55.9a2 2 0 0 1-1.7.95H6.5A3.5 3.5 0 0 1 3 14.5V13a6 6 0 0 1 6-6Zm-1.75 4.25a.75.75 0 0 0-.75.75v.75H5.75a.75.75 0 0 0 0 1.5H6.5v.75a.75.75 0 0 0 1.5 0v-.75h.75a.75.75 0 0 0 0-1.5H8v-.75a.75.75 0 0 0-.75-.75Zm8.5 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm2.25 1.75a1 1 0 1 0-2 0 1 1 0 0 0 2 0Z"/></svg></span>
                         <span class="browse-tile-label">Games</span>
-                        <span class="browse-tile-badge">Soon</span>
-                    </button>
+                        <span class="browse-tile-badge">Open</span>
+                    </a>
                     <button type="button" class="browse-tile" data-browse-open="watch-party">
                         <span class="browse-tile-icon tone-yellow"><i class="uil uil-users-alt"></i></span>
                         <span class="browse-tile-label">Watch Party</span>

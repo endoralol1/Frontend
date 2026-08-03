@@ -1397,6 +1397,7 @@ function person_page(Tmdb $tmdb, int $id, string $slug): void
         }
     }
     usort($merged, static fn ($a, $b) => ((float) ($b['_score'] ?? 0)) <=> ((float) ($a['_score'] ?? 0)));
+    $creditCount = count($merged);
     $knownFor = array_values(array_slice($merged, 0, 24));
     foreach ($knownFor as &$kf) {
         unset($kf['_score']);
@@ -1464,6 +1465,7 @@ function person_page(Tmdb $tmdb, int $id, string $slug): void
         'imdbUrl' => $imdbUrl,
         'homepage' => $homepage,
         'knownFor' => $knownFor,
+        'creditCount' => $creditCount,
         'bodyClass' => 'page-person',
         'headerClass' => 'absolute',
         'seo' => [
