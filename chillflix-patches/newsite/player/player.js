@@ -1330,9 +1330,27 @@
       } catch (_) {}
     }
 
+    function partyChipHost() {
+      let host = document.getElementById("cf-party-chip-bar");
+      if (host) return host;
+      const player = document.getElementById("movie-player");
+      if (!player || !player.parentNode) return null;
+      host = document.createElement("div");
+      host.id = "cf-party-chip-bar";
+      host.className = "cf-party-chip-bar";
+      host.hidden = true;
+      player.insertAdjacentElement("afterend", host);
+      return host;
+    }
+
     function paintPartyChip() {
-      if (!state.party || !els.shell) return;
-      let chip = els.shell.querySelector("#np-party-chip");
+      if (!state.party) return;
+      const host = partyChipHost();
+      if (!host) return;
+      // Remove any leftover chip stuck inside the player chrome
+      try { els.shell?.querySelector("#np-party-chip")?.remove(); } catch (_) {}
+      host.hidden = false;
+      let chip = host.querySelector("#np-party-chip");
       if (!chip) {
         chip = document.createElement("div");
         chip.id = "np-party-chip";
@@ -1340,7 +1358,7 @@
         chip.innerHTML =
           '<span class="np-party-chip-label"></span>' +
           '<button type="button" class="np-party-leave" id="np-party-leave" aria-label="Leave party">Leave</button>';
-        els.shell.querySelector(".np-top-actions")?.appendChild(chip);
+        host.appendChild(chip);
         chip.querySelector("#np-party-leave")?.addEventListener("click", (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -1417,7 +1435,12 @@
       state.party = null;
       state.partyHostId = null;
       state.partyUnloadBound = null;
-      els.shell?.querySelector("#np-party-chip")?.remove();
+      try { els.shell?.querySelector("#np-party-chip")?.remove(); } catch (_) {}
+      try {
+        document.getElementById("np-party-chip")?.remove();
+        const bar = document.getElementById("cf-party-chip-bar");
+        if (bar) bar.hidden = true;
+      } catch (_) {}
       clearPartyFromUrl();
       clearHostingResume();
       if (message) setStatus(message);

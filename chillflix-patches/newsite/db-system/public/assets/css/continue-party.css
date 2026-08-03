@@ -760,3 +760,51 @@ body.cf-party-open { overflow: hidden; }
   .cf-party-chat-user { grid-column: 1 / -1; max-width: none; }
   .cf-party-chat-login { flex-direction: column; align-items: stretch; }
 }
+
+
+/* Party chip outside the video player */
+.cf-party-chip-bar[hidden] { display: none !important; }
+.cf-party-chip-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 0.55rem 0 0.15rem;
+}
+.cf-party-chip-bar .np-party-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .4rem .4rem .4rem .7rem;
+  border-radius: .65rem;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.06), transparent 50%),
+    rgba(220, 53, 69, .16);
+  border: 1px solid rgba(220, 53, 69, .42);
+  color: #ffc3c9;
+  font-size: .74rem;
+  font-weight: 750;
+  letter-spacing: .03em;
+}
+.cf-party-chip-bar .np-party-chip-label {
+  white-space: nowrap;
+  text-transform: none;
+  letter-spacing: .02em;
+}
+.cf-party-chip-bar .np-party-leave {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: .35rem .65rem;
+  border-radius: .5rem;
+  background: linear-gradient(180deg, #ef5b45, #c43c2e);
+  color: #fff;
+  font: inherit;
+  font-size: .7rem;
+  font-weight: 750;
+  letter-spacing: .02em;
+  text-transform: none;
+  cursor: pointer;
+}
+.cf-party-chip-bar .np-party-leave:hover {
+  filter: brightness(1.06);
+}

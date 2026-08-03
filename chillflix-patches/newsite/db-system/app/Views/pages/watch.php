@@ -328,6 +328,7 @@ $starFill = $rating !== null ? min(5, max(0, (int) round($rating / 2))) : 0;
                     </div>
                 </div>
 
+                <div id="cf-party-chip-bar" class="cf-party-chip-bar" hidden></div>
                 <div id="cf-party-chat" class="cf-party-chat" hidden>
                     <div class="cf-party-chat-head">
                         <div class="cf-party-chat-title">
