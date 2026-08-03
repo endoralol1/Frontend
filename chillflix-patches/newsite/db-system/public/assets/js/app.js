@@ -384,8 +384,6 @@
           $box.html(renderSearchSuggest(res && res.results)).addClass('open');
           if ($sheet) {
             $sheet.addClass('has-results');
-            // Remember this query once results arrive
-            try { if (q.length >= 2) saveRecentSearch(q); } catch (eRecent) {}
           }
         })
         .fail(function (xhr, status) {
@@ -401,7 +399,6 @@
     runLiveSearch(this.value, $('#search-wrapper .search-suggest'), null);
   });
 
-  var recentSearchTimer = null;
   $(document).on('input', '#search-sheet-input', function () {
     var v = $.trim(this.value || '');
     var $sheet = $('#search-sheet');
@@ -412,13 +409,6 @@
       try { renderRecentSearches(); } catch (eR) {}
     }
     runLiveSearch(this.value, $('#search-sheet .search-sheet-suggest'), $sheet);
-    // Persist recent after user pauses typing (same as hitting Go)
-    clearTimeout(recentSearchTimer);
-    if (v.length >= 2) {
-      recentSearchTimer = setTimeout(function () {
-        try { saveRecentSearch(v); } catch (eS) {}
-      }, 400);
-    }
   });
 
   $(document).on('click', function (e) {
@@ -1886,10 +1876,6 @@
     function closeSearchSheet() {
     var $sheet = $('#search-sheet');
     if (!$sheet.length) return;
-    try {
-      var qClose = $.trim($('#search-sheet-input').val() || '');
-      if (qClose.length >= 2) saveRecentSearch(qClose);
-    } catch (eCloseSave) {}
     $sheet.removeClass('is-open has-results is-typing').attr('hidden', true);
     $('body').removeClass('search-open');
     $('.bottom-nav-search').removeClass('is-open').attr('aria-expanded', 'false');
@@ -1930,9 +1916,7 @@
     // Save BEFORE closeSearchSheet empties suggestions (that was wiping recent saves)
     if ($a.hasClass('suggest-item')) {
       try {
-        var typed = $.trim($('#search-sheet-input').val() || '');
         var title = $.trim($a.find('strong').first().text() || '');
-        if (typed.length >= 2) saveRecentSearch(typed);
         if (title) saveRecentSearch(title);
       } catch (eSave) {}
     }
@@ -1976,8 +1960,13 @@
   function saveRecentSearch(q) {
     q = $.trim(q || '');
     if (q.length < 2) return;
+    var qLower = q.toLowerCase();
     var list = getRecentSearches().filter(function (x) {
-      return x.toLowerCase() !== q.toLowerCase();
+      var xl = String(x || '').toLowerCase();
+      if (!xl || xl === qLower) return false;
+      // Drop keystroke stubs that are prefixes/extensions of the final query
+      if (qLower.indexOf(xl) === 0 || xl.indexOf(qLower) === 0) return false;
+      return true;
     });
     list.unshift(q);
     list = list.slice(0, RECENT_SEARCH_MAX);
@@ -2061,9 +2050,7 @@
   });
 
   $(document).on('click', '#search-sheet .suggest-item', function () {
-    var typed = $.trim($('#search-sheet-input').val() || '');
-    if (typed.length >= 2) saveRecentSearch(typed);
-    var t = $(this).find('strong').first().text();
+    var t = $.trim($(this).find('strong').first().text() || '');
     if (t) saveRecentSearch(t);
   });
 
