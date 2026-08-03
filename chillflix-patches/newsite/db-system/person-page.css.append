@@ -129,10 +129,19 @@ a.person-inline-link:hover {
   line-height: 1.35;
 }
 .person-place {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.25rem;
   margin: 0 0 0.7rem;
   color: rgba(207, 211, 218, 0.78);
+  font-family: Outfit, Poppins, sans-serif;
   font-size: 0.8rem;
-  line-height: 1.35;
+  line-height: 1.4;
+}
+.person-place i {
+  margin-top: 0.1rem;
+  color: rgba(219, 105, 55, 0.85);
+  font-size: 0.9rem;
 }
 .person-actions {
   display: flex;
@@ -168,73 +177,94 @@ a.person-inline-link:hover {
 .person-body {
   position: relative;
   z-index: 1;
-  margin-top: 0.15rem;
+  margin-top: 0.35rem;
 }
-.person-bio-panel {
-  margin-bottom: 1.5rem;
-  padding: 0.15rem 0 0;
-  border: 0;
-  background: transparent;
-  border-radius: 0;
-  max-width: 46rem;
+.person-bio-section {
+  margin-bottom: 1.75rem;
 }
-.person-bio-title {
-  margin: 0 0 0.55rem;
-  font-family: Outfit, Poppins, sans-serif;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: -0.01em;
+.person-bio-section .head {
+  margin-bottom: 0.65rem;
+}
+.person-bio-section .body {
+  max-width: 42rem;
 }
 .person-bio {
   margin: 0;
-  color: var(--cf-muted, #9aa3b2);
-  font-size: 0.9rem;
-  line-height: 1.65;
-  white-space: pre-wrap;
+  font-family: Outfit, Poppins, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+  color: #b8c0cd;
+}
+.person-bio p {
+  margin: 0 0 0.85rem;
+}
+.person-bio p:last-child {
+  margin-bottom: 0;
+}
+.person-bio p:first-child::first-letter {
+  font-weight: 600;
+  color: #e8edf5;
 }
 .person-bio.is-clamp {
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  white-space: normal;
-  mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
-  -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 62%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 62%, transparent 100%);
 }
 .person-bio.is-open {
   display: block;
   -webkit-line-clamp: unset;
   mask-image: none;
   -webkit-mask-image: none;
-  color: #c5cad3;
+  color: #c9d0db;
 }
 .person-bio-empty {
   margin: 0;
+  font-family: Outfit, Poppins, sans-serif;
   color: var(--cf-muted, #9aa3b2);
-  font-size: 0.9rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
 }
 .person-bio-more {
-  margin-top: 0.45rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.7rem;
   padding: 0;
   border: 0;
   background: none;
-  color: #cfd3da;
+  color: #e4e8ef;
   font-family: Outfit, Poppins, sans-serif;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   font-weight: 600;
+  letter-spacing: 0.01em;
   cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: rgba(219, 105, 55, 0.55);
-  text-underline-offset: 0.18em;
+  transition: color .15s ease;
+}
+.person-bio-more::after {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-top: 0.05rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  opacity: 0.75;
+}
+.person-bio-more[aria-expanded="true"]::after {
+  margin-top: 0.2rem;
+  transform: rotate(-135deg);
 }
 .person-bio-more:hover {
-  color: #fff;
-  text-decoration-color: var(--cf-orange, #db6937);
+  color: #ffb898;
 }
 
 .person-known-for {
-  margin-top: 0.15rem;
+  margin-top: 0.25rem;
 }
 .person-known-grid {
   margin-top: 0.25rem;
@@ -264,15 +294,16 @@ a.person-inline-link:hover {
   .person-meta-line {
     font-size: 0.95rem;
   }
-  .person-bio-panel {
-    padding: 0.25rem 0 0;
-  }
   .person-bio {
-    font-size: 0.95rem;
-    line-height: 1.7;
+    font-size: 1.02rem;
+    line-height: 1.8;
+    letter-spacing: 0.012em;
   }
   .person-bio.is-clamp {
-    -webkit-line-clamp: 5;
+    -webkit-line-clamp: 6;
+  }
+  .person-bio-section .body {
+    max-width: 46rem;
   }
 }
 

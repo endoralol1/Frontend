@@ -15,7 +15,6 @@
 /** @var int $creditCount */
 
 $personName = (string) ($name ?? ($person['name'] ?? 'Unknown'));
-$hasMoreBio = $biography !== '' && mb_strlen($biography) > 280;
 $creditCount = (int) ($creditCount ?? count($knownFor));
 $deptLabel = $department !== '' ? $department : 'Entertainment';
 $metaBits = [];
@@ -31,6 +30,21 @@ if ($age !== null && $deathday === '') {
 if ($birthday !== '') {
     $metaBits[] = $birthday;
 }
+
+// Clean TMDB bio: drop wiki license footers, normalize paragraphs
+$bioClean = trim((string) $biography);
+$bioClean = preg_replace('/\n*Description above from the Wikipedia article[\s\S]*$/iu', '', $bioClean) ?? $bioClean;
+$bioClean = preg_replace('/\n*From Wikipedia[\s\S]*$/iu', '', $bioClean) ?? $bioClean;
+$bioClean = trim(preg_replace("/[ \t]+/u", ' ', $bioClean) ?? $bioClean);
+$bioParagraphs = array_values(array_filter(array_map(
+    static fn ($p) => trim(preg_replace("/\s*\n\s*/u", ' ', $p) ?? $p),
+    preg_split("/\n{2,}/u", $bioClean) ?: []
+), static fn ($p) => $p !== ''));
+if (!$bioParagraphs && $bioClean !== '') {
+    $bioParagraphs = [$bioClean];
+}
+$bioPlainLen = mb_strlen(implode(' ', $bioParagraphs));
+$hasMoreBio = $bioPlainLen > 320;
 ?>
 <main class="person-page">
     <section class="person-stage">
@@ -51,7 +65,7 @@ if ($birthday !== '') {
                     <p class="person-meta-line"><?= e(implode(' · ', $metaBits)) ?></p>
                     <?php endif; ?>
                     <?php if ($birthPlace !== ''): ?>
-                    <p class="person-place"><?= e($birthPlace) ?></p>
+                    <p class="person-place"><i class="uil uil-map-marker" aria-hidden="true"></i> <?= e($birthPlace) ?></p>
                     <?php endif; ?>
                     <?php if ($imdbUrl !== '' || $homepage !== ''): ?>
                     <div class="person-actions">
@@ -62,7 +76,7 @@ if ($birthday !== '') {
                         <?php endif; ?>
                         <?php if ($homepage !== ''): ?>
                         <a class="person-action" href="<?= e($homepage) ?>" target="_blank" rel="noopener noreferrer">
-                            <i class="uil uil-globe" aria-hidden="true"></i> Site
+                            <i class="uil uil-globe" aria-hidden="true"></i> Website
                         </a>
                         <?php endif; ?>
                     </div>
@@ -73,20 +87,28 @@ if ($birthday !== '') {
     </section>
 
     <div class="container person-body">
-        <section class="person-bio-panel">
-            <h2 class="person-bio-title">Biography</h2>
-            <?php if ($biography !== ''): ?>
-            <div class="person-bio<?= $hasMoreBio ? ' is-clamp' : '' ?>" id="person-bio">
-                <?= nl2br(e($biography)) ?>
+        <section class="section person-bio-section">
+            <div class="head">
+                <div class="start">
+                    <h2 class="title gardiently">Biography</h2>
+                </div>
             </div>
-            <?php if ($hasMoreBio): ?>
-            <button type="button" class="person-bio-more" id="person-bio-more" aria-expanded="false" aria-controls="person-bio">
-                Read more
-            </button>
-            <?php endif; ?>
-            <?php else: ?>
-            <p class="person-bio-empty">No biography available yet.</p>
-            <?php endif; ?>
+            <div class="body">
+                <?php if ($bioParagraphs): ?>
+                <div class="person-bio<?= $hasMoreBio ? ' is-clamp' : '' ?>" id="person-bio">
+                    <?php foreach ($bioParagraphs as $para): ?>
+                    <p><?= e($para) ?></p>
+                    <?php endforeach; ?>
+                </div>
+                <?php if ($hasMoreBio): ?>
+                <button type="button" class="person-bio-more" id="person-bio-more" aria-expanded="false" aria-controls="person-bio">
+                    Read full biography
+                </button>
+                <?php endif; ?>
+                <?php else: ?>
+                <p class="person-bio-empty">No biography available yet.</p>
+                <?php endif; ?>
+            </div>
         </section>
 
         <?php if ($knownFor): ?>
@@ -119,7 +141,7 @@ if ($birthday !== '') {
     var open = bio.classList.toggle('is-open');
     bio.classList.toggle('is-clamp', !open);
     btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-    btn.textContent = open ? 'Show less' : 'Read more';
+    btn.textContent = open ? 'Show less' : 'Read full biography';
   });
 })();
 </script>
