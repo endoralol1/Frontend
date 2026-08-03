@@ -1,0 +1,439 @@
+/* Live TV — Chillflix newsite */
+.live-p {
+  --live-bg: #0b0d12;
+  --live-panel: #141820;
+  --live-line: rgba(255, 255, 255, 0.08);
+  --live-text: #f2f4f7;
+  --live-muted: #9aa3b2;
+  --live-accent: #db6937;
+  --live-accent-2: #c43c2e;
+  --live-gutter: 16px;
+  /* Clear absolute site header (logo / EN / admin) */
+  padding: 3.55rem var(--live-gutter) 5.5rem;
+  color: var(--live-text);
+}
+.live-shell {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.live-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding: 14px 16px;
+  border-radius: 1rem;
+  background: rgba(20, 24, 32, 0.72);
+  border: 1px solid var(--live-line);
+}
+.live-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.live-hero-copy {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.live-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ff8b76;
+}
+.live-pulse {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: #ff3b30;
+  box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.55);
+  animation: livePulse 1.6s ease-out infinite;
+}
+@keyframes livePulse {
+  70% { box-shadow: 0 0 0 0.55rem rgba(255, 59, 48, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 59, 48, 0); }
+}
+.live-hero h1 {
+  margin: 0;
+  font-size: clamp(1.55rem, 3vw, 2.1rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.live-lead {
+  margin: 0;
+  color: var(--live-muted);
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.live-hero-stats {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.4rem;
+  margin-top: 1.25rem; /* align with h1 under kicker */
+}
+.live-hero-stats > div {
+  min-width: 0;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--live-line);
+  text-align: center;
+  line-height: 1.1;
+}
+.live-hero-stats strong {
+  display: block;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.live-hero-stats span {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.6rem;
+  color: var(--live-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.live-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.9fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+@media (max-width: 991.98px) {
+  .live-p {
+    --live-gutter: 16px;
+    padding-top: 3.45rem;
+  }
+  .live-hero {
+    gap: 0.3rem;
+    padding: 14px 16px;
+  }
+  .live-now { padding: 0.85rem 1rem; }
+  .live-toolbar { padding: 0.75rem 0.85rem 0.45rem; }
+  .live-cats { padding: 0.35rem 0.85rem 0.65rem; }
+  .live-list { padding: 0.15rem 0.7rem 0.85rem; }
+  .live-hero-top { gap: 0.55rem; }
+  .live-hero h1 { font-size: clamp(1.4rem, 6.2vw, 1.75rem); }
+  .live-lead {
+    font-size: 0.84rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .live-hero-stats {
+    margin-top: 1.2rem;
+    gap: 0.35rem;
+  }
+  .live-hero-stats > div {
+    padding: 0.35rem 0.48rem;
+    border-radius: 0.5rem;
+  }
+  .live-hero-stats strong { font-size: 0.95rem; }
+  .live-hero-stats span { font-size: 0.56rem; }
+  .live-stage { grid-template-columns: 1fr; }
+}
+
+.live-player-card {
+  border-radius: 1.15rem;
+  overflow: hidden;
+  background: var(--live-panel);
+  border: 1px solid var(--live-line);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+.live-player {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #050608;
+  overflow: hidden;
+}
+.live-player video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+  z-index: 1;
+}
+.live-player-shade {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.28) 0%, transparent 30%, rgba(0,0,0,.5) 100%);
+  opacity: 0.85;
+}
+.live-player.is-idle .live-player-shade { opacity: 1; }
+.live-player-idle {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  color: var(--live-muted);
+  background:
+    radial-gradient(120% 80% at 50% 20%, rgba(219, 105, 55, 0.18), transparent 55%),
+    #0a0c11;
+}
+.live-player:not(.is-idle) .live-player-idle { display: none; }
+.live-player-idle i { font-size: 2.6rem; color: #ff8b76; }
+.live-player-idle p { margin: 0; font-size: 0.92rem; }
+
+.live-player-ui {
+  position: absolute;
+  left: 0.65rem;
+  right: 0.65rem;
+  bottom: 0.65rem;
+  z-index: 4;
+  display: flex;
+  gap: 0.4rem;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .18s ease, transform .18s ease;
+  pointer-events: none;
+}
+.live-player:hover .live-player-ui,
+.live-player.show-ui .live-player-ui,
+.live-player.is-idle .live-player-ui { opacity: 0; }
+.live-player:not(.is-idle):hover .live-player-ui,
+.live-player:not(.is-idle).show-ui .live-player-ui {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.live-ctrl {
+  appearance: none;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(10,12,18,.72);
+  color: #fff;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.live-ctrl:hover { background: rgba(219, 105, 55, 0.9); border-color: transparent; }
+.live-player-status {
+  position: absolute;
+  top: 0.65rem;
+  left: 0.65rem;
+  z-index: 4;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(10,12,18,.7);
+  border: 1px solid rgba(255,255,255,.1);
+  color: #ffe1d6;
+}
+
+.live-now {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--live-line);
+  background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);
+}
+.live-now-badge {
+  flex: 0 0 auto;
+  padding: 0.28rem 0.5rem;
+  border-radius: 0.45rem;
+  background: linear-gradient(135deg, var(--live-accent), var(--live-accent-2));
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+.live-now-copy { min-width: 0; }
+.live-now-copy h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 750;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.live-now-copy p {
+  margin: 0.15rem 0 0;
+  color: var(--live-muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.live-side {
+  border-radius: 1.15rem;
+  background: var(--live-panel);
+  border: 1px solid var(--live-line);
+  min-height: 22rem;
+  max-height: min(70vh, 40rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+@media (max-width: 991.98px) {
+  .live-side { max-height: none; min-height: 28rem; }
+}
+.live-toolbar { padding: 0.75rem 0.75rem 0.45rem; }
+.live-search {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.75rem;
+  background: rgba(0,0,0,.28);
+  border: 1px solid var(--live-line);
+}
+.live-search i { color: var(--live-muted); }
+.live-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--live-text);
+  font: inherit;
+  font-size: 0.92rem;
+}
+
+.live-cats {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding: 0.35rem 0.75rem 0.65rem;
+  scrollbar-width: none;
+}
+.live-cats::-webkit-scrollbar { display: none; }
+.live-cat {
+  appearance: none;
+  flex: 0 0 auto;
+  border: 1px solid var(--live-line);
+  background: rgba(255,255,255,.03);
+  color: #d5dae3;
+  border-radius: 0.55rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.live-cat em {
+  font-style: normal;
+  color: var(--live-muted);
+  font-weight: 650;
+}
+.live-cat.is-on {
+  background: rgba(219, 105, 55, 0.18);
+  border-color: rgba(219, 105, 55, 0.45);
+  color: #fff;
+}
+
+.live-list {
+  flex: 1;
+  overflow: auto;
+  padding: 0.15rem 0.55rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+.live-ch {
+  appearance: none;
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  border-radius: 0.75rem;
+  padding: 0.55rem 0.55rem;
+  display: grid;
+  grid-template-columns: 2.2rem 1fr auto;
+  gap: 0.55rem;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+.live-ch:hover {
+  background: rgba(255,255,255,.04);
+  border-color: var(--live-line);
+}
+.live-ch.is-active {
+  background: rgba(219, 105, 55, 0.14);
+  border-color: rgba(219, 105, 55, 0.35);
+}
+.live-ch-mark {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  background: linear-gradient(145deg, #242a36, #151922);
+  border: 1px solid var(--live-line);
+}
+.live-ch-copy { min-width: 0; }
+.live-ch-copy strong {
+  display: block;
+  font-size: 0.86rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.live-ch-copy small {
+  display: block;
+  margin-top: 0.1rem;
+  color: var(--live-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.live-ch-go {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,.06);
+  color: #fff;
+}
+.live-ch.is-active .live-ch-go {
+  background: linear-gradient(135deg, var(--live-accent), var(--live-accent-2));
+}
+.live-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--live-muted);
+  font-size: 0.9rem;
+}
+
+
+/* Clear absolute header on desktop Live TV */
+@media (min-width: 992px) {
+  .live-p {
+    padding-top: 3.9rem;
+  }
+}
