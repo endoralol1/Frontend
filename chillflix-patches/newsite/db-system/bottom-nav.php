@@ -7,7 +7,6 @@ $searchGenresTv = config('genres_tv') ?: [];
 $navHome = is_active('/home') || $path === '/' || $path === '';
 $navMovies = is_active('/movies') || (bool) preg_match('#^/movie(/|$)#', $path);
 $navTv = is_active('/tv-series') || (bool) preg_match('#^/tv(/|$)#', $path);
-$navAnime = is_active('/anime');
 ?>
 <nav class="bottom-nav" aria-label="Primary">
     <div class="bottom-nav-inner">
@@ -22,10 +21,6 @@ $navAnime = is_active('/anime');
         <a href="<?= e(url('/tv-series')) ?>" class="bottom-nav-item<?= $navTv ? ' active' : '' ?>"<?= $navTv ? ' aria-current="page"' : '' ?>>
             <span class="bottom-nav-icon"><i class="uil uil-tv-retro" aria-hidden="true"></i></span>
             <span class="bottom-nav-label">TV</span>
-        </a>
-        <a href="<?= e(url('/anime')) ?>" class="bottom-nav-item<?= $navAnime ? ' active' : '' ?>"<?= $navAnime ? ' aria-current="page"' : '' ?>>
-            <span class="bottom-nav-icon"><i class="uil uil-star" aria-hidden="true"></i></span>
-            <span class="bottom-nav-label">Anime</span>
         </a>
         <button type="button" class="bottom-nav-item bottom-nav-search" aria-haspopup="dialog" aria-controls="search-sheet" aria-expanded="false">
             <span class="bottom-nav-icon"><i class="uil uil-search" aria-hidden="true"></i></span>
