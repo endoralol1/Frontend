@@ -1,4 +1,241 @@
-/* ——— Floating nav v2 — compact glass + warm active ——— */
+#!/usr/bin/env python3
+"""Polish the floating nav: richer glass, cleaner active, smoother motion."""
+from pathlib import Path
+import re
+
+css_path = Path("/var/www/chillflix-newsite/public/assets/css/app.css")
+layout = Path("/var/www/chillflix-newsite/app/Views/layouts/main.php")
+css = css_path.read_text()
+
+old = """/* ——— Compact floating nav (Home / Movies / TV / Search / Browse) ——— */
+.bottom-nav {
+  display: none;
+}
+
+@media (max-width: 991.98px) {
+  .bottom-nav {
+    display: block;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 120;
+    padding: 0 0.75rem calc(0.4rem + env(safe-area-inset-bottom, 0px));
+    pointer-events: none;
+  }
+
+  .bottom-nav-inner {
+    pointer-events: auto;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: center;
+    gap: 0.08rem;
+    max-width: 22.5rem;
+    margin: 0 auto;
+    padding: 0.22rem;
+    border-radius: 1.05rem;
+    background: rgba(12, 14, 20, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      0 8px 22px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px) saturate(1.15);
+    -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  }
+
+  .bottom-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.08rem;
+    min-width: 0;
+    min-height: 2.55rem;
+    padding: 0.28rem 0.12rem 0.22rem;
+    border: 0;
+    background: transparent;
+    border-radius: 0.8rem;
+    color: rgba(232, 236, 245, 0.58);
+    text-decoration: none;
+    cursor: pointer;
+    transition: color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    font: inherit;
+  }
+
+  .bottom-nav-item:hover,
+  .bottom-nav-item:focus-visible {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+    outline: none;
+  }
+
+  .bottom-nav-item:active {
+    transform: scale(0.96);
+  }
+
+  .bottom-nav-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 0.55rem;
+    transition: background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+  }
+
+  .bottom-nav-icon i {
+    font-size: 1.05rem;
+    line-height: 1;
+  }
+
+  .bottom-nav-label {
+    font-family: Outfit, Poppins, sans-serif;
+    font-size: 0.58rem;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .bottom-nav-item.active {
+    color: #fff;
+    background: rgba(219, 105, 55, 0.14);
+  }
+
+  .bottom-nav-item.active .bottom-nav-icon {
+    color: #fff;
+    background: linear-gradient(145deg, #db6937 0%, #dc3545 100%);
+    box-shadow: 0 4px 10px rgba(220, 53, 69, 0.28);
+  }
+
+  .bottom-nav-item.active .bottom-nav-label {
+    color: #ffd2b8;
+  }
+
+  /* Replace hamburger / top links with bottom nav on phone */
+  header .wrapper .start #menu-toggler,
+  header #menu,
+  header .wrapper #menu,
+  header .wrapper .start #menu {
+    display: none !important;
+  }
+
+  body {
+    padding-bottom: calc(4.15rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .wrapper > .container .footer {
+    padding-bottom: 0.35rem;
+  }
+}
+
+/* Desktop: same phone nav pill, pinned to the top-right — slightly shorter */
+@media (min-width: 992px) {
+  .bottom-nav {
+    display: block !important;
+    position: fixed;
+    top: 0.7rem;
+    left: auto;
+    /* Keep nav inside content column — right edge matches Most Commented / container */
+    right: max(
+      15px,
+      calc((100vw - min(100vw, 1800px)) / 2 + 15px)
+    );
+    bottom: auto;
+    z-index: 130;
+    width: auto;
+    padding: 0;
+    pointer-events: none;
+  }
+
+  .bottom-nav-inner {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.12rem;
+    max-width: none;
+    margin: 0;
+    padding: 0.18rem;
+    border-radius: 0.95rem;
+    background: rgba(12, 14, 20, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow:
+      0 8px 22px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px) saturate(1.15);
+    -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  }
+
+  .bottom-nav-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-width: 0;
+    min-height: 2.2rem;
+    padding: 0.28rem 0.62rem;
+    border: 0;
+    background: transparent;
+    border-radius: 0.72rem;
+    color: rgba(232, 236, 245, 0.62);
+    text-decoration: none;
+    cursor: pointer;
+    font: inherit;
+    transition: color 0.12s ease, background 0.12s ease;
+  }
+
+  .bottom-nav-item:hover,
+  .bottom-nav-item:focus-visible {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+    outline: none;
+  }
+
+  .bottom-nav-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.2rem;
+    height: 1.2rem;
+    border-radius: 0.4rem;
+  }
+
+  .bottom-nav-icon i {
+    font-size: 1rem;
+    line-height: 1;
+  }
+
+  .bottom-nav-label {
+    font-family: Outfit, Poppins, sans-serif;
+    font-size: 0.72rem;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+    line-height: 1;
+  }
+
+  .bottom-nav-item.active {
+    color: #fff;
+    background: rgba(219, 105, 55, 0.16);
+  }
+
+  .bottom-nav-item.active .bottom-nav-icon {
+    color: #ffb898;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .bottom-nav-item.active .bottom-nav-label {
+    color: #ffd2b8;
+  }
+
+  body {
+    padding-bottom: 0 !important;
+  }"""
+
+new = """/* ——— Floating nav v2 — compact glass + warm active ——— */
 .bottom-nav {
   display: none;
 }
@@ -299,12 +536,19 @@
 
   body {
     padding-bottom: 0 !important;
-  }
+  }"""
 
-  /* PC rails: no visible scrollbars; room for round L/R buttons inside */
-  .section-top10 .top10-rail-wrap,
-  .section-rail .media-rail-wrap {
-    padding: 0 2.9rem;
-    box-sizing: border-box;
-  }
+if old not in css:
+    raise SystemExit("current compact nav block not found — abort")
+css = css.replace(old, new, 1)
 
+# Browse dropdown sits under slightly different nav height
+css = css.replace("    top: 3.55rem !important;", "    top: 3.4rem !important;", 1)
+
+css_path.write_text(css)
+
+lt = layout.read_text()
+lt = re.sub(r"\?v=20260803-ui\d+", "?v=20260803-ui142", lt)
+layout.write_text(lt)
+print("navbar nicer + ui142")
+print("DONE")
