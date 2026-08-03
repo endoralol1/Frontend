@@ -13,7 +13,7 @@ $router->get('/live', function () {
     $pack = HuhuLiveTv::catalog();
     $channels = $pack['ok'] ? array_slice($pack['channels'] ?? [], 0, 60) : [];
     $categories = $pack['ok'] ? ($pack['categories'] ?? []) : [];
-    $liveAssetV = '20260803-ui161';
+    $liveAssetV = '20260803-ui162';
     view('pages/live', [
         'categories' => $categories,
         'channels' => $channels,
