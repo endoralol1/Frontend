@@ -368,6 +368,7 @@
 
   function openPartyPanel(tab) {
     var $p = ensurePartyPanel();
+    resetCreatePane();
     $p.removeAttr("hidden");
     $("body").addClass("cf-party-open");
     if (tab) switchPartyTab(tab);
@@ -380,14 +381,26 @@
     $("body").removeClass("cf-party-open");
   }
 
+  function resetCreatePane() {
+    var $create = $('[data-party-pane="create"]');
+    $create.removeClass("is-created");
+    $("#cf-party-created").prop("hidden", true).empty();
+    $("#cf-party-results").empty();
+    $("#cf-party-create-err").prop("hidden", true).text("");
+  }
+
   function switchPartyTab(tab) {
     var $p = $("#cf-party-panel");
     $p.find("[data-party-tab]").removeClass("is-active").attr("aria-selected", "false");
     $p.find('[data-party-tab="' + tab + '"]').addClass("is-active").attr("aria-selected", "true");
     $p.find("[data-party-pane]").removeClass("is-active");
     $p.find('[data-party-pane="' + tab + '"]').addClass("is-active");
+    if (tab === "create") {
+      /* keep created state if already created on this open; only clear when reopening */
+    }
     if (partyNeedsTurnstile()) {
       setTimeout(function () {
+        if ($('[data-party-pane="create"]').hasClass("is-created") && tab === "create") return;
         renderPartyTurnstile(tab === "join" ? "join" : "create");
       }, 30);
     }
@@ -496,6 +509,9 @@
         "&host=1";
       var share = watch.replace("&host=1", "");
       resetPartyTurnstile("create");
+      $("#cf-party-results").empty();
+      $("#cf-party-q").val("");
+      $('[data-party-pane="create"]').addClass("is-created");
       $("#cf-party-created")
         .prop("hidden", false)
         .html(

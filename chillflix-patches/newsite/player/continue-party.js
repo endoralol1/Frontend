@@ -245,6 +245,82 @@
     }
   }
 
+
+  var partyTurnstile = { create: null, join: null, createToken: "", joinToken: "" };
+
+  function partyNeedsTurnstile() {
+    return !!(window.APP && APP.turnstileSiteKey);
+  }
+
+  function renderPartyTurnstile(which) {
+    var key = (window.APP && APP.turnstileSiteKey) || "";
+    if (!key || !window.turnstile) return;
+    var id = which === "join" ? "cf-party-turnstile-join" : "cf-party-turnstile-create";
+    var el = document.getElementById(id);
+    if (!el) return;
+    try {
+      if (which === "join" && partyTurnstile.join != null) {
+        window.turnstile.remove(partyTurnstile.join);
+        partyTurnstile.join = null;
+      }
+      if (which !== "join" && partyTurnstile.create != null) {
+        window.turnstile.remove(partyTurnstile.create);
+        partyTurnstile.create = null;
+      }
+    } catch (e) {}
+    el.innerHTML = "";
+    try {
+      var wid = window.turnstile.render(el, {
+        sitekey: key,
+        theme: "dark",
+        callback: function (token) {
+          if (which === "join") partyTurnstile.joinToken = token || "";
+          else partyTurnstile.createToken = token || "";
+        },
+        "expired-callback": function () {
+          if (which === "join") partyTurnstile.joinToken = "";
+          else partyTurnstile.createToken = "";
+        },
+        "error-callback": function () {
+          if (which === "join") partyTurnstile.joinToken = "";
+          else partyTurnstile.createToken = "";
+        },
+      });
+      if (which === "join") partyTurnstile.join = wid;
+      else partyTurnstile.create = wid;
+    } catch (err) {}
+  }
+
+  function resetPartyTurnstile(which) {
+    if (which === "join") partyTurnstile.joinToken = "";
+    else partyTurnstile.createToken = "";
+    if (!window.turnstile) return;
+    var wid = which === "join" ? partyTurnstile.join : partyTurnstile.create;
+    if (wid != null) {
+      try {
+        window.turnstile.reset(wid);
+      } catch (e) {
+        renderPartyTurnstile(which);
+      }
+    } else {
+      renderPartyTurnstile(which);
+    }
+  }
+
+  function ensurePartyTurnstiles() {
+    if (!partyNeedsTurnstile()) return;
+    var tries = 0;
+    (function boot() {
+      tries += 1;
+      if (window.turnstile) {
+        renderPartyTurnstile("create");
+        renderPartyTurnstile("join");
+        return;
+      }
+      if (tries < 40) setTimeout(boot, 100);
+    })();
+  }
+
   function ensurePartyPanel() {
     var $existing = $("#cf-party-panel");
     if ($existing.length) {
@@ -271,6 +347,8 @@
         '<p class="cf-party-hint">Pick any movie or show, share the code, and watch in sync.</p>' +
         '<label class="cf-party-label" for="cf-party-q">Search title</label>' +
         '<input type="search" id="cf-party-q" class="cf-party-input" placeholder="Search movies & TV…" autocomplete="off">' +
+        '<div class="cf-party-turnstile" id="cf-party-turnstile-create"></div>' +
+        '<p id="cf-party-create-err" class="cf-party-err" hidden></p>' +
         '<div id="cf-party-results" class="cf-party-results"></div>' +
         '<div id="cf-party-created" class="cf-party-created" hidden></div>' +
         "</section>" +
@@ -278,6 +356,7 @@
         '<p class="cf-party-hint">Enter a 4-digit party code from your friend.</p>' +
         '<label class="cf-party-label" for="cf-party-code">Party code</label>' +
         '<input type="text" id="cf-party-code" class="cf-party-input" maxlength="6" inputmode="numeric" placeholder="1234">' +
+        '<div class="cf-party-turnstile" id="cf-party-turnstile-join"></div>' +
         '<button type="button" class="cf-party-btn is-primary" id="cf-party-join">Join party</button>' +
         '<p id="cf-party-join-err" class="cf-party-err" hidden></p>' +
         "</section>" +
@@ -289,14 +368,25 @@
 
   function openPartyPanel(tab) {
     var $p = ensurePartyPanel();
+    resetCreatePane();
     $p.removeAttr("hidden");
     $("body").addClass("cf-party-open");
     if (tab) switchPartyTab(tab);
+    else switchPartyTab("create");
+    ensurePartyTurnstiles();
   }
 
   function closePartyPanel() {
     $("#cf-party-panel").attr("hidden", true);
     $("body").removeClass("cf-party-open");
+  }
+
+  function resetCreatePane() {
+    var $create = $('[data-party-pane="create"]');
+    $create.removeClass("is-created");
+    $("#cf-party-created").prop("hidden", true).empty();
+    $("#cf-party-results").empty();
+    $("#cf-party-create-err").prop("hidden", true).text("");
   }
 
   function switchPartyTab(tab) {
@@ -305,6 +395,15 @@
     $p.find('[data-party-tab="' + tab + '"]').addClass("is-active").attr("aria-selected", "true");
     $p.find("[data-party-pane]").removeClass("is-active");
     $p.find('[data-party-pane="' + tab + '"]').addClass("is-active");
+    if (tab === "create") {
+      /* keep created state if already created on this open; only clear when reopening */
+    }
+    if (partyNeedsTurnstile()) {
+      setTimeout(function () {
+        if ($('[data-party-pane="create"]').hasClass("is-created") && tab === "create") return;
+        renderPartyTurnstile(tab === "join" ? "join" : "create");
+      }, 30);
+    }
   }
 
   var searchTimer = null;
@@ -375,6 +474,11 @@
       (slug || "title") +
       "/" +
       item.id;
+    var $cerr = $("#cf-party-create-err").prop("hidden", true).text("");
+    if (partyNeedsTurnstile() && !partyTurnstile.createToken) {
+      $cerr.text("Complete the captcha verification.").prop("hidden", false);
+      return $.Deferred().reject({ responseJSON: { error: "Complete the captcha verification." } }).promise();
+    }
     return $.ajax({
       url: base() + "/api/party",
       method: "POST",
@@ -382,6 +486,7 @@
       dataType: "json",
       data: JSON.stringify({
         hostId: hostId,
+        turnstileToken: partyTurnstile.createToken || undefined,
         content: {
           type: item.type,
           id: item.id,
@@ -403,6 +508,10 @@
         encodeURIComponent(data.room.code) +
         "&host=1";
       var share = watch.replace("&host=1", "");
+      resetPartyTurnstile("create");
+      $("#cf-party-results").empty();
+      $("#cf-party-q").val("");
+      $('[data-party-pane="create"]').addClass("is-created");
       $("#cf-party-created")
         .prop("hidden", false)
         .html(
@@ -432,16 +541,21 @@
       $err.text("Enter a valid code").prop("hidden", false);
       return;
     }
+    if (partyNeedsTurnstile() && !partyTurnstile.joinToken) {
+      $err.text("Complete the captcha verification.").prop("hidden", false);
+      return;
+    }
     $.ajax({
       url: base() + "/api/party/" + encodeURIComponent(code) + "/join",
       method: "POST",
       contentType: "application/json",
       dataType: "json",
-      data: JSON.stringify({ peerId: peerId() }),
+      data: JSON.stringify({ peerId: peerId(), turnstileToken: partyTurnstile.joinToken || undefined }),
     })
       .done(function (data) {
         if (!data || !data.ok) {
           $err.text((data && data.error) || "Could not join").prop("hidden", false);
+          resetPartyTurnstile("join");
           return;
         }
         var c = data.room.content || {};
@@ -470,6 +584,7 @@
       })
       .fail(function () {
         $err.text("Could not join party").prop("hidden", false);
+        resetPartyTurnstile("join");
       });
   }
 
@@ -527,10 +642,11 @@
       year: $b.data("year"),
       poster: $b.data("poster"),
     }).fail(function (xhr) {
+      resetPartyTurnstile("create");
+      var msg = (xhr.responseJSON && xhr.responseJSON.error) || "Could not create party";
+      $("#cf-party-create-err").text(msg).prop("hidden", false);
       $("#cf-party-results").html(
-        '<div class="cf-party-empty">' +
-          esc((xhr.responseJSON && xhr.responseJSON.error) || "Could not create party") +
-          "</div>"
+        '<div class="cf-party-empty">' + esc(msg) + "</div>"
       );
     });
   });
