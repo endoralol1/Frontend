@@ -144,18 +144,19 @@ function is_active(string $path): bool
     return $current === $path || str_starts_with($current, $path . '/');
 }
 
-function view(string $name, array $vars = []): void
+function view(string $viewName, array $vars = []): void
 {
     // Floating transparent header on home + browse/list pages
+    // NOTE: param must not be called $name — extract($vars) would skip page $name (e.g. person pages).
     if (!isset($vars['headerClass'])) {
-        $floating = ['pages/home', 'pages/discover', 'pages/search', 'pages/top-imdb', 'pages/favorites', 'pages/watch', 'pages/games', 'pages/live', 'pages/anime'];
-        $vars['headerClass'] = in_array($name, $floating, true) ? 'absolute' : 'relative';
+        $floating = ['pages/home', 'pages/discover', 'pages/search', 'pages/top-imdb', 'pages/favorites', 'pages/watch', 'pages/games', 'pages/live', 'pages/anime', 'pages/person'];
+        $vars['headerClass'] = in_array($viewName, $floating, true) ? 'absolute' : 'relative';
     }
     extract($vars, EXTR_SKIP);
-    $file = __DIR__ . '/Views/' . str_replace('.', '/', $name) . '.php';
+    $file = __DIR__ . '/Views/' . str_replace('.', '/', $viewName) . '.php';
     if (!is_file($file)) {
         http_response_code(500);
-        echo 'View not found: ' . e($name);
+        echo 'View not found: ' . e($viewName);
         exit;
     }
     $content = $file;
