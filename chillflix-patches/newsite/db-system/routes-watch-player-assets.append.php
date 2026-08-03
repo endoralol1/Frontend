@@ -1,0 +1,16 @@
+        'episodes' => $episodes,
+        'servers' => config('servers'),
+        'autoPlay' => $autoPlay,
+        'playerConfig' => $playerConfig,
+        'nextEpisode' => $nextEpisode,
+        'extraCss' => [asset('css/player.css') . '?v=20260803-ui149'],
+        'extraJs' => [
+            'https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js',
+            asset('js/player.js') . '?v=20260803-ui149',
+        ],
+        'bodyClass' => 'page-watch',
+        'headerClass' => 'absolute',
+        'seo' => [
+            'title' => $title . ($year ? " ($year)" : '') . ' | Watch Online - ' . config('site_name'),
+            'description' => truncate($overview !== '' ? $overview : "Watch {$title} online free in HD on " . config('site_name') . '.', 160),
+            'canonical' => media_url($type, $id, $title),

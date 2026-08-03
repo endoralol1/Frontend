@@ -857,12 +857,21 @@
   // Soft-nav / bfcache / tab focus — re-render when homepage content comes back
   window.addEventListener("pageshow", bootContinue);
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "visible") bootContinue();
+    if (document.visibilityState === "visible") {
+      bootContinue();
+      paintPartyResume();
+    }
   });
   window.addEventListener("focus", bootContinue);
   window.addEventListener("storage", function (e) {
     if (!e.key || e.key === "cf_continue_v1") bootContinue();
   });
   // Custom hook used by app.js afterSoftNav
-  window.addEventListener("cf:softnav", function () { bootContinue(); paintPartyResume(); });
+  window.addEventListener("cf:softnav", function () {
+    bootContinue();
+    paintPartyResume();
+    setTimeout(paintPartyResume, 50);
+    setTimeout(paintPartyResume, 300);
+    setTimeout(paintPartyResume, 1000);
+  });
 })();

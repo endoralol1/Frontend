@@ -1570,16 +1570,20 @@
     return active;
   }
 
-  window.addEventListener("cf:softnav", () => {
+  function preparePartyLeave() {
     if (!active) return;
     try {
       active.destroy();
     } catch (_) {}
     active = null;
-  });
+  }
+  // Save hosting resume before wrapper swap, and again after
+  window.addEventListener("cf:before-softnav", preparePartyLeave);
+  window.addEventListener("cf:softnav", preparePartyLeave);
 
   window.ChillflixPlayer = {
     mount,
+    prepareLeave: preparePartyLeave,
     startOnWatch(cfg) {
       const moviePlayer = document.getElementById("movie-player");
       const host = document.getElementById("player");
