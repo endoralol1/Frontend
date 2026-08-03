@@ -733,7 +733,109 @@
   }
 
   window.ChillflixContinue = { render: renderContinueRail, list: readContinue, pull: pullServerContinue };
-  window.ChillflixParty = { open: openPartyPanel, close: closePartyPanel };
+
+  var PARTY_HOSTING_KEY = "cf_party_hosting_v1";
+
+  function readHostingResume() {
+    try {
+      var raw = sessionStorage.getItem(PARTY_HOSTING_KEY);
+      if (!raw) return null;
+      var data = JSON.parse(raw);
+      if (!data || !data.code || !data.url) return null;
+      // Drop stale local resume after 25 minutes
+      if (data.updated && Date.now() - Number(data.updated) > 25 * 60 * 1000) {
+        sessionStorage.removeItem(PARTY_HOSTING_KEY);
+        return null;
+      }
+      return data;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function clearHostingResume() {
+    try {
+      sessionStorage.removeItem(PARTY_HOSTING_KEY);
+    } catch (e) {}
+  }
+
+  function ensureResumeBar() {
+    var $el = $("#cf-party-resume");
+    if ($el.length) return $el;
+    $el = $(
+      '<div id="cf-party-resume" class="cf-party-resume" hidden>' +
+        '<div class="cf-party-resume-inner">' +
+        '<div class="cf-party-resume-copy">' +
+        '<span class="cf-party-resume-kicker">Hosting</span>' +
+        '<strong class="cf-party-resume-code"></strong>' +
+        '<span class="cf-party-resume-title"></span>' +
+        "</div>" +
+        '<div class="cf-party-resume-actions">' +
+        '<a class="cf-party-resume-return" href="#">Return</a>' +
+        '<button type="button" class="cf-party-resume-end" data-party-end>End</button>' +
+        "</div></div></div>"
+    );
+    $("body").append($el);
+    return $el;
+  }
+
+  function paintPartyResume() {
+    var data = readHostingResume();
+    var $el = ensureResumeBar();
+    if (!data) {
+      $el.attr("hidden", true);
+      return;
+    }
+    // Already on the hosted watch URL — hide bar
+    try {
+      var here = new URL(location.href);
+      var there = new URL(data.url, location.origin);
+      if (
+        here.pathname === there.pathname &&
+        (here.searchParams.get("party") || "").toUpperCase() === String(data.code).toUpperCase()
+      ) {
+        $el.attr("hidden", true);
+        return;
+      }
+    } catch (e0) {}
+    $el.find(".cf-party-resume-code").text(data.code);
+    $el.find(".cf-party-resume-title").text(data.title || "Watch Party");
+    $el.find(".cf-party-resume-return").attr("href", data.url);
+    $el.removeAttr("hidden");
+  }
+
+  async function endHostingFromBar() {
+    var data = readHostingResume();
+    if (!data) {
+      paintPartyResume();
+      return;
+    }
+    if (!window.confirm("End Watch Party for everyone?")) return;
+    var api = ((window.APP && APP.partyApi) || ((window.APP && APP.baseUrl) || "") + "/api/party").replace(/\/$/, "");
+    try {
+      await fetch(api + "/" + encodeURIComponent(data.code) + "/close", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ hostId: data.hostId || undefined, peerId: data.hostId || undefined }),
+        keepalive: true,
+      });
+    } catch (e) {}
+    clearHostingResume();
+    paintPartyResume();
+  }
+
+  $(document).on("click", "[data-party-end]", function (e) {
+    e.preventDefault();
+    endHostingFromBar();
+  });
+
+  window.ChillflixParty = {
+    open: openPartyPanel,
+    close: closePartyPanel,
+    paintResume: paintPartyResume,
+    clearHosting: clearHostingResume,
+  };
+
 
   function bootContinue() {
     renderContinueRail();
@@ -746,9 +848,11 @@
 
   $(function () {
     bootContinue();
+    paintPartyResume();
     // Re-check shortly after load in case watch tab wrote storage just before nav
     setTimeout(bootContinue, 250);
     setTimeout(bootContinue, 1200);
+    setTimeout(paintPartyResume, 300);
   });
   // Soft-nav / bfcache / tab focus — re-render when homepage content comes back
   window.addEventListener("pageshow", bootContinue);
@@ -760,5 +864,5 @@
     if (!e.key || e.key === "cf_continue_v1") bootContinue();
   });
   // Custom hook used by app.js afterSoftNav
-  window.addEventListener("cf:softnav", bootContinue);
+  window.addEventListener("cf:softnav", function () { bootContinue(); paintPartyResume(); });
 })();

@@ -437,3 +437,95 @@ body.cf-party-open { overflow: hidden; }
 .cf-party-label {
   flex: 0 0 auto;
 }
+
+
+/* Host stepped away — return to party */
+.cf-party-resume[hidden] { display: none !important; }
+.cf-party-resume {
+  position: fixed;
+  left: 50%;
+  bottom: calc(4.6rem + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 1250;
+  width: min(26rem, calc(100% - 1.25rem));
+  pointer-events: none;
+}
+@media (min-width: 992px) {
+  .cf-party-resume {
+    bottom: 1.25rem;
+    left: auto;
+    right: max(15px, calc((100vw - min(100vw, 1800px)) / 2 + 15px));
+    transform: none;
+    width: min(22rem, calc(100% - 2rem));
+  }
+}
+.cf-party-resume-inner {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .65rem;
+  padding: .55rem .6rem .55rem .8rem;
+  border-radius: .85rem;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.08), transparent 48%),
+    rgba(16, 18, 26, .92);
+  border: 1px solid rgba(220, 53, 69, .4);
+  box-shadow: 0 12px 30px rgba(0,0,0,.45);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  color: #eef1f6;
+}
+.cf-party-resume-copy {
+  min-width: 0;
+  display: grid;
+  gap: .1rem;
+}
+.cf-party-resume-kicker {
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #ff8b76;
+}
+.cf-party-resume-code {
+  font-size: 1rem;
+  letter-spacing: .12em;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.cf-party-resume-title {
+  font-size: .72rem;
+  color: #9aa3b2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 11rem;
+}
+.cf-party-resume-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  flex: 0 0 auto;
+}
+.cf-party-resume-return,
+.cf-party-resume-end {
+  appearance: none;
+  border: 0;
+  border-radius: .55rem;
+  padding: .48rem .7rem;
+  font-size: .75rem;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+  line-height: 1;
+}
+.cf-party-resume-return {
+  background: linear-gradient(180deg, #ef5b45, #c43c2e);
+  color: #fff;
+}
+.cf-party-resume-end {
+  background: rgba(255,255,255,.08);
+  color: #e8edf5;
+  border: 1px solid rgba(255,255,255,.1);
+}

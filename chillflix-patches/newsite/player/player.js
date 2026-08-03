@@ -1310,7 +1310,7 @@
           setStatus("Watch Party host · " + state.party.code);
           state.partyTimer = setInterval(() => partyReport(false), 2000);
           partyReport(true);
-          bindPartyUnload();
+          saveHostingResume();
         } else {
           const joinRes = await fetch(`${base}/${encodeURIComponent(state.party.code)}/join`, {
             method: "POST",
@@ -1365,15 +1365,48 @@
       } catch (_) {}
     }
 
+    function hostingStoreKey() {
+      return "cf_party_hosting_v1";
+    }
+
+    function saveHostingResume() {
+      if (!state.party || state.party.role !== "host") return;
+      try {
+        const watch =
+          (cfg.watchUrl || location.href).split("#")[0];
+        const u = new URL(watch, location.origin);
+        u.searchParams.set("party", state.party.code);
+        u.searchParams.set("host", "1");
+        u.searchParams.set("play", "1");
+        sessionStorage.setItem(
+          hostingStoreKey(),
+          JSON.stringify({
+            code: state.party.code,
+            hostId: state.partyHostId || partyPeerId(),
+            url: u.toString(),
+            title: cfg.title || "Watch Party",
+            updated: Date.now(),
+          })
+        );
+      } catch (_) {}
+      try {
+        window.ChillflixParty?.paintResume?.();
+      } catch (_) {}
+    }
+
+    function clearHostingResume() {
+      try {
+        sessionStorage.removeItem(hostingStoreKey());
+      } catch (_) {}
+      try {
+        window.ChillflixParty?.paintResume?.();
+      } catch (_) {}
+    }
+
     function stopPartyLocal(message) {
       if (state.partyTimer) {
         clearInterval(state.partyTimer);
         state.partyTimer = null;
-      }
-      if (state.partyUnloadBound) {
-        window.removeEventListener("pagehide", state.partyUnloadBound);
-        window.removeEventListener("beforeunload", state.partyUnloadBound);
-        state.partyUnloadBound = null;
       }
       const code = state.party && state.party.code;
       if (code) {
@@ -1383,8 +1416,10 @@
       }
       state.party = null;
       state.partyHostId = null;
+      state.partyUnloadBound = null;
       els.shell?.querySelector("#np-party-chip")?.remove();
       clearPartyFromUrl();
+      clearHostingResume();
       if (message) setStatus(message);
     }
 
@@ -1395,28 +1430,6 @@
         peerId: peer,
         hostId: state.party?.role === "host" ? hostId : undefined,
       };
-    }
-
-    function partyCloseBeacon() {
-      if (!state.party || state.party.role !== "host") return;
-      const base = partyApiBase();
-      const body = JSON.stringify(partyLeavePayload());
-      const url = `${base}/${encodeURIComponent(state.party.code)}/close`;
-      try {
-        if (navigator.sendBeacon) {
-          const blob = new Blob([body], { type: "application/json" });
-          navigator.sendBeacon(url, blob);
-          return;
-        }
-      } catch (_) {}
-      try {
-        fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body,
-          keepalive: true,
-        });
-      } catch (_) {}
     }
 
     async function leaveParty(confirmHost) {
@@ -1438,13 +1451,6 @@
         });
       } catch (_) {}
       stopPartyLocal(role === "host" ? "Watch Party ended" : "Left Watch Party");
-    }
-
-    function bindPartyUnload() {
-      if (!state.party || state.party.role !== "host" || state.partyUnloadBound) return;
-      state.partyUnloadBound = () => partyCloseBeacon();
-      window.addEventListener("pagehide", state.partyUnloadBound);
-      window.addEventListener("beforeunload", state.partyUnloadBound);
     }
 
     async function partyReport(force) {
@@ -1477,6 +1483,8 @@
         const data = await res.json().catch(() => null);
         if (data && data.ok === false) {
           stopPartyLocal(data.error || "Watch Party ended");
+        } else if (data && data.ok) {
+          saveHostingResume();
         }
       } catch (_) {}
     }
@@ -1519,13 +1527,10 @@
 
     return {
       destroy() {
-        if (state.party && state.party.role === "host") partyCloseBeacon();
+        // Keep host party alive so they can return from Home / other pages
+        if (state.party && state.party.role === "host") saveHostingResume();
         if (state.partyTimer) clearInterval(state.partyTimer);
-        if (state.partyUnloadBound) {
-          window.removeEventListener("pagehide", state.partyUnloadBound);
-          window.removeEventListener("beforeunload", state.partyUnloadBound);
-          state.partyUnloadBound = null;
-        }
+        state.partyTimer = null;
         try {
           const v = els.video;
           if (v) cwSave(cfg, v.currentTime, v.duration, { forcePush: true });
@@ -1564,6 +1569,14 @@
     active = createPlayer(Object.assign({}, conf, { root: host.parentElement || container }));
     return active;
   }
+
+  window.addEventListener("cf:softnav", () => {
+    if (!active) return;
+    try {
+      active.destroy();
+    } catch (_) {}
+    active = null;
+  });
 
   window.ChillflixPlayer = {
     mount,

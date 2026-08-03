@@ -7,7 +7,8 @@ declare(strict_types=1);
  */
 final class WatchParty
 {
-    private const TTL_SEC = 21600; // 6h
+    private const TTL_SEC = 21600; // 6h hard cap
+    private const HOST_IDLE_CLOSE_SEC = 1200; // 20m without host updates
     private const MAX_BODY = 4096;
 
     public static function create(array $payload): array
@@ -146,7 +147,13 @@ final class WatchParty
             return null;
         }
         $updated = (int) ($data['updatedAt'] ?? 0);
-        if ($updated > 0 && (time() - $updated) > self::TTL_SEC) {
+        $age = $updated > 0 ? (time() - $updated) : 0;
+        if ($updated > 0 && $age > self::TTL_SEC) {
+            @unlink($path);
+            return null;
+        }
+        // Host stopped reporting (left the player) — end for everyone after idle window
+        if ($updated > 0 && $age > self::HOST_IDLE_CLOSE_SEC) {
             @unlink($path);
             return null;
         }
