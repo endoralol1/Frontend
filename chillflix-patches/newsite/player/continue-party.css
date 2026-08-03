@@ -765,12 +765,18 @@ body.cf-party-open { overflow: hidden; }
 /* Party chip outside the video player */
 .cf-party-chip-bar[hidden] { display: none !important; }
 .cf-party-chip-bar {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  z-index: 50;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  margin: 0 0 0.45rem;
+  margin: 0;
+  pointer-events: none;
 }
 .cf-party-chip-bar .np-party-chip {
+  pointer-events: auto;
   display: inline-flex;
   align-items: center;
   gap: .45rem;
