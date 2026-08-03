@@ -1339,7 +1339,7 @@
       host.id = "cf-party-chip-bar";
       host.className = "cf-party-chip-bar";
       host.hidden = true;
-      player.insertAdjacentElement("afterend", host);
+      player.insertAdjacentElement("beforebegin", host);
       return host;
     }
 

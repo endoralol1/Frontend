@@ -1618,10 +1618,10 @@ function watch_page(Tmdb $tmdb, string $type, int $id, string $slug): void
         'autoPlay' => $autoPlay,
         'playerConfig' => $playerConfig,
         'nextEpisode' => $nextEpisode,
-        'extraCss' => [asset('css/player.css') . '?v=20260803-ui155'],
+        'extraCss' => [asset('css/player.css') . '?v=20260803-ui156'],
         'extraJs' => [
             'https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js',
-            asset('js/player.js') . '?v=20260803-ui155',
+            asset('js/player.js') . '?v=20260803-ui156',
         ],
         'bodyClass' => 'page-watch',
         'headerClass' => 'absolute',

@@ -767,8 +767,8 @@ body.cf-party-open { overflow: hidden; }
 .cf-party-chip-bar {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  margin: 0.55rem 0 0.15rem;
+  justify-content: flex-end;
+  margin: 0 0 0.45rem;
 }
 .cf-party-chip-bar .np-party-chip {
   display: inline-flex;
