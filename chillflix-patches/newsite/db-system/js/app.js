@@ -844,8 +844,7 @@
     if ($input.attr('name') === 'type[]') {
       var href = $input.data('href');
       if (href) {
-        var view = $('#view-mode-input').val();
-        location.href = href + (view && view !== 'grid' ? ('?view=' + encodeURIComponent(view)) : '');
+        location.href = href;
       }
       return;
     }
@@ -1056,18 +1055,6 @@
   $(document).on('input change', '#rating-from-range, #rating-to-range', syncRatingTimeline);
   syncYearTimeline();
   syncRatingTimeline();
-
-  // Discover view switcher — update class + persist via query
-  $(document).on('click', '.btn-view-switcher', function () {
-    var view = $(this).data('view');
-    $('.btn-view-switcher').removeClass('active');
-    $(this).addClass('active');
-    $('#view-mode-input').val(view);
-    $('#discover-results').removeClass('view-grid view-list').addClass('view-' + view);
-    var url = new URL(location.href);
-    url.searchParams.set('view', view);
-    history.replaceState(null, '', url.toString());
-  });
 
   // Watch page player (official YouTube trailers)
   function ensureWatchPlayerChrome() {
