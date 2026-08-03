@@ -168,27 +168,29 @@ a.person-inline-link:hover {
 .person-body {
   position: relative;
   z-index: 1;
-  margin-top: 0.35rem;
+  margin-top: 0.15rem;
 }
 .person-bio-panel {
-  margin-bottom: 1.35rem;
-  padding: 0.95rem 1rem 1.05rem;
-  border-radius: 0.85rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(28, 32, 41, 0.92);
+  margin-bottom: 1.5rem;
+  padding: 0.15rem 0 0;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  max-width: 46rem;
 }
 .person-bio-title {
-  margin: 0 0 0.45rem;
+  margin: 0 0 0.55rem;
   font-family: Outfit, Poppins, sans-serif;
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: #fff;
+  letter-spacing: -0.01em;
 }
 .person-bio {
   margin: 0;
-  color: #cfd3da;
+  color: var(--cf-muted, #9aa3b2);
   font-size: 0.9rem;
-  line-height: 1.55;
+  line-height: 1.65;
   white-space: pre-wrap;
 }
 .person-bio.is-clamp {
@@ -197,10 +199,15 @@ a.person-inline-link:hover {
   -webkit-box-orient: vertical;
   overflow: hidden;
   white-space: normal;
+  mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 55%, transparent 100%);
 }
 .person-bio.is-open {
   display: block;
   -webkit-line-clamp: unset;
+  mask-image: none;
+  -webkit-mask-image: none;
+  color: #c5cad3;
 }
 .person-bio-empty {
   margin: 0;
@@ -208,18 +215,22 @@ a.person-inline-link:hover {
   font-size: 0.9rem;
 }
 .person-bio-more {
-  margin-top: 0.55rem;
+  margin-top: 0.45rem;
   padding: 0;
   border: 0;
   background: none;
-  color: #ffb898;
+  color: #cfd3da;
   font-family: Outfit, Poppins, sans-serif;
-  font-size: 0.84rem;
-  font-weight: 700;
+  font-size: 0.82rem;
+  font-weight: 600;
   cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(219, 105, 55, 0.55);
+  text-underline-offset: 0.18em;
 }
 .person-bio-more:hover {
   color: #fff;
+  text-decoration-color: var(--cf-orange, #db6937);
 }
 
 .person-known-for {
@@ -254,11 +265,11 @@ a.person-inline-link:hover {
     font-size: 0.95rem;
   }
   .person-bio-panel {
-    padding: 1.15rem 1.25rem 1.25rem;
+    padding: 0.25rem 0 0;
   }
   .person-bio {
     font-size: 0.95rem;
-    line-height: 1.65;
+    line-height: 1.7;
   }
   .person-bio.is-clamp {
     -webkit-line-clamp: 5;
