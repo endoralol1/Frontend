@@ -786,54 +786,9 @@ $router->get('/api/admin/sources', function () {
     if (class_exists('SourcesService')) {
         SourcesService::ensureCatalogRows();
     }
-    $extra = [];
-    if (class_exists('RealDebridSources')) {
-        $extra['realdebrid'] = [
-            'hostAllowed' => RealDebridSources::hostAllowed(),
-            'configured' => RealDebridSources::apiKeyConfigured(),
-            'maskedKey' => RealDebridSources::maskedKey(),
-        ];
-    }
-    json_response(['ok' => true, 'sources' => SourcesService::all(), 'catalog' => SourcesService::CATALOG] + $extra);
+    json_response(['ok' => true, 'sources' => SourcesService::all(), 'catalog' => SourcesService::CATALOG]);
 });
 
-$router->get('/api/admin/realdebrid', function () {
-    Auth::requireRole('admin', 'moderator');
-    if (!class_exists('RealDebridSources') || !RealDebridSources::hostAllowed()) {
-        json_response(['ok' => false, 'error' => 'RealDebrid is Vuflix-only'], 404);
-    }
-    json_response([
-        'ok' => true,
-        'hostAllowed' => true,
-        'configured' => RealDebridSources::apiKeyConfigured(),
-        'maskedKey' => RealDebridSources::maskedKey(),
-    ]);
-});
-
-$router->map(['POST', 'PUT'], '/api/admin/realdebrid', function () {
-    Auth::requireRole('admin', 'moderator');
-    if (!class_exists('RealDebridSources') || !RealDebridSources::hostAllowed()) {
-        json_response(['ok' => false, 'error' => 'RealDebrid is Vuflix-only'], 404);
-    }
-    $body = json_body();
-    $key = trim((string) ($body['apiKey'] ?? ''));
-    if ($key === '') {
-        RealDebridSources::saveApiKey('');
-        json_response(['ok' => true, 'configured' => false, 'maskedKey' => '', 'cleared' => true]);
-    }
-    $check = RealDebridSources::validateApiKey($key);
-    if (empty($check['ok'])) {
-        json_response(['ok' => false, 'error' => $check['error'] ?? 'Invalid key'], 400);
-    }
-    RealDebridSources::saveApiKey($key);
-    json_response([
-        'ok' => true,
-        'configured' => true,
-        'maskedKey' => RealDebridSources::maskedKey(),
-        'username' => $check['username'] ?? '',
-        'premium' => $check['premium'] ?? 0,
-    ]);
-});
 
 $router->post('/api/admin/sources/reorder', function () {
     Auth::requireRole('admin', 'moderator');

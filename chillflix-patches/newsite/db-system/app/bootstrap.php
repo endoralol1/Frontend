@@ -37,7 +37,6 @@ require_once __DIR__ . '/Services/Database.php';
 require_once __DIR__ . '/Services/Auth.php';
 require_once __DIR__ . '/Services/UserData.php';
 require_once __DIR__ . '/Services/SourcesService.php';
-require_once __DIR__ . '/Services/RealDebridSources.php';
 require_once __DIR__ . '/Services/WatchParty.php';
 require_once __DIR__ . '/Services/HuhuLiveTv.php';
 

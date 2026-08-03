@@ -20,7 +20,6 @@ final class SourcesService
         'vidnest' => 'VidNest',
         'peachify' => 'Peachify',
         'vidrock' => 'VidRock',
-        'realdebrid' => 'RealDebrid',
     ];
 
     /** Ensure catalog rows exist (safe to call often). */

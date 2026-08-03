@@ -48,53 +48,6 @@ final class PlayerSources
             if ($provider === '') {
                 continue;
             }
-            // Vuflix-only RealDebrid (Torrentio → RD HTTP links for native player)
-            if ($provider === 'realdebrid' || $provider === 'torrentio-rd') {
-                if (!class_exists('RealDebridSources') || !RealDebridSources::hostAllowed()) {
-                    $diagnostics[] = [
-                        'code' => 'RD_HOST_BLOCKED',
-                        'message' => 'RealDebrid is only available on Vuflix',
-                        'severity' => 'info',
-                        'provider' => 'realdebrid',
-                    ];
-                    continue;
-                }
-                $rd = RealDebridSources::fetch($type, $tmdbId, $season, $episode);
-                foreach ($rd['diagnostics'] ?? [] as $d) {
-                    if (is_array($d)) {
-                        $diagnostics[] = $d;
-                    }
-                }
-                foreach ($rd['sources'] ?? [] as $src) {
-                    if (!is_array($src) || empty($src['url'])) {
-                        continue;
-                    }
-                    $streamUrl = (string) $src['url'];
-                    $key = 'realdebrid|' . $streamUrl;
-                    if (isset($merged[$key])) {
-                        continue;
-                    }
-                    $merged[$key] = [
-                        'url' => $streamUrl,
-                        'type' => (string) ($src['type'] ?? 'file'),
-                        'quality' => (string) ($src['quality'] ?? 'Auto'),
-                        'provider' => 'realdebrid',
-                        'providerName' => (string) ($src['providerName'] ?? 'RealDebrid'),
-                        'label' => (string) ($src['label'] ?? 'RealDebrid'),
-                        'language' => (string) ($src['language'] ?? ''),
-                        'audioTracks' => [],
-                    ];
-                }
-                if (empty($rd['ok']) && empty($rd['sources'])) {
-                    $diagnostics[] = [
-                        'code' => 'RD_EMPTY',
-                        'message' => (string) ($rd['error'] ?? 'No RealDebrid streams'),
-                        'severity' => 'warning',
-                        'provider' => 'realdebrid',
-                    ];
-                }
-                continue;
-            }
             $qs = [
                 'type' => $type,
                 'tmdbId' => (string) $tmdbId,
@@ -235,25 +188,9 @@ final class PlayerSources
 
         $sources = array_values($merged);
         if (!$sources) {
-            $err = 'No playable sources right now.';
-            $codes = [];
-            foreach ($diagnostics as $d) {
-                if (is_array($d) && !empty($d['code'])) {
-                    $codes[(string) $d['code']] = trim((string) ($d['message'] ?? ''));
-                }
-            }
-            if (isset($codes['RD_KEY_MISSING'])) {
-                $err = 'RealDebrid API key missing. Open Admin → Sources, paste your key from real-debrid.com/apitoken, click Save key, then try again.';
-            } elseif (isset($codes['RD_KEY_INVALID'])) {
-                $err = 'RealDebrid API key is invalid or expired. Update it in Admin → Sources.';
-            } elseif (isset($codes['RD_HOST_BLOCKED'])) {
-                $err = 'RealDebrid is only available on vuflix.co.';
-            } elseif (!empty($codes['RD_EMPTY'])) {
-                $err = $codes['RD_EMPTY'];
-            }
             return [
                 'ok' => false,
-                'error' => $err,
+                'error' => 'No playable sources right now.',
                 'diagnostics' => array_values($diagnostics),
                 'sources' => [],
                 'subtitles' => [],
