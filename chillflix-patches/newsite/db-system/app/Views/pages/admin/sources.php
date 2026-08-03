@@ -17,7 +17,8 @@ $adminUser = $adminUser ?? Auth::user();
     <div class="cf-admin-panel" id="rd-panel" hidden>
       <h2 style="margin:0 0 .35rem;font-size:1.05rem">RealDebrid (Vuflix)</h2>
       <p style="margin:0 0 .75rem;color:rgba(255,255,255,.55);font-size:.86rem;line-height:1.4">
-        Learning provider: Torrentio finds torrents, RealDebrid unlocks HTTP links, your player plays them.
+        <strong style="color:#fbbf24">Save your API key first</strong> — enabling RealDebrid without a saved key makes the player say sources failed.
+        Learning flow: Torrentio finds torrents → RealDebrid unlocks HTTP links → your player plays them.
         Cached titles start fast; uncached ones wait on RD’s side (not this server).
         Get a key at <a href="https://real-debrid.com/apitoken" target="_blank" rel="noopener" style="color:#ffb3bb">real-debrid.com/apitoken</a>.
       </p>
@@ -52,9 +53,10 @@ $adminUser = $adminUser ?? Auth::user();
   function show(t, ok){ msg.hidden=false; msg.textContent=t; msg.className='cf-admin-msg'+(ok?' ok':''); }
   function render(sources){
     list.innerHTML = (sources||[]).map(function(s){
+      var needsKey = (s.id === 'realdebrid' && window.__rdConfigured === false);
       return '<div class="cf-admin-source'+(s.enabled?'':' is-off')+'" draggable="true" data-id="'+s.id+'">'+
         '<div class="meta"><strong>'+s.name+' <span style="color:rgba(255,255,255,.4)">('+s.id+')</span></strong>'+
-        '<em>Public: '+s.publicLabel+(s.enabled?' · enabled':' · disabled')+'</em></div>'+
+        (needsKey ? '<em style="color:#fbbf24">API key missing — Save key above before testing</em>' : '<em>Public: '+s.publicLabel+(s.enabled?' · enabled':' · disabled')+'</em>')+'</div>'+
         '<button type="button" class="cf-admin-switch'+(s.enabled?' on':'')+'" data-toggle="'+s.id+'" aria-label="Toggle"></button>'+
         '<button type="button" class="cf-admin-btn ghost" data-test="'+s.id+'">Test</button>'+
         '<input data-label="'+s.id+'" value="'+(s.publicLabel||'').replace(/"/g,'&quot;')+'" style="width:7rem;min-height:2.3rem;border-radius:.7rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.28);color:#fff;padding:.35rem .5rem" title="Public label">'+
@@ -66,6 +68,7 @@ $adminUser = $adminUser ?? Auth::user();
       if(!d||!d.ok){ list.textContent='Failed'; return; }
       render(d.sources||[]);
       var rd = d.realdebrid;
+      window.__rdConfigured = !!(rd && rd.configured);
       var panel = document.getElementById('rd-panel');
       var status = document.getElementById('rd-status');
       if (panel && rd && rd.hostAllowed) {
@@ -73,6 +76,8 @@ $adminUser = $adminUser ?? Auth::user();
         status.textContent = rd.configured
           ? ('Key saved: ' + (rd.maskedKey || '••••') + ' — enable RealDebrid below and Test with a TMDB id')
           : 'No API key yet — paste one and Save, then enable RealDebrid in the list';
+        // re-render so the missing-key badge updates after load/save
+        render(d.sources||[]);
       } else if (panel) {
         panel.hidden = true;
       }

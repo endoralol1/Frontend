@@ -64,11 +64,28 @@ final class RealDebridSources
         ];
         $path = self::settingsPath();
         $tmp = $path . '.tmp';
-        if (@file_put_contents($tmp, json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX) === false) {
-            return ['ok' => false, 'error' => 'Could not write settings'];
+        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        if (@file_put_contents($tmp, $json, LOCK_EX) === false) {
+            return ['ok' => false, 'error' => 'Could not write settings (storage not writable)'];
         }
-        @rename($tmp, $path);
-        @chmod($path, 0600);
+        // Replace atomically; if rename fails (e.g. odd perms), fall back to overwrite.
+        if (!@rename($tmp, $path)) {
+            if (@file_put_contents($path, $json, LOCK_EX) === false) {
+                @unlink($tmp);
+                return ['ok' => false, 'error' => 'Could not save settings file'];
+            }
+            @unlink($tmp);
+        }
+        @chmod($path, 0660);
+        // Keep readable/writable by the web user (www-data), not root-only.
+        if (function_exists('posix_getpwnam')) {
+            $u = @posix_getpwnam('www-data');
+            $g = @posix_getgrnam('www-data');
+            if (is_array($u) && is_array($g)) {
+                @chown($path, (int) $u['uid']);
+                @chgrp($path, (int) $g['gid']);
+            }
+        }
         return ['ok' => true, 'configured' => $apiKey !== ''];
     }
 

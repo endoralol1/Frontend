@@ -235,9 +235,25 @@ final class PlayerSources
 
         $sources = array_values($merged);
         if (!$sources) {
+            $err = 'No playable sources right now.';
+            $codes = [];
+            foreach ($diagnostics as $d) {
+                if (is_array($d) && !empty($d['code'])) {
+                    $codes[(string) $d['code']] = trim((string) ($d['message'] ?? ''));
+                }
+            }
+            if (isset($codes['RD_KEY_MISSING'])) {
+                $err = 'RealDebrid API key missing. Open Admin → Sources, paste your key from real-debrid.com/apitoken, click Save key, then try again.';
+            } elseif (isset($codes['RD_KEY_INVALID'])) {
+                $err = 'RealDebrid API key is invalid or expired. Update it in Admin → Sources.';
+            } elseif (isset($codes['RD_HOST_BLOCKED'])) {
+                $err = 'RealDebrid is only available on vuflix.co.';
+            } elseif (!empty($codes['RD_EMPTY'])) {
+                $err = $codes['RD_EMPTY'];
+            }
             return [
                 'ok' => false,
-                'error' => 'No playable sources right now.',
+                'error' => $err,
                 'diagnostics' => array_values($diagnostics),
                 'sources' => [],
                 'subtitles' => [],
