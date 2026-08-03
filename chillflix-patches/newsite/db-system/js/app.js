@@ -1619,6 +1619,7 @@
       // Stay inside newsite app routes only (includes /live — instant soft swap)
       return /\/(home|movies|tv-series|anime|search|favorites|top-imdb|filters|contact|request|live|person)(\/|$|\?)/.test(path)
         || /\/person\//.test(path)
+        || path === '/'
         || /\/newsite\/?$/.test(path)
         || path.endsWith('/newsite')
         || path.endsWith('/newsite/');

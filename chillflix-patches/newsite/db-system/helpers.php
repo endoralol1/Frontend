@@ -33,6 +33,7 @@ function base_url(): string
         return $url = $configured;
     }
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || ((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
         || ((int) ($_SERVER['SERVER_PORT'] ?? 80) === 443);
     $scheme = $https ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
