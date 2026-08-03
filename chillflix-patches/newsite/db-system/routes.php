@@ -1104,7 +1104,7 @@ function home(Tmdb $tmdb): void
             'title' => 'Home - Explore Thousands of Movies & Series | ' . config('site_name'),
             'description' => 'Start exploring our vast library of movies and TV series. Find new releases, popular titles, and browse by genre on ' . config('site_name') . '.',
             'canonical' => url('/home'),
-            'image' => asset('img/logo.webp'),
+            'image' => logo_url(),
             'schema' => 'home',
         ],
     ]);
