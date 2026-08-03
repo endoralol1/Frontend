@@ -528,6 +528,7 @@
       partyTimer: null,
       partyApplying: false,
       partyHostId: null,
+      partyUnloadBound: null,
     };
 
     function fmt(t) {
@@ -1309,12 +1310,18 @@
           setStatus("Watch Party host · " + state.party.code);
           state.partyTimer = setInterval(() => partyReport(false), 2000);
           partyReport(true);
+          bindPartyUnload();
         } else {
-          await fetch(`${base}/${encodeURIComponent(state.party.code)}/join`, {
+          const joinRes = await fetch(`${base}/${encodeURIComponent(state.party.code)}/join`, {
             method: "POST",
             headers: { "Content-Type": "application/json", Accept: "application/json" },
             body: JSON.stringify({ peerId: peer }),
           });
+          const joinData = await joinRes.json().catch(() => null);
+          if (!joinData?.ok) {
+            stopPartyLocal((joinData && joinData.error) || "Watch Party ended");
+            return;
+          }
           setStatus("Watch Party · synced to host · " + state.party.code);
           state.partyTimer = setInterval(() => partyPoll(), 2000);
           partyPoll();
@@ -1330,12 +1337,114 @@
         chip = document.createElement("div");
         chip.id = "np-party-chip";
         chip.className = "np-party-chip";
+        chip.innerHTML =
+          '<span class="np-party-chip-label"></span>' +
+          '<button type="button" class="np-party-leave" id="np-party-leave" aria-label="Leave party">Leave</button>';
         els.shell.querySelector(".np-top-actions")?.appendChild(chip);
+        chip.querySelector("#np-party-leave")?.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          leaveParty(true);
+        });
       }
-      chip.textContent =
-        state.party.role === "host"
-          ? `Party ${state.party.code} · Host`
-          : `Party ${state.party.code}`;
+      const label = chip.querySelector(".np-party-chip-label");
+      if (label) {
+        label.textContent =
+          state.party.role === "host"
+            ? `Party ${state.party.code} · Host`
+            : `Party ${state.party.code}`;
+      }
+    }
+
+    function clearPartyFromUrl() {
+      try {
+        const u = new URL(location.href);
+        u.searchParams.delete("party");
+        u.searchParams.delete("host");
+        history.replaceState(null, "", u.toString());
+      } catch (_) {}
+    }
+
+    function stopPartyLocal(message) {
+      if (state.partyTimer) {
+        clearInterval(state.partyTimer);
+        state.partyTimer = null;
+      }
+      if (state.partyUnloadBound) {
+        window.removeEventListener("pagehide", state.partyUnloadBound);
+        window.removeEventListener("beforeunload", state.partyUnloadBound);
+        state.partyUnloadBound = null;
+      }
+      const code = state.party && state.party.code;
+      if (code) {
+        try {
+          sessionStorage.removeItem("cf_party_host_" + code);
+        } catch (_) {}
+      }
+      state.party = null;
+      state.partyHostId = null;
+      els.shell?.querySelector("#np-party-chip")?.remove();
+      clearPartyFromUrl();
+      if (message) setStatus(message);
+    }
+
+    function partyLeavePayload() {
+      const peer = partyPeerId();
+      const hostId = state.partyHostId || sessionStorage.getItem("cf_party_host_" + (state.party?.code || "")) || peer;
+      return {
+        peerId: peer,
+        hostId: state.party?.role === "host" ? hostId : undefined,
+      };
+    }
+
+    function partyCloseBeacon() {
+      if (!state.party || state.party.role !== "host") return;
+      const base = partyApiBase();
+      const body = JSON.stringify(partyLeavePayload());
+      const url = `${base}/${encodeURIComponent(state.party.code)}/close`;
+      try {
+        if (navigator.sendBeacon) {
+          const blob = new Blob([body], { type: "application/json" });
+          navigator.sendBeacon(url, blob);
+          return;
+        }
+      } catch (_) {}
+      try {
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body,
+          keepalive: true,
+        });
+      } catch (_) {}
+    }
+
+    async function leaveParty(confirmHost) {
+      if (!state.party) return;
+      if (state.party.role === "host" && confirmHost) {
+        const ok = window.confirm("End Watch Party for everyone?");
+        if (!ok) return;
+      }
+      const base = partyApiBase();
+      const code = state.party.code;
+      const role = state.party.role;
+      const path = role === "host" ? "close" : "leave";
+      try {
+        await fetch(`${base}/${encodeURIComponent(code)}/${path}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(partyLeavePayload()),
+          keepalive: true,
+        });
+      } catch (_) {}
+      stopPartyLocal(role === "host" ? "Watch Party ended" : "Left Watch Party");
+    }
+
+    function bindPartyUnload() {
+      if (!state.party || state.party.role !== "host" || state.partyUnloadBound) return;
+      state.partyUnloadBound = () => partyCloseBeacon();
+      window.addEventListener("pagehide", state.partyUnloadBound);
+      window.addEventListener("beforeunload", state.partyUnloadBound);
     }
 
     async function partyReport(force) {
@@ -1344,7 +1453,7 @@
       if (!v) return;
       const base = partyApiBase();
       try {
-        await fetch(`${base}/${encodeURIComponent(state.party.code)}`, {
+        const res = await fetch(`${base}/${encodeURIComponent(state.party.code)}`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify({
@@ -1365,6 +1474,10 @@
           }),
           keepalive: !!force,
         });
+        const data = await res.json().catch(() => null);
+        if (data && data.ok === false) {
+          stopPartyLocal(data.error || "Watch Party ended");
+        }
       } catch (_) {}
     }
 
@@ -1379,7 +1492,10 @@
           credentials: "same-origin",
         });
         const data = await res.json();
-        if (!data?.ok || !data.room) return;
+        if (!data?.ok || !data.room) {
+          stopPartyLocal("Host left — party ended");
+          return;
+        }
         const room = data.room;
         const target = Number(room.t) || 0;
         const drift = Math.abs((v.currentTime || 0) - target);
@@ -1403,7 +1519,13 @@
 
     return {
       destroy() {
+        if (state.party && state.party.role === "host") partyCloseBeacon();
         if (state.partyTimer) clearInterval(state.partyTimer);
+        if (state.partyUnloadBound) {
+          window.removeEventListener("pagehide", state.partyUnloadBound);
+          window.removeEventListener("beforeunload", state.partyUnloadBound);
+          state.partyUnloadBound = null;
+        }
         try {
           const v = els.video;
           if (v) cwSave(cfg, v.currentTime, v.duration, { forcePush: true });
