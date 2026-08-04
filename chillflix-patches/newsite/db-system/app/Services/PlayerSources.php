@@ -8,8 +8,57 @@ declare(strict_types=1);
  */
 final class PlayerSources
 {
+    /**
+     * Enabled providers in admin playback order (no scrape).
+     *
+     * @return array{ok:bool,providers:list<array<string,mixed>>}
+     */
+    public static function listProviders(): array
+    {
+        $reveal = class_exists('Auth') && Auth::isStaff();
+        $rows = [];
+        try {
+            if (class_exists('SourcesService')) {
+                SourcesService::ensureCatalogRows();
+                foreach (SourcesService::enabledOrdered() as $s) {
+                    $id = (string) ($s['id'] ?? '');
+                    if ($id === '') {
+                        continue;
+                    }
+                    $public = (string) ($s['publicLabel'] ?? $s['name'] ?? $id);
+                    $real = (string) ($s['name'] ?? $id);
+                    $rows[] = [
+                        'id' => $id,
+                        'name' => $reveal ? $real : $public,
+                        'publicLabel' => $public,
+                        'realName' => $reveal ? $real : null,
+                        'providerName' => $reveal ? $real : $public,
+                    ];
+                }
+            }
+        } catch (Throwable $e) {
+            // fall through
+        }
+        if ($rows === []) {
+            foreach ((array) config('player_providers', ['vaplayer', 'huhu']) as $id) {
+                $id = strtolower(trim((string) $id));
+                if ($id === '') {
+                    continue;
+                }
+                $rows[] = [
+                    'id' => $id,
+                    'name' => ucfirst($id),
+                    'publicLabel' => ucfirst($id),
+                    'realName' => ucfirst($id),
+                    'providerName' => ucfirst($id),
+                ];
+            }
+        }
+        return ['ok' => true, 'providers' => $rows];
+    }
+
     /** @return array{ok:bool,sources?:list<array<string,mixed>>,subtitles?:list<array<string,mixed>>,error?:string,meta?:array<string,mixed>} */
-    public static function fetch(string $type, int $tmdbId, int $season = 1, int $episode = 1): array
+    public static function fetch(string $type, int $tmdbId, int $season = 1, int $episode = 1, ?string $onlyProvider = null): array
     {
         $type = $type === 'tv' ? 'tv' : 'movie';
         if ($tmdbId < 1) {
@@ -35,6 +84,12 @@ final class PlayerSources
         }
         if (!is_array($providers) || !$providers) {
             $providers = ['vaplayer', 'huhu'];
+        }
+
+        // Progressive player: scrape only the requested provider.
+        $onlyProvider = $onlyProvider !== null ? strtolower(trim($onlyProvider)) : '';
+        if ($onlyProvider !== '') {
+            $providers = [$onlyProvider];
         }
 
         $origin = rtrim((string) config('player_main_api', config('main_origin', 'https://www.chillflix.lol')), '/');
@@ -428,7 +483,7 @@ final class PlayerSources
             self::collectBackgroundLocalProvider($bgLocal);
         }
 
-        $sources = array_values($merged);
+        $sources = self::collapseProviderCandidates(array_values($merged), ['vaplayer']);
         if (!$sources) {
             return [
                 'ok' => false,
@@ -445,6 +500,7 @@ final class PlayerSources
             'tmdbId' => $tmdbId,
             'season' => $type === 'tv' ? max(1, $season) : null,
             'episode' => $type === 'tv' ? max(1, $episode) : null,
+            'provider' => $onlyProvider !== '' ? $onlyProvider : null,
             'sources' => (class_exists('SourcesService')
                 ? SourcesService::applyPublicLabels($sources, class_exists('Auth') && Auth::isStaff())
                 : $sources),
@@ -453,6 +509,69 @@ final class PlayerSources
             'diagnostics' => array_values($diagnostics),
             'fetchedAt' => gmdate('c'),
         ];
+    }
+
+    /**
+     * Collapse N streams from the same provider into one Source-tab entry.
+     * Extra URLs go into candidates[] so the player can race the fastest.
+     *
+     * @param list<array<string,mixed>> $sources
+     * @param list<string> $providerIds
+     * @return list<array<string,mixed>>
+     */
+    private static function collapseProviderCandidates(array $sources, array $providerIds): array
+    {
+        $want = [];
+        foreach ($providerIds as $id) {
+            $want[strtolower(trim((string) $id))] = true;
+        }
+        $out = [];
+        /** @var array<string,int> $indexByProvider */
+        $indexByProvider = [];
+
+        foreach ($sources as $src) {
+            if (!is_array($src) || empty($src['url'])) {
+                continue;
+            }
+            $pid = strtolower((string) ($src['provider'] ?? ''));
+            if ($pid === '' || !isset($want[$pid])) {
+                $out[] = $src;
+                continue;
+            }
+
+            $cand = [
+                'url' => (string) $src['url'],
+                'quality' => (string) ($src['quality'] ?? ''),
+                'type' => (string) ($src['type'] ?? 'hls'),
+            ];
+
+            if (!isset($indexByProvider[$pid])) {
+                $src['candidates'] = [$cand];
+                $src['quality'] = 'Auto';
+                $indexByProvider[$pid] = count($out);
+                $out[] = $src;
+                continue;
+            }
+
+            $idx = $indexByProvider[$pid];
+            $existing = $out[$idx]['candidates'] ?? [];
+            if (!is_array($existing)) {
+                $existing = [];
+            }
+            $dup = false;
+            foreach ($existing as $e) {
+                if (is_array($e) && (string) ($e['url'] ?? '') === $cand['url']) {
+                    $dup = true;
+                    break;
+                }
+            }
+            if (!$dup) {
+                $existing[] = $cand;
+                $out[$idx]['candidates'] = $existing;
+            }
+        }
+
+        return $out;
     }
 
     /**
