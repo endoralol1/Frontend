@@ -608,32 +608,86 @@
       });
     }
 
+    function streamQualitiesFromSource(source) {
+      const list = Array.isArray(source?.qualities) ? source.qualities : [];
+      return list
+        .filter((q) => q && q.url)
+        .map((q, i) => ({
+          key: String(q.quality || q.label || i).toLowerCase(),
+          label: String(q.quality || q.label || `Q${i + 1}`),
+          levelIndex: i,
+          url: String(q.url),
+          type: q.type || source?.type || "hls",
+        }));
+    }
+
+    function defaultStreamQualityIndex(variants) {
+      if (!variants.length) return 0;
+      const hit1080 = variants.findIndex((v) => /1080/.test(String(v.label || "")));
+      if (hit1080 >= 0) return hit1080;
+      const hit720 = variants.findIndex((v) => /720/.test(String(v.label || "")));
+      if (hit720 >= 0) return hit720;
+      return 0;
+    }
+
+    function applySourceQualities(source) {
+      const variants = streamQualitiesFromSource(source);
+      if (!variants.length) return false;
+      state.qualityOptions = variants;
+      let idx = state.levelIndex;
+      if (idx < 0 || idx >= variants.length) {
+        idx = defaultStreamQualityIndex(variants);
+      }
+      // Keep selected variant URL on the source entry
+      const pick = variants[idx];
+      if (pick?.url && source) {
+        source.url = pick.url;
+        source.quality = pick.label;
+        if (pick.type) source.type = pick.type;
+      }
+      state.levelIndex = idx;
+      return true;
+    }
+
     function refreshMenus() {
       renderList(
         els.sourceList,
         state.sources,
         state.sourceIndex,
         (i) => loadSource(i),
-        (s, i) => ({
-          title: s.providerName || s.provider || `Source ${i + 1}`,
-          sub:
-            s.provider === "huhu"
-              ? s.language
-                ? String(s.language).toUpperCase() + " audio"
-                : s.quality && s.quality !== "Auto"
-                  ? String(s.quality)
-                  : "DE / EN"
-              : s.quality
-                ? String(s.quality)
-                : s.type
-                  ? String(s.type).toUpperCase()
-                  : "Stream",
-        })
+        (s, i) => {
+          const hasVariants = streamQualitiesFromSource(s).length > 0;
+          const isCineplay = String(s.provider || "").toLowerCase() === "cineplay";
+          return {
+            title: s.providerName || s.provider || `Source ${i + 1}`,
+            sub:
+              s.provider === "huhu"
+                ? s.language
+                  ? String(s.language).toUpperCase() + " audio"
+                  : s.quality && s.quality !== "Auto"
+                    ? String(s.quality)
+                    : "DE / EN"
+                : hasVariants || isCineplay
+                  ? s.meta?.server
+                    ? String(s.meta.server)
+                    : "Multi-quality"
+                  : s.quality
+                    ? String(s.quality)
+                    : s.type
+                      ? String(s.type).toUpperCase()
+                      : "Stream",
+          };
+        }
       );
 
-      const qualities = [{ key: "auto", label: "Auto", levelIndex: -1 }, ...state.qualityOptions];
+      const hasUrlQualities = streamQualitiesFromSource(state.sources[state.sourceIndex]).length > 0;
+      const qualities = hasUrlQualities
+        ? state.qualityOptions
+        : [{ key: "auto", label: "Auto", levelIndex: -1 }, ...state.qualityOptions];
       let qActive = 0;
-      if (state.levelIndex >= 0) {
+      if (hasUrlQualities) {
+        qActive = state.levelIndex >= 0 ? state.levelIndex : defaultStreamQualityIndex(state.qualityOptions);
+      } else if (state.levelIndex >= 0) {
         const hit = state.qualityOptions.findIndex((q) => q.levelIndex === state.levelIndex);
         qActive = hit >= 0 ? hit + 1 : 0;
       }
@@ -643,11 +697,12 @@
         qActive,
         (i) => {
           const q = qualities[i];
-          setQuality(q.key === "auto" ? -1 : q.levelIndex);
+          if (hasUrlQualities) setQuality(q.levelIndex);
+          else setQuality(q.key === "auto" ? -1 : q.levelIndex);
         },
         (l) => ({
           title: l.label || "Auto",
-          sub: l.key === "auto" ? "Adaptive" : "Closest match",
+          sub: hasUrlQualities ? "Stream" : l.key === "auto" ? "Adaptive" : "Closest match",
         })
       );
 
@@ -702,6 +757,31 @@
     }
 
     function setQuality(idx) {
+      const src = state.sources[state.sourceIndex];
+      const variants = streamQualitiesFromSource(src);
+      if (variants.length) {
+        if (idx < 0 || idx >= variants.length) {
+          idx = defaultStreamQualityIndex(variants);
+        }
+        const pick = variants[idx];
+        if (!pick?.url) {
+          refreshMenus();
+          return;
+        }
+        // Same URL already playing — just update selection
+        if (state.levelIndex === idx && absoluteUrl(src.url) === absoluteUrl(pick.url) && state.hls) {
+          state.levelIndex = idx;
+          refreshMenus();
+          return;
+        }
+        state.levelIndex = idx;
+        src.url = pick.url;
+        src.quality = pick.label;
+        if (pick.type) src.type = pick.type;
+        refreshMenus();
+        playUrl(pick.url, src);
+        return;
+      }
       state.levelIndex = idx;
       if (state.hls) state.hls.currentLevel = idx;
       refreshMenus();
@@ -1113,9 +1193,12 @@
         hls.attachMedia(v);
         hls.on(window.Hls.Events.MANIFEST_PARSED, (_e, data) => {
           state.levels = data.levels || [];
-          state.qualityOptions = normalizeHlsLevels(state.levels);
-          state.levelIndex = -1;
-          hls.currentLevel = -1;
+          // Prefer explicit per-URL qualities (Cineplay) over in-manifest HLS ladders
+          if (!applySourceQualities(source)) {
+            state.qualityOptions = normalizeHlsLevels(state.levels);
+            state.levelIndex = -1;
+            hls.currentLevel = -1;
+          }
 
           const hlsAudio = (hls.audioTracks || []).map((a, i) => ({
             id: i,
@@ -1188,6 +1271,17 @@
       if (!state.sources.length) return;
       state.sourceIndex = Math.max(0, Math.min(index, state.sources.length - 1));
       const src = state.sources[state.sourceIndex];
+      if (!src?.url && !streamQualitiesFromSource(src).length) {
+        setStatus("Source missing URL");
+        return;
+      }
+      // Cineplay-style multi-URL qualities: default 1080p in Quality tab
+      if (applySourceQualities(src)) {
+        // levelIndex already set to default (1080p)
+      } else {
+        state.levelIndex = -1;
+        state.qualityOptions = [];
+      }
       if (!src?.url) {
         setStatus("Source missing URL");
         return;

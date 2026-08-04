@@ -271,7 +271,7 @@ final class CineplaySources
      */
     private static function mapSources(array $json): array
     {
-        $out = [];
+        $qualities = [];
         $headers = [
             'Referer' => 'https://www.vidking.net/',
             'Origin' => 'https://www.vidking.net',
@@ -283,34 +283,67 @@ final class CineplaySources
             }
             $rawUrl = (string) $src['url'];
             $quality = trim((string) ($src['quality'] ?? 'Auto'));
+            if ($quality === '') {
+                $quality = 'Auto';
+            }
             $streamType = str_contains(strtolower($rawUrl), '.m3u8') ? 'hls' : (string) ($src['type'] ?? 'hls');
             try {
                 $playUrl = self::mintProxy($rawUrl, $headers, true);
             } catch (Throwable $e) {
                 $playUrl = $rawUrl;
             }
-            $out[] = [
+            $qualities[] = [
+                'quality' => $quality,
                 'url' => $playUrl,
                 'type' => $streamType === 'iframe' ? 'hls' : $streamType,
-                'quality' => $quality !== '' ? $quality : 'Auto',
-                'provider' => 'cineplay',
-                'providerName' => 'Cineplay',
-                'label' => 'Cineplay · Yoru' . ($quality !== '' && strcasecmp($quality, 'Auto') !== 0 ? (' · ' . $quality) : ''),
-                'language' => 'en',
-                'meta' => [
-                    'server' => 'Yoru',
-                    'via' => 'speedracelight-cdn',
-                    'rawHost' => (string) (parse_url($rawUrl, PHP_URL_HOST) ?: ''),
-                ],
+                'rawHost' => (string) (parse_url($rawUrl, PHP_URL_HOST) ?: ''),
             ];
         }
 
-        usort($out, static function (array $a, array $b): int {
+        if ($qualities === []) {
+            return [
+                'sources' => [],
+                'title' => (string) ($json['title'] ?? ''),
+                'year' => (string) ($json['year'] ?? ''),
+                'imdbId' => (string) ($json['imdbId'] ?? ''),
+            ];
+        }
+
+        // Highest first in Quality menu; default play URL is 1080p when available.
+        usort($qualities, static function (array $a, array $b): int {
             return self::qualityRank((string) $b['quality']) <=> self::qualityRank((string) $a['quality']);
         });
+        $default = $qualities[0];
+        foreach ($qualities as $q) {
+            if (str_contains(strtolower((string) $q['quality']), '1080')) {
+                $default = $q;
+                break;
+            }
+        }
 
         return [
-            'sources' => $out,
+            'sources' => [[
+                'url' => (string) $default['url'],
+                'type' => (string) ($default['type'] ?? 'hls'),
+                'quality' => (string) $default['quality'],
+                'provider' => 'cineplay',
+                'providerName' => 'Cineplay',
+                'label' => 'Cineplay · Yoru',
+                'language' => 'en',
+                'qualities' => array_map(static function (array $q): array {
+                    return [
+                        'quality' => (string) $q['quality'],
+                        'url' => (string) $q['url'],
+                        'type' => (string) ($q['type'] ?? 'hls'),
+                    ];
+                }, $qualities),
+                'meta' => [
+                    'server' => 'Yoru',
+                    'via' => 'speedracelight-cdn',
+                    'rawHost' => (string) ($default['rawHost'] ?? ''),
+                    'defaultQuality' => '1080p',
+                ],
+            ]],
             'title' => (string) ($json['title'] ?? ''),
             'year' => (string) ($json['year'] ?? ''),
             'imdbId' => (string) ($json['imdbId'] ?? ''),

@@ -32,6 +32,6 @@
 <body class="page-player">
 <?php require $content; ?>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js" defer></script>
-<script src="<?= e(asset('js/player.js')) ?>?v=20260804-cineplay3" defer></script>
+<script src="<?= e(asset('js/player.js')) ?>?v=20260804-cineplay4" defer></script>
 </body>
 </html>
