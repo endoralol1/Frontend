@@ -995,19 +995,6 @@
       return list[0] || null;
     }
 
-    async function mintCineplayProxy(streamUrl) {
-      const base = (window.APP && window.APP.baseUrl) || "";
-      const res = await fetch(`${base}/api/cineplay/mint-proxy`, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ url: streamUrl }),
-      });
-      const json = await res.json();
-      if (!json?.ok || !json.url) throw new Error(json?.error || "mint-proxy failed");
-      return json.url;
-    }
-
     async function resolveCineplayYoru(source) {
       // Native-only: ask our server (relay-backed). Never open Vidking/Cineplay embed.
       const meta = source?.meta || {};
