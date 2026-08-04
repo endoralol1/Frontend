@@ -20,6 +20,7 @@ final class SourcesService
         'vidnest' => 'VidNest',
         'peachify' => 'Peachify',
         'vidrock' => 'VidRock',
+        'stremify' => 'Stremify',
     ];
 
     /** Ensure catalog rows exist (safe to call often). */

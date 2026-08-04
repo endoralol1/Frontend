@@ -486,6 +486,15 @@ $router->get('/api/player/caption', function () {
     PlayerSources::proxyCaption($url);
 });
 
+$router->get('/api/player/media-proxy', function () {
+    $token = trim((string) ($_GET['t'] ?? ''));
+    $sig = trim((string) ($_GET['s'] ?? ''));
+    if (!class_exists('StremifySources')) {
+        json_response(['ok' => false, 'error' => 'Stremify unavailable'], 404);
+    }
+    StremifySources::proxyMedia($token, $sig);
+});
+
 // ——— Newsite auth + sync + admin APIs ———
 $router->post('/api/auth/register', function () {
     $body = json_body();

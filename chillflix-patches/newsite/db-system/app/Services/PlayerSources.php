@@ -48,6 +48,54 @@ final class PlayerSources
             if ($provider === '') {
                 continue;
             }
+            // Experimental Stremify (Hayduk) — Vuflix test provider
+            if ($provider === 'stremify') {
+                if (!class_exists('StremifySources') || !StremifySources::hostAllowed()) {
+                    $diagnostics[] = [
+                        'code' => 'STREMIFY_HOST_BLOCKED',
+                        'message' => 'Stremify test provider is Vuflix-only',
+                        'severity' => 'info',
+                        'provider' => 'stremify',
+                    ];
+                    continue;
+                }
+                $sf = StremifySources::fetch($type, $tmdbId, $season, $episode);
+                foreach ($sf['diagnostics'] ?? [] as $d) {
+                    if (is_array($d)) {
+                        $diagnostics[] = $d;
+                    }
+                }
+                foreach ($sf['sources'] ?? [] as $src) {
+                    if (!is_array($src) || empty($src['url'])) {
+                        continue;
+                    }
+                    $streamUrl = (string) $src['url'];
+                    $key = 'stremify|' . $streamUrl;
+                    if (isset($merged[$key])) {
+                        continue;
+                    }
+                    $merged[$key] = [
+                        'id' => substr(sha1($key), 0, 12),
+                        'url' => $streamUrl,
+                        'type' => (string) ($src['type'] ?? 'file'),
+                        'quality' => (string) ($src['quality'] ?? 'Auto'),
+                        'provider' => 'stremify',
+                        'providerName' => (string) ($src['providerName'] ?? 'Stremify'),
+                        'label' => (string) ($src['label'] ?? 'Stremify'),
+                        'language' => (string) ($src['language'] ?? ''),
+                        'audioTracks' => [],
+                    ];
+                }
+                if (empty($sf['ok']) && empty($sf['sources'])) {
+                    $diagnostics[] = [
+                        'code' => 'STREMIFY_EMPTY',
+                        'message' => (string) ($sf['error'] ?? 'No Stremify streams'),
+                        'severity' => 'warning',
+                        'provider' => 'stremify',
+                    ];
+                }
+                continue;
+            }
             $qs = [
                 'type' => $type,
                 'tmdbId' => (string) $tmdbId,

@@ -13,6 +13,10 @@ $adminUser = $adminUser ?? Auth::user();
     <div class="cf-admin-head">
       <h1>Sources</h1>
       <p>Enable/disable, drag order (top = tested first), and probe with any movie/TV TMDB id. Users see Alpha/Beta labels.</p>
+    <p class="muted" style="margin:.35rem 0 0;font-size:.82rem;color:rgba(255,255,255,.45)">
+      Experimental: <b>Stremify</b> (Hayduk public addon) can be enabled below for testing on vuflix.co only.
+      It scrapes free HTTP streams — flaky, often low quality, and many links need proxy headers. Keep disabled for normal traffic.
+    </p>
     </div>
     <div class="cf-admin-panel">
       <div class="cf-admin-toolbar">
