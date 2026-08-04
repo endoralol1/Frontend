@@ -226,18 +226,46 @@ export default {
     const type = url.searchParams.get("type") === "tv" ? "tv" : "movie";
     const tmdbId = url.searchParams.get("tmdb") || "";
     if (!tmdbId) return json({ ok: false, error: "tmdb required" }, 400);
+    const season = url.searchParams.get("season") || "1";
+    const episode = url.searchParams.get("episode") || "1";
+
+    // Short edge cache so many viewers of the same title share one upstream scrape.
+    const cacheKey = new Request(
+      `https://yoru-cache.internal/resolve?type=${type}&tmdb=${encodeURIComponent(tmdbId)}&season=${encodeURIComponent(season)}&episode=${encodeURIComponent(episode)}`
+    );
+    const cache = caches.default;
+    const cached = await cache.match(cacheKey);
+    if (cached) {
+      const hit = new Response(cached.body, cached);
+      hit.headers.set("x-yoru-cache", "HIT");
+      return hit;
+    }
 
     try {
       const result = await resolve(
         type,
         tmdbId,
-        url.searchParams.get("season") || "1",
-        url.searchParams.get("episode") || "1",
+        season,
+        episode,
         url.searchParams.get("title") || "",
         url.searchParams.get("year") || "",
         url.searchParams.get("imdb") || ""
       );
-      return json(result, result.ok ? 200 : 502);
+      const res = json(result, result.ok ? 200 : 502);
+      if (result.ok) {
+        const store = new Response(await res.clone().text(), {
+          status: 200,
+          headers: {
+            "content-type": "application/json; charset=utf-8",
+            "access-control-allow-origin": "*",
+            "cache-control": "public, max-age=120",
+            "x-yoru-cache": "MISS",
+          },
+        });
+        await cache.put(cacheKey, store.clone());
+        return store;
+      }
+      return res;
     } catch (e) {
       return json({ ok: false, error: String(e?.message || e) }, 500);
     }

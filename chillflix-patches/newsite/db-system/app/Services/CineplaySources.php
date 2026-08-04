@@ -17,6 +17,9 @@ final class CineplaySources
 {
     public const API_ORIGIN = 'https://api.speedracelight.com';
 
+    /** Cache successful raw Yoru payloads so many viewers share one upstream scrape. */
+    private const RAW_CACHE_TTL_SEC = 300;
+
     /**
      * @return array{ok:bool,sources?:list<array<string,mixed>>,error?:string,diagnostics?:list<array<string,mixed>>}
      */
@@ -28,6 +31,27 @@ final class CineplaySources
         }
 
         $diagnostics = [];
+        $cacheKey = $type . ':' . $tmdbId . ':' . max(1, $season) . ':' . max(1, $episode);
+
+        // Serve from short cache (re-mint media-proxy URLs so signatures stay fresh).
+        $cachedRaw = self::readRawCache($cacheKey);
+        if (is_array($cachedRaw) && !empty($cachedRaw['sources'])) {
+            $mapped = self::mapSources($cachedRaw);
+            if (!empty($mapped['sources'])) {
+                $diagnostics[] = [
+                    'code' => 'CINEPLAY_CACHE_HIT',
+                    'message' => 'Yoru cache hit (' . count($mapped['sources'][0]['qualities'] ?? []) . ' qualities)',
+                    'severity' => 'info',
+                    'provider' => 'cineplay',
+                ];
+                return [
+                    'ok' => true,
+                    'sources' => $mapped['sources'],
+                    'diagnostics' => $diagnostics,
+                ];
+            }
+        }
+
         $scraped = self::scrapeYoru($type, $tmdbId, $season, $episode, $diagnostics);
         if (!empty($scraped['sources'])) {
             return [
@@ -178,6 +202,11 @@ final class CineplaySources
             'provider' => 'cineplay',
         ];
 
+        self::writeRawCache(
+            $type . ':' . $tmdbId . ':' . max(1, $season) . ':' . max(1, $episode),
+            $json
+        );
+
         return self::mapSources($json);
     }
 
@@ -262,7 +291,67 @@ final class CineplaySources
             'provider' => 'cineplay',
         ];
 
+        self::writeRawCache(
+            $type . ':' . $tmdbId . ':' . max(1, $season) . ':' . max(1, $episode),
+            $json
+        );
+
         return self::mapSources($json);
+    }
+
+    /** @return array<string,mixed>|null */
+    private static function readRawCache(string $key): ?array
+    {
+        $path = self::rawCachePath($key);
+        if ($path === null || !is_file($path)) {
+            return null;
+        }
+        $raw = @file_get_contents($path);
+        if (!is_string($raw) || $raw === '') {
+            return null;
+        }
+        $wrap = json_decode($raw, true);
+        if (!is_array($wrap) || empty($wrap['exp']) || empty($wrap['data']) || !is_array($wrap['data'])) {
+            return null;
+        }
+        if ((int) $wrap['exp'] < time()) {
+            @unlink($path);
+            return null;
+        }
+        return $wrap['data'];
+    }
+
+    /** @param array<string,mixed> $json */
+    private static function writeRawCache(string $key, array $json): void
+    {
+        $path = self::rawCachePath($key);
+        if ($path === null) {
+            return;
+        }
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        $payload = json_encode([
+            'exp' => time() + self::RAW_CACHE_TTL_SEC,
+            'data' => $json,
+        ], JSON_UNESCAPED_SLASHES);
+        if (!is_string($payload)) {
+            return;
+        }
+        @file_put_contents($path, $payload, LOCK_EX);
+    }
+
+    private static function rawCachePath(string $key): ?string
+    {
+        $base = '/var/www/chillflix-newsite/storage/cache/cineplay-yoru';
+        $alt = dirname(__DIR__, 2) . '/storage/cache/cineplay-yoru';
+        $dir = is_dir(dirname($base)) || @mkdir(dirname($base), 0775, true) ? $base : $alt;
+        if ($dir === '') {
+            return null;
+        }
+        $safe = preg_replace('/[^a-zA-Z0-9:_-]+/', '_', $key) ?: 'x';
+        return rtrim($dir, '/') . '/' . $safe . '.json';
     }
 
     /**
