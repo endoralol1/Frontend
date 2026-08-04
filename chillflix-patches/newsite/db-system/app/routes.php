@@ -1697,11 +1697,10 @@ function watch_page(Tmdb $tmdb, string $type, int $id, string $slug): void
         'autoPlay' => $autoPlay,
         'playerConfig' => $playerConfig,
         'nextEpisode' => $nextEpisode,
-        'extraCss' => [asset('css/player.css') . '?v=20260804-cineplay2'],
+        'extraCss' => [asset('css/player.css') . '?v=20260804-cineplay3'],
         'extraJs' => [
             'https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js',
-            asset('js/cineplay-yoru.js') . '?v=20260804-cineplay2',
-            asset('js/player.js') . '?v=20260804-cineplay2',
+            asset('js/player.js') . '?v=20260804-cineplay3',
         ],
         'bodyClass' => 'page-watch',
         'headerClass' => 'absolute',

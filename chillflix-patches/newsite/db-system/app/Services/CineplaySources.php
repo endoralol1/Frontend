@@ -4,17 +4,17 @@ declare(strict_types=1);
 /**
  * Cineplay / Vidking → Yoru (4K) scraper for the native Vuflix player.
  *
- * Cineplay's player calls api.speedracelight.com `/cdn/sources-with-title`
- * (server name "Yoru") with enc=2 + seed decrypt. We scrape that same path
- * and wrap HLS through /api/player/media-proxy so hls.js plays in our UI.
+ * Scrapes api.speedracelight.com `/cdn/sources-with-title` (Yoru) with enc=2
+ * + seed decrypt, then wraps HLS through /api/player/media-proxy for hls.js.
  *
- * Datacenter IPs are often CF-banned (1015/429). Set PROVIDER_FETCH_PROXY
- * (residential) for reliable server-side resolve. If scrape fails, we return
- * a client-resolve stub so the browser can retry, then iframe as last resort.
+ * Datacenter VPS IPs are often CF-banned (1015/429). Prefer:
+ *   YORU_RELAY_URL + YORU_RELAY_SECRET  (Cloudflare Worker / relay)
+ * or PROVIDER_FETCH_PROXY (residential).
+ *
+ * No third-party embed — native player only.
  */
 final class CineplaySources
 {
-    public const EMBED_ORIGIN = 'https://www.vidking.net';
     public const API_ORIGIN = 'https://api.speedracelight.com';
 
     /**
@@ -37,60 +37,23 @@ final class CineplaySources
             ];
         }
 
-        // Browser will scrape Yoru (viewer IP) then mint a media-proxy URL.
-        $sources = [
-            [
-                'url' => 'cineplay-yoru://' . $type . '/' . $tmdbId
-                    . ($type === 'tv' ? ('/' . max(1, $season) . '/' . max(1, $episode)) : ''),
-                'type' => 'cineplay-yoru',
-                'quality' => '4K',
-                'provider' => 'cineplay',
-                'providerName' => 'Cineplay',
-                'label' => 'Cineplay · Yoru 4K',
-                'language' => 'en',
-                'meta' => [
-                    'server' => 'Yoru',
-                    'mediaType' => $type,
-                    'tmdbId' => $tmdbId,
-                    'season' => max(1, $season),
-                    'episode' => max(1, $episode),
-                    'title' => (string) ($scraped['title'] ?? ''),
-                    'year' => (string) ($scraped['year'] ?? ''),
-                    'imdbId' => (string) ($scraped['imdbId'] ?? ''),
-                    'embedFallback' => self::embedUrl($type, $tmdbId, $season, $episode),
-                ],
-            ],
-        ];
-
         $diagnostics[] = [
-            'code' => 'CINEPLAY_CLIENT_RESOLVE',
-            'message' => (string) ($scraped['error'] ?? 'Server scrape blocked; browser will resolve Yoru'),
-            'severity' => 'info',
+            'code' => 'CINEPLAY_NO_STREAMS',
+            'message' => (string) ($scraped['error'] ?? 'Yoru scrape failed — set YORU_RELAY_URL'),
+            'severity' => 'error',
             'provider' => 'cineplay',
         ];
 
         return [
-            'ok' => true,
-            'sources' => $sources,
+            'ok' => false,
+            'error' => (string) ($scraped['error'] ?? 'Yoru scrape failed'),
+            'sources' => [],
             'diagnostics' => $diagnostics,
         ];
     }
 
-    public static function embedUrl(string $type, int $tmdbId, int $season = 1, int $episode = 1): string
-    {
-        $qs = ['autoPlay' => 'true', 'color' => 'e50914'];
-        if ($type === 'tv') {
-            $qs['nextEpisode'] = 'true';
-            $qs['episodeSelector'] = 'true';
-            $path = '/embed/tv/' . $tmdbId . '/' . max(1, $season) . '/' . max(1, $episode);
-        } else {
-            $path = '/embed/movie/' . $tmdbId;
-        }
-        return self::EMBED_ORIGIN . $path . '?' . http_build_query($qs);
-    }
-
     /**
-     * Mint a signed media-proxy URL for a scraped stream (used by browser resolve).
+     * Mint a signed media-proxy URL for a scraped stream.
      *
      * @param array<string,string> $headers
      */
@@ -114,6 +77,115 @@ final class CineplaySources
      * @return array{sources?:list<array<string,mixed>>,error?:string,title?:string,year?:string,imdbId?:string}
      */
     private static function scrapeYoru(
+        string $type,
+        int $tmdbId,
+        int $season,
+        int $episode,
+        array &$diagnostics
+    ): array {
+        $viaRelay = self::scrapeViaRelay($type, $tmdbId, $season, $episode, $diagnostics);
+        if (!empty($viaRelay['sources']) || (isset($viaRelay['error']) && str_starts_with((string) $viaRelay['error'], 'relay '))) {
+            if (!empty($viaRelay['sources'])) {
+                return $viaRelay;
+            }
+            // Relay configured but failed — still try local node (may work with proxy).
+        }
+
+        return self::scrapeViaNode($type, $tmdbId, $season, $episode, $diagnostics);
+    }
+
+    /**
+     * @param list<array<string,mixed>> $diagnostics
+     * @return array{sources?:list<array<string,mixed>>,error?:string,title?:string,year?:string,imdbId?:string}
+     */
+    private static function scrapeViaRelay(
+        string $type,
+        int $tmdbId,
+        int $season,
+        int $episode,
+        array &$diagnostics
+    ): array {
+        $relay = self::envValue('YORU_RELAY_URL');
+        $secret = self::envValue('YORU_RELAY_SECRET');
+        if ($relay === '') {
+            return [];
+        }
+
+        $qs = http_build_query([
+            'type' => $type,
+            'tmdb' => $tmdbId,
+            'season' => max(1, $season),
+            'episode' => max(1, $episode),
+        ]);
+        $url = rtrim($relay, '/') . '/resolve?' . $qs;
+        $headers = [
+            'Accept: application/json',
+            'User-Agent: VuflixYoruRelay/1.0',
+        ];
+        if ($secret !== '') {
+            $headers[] = 'X-Yoru-Key: ' . $secret;
+        }
+
+        $ch = curl_init($url);
+        if ($ch === false) {
+            return ['error' => 'relay curl init failed'];
+        }
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_TIMEOUT => 45,
+            CURLOPT_HTTPHEADER => $headers,
+        ]);
+        $body = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $cerr = curl_error($ch);
+        curl_close($ch);
+
+        if ($body === false || $body === '') {
+            $diagnostics[] = [
+                'code' => 'CINEPLAY_RELAY_FAIL',
+                'message' => 'relay request failed: ' . ($cerr !== '' ? $cerr : 'empty body'),
+                'severity' => 'warning',
+                'provider' => 'cineplay',
+            ];
+            return ['error' => 'relay request failed'];
+        }
+
+        $json = json_decode($body, true);
+        if (!is_array($json)) {
+            return ['error' => 'relay bad JSON'];
+        }
+        if (empty($json['ok']) || empty($json['sources']) || !is_array($json['sources'])) {
+            $diagnostics[] = [
+                'code' => 'CINEPLAY_RELAY_EMPTY',
+                'message' => (string) ($json['error'] ?? ('relay HTTP ' . $status)),
+                'severity' => 'warning',
+                'provider' => 'cineplay',
+            ];
+            return [
+                'error' => 'relay ' . (string) ($json['error'] ?? ('HTTP ' . $status)),
+                'title' => (string) ($json['title'] ?? ''),
+                'year' => (string) ($json['year'] ?? ''),
+                'imdbId' => (string) ($json['imdbId'] ?? ''),
+            ];
+        }
+
+        $diagnostics[] = [
+            'code' => 'CINEPLAY_RELAY_OK',
+            'message' => 'Yoru via relay (' . count($json['sources']) . ' streams)',
+            'severity' => 'info',
+            'provider' => 'cineplay',
+        ];
+
+        return self::mapSources($json);
+    }
+
+    /**
+     * @param list<array<string,mixed>> $diagnostics
+     * @return array{sources?:list<array<string,mixed>>,error?:string,title?:string,year?:string,imdbId?:string}
+     */
+    private static function scrapeViaNode(
         string $type,
         int $tmdbId,
         int $season,
@@ -183,6 +255,22 @@ final class CineplaySources
             ];
         }
 
+        $diagnostics[] = [
+            'code' => 'CINEPLAY_YORU_OK',
+            'message' => 'Scraped ' . count($json['sources']) . ' Yoru stream(s) via node',
+            'severity' => 'info',
+            'provider' => 'cineplay',
+        ];
+
+        return self::mapSources($json);
+    }
+
+    /**
+     * @param array<string,mixed> $json
+     * @return array{sources:list<array<string,mixed>>,title:string,year:string,imdbId:string}
+     */
+    private static function mapSources(array $json): array
+    {
         $out = [];
         $headers = [
             'Referer' => 'https://www.vidking.net/',
@@ -217,17 +305,9 @@ final class CineplaySources
             ];
         }
 
-        // Prefer 4K / 2160p first
         usort($out, static function (array $a, array $b): int {
             return self::qualityRank((string) $b['quality']) <=> self::qualityRank((string) $a['quality']);
         });
-
-        $diagnostics[] = [
-            'code' => 'CINEPLAY_YORU_OK',
-            'message' => 'Scraped ' . count($out) . ' Yoru stream(s)',
-            'severity' => 'info',
-            'provider' => 'cineplay',
-        ];
 
         return [
             'sources' => $out,
@@ -240,7 +320,7 @@ final class CineplaySources
     private static function qualityRank(string $q): int
     {
         $q = strtolower(trim($q));
-        if (str_contains($q, '2160') || $q === '4k' || $q === '4K') {
+        if (str_contains($q, '2160') || $q === '4k') {
             return 50;
         }
         if (str_contains($q, '1080')) {
@@ -263,6 +343,7 @@ final class CineplaySources
         $candidates = [
             dirname(__DIR__, 2) . '/bin/cineplay-yoru-resolve.mjs',
             '/var/www/chillflix-newsite/bin/cineplay-yoru-resolve.mjs',
+            '/var/www/chillflix-newsite/db-system/bin/cineplay-yoru-resolve.mjs',
         ];
         foreach ($candidates as $p) {
             if (is_file($p)) {
@@ -282,6 +363,44 @@ final class CineplaySources
         return 'node';
     }
 
+    private static function envValue(string $key): string
+    {
+        $v = getenv($key);
+        if (is_string($v) && trim($v) !== '') {
+            return trim($v);
+        }
+        foreach (self::dotenvFiles() as $file) {
+            if (!is_readable($file)) {
+                continue;
+            }
+            foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+                $line = trim($line);
+                if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) {
+                    continue;
+                }
+                [$k, $val] = explode('=', $line, 2);
+                if (trim($k) === $key) {
+                    $val = trim($val, " \t\"'");
+                    if ($val !== '') {
+                        return $val;
+                    }
+                }
+            }
+        }
+        return '';
+    }
+
+    /** @return list<string> */
+    private static function dotenvFiles(): array
+    {
+        return [
+            dirname(__DIR__, 2) . '/.env',
+            '/var/www/chillflix-newsite/db-system/.env',
+            '/var/www/chillflix-newsite/.env',
+            '/var/www/cinepro/.env',
+        ];
+    }
+
     /** @return array<string,string> */
     private static function resolverEnv(): array
     {
@@ -296,14 +415,12 @@ final class CineplaySources
                 $env[$k] = $v;
             }
         }
-        // Prefer cinepro's provider proxy if present in process env / dotenv-less deploy.
-        foreach (['PROVIDER_FETCH_PROXY', 'OUTBOUND_HTTP_PROXY', 'HTTPS_PROXY', 'HTTP_PROXY', 'VIXSRC_PROXY'] as $k) {
+        foreach (['PROVIDER_FETCH_PROXY', 'OUTBOUND_HTTP_PROXY', 'HTTPS_PROXY', 'HTTP_PROXY', 'VIXSRC_PROXY', 'YORU_RELAY_URL', 'YORU_RELAY_SECRET'] as $k) {
             $v = getenv($k);
             if (is_string($v) && $v !== '') {
                 $env[$k] = $v;
             }
         }
-        // Pull from cinepro .env if our process lacks proxy.
         if (empty($env['PROVIDER_FETCH_PROXY']) && empty($env['VIXSRC_PROXY'])) {
             $cineproEnv = '/var/www/cinepro/.env';
             if (is_readable($cineproEnv)) {
@@ -315,14 +432,20 @@ final class CineplaySources
                     [$k, $v] = explode('=', $line, 2);
                     $k = trim($k);
                     $v = trim($v, " \t\"'");
-                    if (in_array($k, ['PROVIDER_FETCH_PROXY', 'VIXSRC_PROXY', 'OUTBOUND_HTTP_PROXY', 'HTTPS_PROXY', 'HTTP_PROXY'], true) && $v !== '') {
+                    if (in_array($k, ['PROVIDER_FETCH_PROXY', 'VIXSRC_PROXY', 'OUTBOUND_HTTP_PROXY', 'HTTPS_PROXY', 'HTTP_PROXY', 'YORU_RELAY_URL', 'YORU_RELAY_SECRET'], true) && $v !== '') {
                         $env[$k] = $v;
                     }
                 }
             }
         }
+        // Prefer explicit relay env from our dotenv
+        foreach (['YORU_RELAY_URL', 'YORU_RELAY_SECRET'] as $k) {
+            $v = self::envValue($k);
+            if ($v !== '') {
+                $env[$k] = $v;
+            }
+        }
         $env['PATH'] = $env['PATH'] ?? '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
-        // Resolve undici from cinepro when available
         $env['NODE_PATH'] = '/var/www/cinepro/node_modules' . (isset($env['NODE_PATH']) && $env['NODE_PATH'] !== '' ? (':' . $env['NODE_PATH']) : '');
         return $env;
     }

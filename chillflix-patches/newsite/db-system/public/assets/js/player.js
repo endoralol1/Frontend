@@ -1009,78 +1009,51 @@
     }
 
     async function resolveCineplayYoru(source) {
+      // Native-only: ask our server (relay-backed). Never open Vidking/Cineplay embed.
       const meta = source?.meta || {};
-      const opts = {
-        mediaType: meta.mediaType || cfg.type || "movie",
-        tmdbId: meta.tmdbId || cfg.id,
-        season: meta.season || cfg.season || 1,
-        episode: meta.episode || cfg.episode || 1,
-        title: meta.title || cfg.title || "",
-        year: meta.year || cfg.year || "",
-        imdbId: meta.imdbId || "",
-      };
-      setStatus("Scraping Cineplay Yoru (4K)…");
-      if (!window.CineplayYoru || typeof window.CineplayYoru.resolve !== "function") {
-        throw new Error("Cineplay scraper not loaded");
+      const mediaType = meta.mediaType || cfg.type || "movie";
+      const tmdbId = meta.tmdbId || cfg.id;
+      const season = meta.season || cfg.season || 1;
+      const episode = meta.episode || cfg.episode || 1;
+      setStatus("Loading Cineplay Yoru (4K)…");
+      const base = (window.APP && window.APP.baseUrl) || "";
+      const qs = new URLSearchParams({
+        type: mediaType === "tv" ? "tv" : "movie",
+        tmdbId: String(tmdbId || ""),
+        season: String(season || 1),
+        episode: String(episode || 1),
+      });
+      const res = await fetch(`${base}/api/cineplay/yoru?${qs}`, {
+        credentials: "same-origin",
+        headers: { Accept: "application/json" },
+      });
+      const json = await res.json();
+      if (!json?.ok || !Array.isArray(json.sources) || !json.sources.length) {
+        throw new Error(json?.error || "Yoru returned no streams");
       }
-      const resolved = await window.CineplayYoru.resolve(opts);
-      const best = pickBestYoruSource(resolved.sources);
+      const best = pickBestYoruSource(json.sources);
       if (!best?.url) throw new Error("Yoru returned no streams");
-      const proxied = await mintCineplayProxy(best.url);
+      // Server already mints media-proxy URLs for HLS.
       return {
-        url: proxied,
-        type: "hls",
+        url: best.url,
+        type: best.type || "hls",
         quality: best.quality || "4K",
         provider: "cineplay",
-        providerName: source.providerName || "Cineplay",
-        label: `Cineplay · Yoru · ${best.quality || "4K"}`,
+        providerName: source.providerName || best.providerName || "Cineplay",
+        label: best.label || `Cineplay · Yoru · ${best.quality || "4K"}`,
         language: "en",
         meta: { ...(source.meta || {}), server: "Yoru", scraped: true },
       };
-    }
-
-    function playIframe(url, source) {
-      destroyHls();
-      paintCue("");
-      const abs = absoluteUrl(url);
-      const iframe = ensureIframe();
-      if (!iframe || !abs) {
-        setStatus("Embed player missing");
-        return;
-      }
-      if (els.video) {
-        try {
-          els.video.pause();
-        } catch (_) {}
-        els.video.removeAttribute("src");
-        try {
-          els.video.load?.();
-        } catch (_) {}
-        els.video.hidden = true;
-      }
-      if (els.poster) els.poster.style.display = "none";
-      if (els.controls) els.controls.hidden = true;
-      if (els.center) els.center.hidden = true;
-      if (els.subs) els.subs.hidden = true;
-      els.shell?.classList.add("np-iframe-mode", "is-playing", "show-controls");
-      iframe.hidden = false;
-      iframe.style.display = "block";
-      // Force reload even if same URL was attempted earlier as <video>
-      iframe.removeAttribute("src");
-      iframe.src = abs;
-      setStatus("Cineplay embed — pick Yoru for 4K");
-      // Cineplay/Vidking owns playback chrome; keep our back/settings.
     }
 
     async function playUrl(url, source) {
       const v = els.video;
       if (!url && !isCineplayYoruSource(url, source)) return;
 
-      // Scrape Cineplay/Yoru into native HLS (our player), iframe only if scrape fails
+      // Cineplay → native HLS only (server relay + media-proxy). No third-party embed.
       if (isCineplayYoruSource(url, source)) {
         try {
           const scraped = await resolveCineplayYoru(source || {});
-          // Replace stub in source list so quality label updates
           if (state.sources[state.sourceIndex]) {
             state.sources[state.sourceIndex] = {
               ...state.sources[state.sourceIndex],
@@ -1090,20 +1063,16 @@
           }
           return playUrl(scraped.url, scraped);
         } catch (err) {
-          const fallback = source?.meta?.embedFallback;
-          if (fallback) {
-            setStatus("Scrape blocked — opening Cineplay embed…");
-            playIframe(fallback, { ...source, type: "iframe", url: fallback });
-            return;
-          }
-          setStatus(err?.message || "Cineplay Yoru scrape failed");
+          setStatus(err?.message || "Cineplay Yoru failed");
           tryNextSource();
           return;
         }
       }
 
+      // Never load Vidking/Cineplay embeds in our player shell.
       if (isIframeSource(url, source)) {
-        playIframe(url, source);
+        setStatus("Embed sources disabled — trying next…");
+        tryNextSource();
         return;
       }
       clearIframe();
