@@ -7,7 +7,7 @@
     <meta name="robots" content="<?= e($seo['robots'] ?? 'noindex, follow') ?>">
     <meta name="theme-color" content="#07080c">
     <link rel="icon" href="<?= e(logo_url()) ?>" type="image/webp">
-    <link rel="stylesheet" href="<?= e(asset('css/player.css')) ?>?v=20260804-cineplay2">
+    <link rel="stylesheet" href="<?= e(asset('css/player.css')) ?>?v=20260804-cineplay4">
     <script>
         window.APP = {
             baseUrl: <?= json_encode(base_url(), JSON_UNESCAPED_SLASHES) ?>,

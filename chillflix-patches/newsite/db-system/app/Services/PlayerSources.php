@@ -96,7 +96,7 @@ final class PlayerSources
                 }
                 continue;
             }
-            // Cineplay → Vidking embed (Yoru 4K in-browser)
+            // Cineplay → Yoru HLS (one source, Quality tab variants)
             if ($provider === 'cineplay' || $provider === 'vidking') {
                 if (!class_exists('CineplaySources')) {
                     $diagnostics[] = [
@@ -118,27 +118,39 @@ final class PlayerSources
                         continue;
                     }
                     $streamUrl = (string) $src['url'];
-                    $key = 'cineplay|' . $streamUrl;
+                    $qualities = [];
+                    foreach ($src['qualities'] ?? [] as $q) {
+                        if (!is_array($q) || empty($q['url'])) {
+                            continue;
+                        }
+                        $qualities[] = [
+                            'quality' => (string) ($q['quality'] ?? 'Auto'),
+                            'url' => (string) $q['url'],
+                            'type' => (string) ($q['type'] ?? ($src['type'] ?? 'hls')),
+                        ];
+                    }
+                    $key = 'cineplay|' . ($qualities !== [] ? 'yoru' : $streamUrl);
                     if (isset($merged[$key])) {
                         continue;
                     }
                     $merged[$key] = [
                         'id' => substr(sha1($key), 0, 12),
                         'url' => $streamUrl,
-                        'type' => (string) ($src['type'] ?? 'iframe'),
-                        'quality' => (string) ($src['quality'] ?? '4K'),
+                        'type' => (string) ($src['type'] ?? 'hls'),
+                        'quality' => (string) ($src['quality'] ?? '1080p'),
                         'provider' => 'cineplay',
                         'providerName' => (string) ($src['providerName'] ?? 'Cineplay'),
-                        'label' => (string) ($src['label'] ?? 'Cineplay · Yoru 4K'),
+                        'label' => (string) ($src['label'] ?? 'Cineplay · Yoru'),
                         'language' => (string) ($src['language'] ?? 'en'),
                         'audioTracks' => [],
+                        'qualities' => $qualities,
                         'meta' => is_array($src['meta'] ?? null) ? $src['meta'] : [],
                     ];
                 }
                 if (empty($cp['ok']) && empty($cp['sources'])) {
                     $diagnostics[] = [
                         'code' => 'CINEPLAY_EMPTY',
-                        'message' => (string) ($cp['error'] ?? 'No Cineplay embed'),
+                        'message' => (string) ($cp['error'] ?? 'No Cineplay streams'),
                         'severity' => 'warning',
                         'provider' => 'cineplay',
                     ];
