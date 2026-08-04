@@ -668,9 +668,7 @@
                     ? String(s.quality)
                     : "DE / EN"
                 : hasVariants || isCineplay
-                  ? s.meta?.server
-                    ? String(s.meta.server)
-                    : "Multi-quality"
+                  ? "Best Default"
                   : s.quality
                     ? String(s.quality)
                     : s.type
