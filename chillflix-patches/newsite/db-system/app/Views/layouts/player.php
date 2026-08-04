@@ -7,7 +7,7 @@
     <meta name="robots" content="<?= e($seo['robots'] ?? 'noindex, follow') ?>">
     <meta name="theme-color" content="#07080c">
     <link rel="icon" href="<?= e(logo_url()) ?>" type="image/webp">
-    <link rel="stylesheet" href="<?= e(asset('css/player.css')) ?>?v=20260804-progressive1">
+    <link rel="stylesheet" href="<?= e(asset('css/player.css')) ?>?v=20260804-progressive3">
     <script>
         window.APP = {
             baseUrl: <?= json_encode(base_url(), JSON_UNESCAPED_SLASHES) ?>,
@@ -27,12 +27,13 @@
             'next' => $nextEpisode ?? null,
             'sourcesApi' => url('/api/player/sources'),
             'providersApi' => url('/api/player/providers'),
+            'providers' => (class_exists('PlayerSources') ? (PlayerSources::listProviders()['providers'] ?? []) : []),
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     </script>
 </head>
 <body class="page-player">
 <?php require $content; ?>
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js" defer></script>
-<script src="<?= e(asset('js/player.js')) ?>?v=20260804-progressive1" defer></script>
+<script src="<?= e(asset('js/player.js')) ?>?v=20260804-progressive3" defer></script>
 </body>
 </html>

@@ -1498,23 +1498,49 @@
       setStatus("Loading sources…");
       state.autoPlayStarted = false;
       state.providerLoads = Object.create(null);
-      try {
-        // Instant source list from admin order — no scrape yet.
-        const pres = await fetch(providersApiBase(), {
-          headers: { Accept: "application/json" },
-          credentials: "same-origin",
-        });
-        const pdata = await pres.json();
-        const providers = Array.isArray(pdata?.providers) ? pdata.providers : [];
-        if (!providers.length) {
-          setStatus("No sources enabled");
-          state.sources = [];
-          refreshMenus();
-          return;
-        }
+
+      // Show Source slots immediately from page config (no network wait).
+      let providers = Array.isArray(cfg.providers) ? cfg.providers : [];
+      if (providers.length) {
         state.sources = placeholderSources(providers);
         state.sourceIndex = 0;
         refreshMenus();
+      }
+
+      try {
+        // Refresh order/labels from API when available (does not clear the list on failure).
+        try {
+          const pres = await fetch(providersApiBase(), {
+            headers: { Accept: "application/json" },
+            credentials: "same-origin",
+          });
+          if (pres.ok) {
+            const pdata = await pres.json();
+            if (Array.isArray(pdata?.providers) && pdata.providers.length) {
+              providers = pdata.providers;
+              // Keep already-loaded slots; rebuild only if still placeholders / empty.
+              const anyReady = state.sources.some((s) => s && s.status === "ready" && s.url);
+              if (!anyReady) {
+                state.sources = placeholderSources(providers);
+                state.sourceIndex = 0;
+                refreshMenus();
+              }
+            }
+          }
+        } catch (_) {
+          /* keep seeded placeholders */
+        }
+
+        if (!state.sources.length) {
+          if (!providers.length) {
+            setStatus("No sources enabled");
+            refreshMenus();
+            return;
+          }
+          state.sources = placeholderSources(providers);
+          state.sourceIndex = 0;
+          refreshMenus();
+        }
 
         // Automatic: only scrape the first admin-ordered provider.
         state.autoPlayStarted = true;
@@ -1981,6 +2007,12 @@
 
     bind();
     syncUi();
+    // Paint Source tab before any network — uses providers embedded in window.PLAYER.
+    if (Array.isArray(cfg.providers) && cfg.providers.length) {
+      state.sources = placeholderSources(cfg.providers);
+      state.sourceIndex = 0;
+      refreshMenus();
+    }
     fetchSources();
 
     return {
