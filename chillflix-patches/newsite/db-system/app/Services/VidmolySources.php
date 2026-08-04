@@ -59,9 +59,10 @@ final class VidmolySources
 
         $master = (string) $resolved['m3u8'];
         $embed = (string) ($resolved['embed'] ?? $wrapper);
-        $origin = self::originOf($embed) ?: 'https://vidmoly.biz';
+        $via = (string) ($resolved['via'] ?? '0123movie-vidmoly');
+        $origin = self::originOf($embed) ?: (str_contains($via, 'byse') ? 'https://gn1r5n.org' : 'https://vidmoly.biz');
         $headers = [
-            'Referer' => $embed,
+            'Referer' => str_contains($via, 'byse') ? (rtrim($origin, '/') . '/') : $embed,
             'Origin' => $origin,
             'Accept' => '*/*',
             'Sec-Fetch-Dest' => 'empty',
@@ -71,6 +72,7 @@ final class VidmolySources
 
         $playUrl = self::signedProxyUrl($master, $headers, true);
         $quality = (string) ($resolved['quality'] ?? 'Auto');
+        $labelPrefix = str_contains($via, 'byse') ? 'UpCloud' : 'Vidmoly';
 
         return [
             'ok' => true,
@@ -79,12 +81,12 @@ final class VidmolySources
                 'type' => 'hls',
                 'quality' => $quality,
                 'provider' => self::PROVIDER_ID,
-                'providerName' => self::PROVIDER_NAME,
-                'label' => 'Vidmoly' . ($quality !== '' && strcasecmp($quality, 'Auto') !== 0 ? (' · ' . $quality) : ''),
+                'providerName' => str_contains($via, 'byse') ? 'UpCloud' : self::PROVIDER_NAME,
+                'label' => $labelPrefix . ($quality !== '' && strcasecmp($quality, 'Auto') !== 0 ? (' · ' . $quality) : ''),
                 'language' => '',
                 'audioTracks' => [],
                 'meta' => [
-                    'via' => '0123movie-vidmoly',
+                    'via' => $via,
                     'wrapper' => $wrapper,
                     'embed' => $embed,
                     'direct' => $master,
@@ -143,8 +145,23 @@ final class VidmolySources
         $html = (string) ($resp['body'] ?? '');
         $host = strtolower((string) (parse_url($final, PHP_URL_HOST) ?: ''));
 
-        // TV wrappers currently often bounce to Byse/UpCloud instead of Vidmoly.
+        // Many HiMovies "Vidmoly" buttons actually redirect to Byse (gn1r5n/byse).
+        // Fall through to ByseSources when available so those titles still resolve.
         if ($host !== '' && !str_contains($host, 'vidmoly')) {
+            if (class_exists('ByseSources') && (str_contains($host, 'gn1r5n') || str_contains($host, 'byse'))) {
+                $diag = [];
+                $byse = ByseSources::resolveFromEmbed($final, $diag);
+                if (!empty($byse['ok']) && !empty($byse['sources'][0]['url'])) {
+                    $src0 = $byse['sources'][0];
+                    return [
+                        'ok' => true,
+                        'm3u8' => (string) $src0['url'],
+                        'embed' => $final,
+                        'quality' => (string) ($src0['quality'] ?? 'Auto'),
+                        'via' => 'byse-fallback',
+                    ];
+                }
+            }
             return [
                 'ok' => false,
                 'error' => 'Wrapper did not land on Vidmoly (got ' . $host . ')',

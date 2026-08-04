@@ -14,7 +14,7 @@ $adminUser = $adminUser ?? Auth::user();
       <h1>Sources</h1>
       <p>Enable/disable, drag order (top = tested first), and probe with any movie/TV TMDB id. Users see Alpha/Beta labels.</p>
     <p class="muted" style="margin:.35rem 0 0;font-size:.82rem;color:rgba(255,255,255,.45)">
-      Experimental: <b>Vidmoly</b> scrapes HiMovies/0123movie → Vidmoly HLS (movies; HTTP only). Uses media-proxy; CDN may 403 datacenter IPs.
+      Experimental: <b>UpCloud</b> (Byse/gn1r5n PoW→HLS) and <b>Vidmoly</b> scrapes HiMovies/0123movie → Vidmoly HLS (movies; HTTP only). Uses media-proxy; CDN may 403 datacenter IPs.
       <b>Stremify</b> (Hayduk) remains a Vuflix-only test scrape. Keep both disabled for normal traffic.
     </p>
     </div>

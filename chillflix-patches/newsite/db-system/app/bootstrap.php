@@ -39,6 +39,7 @@ require_once __DIR__ . '/Services/UserData.php';
 require_once __DIR__ . '/Services/SourcesService.php';
 require_once __DIR__ . '/Services/StremifySources.php';
 require_once __DIR__ . '/Services/VidmolySources.php';
+require_once __DIR__ . '/Services/ByseSources.php';
 require_once __DIR__ . '/Services/WatchParty.php';
 require_once __DIR__ . '/Services/HuhuLiveTv.php';
 

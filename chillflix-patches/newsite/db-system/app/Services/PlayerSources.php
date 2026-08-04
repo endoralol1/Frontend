@@ -145,6 +145,55 @@ final class PlayerSources
                 }
                 continue;
             }
+            // HiMovies UpCloud → Byse (gn1r5n) HLS via PoW helper
+            if ($provider === 'upcloud' || $provider === 'byse') {
+                if (!class_exists('ByseSources')) {
+                    $diagnostics[] = [
+                        'code' => 'UPCLOUD_MISSING',
+                        'message' => 'ByseSources class missing',
+                        'severity' => 'warning',
+                        'provider' => 'upcloud',
+                    ];
+                    continue;
+                }
+                $uc = ByseSources::fetch($type, $tmdbId, $season, $episode);
+                foreach ($uc['diagnostics'] ?? [] as $d) {
+                    if (is_array($d)) {
+                        $diagnostics[] = $d;
+                    }
+                }
+                foreach ($uc['sources'] ?? [] as $src) {
+                    if (!is_array($src) || empty($src['url'])) {
+                        continue;
+                    }
+                    $streamUrl = (string) $src['url'];
+                    $key = 'upcloud|' . $streamUrl;
+                    if (isset($merged[$key])) {
+                        continue;
+                    }
+                    $merged[$key] = [
+                        'id' => substr(sha1($key), 0, 12),
+                        'url' => $streamUrl,
+                        'type' => (string) ($src['type'] ?? 'hls'),
+                        'quality' => (string) ($src['quality'] ?? 'Auto'),
+                        'provider' => 'upcloud',
+                        'providerName' => (string) ($src['providerName'] ?? 'UpCloud'),
+                        'label' => (string) ($src['label'] ?? 'UpCloud'),
+                        'language' => (string) ($src['language'] ?? ''),
+                        'audioTracks' => [],
+                        'meta' => is_array($src['meta'] ?? null) ? $src['meta'] : [],
+                    ];
+                }
+                if (empty($uc['ok']) && empty($uc['sources'])) {
+                    $diagnostics[] = [
+                        'code' => 'UPCLOUD_EMPTY',
+                        'message' => (string) ($uc['error'] ?? 'No UpCloud/Byse streams'),
+                        'severity' => 'warning',
+                        'provider' => 'upcloud',
+                    ];
+                }
+                continue;
+            }
             $qs = [
                 'type' => $type,
                 'tmdbId' => (string) $tmdbId,

@@ -23,6 +23,7 @@ final class SourcesService
         'videasy' => 'Videasy',
         'stremify' => 'Stremify',
         'vidmoly' => 'Vidmoly',
+        'upcloud' => 'UpCloud',
     ];
 
     /** Ensure catalog rows exist (safe to call often). */
