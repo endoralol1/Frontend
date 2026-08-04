@@ -20,6 +20,7 @@ final class SourcesService
         'vidnest' => 'VidNest',
         'peachify' => 'Peachify',
         'vidrock' => 'VidRock',
+        'videasy' => 'Videasy',
         'stremify' => 'Stremify',
     ];
 
