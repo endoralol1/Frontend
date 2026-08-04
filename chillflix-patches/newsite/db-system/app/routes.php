@@ -498,6 +498,69 @@ $router->get('/api/player/media-proxy', function () {
     json_response(['ok' => false, 'error' => 'Media proxy unavailable'], 404);
 });
 
+/** Browser-scraped Cineplay/Yoru stream → signed media-proxy URL for native player */
+$router->post('/api/cineplay/mint-proxy', function () {
+    if (!class_exists('CineplaySources')) {
+        json_response(['ok' => false, 'error' => 'Cineplay unavailable'], 404);
+    }
+    $body = json_body();
+    $url = trim((string) ($body['url'] ?? ''));
+    if ($url === '' || !preg_match('#^https?://#i', $url)) {
+        json_response(['ok' => false, 'error' => 'url required'], 400);
+    }
+    try {
+        $proxy = CineplaySources::mintProxy($url);
+        json_response(['ok' => true, 'url' => $proxy, 'type' => 'hls']);
+    } catch (Throwable $e) {
+        json_response(['ok' => false, 'error' => $e->getMessage()], 500);
+    }
+});
+
+/** Optional server-side Yoru scrape (needs non-banned egress / PROVIDER_FETCH_PROXY) */
+$router->get('/api/cineplay/yoru', function () {
+    if (!class_exists('CineplaySources')) {
+        json_response(['ok' => false, 'error' => 'Cineplay unavailable'], 404);
+    }
+    $type = (($_GET['type'] ?? '') === 'tv') ? 'tv' : 'movie';
+    $tmdbId = (int) ($_GET['tmdbId'] ?? 0);
+    $season = max(1, (int) ($_GET['season'] ?? 1));
+    $episode = max(1, (int) ($_GET['episode'] ?? 1));
+    if ($tmdbId < 1) {
+        json_response(['ok' => false, 'error' => 'tmdbId required'], 400);
+    }
+    $GLOBALS['__cf_config_override'] = array_merge(
+        is_array($GLOBALS['__cf_config_override'] ?? null) ? $GLOBALS['__cf_config_override'] : [],
+        ['player_providers' => ['cineplay']]
+    );
+    try {
+        $result = CineplaySources::fetch($type, $tmdbId, $season, $episode);
+        // Only return already-scraped HLS (not client stubs)
+        $hls = [];
+        foreach ($result['sources'] ?? [] as $src) {
+            if (!is_array($src)) {
+                continue;
+            }
+            $t = strtolower((string) ($src['type'] ?? ''));
+            if (in_array($t, ['hls', 'mp4', 'file'], true) && !empty($src['url']) && !str_starts_with((string) $src['url'], 'cineplay-yoru://')) {
+                $hls[] = $src;
+            }
+        }
+        if (!$hls) {
+            json_response([
+                'ok' => false,
+                'error' => (string) (($result['diagnostics'][0]['message'] ?? null) ?: 'Yoru scrape blocked from server'),
+                'diagnostics' => $result['diagnostics'] ?? [],
+            ], 502);
+        }
+        json_response(['ok' => true, 'sources' => $hls, 'subtitles' => []]);
+    } finally {
+        // keep host override; only drop provider force
+        if (isset($GLOBALS['__cf_config_override']['player_providers'])) {
+            unset($GLOBALS['__cf_config_override']['player_providers']);
+        }
+    }
+});
+
 // ——— Newsite auth + sync + admin APIs ———
 $router->post('/api/auth/register', function () {
     $body = json_body();
@@ -1634,10 +1697,11 @@ function watch_page(Tmdb $tmdb, string $type, int $id, string $slug): void
         'autoPlay' => $autoPlay,
         'playerConfig' => $playerConfig,
         'nextEpisode' => $nextEpisode,
-        'extraCss' => [asset('css/player.css') . '?v=20260804-cineplay1'],
+        'extraCss' => [asset('css/player.css') . '?v=20260804-cineplay2'],
         'extraJs' => [
             'https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js',
-            asset('js/player.js') . '?v=20260804-cineplay1',
+            asset('js/cineplay-yoru.js') . '?v=20260804-cineplay2',
+            asset('js/player.js') . '?v=20260804-cineplay2',
         ],
         'bodyClass' => 'page-watch',
         'headerClass' => 'absolute',
