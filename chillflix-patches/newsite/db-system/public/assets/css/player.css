@@ -49,6 +49,12 @@ body.page-player .np-shell { height: 100vh; height: 100dvh; }
   border: 0;
   background: #000;
   z-index: 2;
+  pointer-events: auto;
+}
+.np-iframe[hidden] { display: none !important; }
+.np-shell.np-iframe-mode .np-iframe {
+  display: block !important;
+  z-index: 4;
 }
 .np-shell.np-iframe-mode .np-video,
 .np-shell.np-iframe-mode .np-poster,
@@ -60,6 +66,13 @@ body.page-player .np-shell { height: 100vh; height: 100dvh; }
 .np-shell.np-iframe-mode .np-top {
   z-index: 6;
   background: linear-gradient(to bottom, rgba(0,0,0,.65), transparent);
+  /* Let clicks reach the embed except back/settings controls */
+  pointer-events: none;
+}
+.np-shell.np-iframe-mode .np-top .np-back,
+.np-shell.np-iframe-mode .np-top .np-chip,
+.np-shell.np-iframe-mode .np-top .np-top-actions {
+  pointer-events: auto;
 }
 .np-poster {
   background-size: cover; background-position: center;

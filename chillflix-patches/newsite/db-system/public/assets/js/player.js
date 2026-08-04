@@ -925,22 +925,62 @@
       setTimeout(attachNativeTracks, 250);
     }
 
+    function ensureIframe() {
+      if (els.iframe && els.iframe.isConnected) return els.iframe;
+      const stage = els.shell?.querySelector(".np-stage") || els.shell;
+      if (!stage) return null;
+      let iframe = stage.querySelector("#np-iframe");
+      if (!iframe) {
+        iframe = document.createElement("iframe");
+        iframe.id = "np-iframe";
+        iframe.className = "np-iframe";
+        iframe.title = "Cineplay player";
+        iframe.allow =
+          "autoplay; fullscreen; encrypted-media; picture-in-picture";
+        iframe.setAttribute("allowfullscreen", "");
+        iframe.setAttribute("referrerpolicy", "origin");
+        const video = stage.querySelector("#np-video");
+        if (video && video.parentNode === stage) {
+          stage.insertBefore(iframe, video.nextSibling);
+        } else {
+          stage.appendChild(iframe);
+        }
+      }
+      els.iframe = iframe;
+      return iframe;
+    }
+
     function clearIframe() {
-      if (!els.iframe) return;
-      els.iframe.hidden = true;
-      els.iframe.removeAttribute("src");
+      const iframe = els.iframe || els.shell?.querySelector("#np-iframe");
+      if (iframe) {
+        iframe.hidden = true;
+        iframe.removeAttribute("src");
+        els.iframe = iframe;
+      }
       els.shell?.classList.remove("np-iframe-mode");
       if (els.video) els.video.hidden = false;
       if (els.controls) els.controls.hidden = false;
       if (els.center) els.center.hidden = false;
+      if (els.subs) els.subs.hidden = false;
+    }
+
+    function isIframeSource(url, source) {
+      const type = String(source?.type || source?.format || "").toLowerCase();
+      if (type === "iframe" || type === "embed") return true;
+      const u = String(url || "");
+      if (/vidking\.net\/embed\//i.test(u)) return true;
+      if (/cineplay\.to\/(?:movie|tv)\//i.test(u) && /[?&]play=true\b/i.test(u)) {
+        return true;
+      }
+      return false;
     }
 
     function playIframe(url, source) {
       destroyHls();
       paintCue("");
-      clearIframe();
       const abs = absoluteUrl(url);
-      if (!els.iframe || !abs) {
+      const iframe = ensureIframe();
+      if (!iframe || !abs) {
         setStatus("Embed player missing");
         return;
       }
@@ -949,7 +989,9 @@
           els.video.pause();
         } catch (_) {}
         els.video.removeAttribute("src");
-        els.video.load?.();
+        try {
+          els.video.load?.();
+        } catch (_) {}
         els.video.hidden = true;
       }
       if (els.poster) els.poster.style.display = "none";
@@ -957,17 +999,19 @@
       if (els.center) els.center.hidden = true;
       if (els.subs) els.subs.hidden = true;
       els.shell?.classList.add("np-iframe-mode", "is-playing", "show-controls");
-      els.iframe.hidden = false;
-      els.iframe.src = abs;
-      setStatus("");
+      iframe.hidden = false;
+      iframe.style.display = "block";
+      // Force reload even if same URL was attempted earlier as <video>
+      iframe.removeAttribute("src");
+      iframe.src = abs;
+      setStatus("Cineplay embed — pick Yoru for 4K");
       // Cineplay/Vidking owns playback chrome; keep our back/settings.
     }
 
     function playUrl(url, source) {
       const v = els.video;
       if (!url) return;
-      const type = String(source?.type || source?.format || "").toLowerCase();
-      if (type === "iframe" || type === "embed") {
+      if (isIframeSource(url, source)) {
         playIframe(url, source);
         return;
       }
@@ -1134,7 +1178,13 @@
           setStatus("No sources found");
           return;
         }
-        loadSource(0);
+        // Prefer Cineplay/Vidking iframe (4K via Yoru) when present
+        const prefer = state.sources.findIndex(
+          (s) =>
+            String(s?.provider || "").toLowerCase() === "cineplay" ||
+            isIframeSource(s?.url, s)
+        );
+        loadSource(prefer >= 0 ? prefer : 0);
       } catch (err) {
         setStatus(err.message || "Failed to load sources");
       } finally {
