@@ -671,7 +671,7 @@ final class PlayerSources
         $ctx = stream_context_create([
             'http' => [
                 'method' => 'GET',
-                'timeout' => 18,
+                'timeout' => 8,
                 'header' => implode("\r\n", $headers),
                 'ignore_errors' => true,
             ],
@@ -688,7 +688,7 @@ final class PlayerSources
             $ctx2 = stream_context_create([
                 'http' => [
                     'method' => 'GET',
-                    'timeout' => 18,
+                    'timeout' => 8,
                     'header' => implode("\r\n", $hdrs),
                     'ignore_errors' => true,
                 ],
