@@ -1000,7 +1000,7 @@ export function useMediaSources({
         ) {
           window.setTimeout(() => {
             if (!isStale() && sourcesRef.current.length === 0) {
-              void fetchSources({ fresh: true, merge: true }).catch(() => undefined)
+              void fetchSources({ merge: true }).catch(() => undefined)
             }
           }, BACKGROUND_MERGE_KICK_MS)
         }
@@ -1254,14 +1254,18 @@ export function useMediaSources({
 
       const startPrimaryRetryLoop = (providerId: string) => {
         const retry = async () => {
+          let attempt = 0
           while (!cancelled) {
             await sleep(PRIMARY_PROVIDER_RETRY_MS)
             if (cancelled) return
+            attempt += 1
 
+            // Prefer cinepro/Worker caches on retries. Only force-fresh every
+            // 3rd attempt so a miss can recover without wiping cache each loop.
             const found = await tryProvider(providerId, {
               useFetchTimeout: true,
               markFailedOnMiss: false,
-              forceFresh: true,
+              forceFresh: attempt % 3 === 0,
             })
             if (found) {
               clearProviderFailed(providerId)
@@ -1424,7 +1428,7 @@ export function useMediaSources({
     if (providerScanAttemptedRef.current) return
 
     try {
-      const merged = await fetchSources({ fresh: true, merge: true, retry: true })
+      const merged = await fetchSources({ merge: true, retry: true })
       if (merged.sources.length > 0 || sourcesRef.current.length > 0) return
 
       const enabledIds = getEnabledProviderIds().filter(
@@ -1510,10 +1514,16 @@ export function useMediaSources({
     let timer: number | undefined
     let firstPollTimer: number | undefined
 
+    let pollAttempt = 0
     const poll = () => {
       if (document.visibilityState === "hidden") return
-
-      void fetchSources({ fresh: true, merge: true }).catch((err) => {
+      pollAttempt += 1
+      // Background discovery should reuse cinepro cache; force-fresh only
+      // occasionally so we do not wipe VAPlayer/Cineplay caches every poll.
+      void fetchSources({
+        merge: true,
+        fresh: pollAttempt % 4 === 0,
+      }).catch((err) => {
         if (cancelled) return
 
         const message =
