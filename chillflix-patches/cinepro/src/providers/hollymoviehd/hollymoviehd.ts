@@ -119,21 +119,32 @@ export class HollymoviehdProvider extends BaseProvider {
 
             const ajax = await this.fetchAjaxStreams(meta, pageUrl);
             const embedUrls = this.collectEmbeds(ajax);
-            if (!embedUrls.length) {
-                return this.emptyResult('HollyMovieHD ajax returned no embeds');
-            }
 
             const sources: Source[] = [];
-            for (const embed of embedUrls.slice(0, 3)) {
-                const resolved = await this.resolveGoodstream(embed);
-                for (const item of resolved) {
-                    sources.push(item);
+            const seen = new Set<string>();
+            const pushUnique = (item: Source) => {
+                const bare = item.url.replace(/^https?:\/\/[^/]+\/v1\/proxy\?data=/, '');
+                if (seen.has(bare)) return;
+                seen.add(bare);
+                sources.push(item);
+            };
+
+            // Pixeldrain (from download page) is the most reliable playable MP4.
+            const pixel = await this.resolvePixeldrain(meta.streamkey);
+            if (pixel) pushUnique(pixel);
+
+            // Direct CDN progressive MP4 (tripplestream) — skip Goodstream HLS (CF 403).
+            for (const embed of embedUrls.slice(0, 2)) {
+                for (const item of await this.resolveGoodstream(embed)) {
+                    pushUnique(item);
                 }
-                if (sources.length >= 4) break;
+                if (sources.length >= 3) break;
             }
 
             if (!sources.length) {
-                return this.emptyResult('Could not resolve Goodstream sources');
+                return this.emptyResult(
+                    'No playable HollyMovieHD MP4 (Goodstream HLS blocked by Cloudflare)'
+                );
             }
 
             const result: ProviderResult = { sources, subtitles: [], diagnostics: [] };
@@ -304,6 +315,42 @@ export class HollymoviehdProvider extends BaseProvider {
         return out;
     }
 
+    private async resolvePixeldrain(streamkey: string): Promise<Source | null> {
+        if (!streamkey) return null;
+        const session = await this.ensureSession();
+        try {
+            const res = await fetch(`${GOODSTREAM}/download/${streamkey}`, {
+                headers: {
+                    'User-Agent': session.userAgent,
+                    Referer: `${SITE}/`,
+                    Accept: 'text/html,*/*'
+                }
+            });
+            if (!res.ok) return null;
+            const html = await res.text();
+            const page =
+                html.match(
+                    /https?:\/\/(?:www\.)?pixeldrain\.com\/u\/([A-Za-z0-9]+)/i
+                )?.[1] ?? '';
+            if (!page) return null;
+            const fileUrl = `https://pixeldrain.com/api/file/${page}`;
+            return {
+                url: this.createProxyUrl(fileUrl, {
+                    Referer: 'https://pixeldrain.com/',
+                    Origin: 'https://pixeldrain.com',
+                    'User-Agent': session.userAgent,
+                    Accept: '*/*'
+                }),
+                type: 'mp4',
+                quality: 'Pixeldrain',
+                audioTracks: [{ language: 'Original', label: 'Original' }],
+                provider: { id: this.id, name: this.name }
+            };
+        } catch {
+            return null;
+        }
+    }
+
     private async resolveGoodstream(embedUrl: string): Promise<Source[]> {
         const session = await this.ensureSession();
         const abs = embedUrl.startsWith('http') ? embedUrl : `${GOODSTREAM}${embedUrl}`;
@@ -351,14 +398,29 @@ export class HollymoviehdProvider extends BaseProvider {
         const out: Source[] = [];
         for (const s of json.sources) {
             const file = this.absolutize(s.file || '', abs);
-            if (!file) continue;
-            // Prefer HLS / direct CDN; skip relative streamsvr without host if absolutize failed
-            if (file.startsWith('/')) continue;
-            const type = this.mapType(s.type, file);
+            if (!file || file.startsWith('/')) continue;
+
+            // Goodstream HLS (/pl/, /streamsvr/) is Cloudflare-blocked from the VPS → 403/502 in player.
+            // Only keep progressive CDN MP4 (tripplestream / hlmv).
+            const lower = file.toLowerCase();
+            const isBlockedHls =
+                lower.includes('goodstream.cc/pl/') ||
+                lower.includes('goodstream.cc/streamsvr/') ||
+                lower.includes('/streamsvr/') ||
+                (lower.includes('.m3u8') && lower.includes('goodstream'));
+            if (isBlockedHls) continue;
+
+            const looksMp4 =
+                lower.includes('tripplestream') ||
+                lower.includes('/videos/') ||
+                (s.type || '').toLowerCase().includes('mp4') ||
+                lower.endsWith('.mp4');
+            if (!looksMp4) continue;
+
             out.push({
                 url: this.createProxyUrl(file, headers),
-                type,
-                quality: s.label || 'Auto',
+                type: 'mp4',
+                quality: s.label || 'CDN',
                 audioTracks: [{ language: 'Original', label: 'Original' }],
                 provider: { id: this.id, name: this.name }
             });
