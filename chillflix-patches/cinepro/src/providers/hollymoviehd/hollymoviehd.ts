@@ -315,37 +315,51 @@ export class HollymoviehdProvider extends BaseProvider {
         return out;
     }
 
+    private streamkeyCandidates(streamkey: string): string[] {
+        // data-streamkey can be "id@1080p|otherId" or "id|otherId@1080p".
+        // Goodstream /download pages only accept bare ids.
+        const parts = streamkey
+            .split('|')
+            .flatMap((part) => part.split('@'))
+            .map((part) => part.trim())
+            .filter(Boolean);
+        return Array.from(new Set(parts.filter((part) => !part.includes('@') && !part.includes('|'))));
+    }
+
     private async resolvePixeldrain(streamkey: string): Promise<Source | null> {
         if (!streamkey) return null;
         const session = await this.ensureSession();
         try {
-            const res = await fetch(`${GOODSTREAM}/download/${streamkey}`, {
-                headers: {
-                    'User-Agent': session.userAgent,
-                    Referer: `${SITE}/`,
-                    Accept: 'text/html,*/*'
-                }
-            });
-            if (!res.ok) return null;
-            const html = await res.text();
-            const page =
-                html.match(
-                    /https?:\/\/(?:www\.)?pixeldrain\.com\/u\/([A-Za-z0-9]+)/i
-                )?.[1] ?? '';
-            if (!page) return null;
-            const fileUrl = `https://pixeldrain.com/api/file/${page}`;
-            return {
-                url: this.createProxyUrl(fileUrl, {
-                    Referer: 'https://pixeldrain.com/',
-                    Origin: 'https://pixeldrain.com',
-                    'User-Agent': session.userAgent,
-                    Accept: '*/*'
-                }),
-                type: 'mp4',
-                quality: 'Pixeldrain',
-                audioTracks: [{ language: 'Original', label: 'Original' }],
-                provider: { id: this.id, name: this.name }
-            };
+            for (const key of this.streamkeyCandidates(streamkey)) {
+                const res = await fetch(`${GOODSTREAM}/download/${encodeURIComponent(key)}`, {
+                    headers: {
+                        'User-Agent': session.userAgent,
+                        Referer: `${SITE}/`,
+                        Accept: 'text/html,*/*'
+                    }
+                });
+                if (!res.ok) continue;
+                const html = await res.text();
+                const page =
+                    html.match(
+                        /https?:\/\/(?:www\.)?pixeldrain\.com\/u\/([A-Za-z0-9]+)/i
+                    )?.[1] ?? '';
+                if (!page) continue;
+                const fileUrl = `https://pixeldrain.com/api/file/${page}`;
+                return {
+                    url: this.createProxyUrl(fileUrl, {
+                        Referer: 'https://pixeldrain.com/',
+                        Origin: 'https://pixeldrain.com',
+                        'User-Agent': session.userAgent,
+                        Accept: '*/*'
+                    }),
+                    type: 'mp4',
+                    quality: 'Pixeldrain',
+                    audioTracks: [{ language: 'Original', label: 'Original' }],
+                    provider: { id: this.id, name: this.name }
+                };
+            }
+            return null;
         } catch {
             return null;
         }
