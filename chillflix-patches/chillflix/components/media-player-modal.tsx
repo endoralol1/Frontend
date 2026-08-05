@@ -713,12 +713,22 @@ export const MediaPlayerModal: React.FC<MediaPlayerModalProps> = ({
   })
 
   const activeTestingProviderId = useMemo(() => {
+    // Once a source is selected/playing, stop the "Testing…" UI. Remaining
+    // providers are on-demand (manual switch or error failover), not background.
+    if (playbackActive || playbackStable) return undefined
+
     if (scanningProviderId) return scanningProviderId
 
     if (!activeProbeId) return undefined
     return playbackOptions.find((option) => option.id === activeProbeId)
       ?.providerId
-  }, [activeProbeId, playbackOptions, scanningProviderId])
+  }, [
+    activeProbeId,
+    playbackActive,
+    playbackOptions,
+    playbackStable,
+    scanningProviderId,
+  ])
 
   const unavailableProviders = useMemo(
     () =>
@@ -1781,25 +1791,48 @@ const quietStallAttemptRef = useRef(0)
     providerResolveAttemptedRef.current = true
     setRuntimeError("Resolving CinePro providers…")
 
-    try {
-      const payload = await refetchSourcesAsync()
-      const refreshed = mapSourcesToPlaybackOptions(payload.sources, {
+    const pickFromPayload = (payloadSources: typeof sources) => {
+      const refreshed = mapSourcesToPlaybackOptions(payloadSources, {
         providerOrder: orderedEnabledProviderIds,
         showRealProviderNames,
       })
       const preferred = pickSourceAfterRefetch(refreshed)
-
       if (preferred) {
         setRuntimeError(preferred.statusMessage)
         setSelectedSourceId(preferred.nextSourceId)
-        return
+        return true
       }
 
       const recovery = attemptRecoveryFromOptions(refreshed)
       if (recovery) {
         setRuntimeError(recovery.statusMessage)
         setSelectedSourceId(recovery.nextSourceId)
-        return
+        return true
+      }
+
+      return false
+    }
+
+    try {
+      const payload = await refetchSourcesAsync()
+      if (pickFromPayload(payload.sources)) return
+
+      // Initial discovery stops after the first working source, so failover may
+      // need to resolve the next providers on demand.
+      const failedProvider =
+        selectedProviderKeyRef.current ||
+        playbackOptions.find((option) => option.id === selectedSourceIdRef.current)
+          ?.providerId
+      const nextProviders = orderedEnabledProviderIds.filter(
+        (providerId) =>
+          normalizeProviderName(providerId) !== "vidlink" &&
+          normalizeProviderName(providerId) !==
+            normalizeProviderName(failedProvider ?? "")
+      )
+
+      for (const providerId of nextProviders.slice(0, 3)) {
+        const nextPayload = await requestProvider(providerId)
+        if (pickFromPayload(nextPayload.sources)) return
       }
 
       setRuntimeError(

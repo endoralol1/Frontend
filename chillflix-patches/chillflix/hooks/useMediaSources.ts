@@ -380,6 +380,15 @@ export function useMediaSources({
     playbackActiveRef.current = playbackActive
   }, [playbackActive])
 
+  // Once a source is selected/playing, stop the discovery walk UI immediately.
+  // Failover and manual source picks use requestProvider / refetch, not this scan.
+  useEffect(() => {
+    if (!playbackActive) return
+    setScanningProviderId(undefined)
+    setIsScanningProviders(false)
+    setProviderScanStartedAt(undefined)
+  }, [playbackActive])
+
   useEffect(() => {
     embedFastStartRef.current = embedFastStart
   }, [embedFastStart])
@@ -1117,8 +1126,10 @@ export function useMediaSources({
     let scanFinished = false
 
     const runProviderScan = async () => {
-      // Keep scanning even after playback starts so player settings can fill in
-      // every enabled provider (prefer4k / fast primary must not abort the rest).
+      // Find the first playable source, then stop. Do not keep walking every
+      // enabled provider in the background while something is already playing —
+      // that burns Worker/CinePro quota. User can switch sources manually;
+      // stream errors re-resolve via requestProvider / refetch.
       const config = await ensureStreamSourcesConfigReady()
       if (cancelled) return
 
@@ -1147,6 +1158,15 @@ export function useMediaSources({
         setScanFailedProviderIds([...scanFailedRef.current])
       }
 
+      const hasPlayableAutomaticSource = () =>
+        sourcesRef.current.length > 0 &&
+        !isVidLinkOnlySources(sourcesRef.current)
+
+      const shouldStopDiscovering = () =>
+        cancelled ||
+        playbackActiveRef.current ||
+        hasPlayableAutomaticSource()
+
       const tryProvider = async (
         providerId: string,
         options: {
@@ -1157,6 +1177,17 @@ export function useMediaSources({
         }
       ): Promise<boolean> => {
         if (cancelled) {
+          return false
+        }
+
+        // Playback already has a real source — do not spend more resolves
+        // filling the Settings list. VidLink-only emergency stubs must not
+        // stop the walk. Manual picks / error recovery use requestProvider.
+        if (playbackActiveRef.current || hasPlayableAutomaticSource()) {
+          if (sourcesIncludeProvider(sourcesRef.current, providerId)) {
+            clearProviderFailed(providerId)
+            return true
+          }
           return false
         }
 
@@ -1255,9 +1286,11 @@ export function useMediaSources({
       const startPrimaryRetryLoop = (providerId: string) => {
         const retry = async () => {
           let attempt = 0
-          while (!cancelled) {
+          while (!cancelled && !playbackActiveRef.current) {
             await sleep(PRIMARY_PROVIDER_RETRY_MS)
-            if (cancelled) return
+            if (cancelled || playbackActiveRef.current) return
+            // Another provider already returned a stream — stop burning primary.
+            if (hasPlayableAutomaticSource()) return
             attempt += 1
 
             // Prefer cinepro/Worker caches on retries. Only force-fresh every
@@ -1283,6 +1316,12 @@ export function useMediaSources({
         )
 
       try {
+        // Cache/bulk fetch already gave us something to play — skip the walk.
+        if (shouldStopDiscovering()) {
+          setScanningProviderId(undefined)
+          return
+        }
+
         if (primaryProviderId) {
           setScanningProviderId(primaryProviderId)
           // Use cached resolves (cinepro 1h / Worker 2h). forceFresh only in the
@@ -1315,7 +1354,9 @@ export function useMediaSources({
 
           const headStartDeadline = Date.now() + getHeadStartMs()
           while (Date.now() < headStartDeadline) {
-            if (cancelled) return
+            if (cancelled || playbackActiveRef.current) return
+            // Already have a stream (primary or bulk) — stop discovering more.
+            if (hasPlayableAutomaticSource()) break
             // Primary miss → test others now (do not wait out the head-start).
             if (primaryEarlyResult === false) {
               break
@@ -1329,23 +1370,21 @@ export function useMediaSources({
             await sleep(100)
           }
 
-          if (cancelled) return
+          if (cancelled || playbackActiveRef.current) return
 
-          // Always probe every missing enabled provider — having one secondary
-          // already (e.g. 4K / bulk hit) must not skip the rest of the list.
-          const missingSecondaries = secondaryProviderIds.filter(
-            (providerId) => !sourcesIncludeProvider(sourcesRef.current, providerId)
-          )
+          // Only walk missing secondaries until the first real stream appears.
+          // Do not parallel-blast the whole provider list while one already plays.
+          if (!hasPlayableAutomaticSource()) {
+            for (const providerId of secondaryProviderIds) {
+              if (cancelled || playbackActiveRef.current) break
+              if (hasPlayableAutomaticSource()) break
+              if (sourcesIncludeProvider(sourcesRef.current, providerId)) continue
 
-          if (missingSecondaries.length > 0) {
-            await Promise.allSettled(
-              missingSecondaries.map((providerId) =>
-                tryProvider(providerId, {
-                  useFetchTimeout: true,
-                  markFailedOnMiss: true,
-                })
-              )
-            )
+              await tryProvider(providerId, {
+                useFetchTimeout: true,
+                markFailedOnMiss: true,
+              })
+            }
           }
 
           if (primaryPromise) {
@@ -1353,7 +1392,9 @@ export function useMediaSources({
             if (primaryFound || sourcesIncludeProvider(sourcesRef.current, primaryProviderId)) {
               clearProviderFailed(primaryProviderId)
             } else if (
-              !sourcesIncludeProvider(sourcesRef.current, primaryProviderId)
+              !sourcesIncludeProvider(sourcesRef.current, primaryProviderId) &&
+              !hasPlayableAutomaticSource() &&
+              !playbackActiveRef.current
             ) {
               markProviderFailed(primaryProviderId)
               startPrimaryRetryLoop(primaryProviderId)
@@ -1361,7 +1402,8 @@ export function useMediaSources({
           }
         } else if (secondaryProviderIds.length > 0) {
           for (const providerId of secondaryProviderIds) {
-            if (cancelled) break
+            if (cancelled || playbackActiveRef.current) break
+            if (hasPlayableAutomaticSource()) break
             await tryProvider(providerId, {
               useFetchTimeout: true,
               markFailedOnMiss: true,
