@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
             url?: string
             secret?: string
             id?: string
+            force?: boolean
         }
 
         if (body.action === "test") {
@@ -108,8 +109,12 @@ export async function POST(request: NextRequest) {
                 const stats = await fetchWorkerAnalytics(match)
                 return NextResponse.json({ success: true, stats: [stats] })
             }
-            const stats = await fetchAllWorkerAnalytics()
-            return NextResponse.json({ success: true, stats })
+            const stats = await fetchAllWorkerAnalytics({ force: Boolean(body.force) })
+            return NextResponse.json({
+                success: true,
+                stats,
+                cached: !body.force,
+            })
         }
 
         return NextResponse.json({ error: "Unknown action" }, { status: 400 })

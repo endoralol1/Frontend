@@ -560,7 +560,28 @@ export async function fetchWorkerAnalytics(
     }
 }
 
-export async function fetchAllWorkerAnalytics(): Promise<WorkerAnalyticsSnapshot[]> {
+type AnalyticsCache = {
+    at: number
+    stats: WorkerAnalyticsSnapshot[]
+}
+
+let analyticsCache: AnalyticsCache | null = null
+const ANALYTICS_CACHE_MS = 55_000
+
+export async function fetchAllWorkerAnalytics(options?: {
+    force?: boolean
+}): Promise<WorkerAnalyticsSnapshot[]> {
+    const now = Date.now()
+    if (
+        !options?.force &&
+        analyticsCache &&
+        now - analyticsCache.at < ANALYTICS_CACHE_MS
+    ) {
+        return analyticsCache.stats
+    }
+
     const config = await getWorkerRelayConfig()
-    return Promise.all(config.workers.map((w) => fetchWorkerAnalytics(w)))
+    const stats = await Promise.all(config.workers.map((w) => fetchWorkerAnalytics(w)))
+    analyticsCache = { at: now, stats }
+    return stats
 }
