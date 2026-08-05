@@ -671,10 +671,12 @@ export function MediaPlayer({
     Array<{ index: number; height: number; label: string; url?: string }>
   >([])
   const [currentQuality, setCurrentQuality] = useState(-1)
+  const currentQualityRef = useRef(-1)
   /** When set, overrides source.url for provider quality switching. */
   const [qualityOverrideUrl, setQualityOverrideUrl] = useState<string | null>(null)
   const qualityOverrideUrlRef = useRef<string | null>(null)
   const providerQualitiesRef = useRef(source.qualities)
+  const providerQualitiesKeyRef = useRef("")
   const [qualityReloadNonce, setQualityReloadNonce] = useState(0)
 
   useEffect(() => {
@@ -682,27 +684,98 @@ export function MediaPlayer({
   }, [qualityOverrideUrl])
 
   useEffect(() => {
-    providerQualitiesRef.current = source.qualities
+    currentQualityRef.current = currentQuality
+  }, [currentQuality])
+
+  // Only reset quality selection when the Source (provider) changes — not when
+  // parent remints playback tokens / rebuilds the qualities array reference.
+  useEffect(() => {
     setQualityOverrideUrl(null)
     qualityOverrideUrlRef.current = null
-
+    setCurrentQuality(-1) // Auto = preferred default URL on this source
+    setQualityReloadNonce(0)
+    providerQualitiesKeyRef.current = ""
+    providerQualitiesRef.current = source.qualities
     if (source.qualities && source.qualities.length > 1) {
-      const mapped = source.qualities.map((item) => ({
+      setQualities(
+        source.qualities.map((item) => ({
+          index: item.index,
+          height: item.height,
+          label: item.label,
+          url: item.url,
+        }))
+      )
+      providerQualitiesKeyRef.current = source.qualities
+        .map(
+          (item) =>
+            `${item.label}:${item.height}:${playbackUrlWithoutToken(item.url)}`
+        )
+        .join("|")
+    } else {
+      setQualities([])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-init on Source change
+  }, [source.id])
+
+  useEffect(() => {
+    const list = source.qualities
+    providerQualitiesRef.current = list
+
+    if (!list || list.length <= 1) {
+      providerQualitiesKeyRef.current = ""
+      return
+    }
+
+    const key = list
+      .map(
+        (item) =>
+          `${item.label}:${item.height}:${playbackUrlWithoutToken(item.url)}`
+      )
+      .join("|")
+
+    const selected = currentQualityRef.current
+
+    // Same ladder (token-only URL churn): keep the user's pick, refresh override URL.
+    if (key === providerQualitiesKeyRef.current) {
+      if (selected >= 0) {
+        const picked = list.find((item) => item.index === selected)
+        if (
+          picked &&
+          qualityOverrideUrlRef.current &&
+          playbackUrlWithoutToken(qualityOverrideUrlRef.current) ===
+            playbackUrlWithoutToken(picked.url) &&
+          qualityOverrideUrlRef.current !== picked.url
+        ) {
+          setQualityOverrideUrl(picked.url)
+          qualityOverrideUrlRef.current = picked.url
+        }
+      }
+      return
+    }
+
+    providerQualitiesKeyRef.current = key
+    setQualities(
+      list.map((item) => ({
         index: item.index,
         height: item.height,
         label: item.label,
         url: item.url,
       }))
-      setQualities(mapped)
-      const preferredIndex = source.qualities.findIndex(
-        (item) => playbackUrlWithoutToken(item.url) === playbackUrlWithoutToken(source.url)
-      )
-      setCurrentQuality(preferredIndex >= 0 ? preferredIndex : 0)
-    } else {
-      setQualities([])
-      setCurrentQuality(-1)
+    )
+
+    // New ladder content: keep index if still valid, else Auto.
+    if (selected >= 0) {
+      const picked = list.find((item) => item.index === selected)
+      if (!picked) {
+        setQualityOverrideUrl(null)
+        qualityOverrideUrlRef.current = null
+        setCurrentQuality(-1)
+      } else {
+        setQualityOverrideUrl(picked.url)
+        qualityOverrideUrlRef.current = picked.url
+      }
     }
-  }, [source.id, source.qualities, source.url])
+  }, [source.qualities])
   const [autoplayEnabled, setAutoplayEnabled] = useState(
     () => forceAutoplay || (getClientUser()?.autoplayEnabled ?? true)
   )
@@ -1586,6 +1659,14 @@ export function MediaPlayer({
       })
 
       hls.on(Hls.Events.LEVEL_SWITCHED, (_, data) => {
+        // Discrete provider ladders (Cineplay etc.) own the Quality tab.
+        // HLS ABR level switches must not snap the menu back to Auto.
+        if (
+          providerQualitiesRef.current &&
+          providerQualitiesRef.current.length > 1
+        ) {
+          return
+        }
         setCurrentQuality(hls.autoLevelEnabled ? -1 : data.level)
       })
 
@@ -2539,23 +2620,33 @@ export function MediaPlayer({
   const handleQualityChange = (level: number) => {
     const providerQualities = providerQualitiesRef.current
     if (providerQualities && providerQualities.length > 1) {
+      const currentPlaying = playbackUrlWithoutToken(
+        qualityOverrideUrlRef.current || source.url
+      )
+
       if (level < 0) {
-        // Auto → preferred default URL from parent source
-        setCurrentQuality(
-          providerQualities.findIndex(
-            (item) =>
-              playbackUrlWithoutToken(item.url) ===
-              playbackUrlWithoutToken(source.url)
-          )
-        )
+        // Auto → preferred default (source.url, usually 1080p)
+        const preferred = playbackUrlWithoutToken(source.url)
+        setCurrentQuality(-1)
+        if (currentPlaying === preferred && !qualityOverrideUrlRef.current) {
+          return
+        }
         setQualityOverrideUrl(null)
         qualityOverrideUrlRef.current = null
         setQualityReloadNonce((n) => n + 1)
         return
       }
+
       const picked = providerQualities.find((item) => item.index === level)
       if (!picked) return
+      const nextUrl = playbackUrlWithoutToken(picked.url)
       setCurrentQuality(level)
+      if (currentPlaying === nextUrl) {
+        // Already on this quality — just sync the menu highlight.
+        setQualityOverrideUrl(picked.url)
+        qualityOverrideUrlRef.current = picked.url
+        return
+      }
       setQualityOverrideUrl(picked.url)
       qualityOverrideUrlRef.current = picked.url
       setQualityReloadNonce((n) => n + 1)
