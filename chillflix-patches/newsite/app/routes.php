@@ -958,6 +958,12 @@ $router->map(['PATCH', 'POST'], '/api/admin/worker-relay', function () {
         json_response(['ok' => true, 'success' => true, 'result' => $result]);
     }
 
+    if (($body['action'] ?? '') === 'stats') {
+        $id = trim((string) ($body['id'] ?? ''));
+        $stats = WorkerRelayService::analytics($id !== '' ? $id : null);
+        json_response(['ok' => true, 'success' => true, 'stats' => $stats]);
+    }
+
     try {
         WorkerRelayService::update($body);
         $restart = WorkerRelayService::bounceCinepro();

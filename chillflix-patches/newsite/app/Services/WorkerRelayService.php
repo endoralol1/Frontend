@@ -121,6 +121,17 @@ final class WorkerRelayService
                 $secret = $prev['secret'] ?? '';
             }
             $w['secret'] = $secret;
+            $cfToken = (string) ($w['cfApiToken'] ?? '');
+            if ($cfToken === '' || str_contains($cfToken, '…')) {
+                $cfToken = (string) ($prev['cfApiToken'] ?? '');
+            }
+            $w['cfApiToken'] = $cfToken;
+            if (($w['cfAccountId'] ?? '') === '' && isset($prev['cfAccountId'])) {
+                $w['cfAccountId'] = $prev['cfAccountId'];
+            }
+            if (($w['cfScriptName'] ?? '') === '' && isset($prev['cfScriptName'])) {
+                $w['cfScriptName'] = $prev['cfScriptName'];
+            }
             if ($w['id'] === '') {
                 $w['id'] = 'worker-' . ($i + 1);
             }
@@ -187,6 +198,12 @@ final class WorkerRelayService
             $masked = $secret === ''
                 ? ''
                 : (substr($secret, 0, 4) . '…' . substr($secret, -4));
+            $cfToken = (string) ($w['cfApiToken'] ?? '');
+            $cfMasked = $cfToken === ''
+                ? ''
+                : (substr($cfToken, 0, 4) . '…' . substr($cfToken, -4));
+            $host = (string) (parse_url($w['url'], PHP_URL_HOST) ?: '');
+            $autoScript = $host !== '' ? (explode('.', $host)[0] ?? '') : '';
             $workers[] = [
                 'id' => $w['id'],
                 'label' => $w['label'],
@@ -194,6 +211,10 @@ final class WorkerRelayService
                 'secret' => $masked,
                 'enabled' => $w['enabled'],
                 'secretSet' => $secret !== '',
+                'cfAccountId' => (string) ($w['cfAccountId'] ?? ''),
+                'cfApiToken' => $cfMasked,
+                'cfApiTokenSet' => $cfToken !== '',
+                'cfScriptName' => (string) (($w['cfScriptName'] ?? '') !== '' ? $w['cfScriptName'] : $autoScript),
             ];
         }
         return [
@@ -203,6 +224,163 @@ final class WorkerRelayService
             'workers' => $workers,
             'path' => self::configPath(),
         ];
+    }
+
+    /**
+     * @return list<array{id:string,label:string,scriptName:string,ok:bool,error?:string,todayRequests:int,todayErrors:int,last24hRequests:int,last24hErrors:int,freeDailyLimit:int,fetchedAt:string}>
+     */
+    public static function analytics(?string $workerId = null): array
+    {
+        $config = self::get();
+        $out = [];
+        foreach ($config['workers'] as $w) {
+            if ($workerId !== null && $workerId !== '' && $w['id'] !== $workerId) {
+                continue;
+            }
+            $out[] = self::fetchWorkerAnalytics($w);
+        }
+        return $out;
+    }
+
+    /**
+     * @param array{id:string,label:string,url:string,cfAccountId?:string,cfApiToken?:string,cfScriptName?:string} $worker
+     * @return array{id:string,label:string,scriptName:string,ok:bool,error?:string,todayRequests:int,todayErrors:int,last24hRequests:int,last24hErrors:int,freeDailyLimit:int,fetchedAt:string}
+     */
+    public static function fetchWorkerAnalytics(array $worker): array
+    {
+        $host = (string) (parse_url((string) ($worker['url'] ?? ''), PHP_URL_HOST) ?: '');
+        $scriptName = trim((string) ($worker['cfScriptName'] ?? ''));
+        if ($scriptName === '' && $host !== '') {
+            $scriptName = explode('.', $host)[0] ?? '';
+        }
+        $accountId = trim((string) ($worker['cfAccountId'] ?? ''));
+        $token = trim((string) ($worker['cfApiToken'] ?? ''));
+        $base = [
+            'id' => (string) ($worker['id'] ?? ''),
+            'label' => (string) ($worker['label'] ?? ''),
+            'scriptName' => $scriptName,
+            'ok' => false,
+            'todayRequests' => 0,
+            'todayErrors' => 0,
+            'last24hRequests' => 0,
+            'last24hErrors' => 0,
+            'freeDailyLimit' => 100000,
+            'fetchedAt' => gmdate('c'),
+        ];
+        if ($accountId === '' || $token === '' || $scriptName === '') {
+            $base['error'] = $accountId === ''
+                ? 'Set CF Account ID'
+                : ($token === '' ? 'Set CF API token' : 'Set CF script name');
+            return $base;
+        }
+
+        try {
+            $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+            $startToday = $now->setTime(0, 0, 0)->format('Y-m-d\TH:i:s.000\Z');
+            $start24h = $now->modify('-24 hours')->format('Y-m-d\TH:i:s.000\Z');
+            $end = $now->format('Y-m-d\TH:i:s.000\Z');
+
+            $today = self::queryCfInvocations($accountId, $token, $scriptName, $startToday, $end);
+            $last24 = self::queryCfInvocations($accountId, $token, $scriptName, $start24h, $end);
+
+            $base['ok'] = true;
+            $base['todayRequests'] = $today['requests'];
+            $base['todayErrors'] = $today['errors'];
+            $base['last24hRequests'] = $last24['requests'];
+            $base['last24hErrors'] = $last24['errors'];
+            return $base;
+        } catch (Throwable $e) {
+            $base['error'] = $e->getMessage();
+            return $base;
+        }
+    }
+
+    /** @return array{requests:int,errors:int} */
+    private static function queryCfInvocations(
+        string $accountId,
+        string $token,
+        string $scriptName,
+        string $start,
+        string $end
+    ): array {
+        $query = <<<'GQL'
+query WorkerStats($accountTag: string, $scriptName: string, $start: Time, $end: Time) {
+  viewer {
+    accounts(filter: { accountTag: $accountTag }) {
+      workersInvocationsAdaptive(
+        limit: 10000
+        filter: {
+          scriptName: $scriptName
+          datetime_geq: $start
+          datetime_leq: $end
+        }
+      ) {
+        sum { requests errors }
+      }
+    }
+  }
+}
+GQL;
+        $payload = json_encode([
+            'query' => $query,
+            'variables' => [
+                'accountTag' => $accountId,
+                'scriptName' => $scriptName,
+                'start' => $start,
+                'end' => $end,
+            ],
+        ], JSON_UNESCAPED_SLASHES);
+        $ch = curl_init('https://api.cloudflare.com/client/v4/graphql');
+        if ($ch === false) {
+            throw new RuntimeException('curl init failed');
+        }
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $token,
+                'Content-Type: application/json',
+            ],
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_TIMEOUT => 20,
+        ]);
+        $body = curl_exec($ch);
+        $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $cerr = curl_error($ch);
+        curl_close($ch);
+        if (!is_string($body) || $body === '') {
+            throw new RuntimeException($cerr !== '' ? $cerr : 'empty Cloudflare response');
+        }
+        if ($status < 200 || $status >= 300) {
+            throw new RuntimeException('Cloudflare API HTTP ' . $status);
+        }
+        $json = json_decode($body, true);
+        if (!is_array($json)) {
+            throw new RuntimeException('Cloudflare bad JSON');
+        }
+        if (!empty($json['errors']) && is_array($json['errors'])) {
+            $msgs = [];
+            foreach ($json['errors'] as $err) {
+                if (is_array($err) && isset($err['message'])) {
+                    $msgs[] = (string) $err['message'];
+                }
+            }
+            throw new RuntimeException($msgs !== [] ? implode('; ', $msgs) : 'GraphQL error');
+        }
+        $rows = $json['data']['viewer']['accounts'][0]['workersInvocationsAdaptive'] ?? [];
+        $requests = 0;
+        $errors = 0;
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $requests += (int) ($row['sum']['requests'] ?? 0);
+                $errors += (int) ($row['sum']['errors'] ?? 0);
+            }
+        }
+        return ['requests' => $requests, 'errors' => $errors];
     }
 
     /** Round-robin pick among enabled workers. */
@@ -303,12 +481,20 @@ final class WorkerRelayService
                 if ($url === '') {
                     continue;
                 }
+                $scriptName = trim((string) ($row['cfScriptName'] ?? ''));
+                if ($scriptName === '') {
+                    $host = (string) (parse_url($url, PHP_URL_HOST) ?: '');
+                    $scriptName = $host !== '' ? (explode('.', $host)[0] ?? '') : '';
+                }
                 $workers[] = [
                     'id' => trim((string) ($row['id'] ?? ('worker-' . ($i + 1)))) ?: ('worker-' . ($i + 1)),
                     'label' => trim((string) ($row['label'] ?? ('Worker ' . ($i + 1)))) ?: ('Worker ' . ($i + 1)),
                     'url' => $url,
                     'secret' => trim((string) ($row['secret'] ?? '')),
                     'enabled' => ($row['enabled'] ?? true) !== false,
+                    'cfAccountId' => trim((string) ($row['cfAccountId'] ?? '')),
+                    'cfApiToken' => trim((string) ($row['cfApiToken'] ?? '')),
+                    'cfScriptName' => $scriptName,
                 ];
             }
         }

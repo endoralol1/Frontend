@@ -49,6 +49,7 @@ $adminUser = $adminUser ?? Auth::user();
           Cache hours
           <input id="relay-ttl" type="number" min="0.1" step="0.5" value="2" style="width:4.5rem;min-height:2.3rem;border-radius:.7rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.28);color:#fff;padding:.35rem .5rem">
         </label>
+        <button type="button" class="cf-admin-btn ghost" id="relay-stats">Refresh CF stats</button>
       </div>
       <div id="relay-workers"></div>
       <div style="margin-top:.75rem;display:flex;gap:.5rem;flex-wrap:wrap">
@@ -60,10 +61,8 @@ $adminUser = $adminUser ?? Auth::user();
         <button type="button" class="cf-admin-btn ghost" id="relay-copy">Copy script</button>
       </div>
       <p class="muted" style="margin:.75rem 0 0;font-size:.82rem;color:rgba(255,255,255,.45)">
-        Second CF account: create Worker → open
-        <a href="<?= e(url('/api/admin/worker-relay?download=view')) ?>" target="_blank" rel="noreferrer" style="color:#fff;text-decoration:underline">yoru-relay.js</a>
-        → Ctrl+A / Ctrl+C → paste → set encrypted <code>YORU_RELAY_SECRET</code> → Deploy → Add URL + secret above → Test → Save.
-        Config path: <code id="relay-path">/var/www/cinepro/config/worker-relay.json</code>
+        CF stats: create API token with <b>Account Analytics: Read</b> → paste Account ID + token per worker → Save → Refresh CF stats.
+        Script name auto-fills from workers.dev subdomain. Config: <code id="relay-path">/var/www/cinepro/config/worker-relay.json</code>
       </p>
     </div>
   </div>
@@ -165,20 +164,39 @@ $adminUser = $adminUser ?? Auth::user();
   var relayMsg = document.getElementById('relay-msg');
   var relayWorkers = document.getElementById('relay-workers');
   var relayState = { enabled:true, preferWorker:true, cacheTtlSeconds:7200, workers:[] };
+  var relayStats = {};
+  var inpStyle = 'min-height:2.3rem;border-radius:.7rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.28);color:#fff;padding:.35rem .5rem';
   function rshow(t, ok){ relayMsg.hidden=false; relayMsg.textContent=t; relayMsg.className='cf-admin-msg'+(ok?' ok':''); }
   function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+  function statsHtml(w){
+    var s = relayStats[w.id];
+    if(!s) return '';
+    if(!s.ok) return '<div style="width:100%;font-size:.82rem;color:#f87171">'+(esc(s.error)||'No analytics')+'</div>';
+    var pct = Math.min(100, Math.round((s.todayRequests/(s.freeDailyLimit||100000))*100));
+    var color = pct>=90?'#ef4444':(pct>=70?'#f59e0b':'#22c55e');
+    return '<div style="width:100%;font-size:.82rem;color:rgba(255,255,255,.75)">'+
+      'Today: <b style="color:#fff">'+Number(s.todayRequests).toLocaleString()+'</b> / '+(s.freeDailyLimit||100000).toLocaleString()+
+      ' ('+pct+'%) · 24h: <b style="color:#fff">'+Number(s.last24hRequests).toLocaleString()+'</b>'+
+      ' · errors: <b style="color:#fff">'+Number(s.todayErrors||0)+'</b>'+
+      '<div style="margin-top:.35rem;height:.35rem;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+color+'"></div></div>'+
+      '</div>';
+  }
   function renderRelay(){
     document.getElementById('relay-enabled').checked = !!relayState.enabled;
     document.getElementById('relay-prefer').checked = !!relayState.preferWorker;
     document.getElementById('relay-ttl').value = String(Math.round((relayState.cacheTtlSeconds||7200)/3600*10)/10);
     relayWorkers.innerHTML = (relayState.workers||[]).map(function(w,i){
-      return '<div class="cf-admin-source" data-relay-i="'+i+'" style="flex-wrap:wrap;gap:.5rem">'+
-        '<input data-f="label" value="'+esc(w.label)+'" placeholder="Label" style="width:8rem;min-height:2.3rem;border-radius:.7rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.28);color:#fff;padding:.35rem .5rem">'+
-        '<input data-f="url" value="'+esc(w.url)+'" placeholder="https://….workers.dev" style="flex:1 1 16rem;min-height:2.3rem;border-radius:.7rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.28);color:#fff;padding:.35rem .5rem">'+
-        '<input data-f="secret" value="'+esc(w.secret)+'" placeholder="Secret" style="flex:1 1 12rem;min-height:2.3rem;border-radius:.7rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.28);color:#fff;padding:.35rem .5rem">'+
+      return '<div class="cf-admin-source" data-relay-i="'+i+'" style="flex-wrap:wrap;gap:.5rem;align-items:stretch">'+
+        '<input data-f="label" value="'+esc(w.label)+'" placeholder="Label" style="width:8rem;'+inpStyle+'">'+
+        '<input data-f="url" value="'+esc(w.url)+'" placeholder="https://….workers.dev" style="flex:1 1 16rem;'+inpStyle+'">'+
+        '<input data-f="secret" value="'+esc(w.secret)+'" placeholder="Secret" style="flex:1 1 12rem;'+inpStyle+'">'+
         '<button type="button" class="cf-admin-switch'+(w.enabled?' on':'')+'" data-relay-toggle="'+i+'" aria-label="Toggle"></button>'+
         '<button type="button" class="cf-admin-btn ghost" data-relay-test="'+i+'">Test</button>'+
         '<button type="button" class="cf-admin-btn ghost" data-relay-remove="'+i+'">Remove</button>'+
+        '<input data-f="cfAccountId" value="'+esc(w.cfAccountId||'')+'" placeholder="CF Account ID" style="flex:1 1 12rem;'+inpStyle+'">'+
+        '<input data-f="cfApiToken" value="'+esc(w.cfApiToken||'')+'" placeholder="CF API token" style="flex:1 1 12rem;'+inpStyle+'">'+
+        '<input data-f="cfScriptName" value="'+esc(w.cfScriptName||'')+'" placeholder="CF script name" style="flex:1 1 10rem;'+inpStyle+'">'+
+        statsHtml(w)+
       '</div>';
     }).join('') || '<p class="muted" style="color:rgba(255,255,255,.45)">No workers yet — add one.</p>';
   }
@@ -190,12 +208,10 @@ $adminUser = $adminUser ?? Auth::user();
     Array.prototype.forEach.call(relayWorkers.querySelectorAll('[data-relay-i]'), function(row){
       var i = parseInt(row.getAttribute('data-relay-i'),10);
       if(!relayState.workers[i]) return;
-      var label = row.querySelector('[data-f="label"]');
-      var url = row.querySelector('[data-f="url"]');
-      var secret = row.querySelector('[data-f="secret"]');
-      relayState.workers[i].label = label ? label.value : relayState.workers[i].label;
-      relayState.workers[i].url = url ? url.value : relayState.workers[i].url;
-      relayState.workers[i].secret = secret ? secret.value : relayState.workers[i].secret;
+      ['label','url','secret','cfAccountId','cfApiToken','cfScriptName'].forEach(function(f){
+        var el = row.querySelector('[data-f="'+f+'"]');
+        if(el) relayState.workers[i][f] = el.value;
+      });
     });
   }
   function loadRelay(){
@@ -211,9 +227,25 @@ $adminUser = $adminUser ?? Auth::user();
     relayState.workers = relayState.workers||[];
     relayState.workers.push({
       id:'worker-'+Math.random().toString(36).slice(2,8),
-      label:'New worker', url:'', secret:'', enabled:true
+      label:'New worker', url:'', secret:'', enabled:true,
+      cfAccountId:'', cfApiToken:'', cfScriptName:''
     });
     renderRelay();
+  };
+  document.getElementById('relay-stats').onclick=function(){
+    rshow('Loading Cloudflare stats…');
+    fetch(RELAY, {
+      method:'POST', credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({action:'stats'})
+    }).then(r=>r.json()).then(function(d){
+      if(!d||!(d.ok||d.success)){ rshow(d&&d.error?d.error:'Stats failed'); return; }
+      relayStats = {};
+      (d.stats||[]).forEach(function(s){ relayStats[s.id]=s; });
+      readRelayForm();
+      renderRelay();
+      rshow('Analytics refreshed from Cloudflare.', true);
+    }).catch(function(){ rshow('Stats failed'); });
   };
   document.getElementById('relay-save').onclick=function(){
     readRelayForm();
@@ -224,7 +256,10 @@ $adminUser = $adminUser ?? Auth::user();
       workers: (relayState.workers||[]).map(function(w){
         return {
           id:w.id, label:w.label, url:w.url, enabled:!!w.enabled,
-          secret: (w.secret&&String(w.secret).indexOf('…')>=0) ? '' : (w.secret||'')
+          secret: (w.secret&&String(w.secret).indexOf('…')>=0) ? '' : (w.secret||''),
+          cfAccountId: w.cfAccountId||'',
+          cfApiToken: (w.cfApiToken&&String(w.cfApiToken).indexOf('…')>=0) ? '' : (w.cfApiToken||''),
+          cfScriptName: w.cfScriptName||''
         };
       })
     };

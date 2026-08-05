@@ -13,6 +13,26 @@ export type WorkerRelayEntry = {
     url: string
     secret: string
     enabled: boolean
+    /** Cloudflare account ID (for analytics API). */
+    cfAccountId?: string
+    /** Cloudflare API token with Account Analytics Read. */
+    cfApiToken?: string
+    /** Worker script name; defaults from workers.dev subdomain. */
+    cfScriptName?: string
+}
+
+export type WorkerAnalyticsSnapshot = {
+    id: string
+    label: string
+    scriptName: string
+    ok: boolean
+    error?: string
+    todayRequests: number
+    todayErrors: number
+    last24hRequests: number
+    last24hErrors: number
+    freeDailyLimit: number
+    fetchedAt: string
 }
 
 export type WorkerRelayConfig = {
@@ -88,19 +108,43 @@ function normalizeWorkerUrl(raw: string): string {
     return url
 }
 
+export function deriveScriptNameFromUrl(url: string): string {
+    try {
+        const host = new URL(normalizeWorkerUrl(url)).hostname
+        // divine-frost-3156.vuflix.workers.dev → divine-frost-3156
+        const first = host.split(".")[0] || ""
+        return first.trim()
+    } catch {
+        return ""
+    }
+}
+
 function sanitizeWorker(raw: unknown, index: number): WorkerRelayEntry | null {
     if (!raw || typeof raw !== "object") return null
     const row = raw as Record<string, unknown>
     const url = normalizeWorkerUrl(String(row.url || ""))
     const secret = String(row.secret || "").trim()
     if (!url) return null
+    const cfAccountId = String(row.cfAccountId || "").trim()
+    const cfApiToken = String(row.cfApiToken || "").trim()
+    const cfScriptName =
+        String(row.cfScriptName || "").trim() || deriveScriptNameFromUrl(url)
     return {
         id: String(row.id || `worker-${index + 1}`).trim() || `worker-${index + 1}`,
         label: String(row.label || `Worker ${index + 1}`).trim() || `Worker ${index + 1}`,
         url,
         secret,
         enabled: row.enabled !== false,
+        cfAccountId: cfAccountId || undefined,
+        cfApiToken: cfApiToken || undefined,
+        cfScriptName: cfScriptName || undefined,
     }
+}
+
+function maskSecret(value: string | undefined) {
+    if (!value) return ""
+    if (value.length <= 8) return "…****…"
+    return `${value.slice(0, 4)}…${value.slice(-4)}`
 }
 
 export function sanitizeWorkerRelayConfig(raw: unknown): WorkerRelayConfig {
@@ -125,8 +169,12 @@ export function toPublicWorkerRelayConfig(config: WorkerRelayConfig) {
         ...config,
         workers: config.workers.map((w) => ({
             ...w,
-            secret: w.secret ? `${w.secret.slice(0, 4)}…${w.secret.slice(-4)}` : "",
+            secret: maskSecret(w.secret),
             secretSet: Boolean(w.secret),
+            cfApiToken: maskSecret(w.cfApiToken),
+            cfApiTokenSet: Boolean(w.cfApiToken),
+            cfAccountId: w.cfAccountId || "",
+            cfScriptName: w.cfScriptName || deriveScriptNameFromUrl(w.url),
         })),
         path: configPath(),
     }
@@ -210,10 +258,21 @@ export async function updateWorkerRelayConfig(body: unknown): Promise<WorkerRela
             w.secret && !w.secret.includes("…")
                 ? w.secret
                 : prev?.secret || ""
+        const cfApiToken =
+            w.cfApiToken && !w.cfApiToken.includes("…")
+                ? w.cfApiToken
+                : prev?.cfApiToken || ""
         return {
             ...w,
             id: w.id || `worker-${index + 1}`,
             secret,
+            cfApiToken: cfApiToken || undefined,
+            cfAccountId: w.cfAccountId || prev?.cfAccountId || undefined,
+            cfScriptName:
+                w.cfScriptName ||
+                prev?.cfScriptName ||
+                deriveScriptNameFromUrl(w.url) ||
+                undefined,
         }
     })
 
@@ -351,4 +410,157 @@ export async function bounceCineproForRelay(): Promise<{ restarted: boolean; err
             error: error instanceof Error ? error.message : "pm2 restart failed",
         }
     }
+}
+
+const FREE_DAILY_LIMIT = 100_000
+
+async function queryWorkerInvocations(opts: {
+    accountId: string
+    apiToken: string
+    scriptName: string
+    startIso: string
+    endIso: string
+}): Promise<{ requests: number; errors: number }> {
+    const query = `
+      query WorkerStats($accountTag: string, $scriptName: string, $start: Time, $end: Time) {
+        viewer {
+          accounts(filter: { accountTag: $accountTag }) {
+            workersInvocationsAdaptive(
+              limit: 10000
+              filter: {
+                scriptName: $scriptName
+                datetime_geq: $start
+                datetime_leq: $end
+              }
+            ) {
+              sum { requests errors }
+            }
+          }
+        }
+      }
+    `
+    const res = await fetch("https://api.cloudflare.com/client/v4/graphql", {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${opts.apiToken}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            query,
+            variables: {
+                accountTag: opts.accountId,
+                scriptName: opts.scriptName,
+                start: opts.startIso,
+                end: opts.endIso,
+            },
+        }),
+        signal: AbortSignal.timeout(20_000),
+    })
+    const json = (await res.json().catch(() => null)) as {
+        errors?: Array<{ message?: string }>
+        data?: {
+            viewer?: {
+                accounts?: Array<{
+                    workersInvocationsAdaptive?: Array<{
+                        sum?: { requests?: number; errors?: number }
+                    }>
+                }>
+            }
+        }
+    } | null
+
+    if (!res.ok) {
+        throw new Error(`Cloudflare API HTTP ${res.status}`)
+    }
+    if (json?.errors?.length) {
+        throw new Error(json.errors.map((e) => e.message || "GraphQL error").join("; "))
+    }
+
+    const rows =
+        json?.data?.viewer?.accounts?.[0]?.workersInvocationsAdaptive || []
+    let requests = 0
+    let errors = 0
+    for (const row of rows) {
+        requests += Number(row?.sum?.requests || 0)
+        errors += Number(row?.sum?.errors || 0)
+    }
+    return { requests, errors }
+}
+
+export async function fetchWorkerAnalytics(
+    worker: WorkerRelayEntry
+): Promise<WorkerAnalyticsSnapshot> {
+    const scriptName =
+        worker.cfScriptName?.trim() || deriveScriptNameFromUrl(worker.url)
+    const accountId = worker.cfAccountId?.trim() || ""
+    const apiToken = worker.cfApiToken?.trim() || ""
+    const base = {
+        id: worker.id,
+        label: worker.label,
+        scriptName,
+        freeDailyLimit: FREE_DAILY_LIMIT,
+        fetchedAt: new Date().toISOString(),
+        todayRequests: 0,
+        todayErrors: 0,
+        last24hRequests: 0,
+        last24hErrors: 0,
+    }
+
+    if (!accountId || !apiToken || !scriptName) {
+        return {
+            ...base,
+            ok: false,
+            error: !accountId
+                ? "Set CF Account ID"
+                : !apiToken
+                  ? "Set CF API token"
+                  : "Set CF script name",
+        }
+    }
+
+    try {
+        const now = new Date()
+        const endIso = now.toISOString()
+        const startToday = new Date(
+            Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+        ).toISOString()
+        const start24h = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
+
+        const [today, last24h] = await Promise.all([
+            queryWorkerInvocations({
+                accountId,
+                apiToken,
+                scriptName,
+                startIso: startToday,
+                endIso,
+            }),
+            queryWorkerInvocations({
+                accountId,
+                apiToken,
+                scriptName,
+                startIso: start24h,
+                endIso,
+            }),
+        ])
+
+        return {
+            ...base,
+            ok: true,
+            todayRequests: today.requests,
+            todayErrors: today.errors,
+            last24hRequests: last24h.requests,
+            last24hErrors: last24h.errors,
+        }
+    } catch (error) {
+        return {
+            ...base,
+            ok: false,
+            error: error instanceof Error ? error.message : "Analytics fetch failed",
+        }
+    }
+}
+
+export async function fetchAllWorkerAnalytics(): Promise<WorkerAnalyticsSnapshot[]> {
+    const config = await getWorkerRelayConfig()
+    return Promise.all(config.workers.map((w) => fetchWorkerAnalytics(w)))
 }

@@ -53,6 +53,18 @@ Primary Worker still on free plan must be updated once so it honors `cacheTtl` (
 
 Repeat on the second Worker.
 
+## Cloudflare request stats in admin
+
+Per worker row, optional analytics fields:
+
+| Field | Where to get it |
+|---|---|
+| `cfAccountId` | Cloudflare dashboard → Workers → Account ID (sidebar / overview URL) |
+| `cfApiToken` | My Profile → API Tokens → Create → **Account Analytics: Read** |
+| `cfScriptName` | Defaults from `*.workers.dev` subdomain (override if custom) |
+
+Then **Refresh CF stats** in admin → shows today / 24h requests + free-tier bar (100k/day).
+
 ## Notes
 
 - Free-tier pressure comes from **resolve fan-out**, not video segments.

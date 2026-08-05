@@ -7,6 +7,9 @@ export type WorkerRelayEntry = {
     url: string;
     secret: string;
     enabled: boolean;
+    cfAccountId?: string;
+    cfApiToken?: string;
+    cfScriptName?: string;
 };
 
 export type WorkerRelayConfig = {
@@ -61,12 +64,18 @@ function sanitizeWorker(raw: unknown, index: number): WorkerRelayEntry | null {
     const url = normalizeWorkerUrl(String(row.url || ''));
     const secret = String(row.secret || '').trim();
     if (!url || !secret) return null;
+    const cfAccountId = String(row.cfAccountId || '').trim();
+    const cfApiToken = String(row.cfApiToken || '').trim();
+    const cfScriptName = String(row.cfScriptName || '').trim();
     return {
         id: String(row.id || `worker-${index + 1}`).trim() || `worker-${index + 1}`,
         label: String(row.label || `Worker ${index + 1}`).trim() || `Worker ${index + 1}`,
         url,
         secret,
-        enabled: row.enabled !== false
+        enabled: row.enabled !== false,
+        cfAccountId: cfAccountId || undefined,
+        cfApiToken: cfApiToken || undefined,
+        cfScriptName: cfScriptName || undefined
     };
 }
 

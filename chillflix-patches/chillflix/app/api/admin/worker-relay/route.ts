@@ -4,6 +4,8 @@ import { handleAdminAuthError, requireAdminUser } from "@/lib/admin-auth"
 import { getErrorMessage } from "@/lib/api-error"
 import {
     bounceCineproForRelay,
+    fetchAllWorkerAnalytics,
+    fetchWorkerAnalytics,
     getWorkerRelayConfig,
     readYoruRelayScript,
     testWorkerRelay,
@@ -94,6 +96,20 @@ export async function POST(request: NextRequest) {
 
             const result = await testWorkerRelay({ url, secret })
             return NextResponse.json({ success: true, result })
+        }
+
+        if (body.action === "stats") {
+            const config = await getWorkerRelayConfig()
+            if (body.id) {
+                const match = config.workers.find((w) => w.id === body.id)
+                if (!match) {
+                    return NextResponse.json({ error: "Worker not found" }, { status: 404 })
+                }
+                const stats = await fetchWorkerAnalytics(match)
+                return NextResponse.json({ success: true, stats: [stats] })
+            }
+            const stats = await fetchAllWorkerAnalytics()
+            return NextResponse.json({ success: true, stats })
         }
 
         return NextResponse.json({ error: "Unknown action" }, { status: 400 })
