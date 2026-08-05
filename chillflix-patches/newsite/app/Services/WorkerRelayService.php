@@ -229,8 +229,23 @@ final class WorkerRelayService
     /**
      * @return list<array{id:string,label:string,scriptName:string,ok:bool,error?:string,todayRequests:int,todayErrors:int,last24hRequests:int,last24hErrors:int,freeDailyLimit:int,fetchedAt:string}>
      */
-    public static function analytics(?string $workerId = null): array
+    public static function analytics(?string $workerId = null, bool $force = false): array
     {
+        $cachePath = dirname(self::configPath()) . '/worker-relay-stats.json';
+        if (
+            !$force
+            && ($workerId === null || $workerId === '')
+            && is_readable($cachePath)
+        ) {
+            $cached = json_decode((string) file_get_contents($cachePath), true);
+            $at = is_array($cached) ? (int) ($cached['at'] ?? 0) : 0;
+            if ($at > 0 && (time() - $at) < 55 && is_array($cached['stats'] ?? null)) {
+                /** @var list<array{id:string,label:string,scriptName:string,ok:bool,error?:string,todayRequests:int,todayErrors:int,last24hRequests:int,last24hErrors:int,freeDailyLimit:int,fetchedAt:string}> $stats */
+                $stats = $cached['stats'];
+                return $stats;
+            }
+        }
+
         $config = self::get();
         $out = [];
         foreach ($config['workers'] as $w) {
@@ -238,6 +253,13 @@ final class WorkerRelayService
                 continue;
             }
             $out[] = self::fetchWorkerAnalytics($w);
+        }
+
+        if ($workerId === null || $workerId === '') {
+            @file_put_contents(
+                $cachePath,
+                json_encode(['at' => time(), 'stats' => $out], JSON_UNESCAPED_SLASHES)
+            );
         }
         return $out;
     }

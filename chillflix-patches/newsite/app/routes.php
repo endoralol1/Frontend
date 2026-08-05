@@ -960,7 +960,8 @@ $router->map(['PATCH', 'POST'], '/api/admin/worker-relay', function () {
 
     if (($body['action'] ?? '') === 'stats') {
         $id = trim((string) ($body['id'] ?? ''));
-        $stats = WorkerRelayService::analytics($id !== '' ? $id : null);
+        $force = !empty($body['force']);
+        $stats = WorkerRelayService::analytics($id !== '' ? $id : null, $force);
         json_response(['ok' => true, 'success' => true, 'stats' => $stats]);
     }
 

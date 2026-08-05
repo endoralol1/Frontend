@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react"
 import Link from "next/link"
-import { Cloud, RefreshCw } from "lucide-react"
+import { RefreshCw } from "lucide-react"
 
 import { ADMIN_CARD_CLASS } from "@/components/admin/admin-metrics"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 
 type WorkerStats = {
@@ -86,148 +85,116 @@ export function AdminWorkerDashboardStats() {
     )
 
     return (
-        <section>
-            <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-                <div>
+        <section className={cn(ADMIN_CARD_CLASS, "rounded-2xl p-3 sm:p-4")}>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Cloudflare Worker analytics
+                        CF Workers
                     </h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        All enabled Workers from Stream Sources → Worker relay. Auto-refreshes
-                        every 1 min (server-cached so CF API is not hammered).
-                        {lastRefresh ? ` Last: ${lastRefresh}` : ""}
+                    <p className="text-xs text-muted-foreground">
+                        Combined today:{" "}
+                        <span className="font-medium text-foreground tabular-nums">
+                            {totalToday.toLocaleString()}
+                            {totalLimit > 0 ? ` / ${totalLimit.toLocaleString()}` : ""}
+                        </span>
+                        {lastRefresh ? ` · ${lastRefresh}` : ""}
+                        {loading ? " · …" : ""}
                     </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex items-center gap-1.5">
                     <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="rounded-xl"
+                        className="h-8 rounded-lg px-2.5"
                         disabled={loading}
                         onClick={() => void load(true)}
                     >
-                        <RefreshCw className={cn("mr-2 size-3.5", loading && "animate-spin")} />
-                        Refresh now
+                        <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+                        <span className="ml-1.5">Refresh</span>
                     </Button>
                     <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="rounded-xl"
+                        className="h-8 rounded-lg px-2.5"
                         asChild
                     >
-                        <Link href="/admin/stream-sources?tab=workers">Manage workers</Link>
+                        <Link href="/admin/stream-sources?tab=workers">Manage</Link>
                     </Button>
                 </div>
             </div>
 
-            {error ? (
-                <Card className={ADMIN_CARD_CLASS}>
-                    <CardContent className="py-6 text-sm text-destructive">{error}</CardContent>
-                </Card>
-            ) : null}
+            {error ? <p className="text-xs text-destructive">{error}</p> : null}
 
             {!error && stats && stats.length === 0 ? (
-                <Card className={ADMIN_CARD_CLASS}>
-                    <CardContent className="py-8 text-sm text-muted-foreground">
-                        No Workers configured yet. Add them in{" "}
-                        <Link className="underline" href="/admin/stream-sources?tab=workers">
-                            Stream Sources → Worker relay
-                        </Link>
-                        .
-                    </CardContent>
-                </Card>
+                <p className="text-xs text-muted-foreground">
+                    No Workers yet.{" "}
+                    <Link className="underline" href="/admin/stream-sources?tab=workers">
+                        Add in Worker relay
+                    </Link>
+                </p>
             ) : null}
 
             {stats && stats.length > 0 ? (
-                <>
-                    <div className="mb-4 rounded-2xl border border-border/50 bg-card/40 p-4">
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            Combined today (configured workers with API access)
-                        </p>
-                        <p className="mt-1 text-2xl font-semibold tabular-nums">
-                            {totalToday.toLocaleString()}
-                            {totalLimit > 0 ? (
-                                <span className="text-base font-normal text-muted-foreground">
-                                    {" "}
-                                    / {totalLimit.toLocaleString()}
-                                </span>
-                            ) : null}
-                        </p>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                        {stats.map((row) => {
-                            const usedPct = row.ok
-                                ? pct(row.todayRequests, row.freeDailyLimit)
-                                : 0
-                            return (
-                                <Card key={row.id} className={ADMIN_CARD_CLASS}>
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="flex items-center gap-2 text-base">
-                                            <Cloud className="size-4 text-sky-400" />
-                                            {row.label || row.id}
-                                        </CardTitle>
-                                        <CardDescription className="truncate">
-                                            {row.scriptName || "script unknown"}
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-3 text-sm">
-                                        {row.ok ? (
-                                            <>
-                                                <div className="flex flex-wrap gap-x-4 gap-y-1">
-                                                    <span>
-                                                        Today:{" "}
-                                                        <strong className="tabular-nums">
-                                                            {row.todayRequests.toLocaleString()}
-                                                        </strong>{" "}
-                                                        / {row.freeDailyLimit.toLocaleString()} (
-                                                        {usedPct}%)
-                                                    </span>
-                                                    <span>
-                                                        24h:{" "}
-                                                        <strong className="tabular-nums">
-                                                            {row.last24hRequests.toLocaleString()}
-                                                        </strong>
-                                                    </span>
-                                                    <span>
-                                                        Errors:{" "}
-                                                        <strong className="tabular-nums">
-                                                            {row.todayErrors}
-                                                        </strong>
-                                                    </span>
-                                                </div>
-                                                <div className="h-2 overflow-hidden rounded-full bg-muted">
-                                                    <div
-                                                        className={cn(
-                                                            "h-full transition-all",
-                                                            barColor(usedPct)
-                                                        )}
-                                                        style={{ width: `${usedPct}%` }}
-                                                    />
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <p className="text-destructive">
-                                                {row.error ||
-                                                    "Add CF Account ID + API token in Worker relay"}
-                                            </p>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            )
-                        })}
-                    </div>
-                </>
+                <div className="divide-y divide-border/40">
+                    {stats.map((row) => {
+                        const usedPct = row.ok
+                            ? pct(row.todayRequests, row.freeDailyLimit)
+                            : 0
+                        return (
+                            <div
+                                key={row.id}
+                                className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 first:pt-0 last:pb-0"
+                            >
+                                <div className="min-w-[7rem] flex-1">
+                                    <p className="truncate text-sm font-medium leading-tight">
+                                        {row.label || row.id}
+                                    </p>
+                                    <p className="truncate text-[11px] text-muted-foreground">
+                                        {row.scriptName || "—"}
+                                    </p>
+                                </div>
+                                {row.ok ? (
+                                    <>
+                                        <div className="min-w-[9rem] flex-[1.4]">
+                                            <div className="mb-1 flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground">
+                                                <span className="tabular-nums text-foreground">
+                                                    {row.todayRequests.toLocaleString()} /{" "}
+                                                    {row.freeDailyLimit.toLocaleString()}
+                                                </span>
+                                                <span className="tabular-nums">{usedPct}%</span>
+                                            </div>
+                                            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                                                <div
+                                                    className={cn(
+                                                        "h-full transition-all",
+                                                        barColor(usedPct)
+                                                    )}
+                                                    style={{ width: `${usedPct}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
+                                            24h {row.last24hRequests.toLocaleString()}
+                                            {row.todayErrors
+                                                ? ` · err ${row.todayErrors}`
+                                                : ""}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <p className="flex-[2] text-[11px] text-destructive">
+                                        {row.error || "Add CF Account ID + API token"}
+                                    </p>
+                                )}
+                            </div>
+                        )
+                    })}
+                </div>
             ) : null}
 
             {loading && !stats ? (
-                <Card className={ADMIN_CARD_CLASS}>
-                    <CardContent className="py-8 text-sm text-muted-foreground">
-                        Loading Worker analytics…
-                    </CardContent>
-                </Card>
+                <p className="text-xs text-muted-foreground">Loading…</p>
             ) : null}
         </section>
     )
