@@ -15,13 +15,14 @@ export async function GET(request: NextRequest) {
     try {
         await requireAdminUser(request, "owner")
         const download = request.nextUrl.searchParams.get("download")
-        if (download === "script" || download === "1") {
+        if (download === "script" || download === "1" || download === "view") {
             const script = await readYoruRelayScript()
+            // Open as a plain text page (no download) so admins can Ctrl+A / paste into CF.
             return new NextResponse(script.content, {
                 status: 200,
                 headers: {
-                    "Content-Type": "application/javascript; charset=utf-8",
-                    "Content-Disposition": 'attachment; filename="yoru-relay.js"',
+                    "Content-Type": "text/plain; charset=utf-8",
+                    "Content-Disposition": 'inline; filename="yoru-relay.js"',
                     "Cache-Control": "no-store",
                     "X-Worker-Script-Path": script.path,
                 },

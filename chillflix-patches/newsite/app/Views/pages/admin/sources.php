@@ -56,13 +56,13 @@ $adminUser = $adminUser ?? Auth::user();
         <button type="button" class="cf-admin-btn" id="relay-save">Save relay settings</button>
       </div>
       <div style="margin-top:1rem;display:flex;gap:.5rem;flex-wrap:wrap">
-        <a class="cf-admin-btn" id="relay-download" href="<?= e(url('/api/admin/worker-relay?download=script')) ?>">Download yoru-relay.js</a>
+        <a class="cf-admin-btn" id="relay-open" href="<?= e(url('/api/admin/worker-relay?download=view')) ?>" target="_blank" rel="noreferrer">Open yoru-relay.js</a>
         <button type="button" class="cf-admin-btn ghost" id="relay-copy">Copy script</button>
       </div>
       <p class="muted" style="margin:.75rem 0 0;font-size:.82rem;color:rgba(255,255,255,.45)">
-        Second CF account: create Worker → paste
-        <a href="<?= e(url('/api/admin/worker-relay?download=script')) ?>" style="color:#fff;text-decoration:underline">yoru-relay.js</a>
-        → set encrypted <code>YORU_RELAY_SECRET</code> → Deploy → Add URL + secret above → Test → Save.
+        Second CF account: create Worker → open
+        <a href="<?= e(url('/api/admin/worker-relay?download=view')) ?>" target="_blank" rel="noreferrer" style="color:#fff;text-decoration:underline">yoru-relay.js</a>
+        → Ctrl+A / Ctrl+C → paste → set encrypted <code>YORU_RELAY_SECRET</code> → Deploy → Add URL + secret above → Test → Save.
         Config path: <code id="relay-path">/var/www/cinepro/config/worker-relay.json</code>
       </p>
     </div>
@@ -282,8 +282,8 @@ $adminUser = $adminUser ?? Auth::user();
   });
   document.getElementById('relay-copy').onclick=function(){
     rshow('Copying script…');
-    fetch(RELAY+'?download=script',{credentials:'same-origin'}).then(function(r){
-      if(!r.ok) throw new Error('download failed');
+    fetch(RELAY+'?download=view',{credentials:'same-origin'}).then(function(r){
+      if(!r.ok) throw new Error('open failed');
       return r.text();
     }).then(function(text){
       return navigator.clipboard.writeText(text).then(function(){

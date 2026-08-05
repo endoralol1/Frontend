@@ -104,7 +104,7 @@ export function AdminWorkerRelay() {
         setMessage(null)
         setError(null)
         try {
-            const res = await fetch("/api/admin/worker-relay?download=script", {
+            const res = await fetch("/api/admin/worker-relay?download=view", {
                 credentials: "include",
             })
             if (!res.ok) {
@@ -302,8 +302,12 @@ export function AdminWorkerRelay() {
                 <p className="font-medium text-foreground">Second Cloudflare account setup</p>
                 <div className="flex flex-wrap gap-2">
                     <Button type="button" variant="secondary" asChild>
-                        <a href="/api/admin/worker-relay?download=script">
-                            Download yoru-relay.js
+                        <a
+                            href="/api/admin/worker-relay?download=view"
+                            target="_blank"
+                            rel="noreferrer"
+                        >
+                            Open yoru-relay.js
                         </a>
                     </Button>
                     <Button
@@ -316,13 +320,16 @@ export function AdminWorkerRelay() {
                 </div>
                 <ol className="list-decimal pl-5 space-y-1">
                     <li>
-                        Cloudflare → Workers → Create → paste{" "}
+                        Cloudflare → Workers → Create → open{" "}
                         <a
                             className="underline text-foreground"
-                            href="/api/admin/worker-relay?download=script"
+                            href="/api/admin/worker-relay?download=view"
+                            target="_blank"
+                            rel="noreferrer"
                         >
                             yoru-relay.js
                         </a>
+                        {" "}→ Ctrl+A / Ctrl+C → paste
                     </li>
                     <li>
                         Settings → Variables → encrypt <code>YORU_RELAY_SECRET</code> (same or
