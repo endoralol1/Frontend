@@ -34,7 +34,7 @@ $adminUser = $adminUser ?? Auth::user();
 
     <div class="cf-admin-head" style="margin-top:2rem">
       <h1>Worker relay</h1>
-      <p>Shared Cloudflare Workers for Chillflix + Vuflix (VAPlayer resolve + Cineplay Yoru). Edit here or in Chillflix Stream Sources → Worker relay — same file.</p>
+      <p>Shared Cloudflare Workers for Chillflix + Vuflix (VAPlayer + Cineplay Yoru only — VixSrc is not on the Worker). Edit here or in Chillflix Stream Sources → Worker relay — same file.</p>
     </div>
     <div class="cf-admin-panel" id="relay-panel">
       <div class="cf-admin-msg" id="relay-msg" hidden></div>
