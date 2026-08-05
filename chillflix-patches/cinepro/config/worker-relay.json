@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "preferWorker": true,
+  "cacheTtlSeconds": 7200,
+  "workers": [
+    {
+      "id": "primary",
+      "label": "Primary",
+      "url": "https://divine-frost-3156.vuflix.workers.dev",
+      "secret": "",
+      "enabled": true
+    }
+  ]
+}
