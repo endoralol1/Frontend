@@ -1,30 +1,25 @@
 /**
- * Cloudflare Worker: Yoru + VixSrc + VAPlayer resolve relay.
+ * Cloudflare Worker: Yoru + VAPlayer resolve relay.
  *
  * Why: VPS datacenter IPs get blocked / rate-limited on:
  *   - api.speedracelight.com (Yoru / Cineplay / Videasy)
- *   - vixsrc.to (VixSrc)
  *   - streamdata.vaplayer.ru (VAPlayer) — sometimes throttled from DC IPs
- * This Worker fetches from CF edge (different egress) and returns JSON/HLS.
+ * This Worker fetches from CF edge (different egress) and returns JSON.
+ * VixSrc is intentionally NOT on the Worker (saves free-tier quota).
  *
  * Routes:
  *   GET /health
  *   GET /resolve?type=&tmdb=&season=&episode=&key=              → Yoru
- *   GET /vixsrc?type=&tmdb=&season=&episode=&key=               → VixSrc
  *   GET /vaplayer?type=&tmdb=&imdb=&season=&episode=&key=       → VAPlayer
  *
- * Deploy (Cloudflare dashboard → Workers → edit divine-frost-3156 → paste):
- *   YORU_RELAY_URL=https://divine-frost-3156.vuflix.workers.dev
- *   YORU_RELAY_SECRET=<same secret>
+ * Deploy (Cloudflare dashboard → Workers → paste this file):
+ *   YORU_RELAY_SECRET=<secret>
  *
  * Bind secret: wrangler secret put YORU_RELAY_SECRET
  */
 const API = "https://api.speedracelight.com";
 const META = "https://db.speedracelight.com/3";
 const ORIGIN = "https://www.vidking.net";
-const VIXSRC = "https://vixsrc.to";
-const VIXSRC_UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150 Safari/537.36";
 const VAPLAYER_STREAMDATA = "https://streamdata.vaplayer.ru/api.php";
 const VAPLAYER_EMBED_ORIGIN = "https://nextgencloudfabric.com";
 const VAPLAYER_UA =
@@ -218,119 +213,6 @@ async function resolve(type, tmdbId, season, episode, title, year, imdbId) {
   };
 }
 
-function vixsrcHeaders(extra = {}) {
-  return {
-    "User-Agent": VIXSRC_UA,
-    Accept: "application/json, text/javascript, */*; q=0.01",
-    "Accept-Language": "en-US,en;q=0.9",
-    Referer: `${VIXSRC}/`,
-    Origin: VIXSRC,
-    ...extra,
-  };
-}
-
-function extractVixsrcTokenData(html) {
-  const token = html.match(/token["']\s*:\s*["']([^"']+)/)?.[1];
-  const expires = html.match(/expires["']\s*:\s*["']([^"']+)/)?.[1];
-  const playlist = html.match(/url\s*:\s*["']([^"']+)/)?.[1];
-  if (!token || !expires || !playlist) return null;
-  if (parseInt(expires, 10) * 1000 - 60_000 < Date.now()) return null;
-  return { token, expires, playlist };
-}
-
-function buildVixsrcMasterUrl({ token, expires, playlist }) {
-  const separator = playlist.includes("?") ? "&" : "?";
-  return `${playlist}${separator}token=${token}&expires=${expires}&h=1`;
-}
-
-function bestVixsrcQuality(playlistText) {
-  let best = 0;
-  for (const line of String(playlistText || "").split("\n")) {
-    if (!line.startsWith("#EXT-X-STREAM-INF:")) continue;
-    const res = line.match(/RESOLUTION=\d+x(\d+)/i)?.[1];
-    const h = res ? parseInt(res, 10) : 0;
-    if (h > best) best = h;
-  }
-  return best > 0 ? `${best}p` : "Auto";
-}
-
-async function resolveVixsrc(type, tmdbId, season, episode) {
-  const apiUrl =
-    type === "tv"
-      ? `${VIXSRC}/api/tv/${tmdbId}/${season}/${episode}`
-      : `${VIXSRC}/api/movie/${tmdbId}`;
-
-  const apiRes = await fetch(apiUrl, { headers: vixsrcHeaders() });
-  if (!apiRes.ok) {
-    return {
-      ok: false,
-      error: `vixsrc api ${apiRes.status}`,
-      cfBlocked: apiRes.status === 403 || apiRes.status === 401,
-    };
-  }
-
-  let apiJson;
-  try {
-    apiJson = await apiRes.json();
-  } catch {
-    return { ok: false, error: "vixsrc api bad JSON" };
-  }
-
-  const srcPath = apiJson?.src;
-  if (!srcPath) return { ok: false, error: "vixsrc api missing src" };
-
-  const pageUrl = srcPath.startsWith("http")
-    ? srcPath
-    : `${VIXSRC}${srcPath.startsWith("/") ? "" : "/"}${srcPath}`;
-
-  const pageRes = await fetch(pageUrl, {
-    headers: vixsrcHeaders({
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      Referer: apiUrl,
-    }),
-  });
-  if (!pageRes.ok) {
-    return {
-      ok: false,
-      error: `vixsrc embed ${pageRes.status}`,
-      cfBlocked: pageRes.status === 403 || pageRes.status === 401,
-    };
-  }
-
-  const html = await pageRes.text();
-  const tokenData = extractVixsrcTokenData(html);
-  if (!tokenData) return { ok: false, error: "vixsrc token missing/expired" };
-
-  const masterUrl = buildVixsrcMasterUrl(tokenData);
-  let quality = "Auto";
-  try {
-    const plRes = await fetch(masterUrl, {
-      headers: vixsrcHeaders({
-        Accept: "*/*",
-        Referer: apiUrl,
-      }),
-    });
-    if (plRes.ok) {
-      quality = bestVixsrcQuality(await plRes.text());
-    }
-  } catch {
-    // quality probe is best-effort; master URL alone is enough for playback
-  }
-
-  return {
-    ok: true,
-    server: "VixSrc",
-    sources: [
-      {
-        url: masterUrl,
-        quality,
-        type: "hls",
-      },
-    ],
-    referer: apiUrl,
-  };
-}
-
 async function resolveVaplayer(type, tmdbId, season, episode, imdb) {
   const preferImdb = Boolean(imdb && String(imdb).startsWith("tt"));
   const mediaId = preferImdb ? String(imdb) : String(tmdbId);
@@ -474,14 +356,10 @@ export default {
       });
     }
     if (url.pathname === "/health") {
-      return json({ ok: true, routes: ["/resolve", "/vixsrc", "/vaplayer"] });
+      return json({ ok: true, routes: ["/resolve", "/vaplayer"] });
     }
 
-    if (
-      url.pathname !== "/resolve" &&
-      url.pathname !== "/vixsrc" &&
-      url.pathname !== "/vaplayer"
-    ) {
+    if (url.pathname !== "/resolve" && url.pathname !== "/vaplayer") {
       return json({ ok: false, error: "not found" }, 404);
     }
     if (!authorize(request, env, url)) {
@@ -513,15 +391,7 @@ export default {
     if (!tmdbId) return json({ ok: false, error: "tmdb required" }, 400);
 
     try {
-      if (url.pathname === "/vixsrc") {
-        return await cachedJson(
-          `https://yoru-cache.internal/vixsrc?type=${type}&tmdb=${encodeURIComponent(tmdbId)}&season=${encodeURIComponent(season)}&episode=${encodeURIComponent(episode)}`,
-          () => resolveVixsrc(type, tmdbId, season, episode),
-          cacheTtl
-        );
-      }
-
-      // Yoru /resolve (unchanged behaviour)
+      // Yoru /resolve
       return await cachedJson(
         `https://yoru-cache.internal/resolve?type=${type}&tmdb=${encodeURIComponent(tmdbId)}&season=${encodeURIComponent(season)}&episode=${encodeURIComponent(episode)}`,
         () =>

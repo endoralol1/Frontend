@@ -143,9 +143,9 @@ export function AdminWorkerRelay() {
             <div className="space-y-2">
                 <h3 className="text-lg font-medium">Cloudflare Worker relay</h3>
                 <p className="text-sm text-muted-foreground max-w-2xl">
-                    Shared by Chillflix + Vuflix via cinepro. Add multiple Workers (different CF
-                    accounts) and we round-robin. Cache TTL stops repeat VAPlayer resolves from
-                    burning free-tier quota. Config file:{" "}
+                    Shared by Chillflix + Vuflix via cinepro (Yoru + VAPlayer only — VixSrc is
+                    off the Worker). Add multiple Workers and we round-robin. Cache TTL stops
+                    repeat resolves from burning free-tier quota. Config file:{" "}
                     <code className="text-xs">{config.path || "/var/www/cinepro/config/worker-relay.json"}</code>
                 </p>
             </div>

@@ -30,6 +30,7 @@ Saving syncs the first enabled worker into:
 | Chillflix VAPlayer (via cinepro) | Yes — pool + 2h cache |
 | Vuflix VAPlayer (via Chillflix/cinepro) | Yes — same cinepro path |
 | Vuflix Cineplay Yoru (PHP) | Yes — reads pool from JSON (falls back to `.env`) |
+| VixSrc | **No** — removed from Worker to save free-tier quota |
 
 ## Second Cloudflare account / Worker
 
