@@ -899,6 +899,8 @@ export const MediaPlayerModal: React.FC<MediaPlayerModalProps> = ({
           return
         }
 
+        // Kick 4K in the background, but do NOT block starting an already
+        // available non-4K source — that made first play wait on a slow resolve.
         if (!prefer4kAttemptedRef.current) {
           prefer4kAttemptedRef.current = true
           void requestProvider("4khdhub")
@@ -909,13 +911,15 @@ export const MediaPlayerModal: React.FC<MediaPlayerModalProps> = ({
               })
               const fourK = pickBestFourKPlaybackOption(refreshed)
               if (!fourK) return
+              if (playbackStableRef.current && livePlaybackTimeRef.current >= 1.5) {
+                return
+              }
               syncSelectedSourceId(fourK.id)
               setSelectedSourceId(fourK.id)
               markSourceReady(fourK.id)
               setSourceSwitchNonce((nonce) => nonce + 1)
             })
             .catch(() => undefined)
-          return
         }
       }
 
@@ -1328,32 +1332,24 @@ export const MediaPlayerModal: React.FC<MediaPlayerModalProps> = ({
 
     const timer = window.setTimeout(() => {
       if (sourceLoadingWatchdogRef.current) return
+      // Provider scan already owns discovery — a fresh refetch + dual
+      // requestProvider here stampeded CinePro and made cold starts slower.
+      if (isScanningProviders || scanningProviderId) return
+      if (sources.length > 0) return
       sourceLoadingWatchdogRef.current = true
       void refetchSources()
-      const bootstrapProviders = orderedEnabledProviderIds.filter(
-        (providerId) => normalizeProviderName(providerId) !== "vidlink"
-      )
-      for (
-        let index = 0;
-        index < Math.min(2, bootstrapProviders.length);
-        index += 1
-      ) {
-        const providerId = bootstrapProviders[index]
-        if (providerId) {
-          void requestProvider(providerId)
-        }
-      }
-    }, PRIMARY_PROVIDER_HEAD_START_MS)
+    }, Math.max(PRIMARY_PROVIDER_HEAD_START_MS * 4, 4_000))
 
     return () => window.clearTimeout(timer)
   }, [
     diagnostics,
     isOpen,
+    isScanningProviders,
     mediaId,
     mediaType,
     providerOrder,
     refetchSources,
-    requestProvider,
+    scanningProviderId,
     season,
     episode,
     showSourceLoading,

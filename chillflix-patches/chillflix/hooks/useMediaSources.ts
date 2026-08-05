@@ -219,10 +219,18 @@ const sourcesFetchInflight = new Map<string, Promise<SourcesPayload>>()
 
 function buildSourcesFetchDedupeKey(
   params: URLSearchParams,
-  options?: { provider?: string }
+  options?: { provider?: string; fresh?: boolean }
 ) {
   if (options?.provider) {
-    return params.toString()
+    // Ignore retry=1 so the first-paint primary kick and the provider scan
+    // share one in-flight request instead of resolving #1 twice.
+    const provider = normalizeProviderName(options.provider)
+    const type = params.get("type") ?? ""
+    const tmdbId = params.get("tmdbId") ?? ""
+    const season = params.get("season") ?? ""
+    const episode = params.get("episode") ?? ""
+    const fresh = options.fresh || params.get("fresh") === "1" ? "1" : "0"
+    return `provider|${provider}|${type}|${tmdbId}|${season}|${episode}|fresh=${fresh}`
   }
 
   return [
@@ -232,6 +240,9 @@ function buildSourcesFetchDedupeKey(
     params.get("episode") ?? "",
   ].join("|")
 }
+
+/** Auto-scan failover budget — do not burn the full 45s admin link-fetch on each miss. */
+const AUTO_PROVIDER_SCAN_TIMEOUT_MS = 12_000
 
 function shouldAutoRetry(diagnostics: MediaDiagnostic[]) {
   return diagnostics.some((item) => item.code === "CINEPRO_OFFLINE")
@@ -657,7 +668,10 @@ export function useMediaSources({
         fresh: options?.fresh,
         provider: options?.provider,
       })
-      const dedupeKey = buildSourcesFetchDedupeKey(searchParams, options)
+      const dedupeKey = buildSourcesFetchDedupeKey(searchParams, {
+        provider: options?.provider,
+        fresh: options?.fresh,
+      })
       const inflight = sourcesFetchInflight.get(dedupeKey)
       if (inflight) {
         const payload = await inflight
@@ -990,12 +1004,11 @@ export function useMediaSources({
             primaryId !== "vidlink" &&
             !isClientResolveProvider(primaryId)
           ) {
-            // Prefer cinepro/Worker caches on first paint — only force-fresh on
-            // explicit retry/manual refresh (otherwise every reopen is cold).
+            // Same options as the provider scan so dedupe shares one in-flight
+            // primary resolve (retry=1 here used to force a duplicate request).
             void fetchSources({
               provider: primaryId,
               merge: true,
-              retry: true,
             }).catch(() => undefined)
           }
         }
@@ -1174,6 +1187,8 @@ export function useMediaSources({
           markFailedOnMiss: boolean
           /** Match manual provider pick — bypass cache and re-scrape CinePro. */
           forceFresh?: boolean
+          /** Cap wait during auto failover (not manual picks). */
+          scanTimeoutMs?: number
         }
       ): Promise<boolean> => {
         if (cancelled) {
@@ -1209,21 +1224,36 @@ export function useMediaSources({
 
         setScanningProviderId(providerId)
 
+        const runWithOptionalTimeout = async <T,>(
+          work: () => Promise<T>
+        ): Promise<T> => {
+          if (!options.useFetchTimeout) {
+            return work()
+          }
+          const adminTimeout = getProviderFetchTimeoutMs(
+            providerId,
+            PROVIDER_FETCH_TIMEOUT_MS
+          )
+          const timeoutMs = Math.min(
+            adminTimeout,
+            options.scanTimeoutMs ?? adminTimeout
+          )
+          return Promise.race([
+            work(),
+            sleep(timeoutMs).then(() => {
+              throw new Error("Provider scan timed out")
+            }),
+          ])
+        }
+
         try {
           if (isClientResolveProvider(providerId)) {
-            const payload = options.useFetchTimeout
-              ? await fetchSourcesWithTimeout(
-                  () =>
-                    fetchClientProviderRef.current(
-                      providerId,
-                      playbackTokenRef.current
-                    ),
-                  {}
-                )
-              : await fetchClientProviderRef.current(
-                    providerId,
-                    playbackTokenRef.current
-                )
+            const payload = await runWithOptionalTimeout(() =>
+              fetchClientProviderRef.current(
+                providerId,
+                playbackTokenRef.current
+              )
+            )
             const found = sourcesIncludeProvider(payload.sources, providerId)
             if (found) {
               clearProviderFailed(providerId)
@@ -1248,14 +1278,9 @@ export function useMediaSources({
                 merge: true,
               } as const)
 
-          if (options.useFetchTimeout) {
-            await fetchSourcesWithTimeout(
-              (requestOptions) => fetchSourcesRef.current(requestOptions),
-              fetchOptions
-            )
-          } else {
-            await fetchSourcesRef.current(fetchOptions)
-          }
+          await runWithOptionalTimeout(() =>
+            fetchSourcesRef.current(fetchOptions)
+          )
 
           const found = sourcesIncludeProvider(sourcesRef.current, providerId)
           if (found) {
@@ -1372,18 +1397,40 @@ export function useMediaSources({
 
           if (cancelled || playbackActiveRef.current) return
 
-          // Only walk missing secondaries until the first real stream appears.
-          // Do not parallel-blast the whole provider list while one already plays.
+          // Race a small batch of secondaries (not the whole list) until one
+          // hits. Cap each attempt so a dead provider cannot burn the full 45s.
           if (!hasPlayableAutomaticSource()) {
-            for (const providerId of secondaryProviderIds) {
+            const missingSecondaries = secondaryProviderIds.filter(
+              (providerId) =>
+                !sourcesIncludeProvider(sourcesRef.current, providerId)
+            )
+            const SECONDARY_RACE_BATCH = 2
+
+            for (
+              let index = 0;
+              index < missingSecondaries.length;
+              index += SECONDARY_RACE_BATCH
+            ) {
               if (cancelled || playbackActiveRef.current) break
               if (hasPlayableAutomaticSource()) break
-              if (sourcesIncludeProvider(sourcesRef.current, providerId)) continue
 
-              await tryProvider(providerId, {
-                useFetchTimeout: true,
-                markFailedOnMiss: true,
-              })
+              const batch = missingSecondaries.slice(
+                index,
+                index + SECONDARY_RACE_BATCH
+              )
+              for (const providerId of batch) {
+                setScanningProviderId(providerId)
+              }
+
+              await Promise.allSettled(
+                batch.map((providerId) =>
+                  tryProvider(providerId, {
+                    useFetchTimeout: true,
+                    markFailedOnMiss: true,
+                    scanTimeoutMs: AUTO_PROVIDER_SCAN_TIMEOUT_MS,
+                  })
+                )
+              )
             }
           }
 
@@ -1407,6 +1454,7 @@ export function useMediaSources({
             await tryProvider(providerId, {
               useFetchTimeout: true,
               markFailedOnMiss: true,
+              scanTimeoutMs: AUTO_PROVIDER_SCAN_TIMEOUT_MS,
             })
           }
         }
