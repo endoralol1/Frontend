@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { BaseProvider } from '@omss/framework';
 import type {
@@ -23,6 +24,12 @@ const EMBED_REFERER = 'https://www.vidking.net/';
 const DEFAULT_NODE_RESOLVE_SCRIPT =
     '/var/www/chillflix-newsite/bin/cineplay-yoru-resolve.mjs';
 
+/** Shared with Vuflix PHP `CineplaySources` raw cache (5 minutes). */
+const SHARED_YORU_CACHE_DIR =
+    process.env.CINEPLAY_YORU_CACHE_DIR?.trim() ||
+    '/var/www/chillflix-newsite/storage/cache/cineplay-yoru';
+const SHARED_YORU_CACHE_TTL_SEC = 300;
+
 type RelaySource = {
     url?: string;
     quality?: string;
@@ -34,6 +41,56 @@ type RelayResponse = {
     error?: string;
     sources?: RelaySource[];
 };
+
+function sharedCacheKey(
+    type: string,
+    tmdbId: string,
+    season: number,
+    episode: number
+): string {
+    return `${type}:${tmdbId}:${Math.max(1, season)}:${Math.max(1, episode)}`;
+}
+
+function sharedCachePath(key: string): string {
+    const safe = key.replace(/[^a-zA-Z0-9:_-]+/g, '_') || 'x';
+    return join(SHARED_YORU_CACHE_DIR, `${safe}.json`);
+}
+
+function readSharedYoruCache(key: string): RelaySource[] {
+    try {
+        const raw = readFileSync(sharedCachePath(key), 'utf8');
+        const wrap = JSON.parse(raw) as {
+            exp?: number;
+            data?: RelayResponse;
+        };
+        if (!wrap?.exp || wrap.exp < Math.floor(Date.now() / 1000)) {
+            return [];
+        }
+        const sources = wrap.data?.sources;
+        if (!wrap.data?.ok || !Array.isArray(sources) || !sources.length) {
+            return [];
+        }
+        return sources;
+    } catch {
+        return [];
+    }
+}
+
+function writeSharedYoruCache(key: string, sources: RelaySource[]): void {
+    try {
+        mkdirSync(SHARED_YORU_CACHE_DIR, { recursive: true });
+        writeFileSync(
+            sharedCachePath(key),
+            JSON.stringify({
+                exp: Math.floor(Date.now() / 1000) + SHARED_YORU_CACHE_TTL_SEC,
+                data: { ok: true, sources }
+            }),
+            'utf8'
+        );
+    } catch {
+        // best-effort share with Vuflix
+    }
+}
 
 function qualityRank(quality: string): number {
     const q = quality.toLowerCase();
@@ -244,6 +301,10 @@ export class CineplayProvider extends BaseProvider {
                     ) {
                         const mapped = this.mapSources(json.sources);
                         if (mapped.length) {
+                            writeSharedYoruCache(
+                                sharedCacheKey(type, tmdbId, season, episode),
+                                json.sources
+                            );
                             return { sources: mapped, subtitles: [], diagnostics: [] };
                         }
                         lastError = `${worker.label}: no usable streams`;
@@ -264,7 +325,21 @@ export class CineplayProvider extends BaseProvider {
                     : 'Worker relay disabled';
             }
 
-            // Same fallback Vuflix uses after relay seed 429 / empty.
+            // Share Vuflix's short Yoru cache — if a viewer just opened it on
+            // vuflix.co, Chillflix can reuse those streams without re-scraping.
+            const cacheKey = sharedCacheKey(type, tmdbId, season, episode);
+            const cached = readSharedYoruCache(cacheKey);
+            if (cached.length) {
+                const mapped = this.mapSources(cached);
+                if (mapped.length) {
+                    console.info(
+                        `[cineplay] Worker miss (${lastError}); shared Vuflix cache hit (${mapped.length})`
+                    );
+                    return { sources: mapped, subtitles: [], diagnostics: [] };
+                }
+            }
+
+            // Same local node scrape Vuflix uses after relay seed 429 / empty.
             const node = await scrapeViaNode({
                 type,
                 tmdbId,
@@ -276,6 +351,7 @@ export class CineplayProvider extends BaseProvider {
             if (node.sources.length) {
                 const mapped = this.mapSources(node.sources);
                 if (mapped.length) {
+                    writeSharedYoruCache(cacheKey, node.sources);
                     console.info(
                         `[cineplay] Worker miss (${lastError}); node fallback returned ${mapped.length} stream(s)`
                     );
