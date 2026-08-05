@@ -183,6 +183,16 @@ export async function updateWorkerRelayConfig(body: unknown): Promise<WorkerRela
     await mkdir(dirname(path), { recursive: true })
     await writeFile(path, `${JSON.stringify(next, null, 2)}\n`, "utf8")
 
+    // Confirm persistence so a silent permission failure can't drop workers.
+    const verify = sanitizeWorkerRelayConfig(
+        JSON.parse(await readFile(path, "utf8"))
+    )
+    if (verify.workers.length !== next.workers.length) {
+        throw new Error(
+            `Worker relay save did not persist (expected ${next.workers.length} workers, file has ${verify.workers.length})`
+        )
+    }
+
     // Keep .env in sync with the first enabled worker (back-compat for other tools).
     const primary = next.workers.find((w) => w.enabled && w.url && w.secret)
     if (primary) {

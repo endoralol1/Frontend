@@ -942,14 +942,22 @@ $router->map(['PATCH', 'POST'], '/api/admin/worker-relay', function () {
         json_response(['ok' => true, 'success' => true, 'result' => $result]);
     }
 
-    $config = WorkerRelayService::update($body);
-    $restart = WorkerRelayService::bounceCinepro();
-    json_response([
-        'ok' => true,
-        'success' => true,
-        'config' => WorkerRelayService::publicConfig(),
-        'restart' => $restart,
-    ]);
+    try {
+        WorkerRelayService::update($body);
+        $restart = WorkerRelayService::bounceCinepro();
+        json_response([
+            'ok' => true,
+            'success' => true,
+            'config' => WorkerRelayService::publicConfig(),
+            'restart' => $restart,
+        ]);
+    } catch (Throwable $e) {
+        json_response([
+            'ok' => false,
+            'success' => false,
+            'error' => $e->getMessage(),
+        ], 500);
+    }
 });
 
 $router->get('/api/admin/stats', function () {

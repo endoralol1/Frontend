@@ -108,10 +108,25 @@ final class WorkerRelayService
 
         $path = self::configPath();
         $dir = dirname($path);
-        if (!is_dir($dir)) {
-            mkdir($dir, 0755, true);
+        if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
+            throw new RuntimeException('Cannot create config dir: ' . $dir);
         }
-        file_put_contents($path, json_encode($next, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
+        $payload = json_encode($next, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+        if (file_put_contents($path, $payload) === false) {
+            throw new RuntimeException(
+                'Cannot write worker-relay config (check permissions): ' . $path
+            );
+        }
+        // Re-read to confirm persistence (catches root-owned files PHP can't update).
+        $verify = @file_get_contents($path);
+        $decoded = is_string($verify) ? json_decode($verify, true) : null;
+        $savedCount = is_array($decoded['workers'] ?? null) ? count($decoded['workers']) : 0;
+        if ($savedCount !== count($next['workers'])) {
+            throw new RuntimeException(
+                'Worker relay save did not persist (expected '
+                . count($next['workers']) . ' workers, file has ' . $savedCount . ')'
+            );
+        }
 
         $primary = null;
         foreach ($next['workers'] as $w) {
