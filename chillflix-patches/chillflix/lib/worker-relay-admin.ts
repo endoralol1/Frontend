@@ -37,6 +37,40 @@ function configPath() {
     )
 }
 
+function scriptPathCandidates() {
+    const explicit = process.env.WORKER_RELAY_SCRIPT_PATH?.trim()
+    const newsite =
+        process.env.VUFLIX_APP_DIR?.trim() || "/var/www/chillflix-newsite"
+    const cinepro = process.env.CINEPRO_APP_DIR?.trim() || "/var/www/cinepro"
+    return [
+        explicit,
+        `${newsite}/workers/yoru-relay.js`,
+        `${cinepro}/workers/yoru-relay.js`,
+        "/var/www/chillflix-newsite/workers/yoru-relay.js",
+    ].filter((p): p is string => Boolean(p))
+}
+
+/** Latest Worker script to paste into Cloudflare. */
+export async function readYoruRelayScript(): Promise<{
+    content: string
+    path: string
+}> {
+    let lastError: unknown
+    for (const path of scriptPathCandidates()) {
+        try {
+            const content = await readFile(path, "utf8")
+            if (content.trim()) return { content, path }
+        } catch (error) {
+            lastError = error
+        }
+    }
+    throw new Error(
+        lastError instanceof Error
+            ? `yoru-relay.js not found: ${lastError.message}`
+            : "yoru-relay.js not found"
+    )
+}
+
 function clampTtl(value: unknown) {
     const n = Number(value)
     if (!Number.isFinite(n)) return DEFAULT_CONFIG.cacheTtlSeconds

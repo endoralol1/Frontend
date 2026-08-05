@@ -100,6 +100,26 @@ export function AdminWorkerRelay() {
         }
     }
 
+    const copyScript = async () => {
+        setMessage(null)
+        setError(null)
+        try {
+            const res = await fetch("/api/admin/worker-relay?download=script", {
+                credentials: "include",
+            })
+            if (!res.ok) {
+                const json = await res.json().catch(() => null)
+                setError(json?.error || "Failed to load yoru-relay.js")
+                return
+            }
+            const text = await res.text()
+            await navigator.clipboard.writeText(text)
+            setMessage("yoru-relay.js copied — paste into Cloudflare Worker editor.")
+        } catch (e) {
+            setError(e instanceof Error ? e.message : "Copy failed")
+        }
+    }
+
     const testWorker = async (row: WorkerRow) => {
         setTestingId(row.id)
         setMessage(null)
@@ -278,10 +298,32 @@ export function AdminWorkerRelay() {
             {message ? <p className="text-sm text-emerald-500">{message}</p> : null}
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-            <div className="rounded-xl border border-border/50 bg-muted/20 p-4 text-sm text-muted-foreground space-y-2">
+            <div className="rounded-xl border border-border/50 bg-muted/20 p-4 text-sm text-muted-foreground space-y-3">
                 <p className="font-medium text-foreground">Second Cloudflare account setup</p>
+                <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="secondary" asChild>
+                        <a href="/api/admin/worker-relay?download=script">
+                            Download yoru-relay.js
+                        </a>
+                    </Button>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void copyScript()}
+                    >
+                        Copy script
+                    </Button>
+                </div>
                 <ol className="list-decimal pl-5 space-y-1">
-                    <li>Cloudflare → Workers → Create → paste <code>yoru-relay.js</code></li>
+                    <li>
+                        Cloudflare → Workers → Create → paste{" "}
+                        <a
+                            className="underline text-foreground"
+                            href="/api/admin/worker-relay?download=script"
+                        >
+                            yoru-relay.js
+                        </a>
+                    </li>
                     <li>
                         Settings → Variables → encrypt <code>YORU_RELAY_SECRET</code> (same or
                         different secret)

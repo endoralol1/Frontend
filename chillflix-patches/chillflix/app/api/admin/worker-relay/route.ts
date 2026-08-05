@@ -5,6 +5,7 @@ import { getErrorMessage } from "@/lib/api-error"
 import {
     bounceCineproForRelay,
     getWorkerRelayConfig,
+    readYoruRelayScript,
     testWorkerRelay,
     toPublicWorkerRelayConfig,
     updateWorkerRelayConfig,
@@ -13,6 +14,19 @@ import {
 export async function GET(request: NextRequest) {
     try {
         await requireAdminUser(request, "owner")
+        const download = request.nextUrl.searchParams.get("download")
+        if (download === "script" || download === "1") {
+            const script = await readYoruRelayScript()
+            return new NextResponse(script.content, {
+                status: 200,
+                headers: {
+                    "Content-Type": "application/javascript; charset=utf-8",
+                    "Content-Disposition": 'attachment; filename="yoru-relay.js"',
+                    "Cache-Control": "no-store",
+                    "X-Worker-Script-Path": script.path,
+                },
+            })
+        }
         const config = await getWorkerRelayConfig()
         return NextResponse.json({
             success: true,

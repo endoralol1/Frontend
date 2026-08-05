@@ -914,6 +914,21 @@ $router->post('/api/admin/sources/{id}/test', function (array $p) {
 
 $router->get('/api/admin/worker-relay', function () {
     Auth::requireRole('admin');
+    $download = (string) ($_GET['download'] ?? '');
+    if ($download === 'script' || $download === '1') {
+        try {
+            $script = WorkerRelayService::readScript();
+        } catch (Throwable $e) {
+            json_response(['ok' => false, 'success' => false, 'error' => $e->getMessage()], 500);
+        }
+        header('Content-Type: application/javascript; charset=utf-8');
+        header('Content-Disposition: attachment; filename="yoru-relay.js"');
+        header('Cache-Control: no-store');
+        header('X-Worker-Script-Path: ' . $script['path']);
+        http_response_code(200);
+        echo $script['content'];
+        exit;
+    }
     json_response(['ok' => true, 'success' => true, 'config' => WorkerRelayService::publicConfig()]);
 });
 

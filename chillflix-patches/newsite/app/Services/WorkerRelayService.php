@@ -18,6 +18,37 @@ final class WorkerRelayService
         return '/var/www/cinepro/config/worker-relay.json';
     }
 
+    public static function scriptPath(): string
+    {
+        $env = getenv('WORKER_RELAY_SCRIPT_PATH');
+        if (is_string($env) && $env !== '') {
+            return $env;
+        }
+        foreach ([
+            '/var/www/chillflix-newsite/workers/yoru-relay.js',
+            '/var/www/cinepro/workers/yoru-relay.js',
+        ] as $candidate) {
+            if (is_readable($candidate)) {
+                return $candidate;
+            }
+        }
+        return '/var/www/chillflix-newsite/workers/yoru-relay.js';
+    }
+
+    /** @return array{content:string,path:string} */
+    public static function readScript(): array
+    {
+        $path = self::scriptPath();
+        if (!is_readable($path)) {
+            throw new RuntimeException('yoru-relay.js not found at ' . $path);
+        }
+        $content = (string) file_get_contents($path);
+        if (trim($content) === '') {
+            throw new RuntimeException('yoru-relay.js is empty');
+        }
+        return ['content' => $content, 'path' => $path];
+    }
+
     /** @return array{enabled:bool,preferWorker:bool,cacheTtlSeconds:int,workers:list<array{id:string,label:string,url:string,secret:string,enabled:bool}>} */
     public static function defaults(): array
     {
