@@ -77,12 +77,21 @@ function clampTtl(value: unknown) {
     return Math.min(86_400, Math.max(60, Math.floor(n)))
 }
 
+function normalizeWorkerUrl(raw: string): string {
+    let url = String(raw || "")
+        .trim()
+        .replace(/\/$/, "")
+    if (!url) return ""
+    if (!/^https?:\/\//i.test(url)) {
+        url = `https://${url}`
+    }
+    return url
+}
+
 function sanitizeWorker(raw: unknown, index: number): WorkerRelayEntry | null {
     if (!raw || typeof raw !== "object") return null
     const row = raw as Record<string, unknown>
-    const url = String(row.url || "")
-        .trim()
-        .replace(/\/$/, "")
+    const url = normalizeWorkerUrl(String(row.url || ""))
     const secret = String(row.secret || "").trim()
     if (!url) return null
     return {

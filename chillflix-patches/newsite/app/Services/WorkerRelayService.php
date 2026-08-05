@@ -297,6 +297,9 @@ final class WorkerRelayService
                     continue;
                 }
                 $url = rtrim(trim((string) ($row['url'] ?? '')), '/');
+                if ($url !== '' && !preg_match('#^https?://#i', $url)) {
+                    $url = 'https://' . $url;
+                }
                 if ($url === '') {
                     continue;
                 }
