@@ -12,12 +12,14 @@ Scrapes `https://hollymoviehd.cc/` (Cloudflare-protected WordPress + Goodstream 
 7. Proxy through cinepro
 
 ## Enabled on
-- **chillflix.lol** — cinepro provider `hollymoviehd` + admin stream sources
-- **vuflix.co** — `SourcesService` catalog + `newsite.sources` enabled (remote via chillflix cinepro)
+- **chillflix.lol** — admin Stream Sources + on-demand cinepro provider
+- **vuflix.co** — `SourcesService` catalog / `newsite.sources` enabled (remote via chillflix)
+
+## Important: on-demand only
+`hollymoviehd` is **not** in `CINEPRO_PROVIDER_ALLOWLIST` (bulk fan-out melts FlareSolverr).
+It is listed in `ON_DEMAND_CINEPRO_PROVIDER_IDS` and resolved via:
+`/v1/.../provider/hollymoviehd?probe=true` when the player requests `?provider=hollymoviehd`.
 
 ## Ops
 - Requires FlareSolverr on `FLARESOLVERR_URL` (default `http://127.0.0.1:8191`)
-- Manual-only in player auto-probe (still available when user picks it / bulk allowlist)
-EOF
-
-Shell
+- Manual-only in Chillflix auto-probe order
