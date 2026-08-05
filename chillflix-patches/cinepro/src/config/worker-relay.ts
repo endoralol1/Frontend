@@ -230,6 +230,20 @@ export function vaplayerCacheKey(parts: {
     return `vap:${type}:${parts.tmdbId || ''}:${parts.imdbId || ''}`;
 }
 
+/** Same TTL pool as VAPlayer (admin Worker relay cache hours). */
+export function cineplayCacheKey(parts: {
+    type: string;
+    tmdbId?: string;
+    season?: number | string;
+    episode?: number | string;
+}) {
+    const type = parts.type === 'tv' ? 'tv' : 'movie';
+    if (type === 'tv') {
+        return `cineplay:${type}:${parts.tmdbId || ''}:s${parts.season ?? 1}:e${parts.episode ?? 1}`;
+    }
+    return `cineplay:${type}:${parts.tmdbId || ''}`;
+}
+
 export function getCachedVaplayerResolve<T>(key: string): T | null {
     const hit = resolveCache.get(key);
     if (!hit) return null;

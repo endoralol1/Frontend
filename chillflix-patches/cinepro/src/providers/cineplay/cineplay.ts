@@ -11,9 +11,12 @@ import type {
 } from '@omss/framework';
 
 import {
+    cineplayCacheKey,
+    getCachedVaplayerResolve,
     listEnabledWorkers,
     pickWorker,
     readWorkerRelayConfig,
+    setCachedVaplayerResolve,
     type WorkerRelayEntry
 } from '../../config/worker-relay.js';
 import { inferSourceType } from '../vidapi/embed-resolver.js';
@@ -24,11 +27,12 @@ const EMBED_REFERER = 'https://www.vidking.net/';
 const DEFAULT_NODE_RESOLVE_SCRIPT =
     '/var/www/chillflix-newsite/bin/cineplay-yoru-resolve.mjs';
 
-/** Shared with Vuflix PHP `CineplaySources` raw cache (5 minutes). */
+/** Shared with Vuflix PHP `CineplaySources` raw cache. */
 const SHARED_YORU_CACHE_DIR =
     process.env.CINEPLAY_YORU_CACHE_DIR?.trim() ||
     '/var/www/chillflix-newsite/storage/cache/cineplay-yoru';
-const SHARED_YORU_CACHE_TTL_SEC = 300;
+/** Fallback when Worker relay TTL is unavailable (matches admin default 2h). */
+const SHARED_YORU_CACHE_TTL_SEC = 7200;
 
 type RelaySource = {
     url?: string;
@@ -76,13 +80,18 @@ function readSharedYoruCache(key: string): RelaySource[] {
     }
 }
 
-function writeSharedYoruCache(key: string, sources: RelaySource[]): void {
+function writeSharedYoruCache(
+    key: string,
+    sources: RelaySource[],
+    ttlSeconds = SHARED_YORU_CACHE_TTL_SEC
+): void {
     try {
+        const ttl = Math.min(86_400, Math.max(60, Math.floor(ttlSeconds)));
         mkdirSync(SHARED_YORU_CACHE_DIR, { recursive: true });
         writeFileSync(
             sharedCachePath(key),
             JSON.stringify({
-                exp: Math.floor(Date.now() / 1000) + SHARED_YORU_CACHE_TTL_SEC,
+                exp: Math.floor(Date.now() / 1000) + ttl,
                 data: { ok: true, sources }
             }),
             'utf8'
@@ -244,6 +253,27 @@ export class CineplayProvider extends BaseProvider {
             let lastError = 'Cineplay returned no streams';
 
             const relay = readWorkerRelayConfig();
+            const memKey = cineplayCacheKey({ type, tmdbId, season, episode });
+            const diskKey = sharedCacheKey(type, tmdbId, season, episode);
+            const ttlSeconds = relay.cacheTtlSeconds || SHARED_YORU_CACHE_TTL_SEC;
+
+            const remember = (raw: RelaySource[]): ProviderResult | null => {
+                const mapped = this.mapSources(raw);
+                if (!mapped.length) return null;
+                setCachedVaplayerResolve(memKey, raw, ttlSeconds);
+                writeSharedYoruCache(diskKey, raw, ttlSeconds);
+                return { sources: mapped, subtitles: [], diagnostics: [] };
+            };
+
+            // Same 2h in-memory resolve cache VAPlayer uses (admin Worker TTL).
+            const memHit = getCachedVaplayerResolve<RelaySource[]>(memKey);
+            if (Array.isArray(memHit) && memHit.length) {
+                const mapped = this.mapSources(memHit);
+                if (mapped.length) {
+                    return { sources: mapped, subtitles: [], diagnostics: [] };
+                }
+            }
+
             const workers = relay.enabled ? listEnabledWorkers(relay) : [];
 
             if (workers.length) {
@@ -299,14 +329,8 @@ export class CineplayProvider extends BaseProvider {
                         Array.isArray(json.sources) &&
                         json.sources.length
                     ) {
-                        const mapped = this.mapSources(json.sources);
-                        if (mapped.length) {
-                            writeSharedYoruCache(
-                                sharedCacheKey(type, tmdbId, season, episode),
-                                json.sources
-                            );
-                            return { sources: mapped, subtitles: [], diagnostics: [] };
-                        }
+                        const remembered = remember(json.sources);
+                        if (remembered) return remembered;
                         lastError = `${worker.label}: no usable streams`;
                         continue;
                     }
@@ -325,17 +349,15 @@ export class CineplayProvider extends BaseProvider {
                     : 'Worker relay disabled';
             }
 
-            // Share Vuflix's short Yoru cache — if a viewer just opened it on
-            // vuflix.co, Chillflix can reuse those streams without re-scraping.
-            const cacheKey = sharedCacheKey(type, tmdbId, season, episode);
-            const cached = readSharedYoruCache(cacheKey);
+            // Share Vuflix/Chillflix disk cache — reopen without re-scraping.
+            const cached = readSharedYoruCache(diskKey);
             if (cached.length) {
-                const mapped = this.mapSources(cached);
-                if (mapped.length) {
+                const remembered = remember(cached);
+                if (remembered) {
                     console.info(
-                        `[cineplay] Worker miss (${lastError}); shared Vuflix cache hit (${mapped.length})`
+                        `[cineplay] Worker miss (${lastError}); shared Yoru cache hit (${remembered.sources.length})`
                     );
-                    return { sources: mapped, subtitles: [], diagnostics: [] };
+                    return remembered;
                 }
             }
 
@@ -349,13 +371,12 @@ export class CineplayProvider extends BaseProvider {
                 year: media.releaseYear ? String(media.releaseYear) : undefined
             });
             if (node.sources.length) {
-                const mapped = this.mapSources(node.sources);
-                if (mapped.length) {
-                    writeSharedYoruCache(cacheKey, node.sources);
+                const remembered = remember(node.sources);
+                if (remembered) {
                     console.info(
-                        `[cineplay] Worker miss (${lastError}); node fallback returned ${mapped.length} stream(s)`
+                        `[cineplay] Worker miss (${lastError}); node fallback returned ${remembered.sources.length} stream(s)`
                     );
-                    return { sources: mapped, subtitles: [], diagnostics: [] };
+                    return remembered;
                 }
             }
 
