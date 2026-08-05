@@ -2092,6 +2092,44 @@ const quietStallAttemptRef = useRef(0)
     setFullscreenPortal(node)
   }, [])
 
+  // Settings for empty/error player states — lives in the header row next to
+  // Watch Party so the two icons never stack on the same corner.
+  const chromePlayerSettings = !playerSource ? (
+    <PlayerSettings
+      playbackRate={1}
+      onPlaybackRateChange={() => undefined}
+      qualities={[]}
+      currentQuality={-1}
+      onQualityChange={() => undefined}
+      sources={playbackOptions.map((option) => ({
+        id: option.id,
+        label: option.label,
+        provider: option.provider,
+        providerId: option.providerId,
+        quality: option.quality,
+      }))}
+      currentSourceId={selectedSourceId || resolvedSourceId}
+      onSelectSource={handleSelectSource}
+      onRequestProvider={handleRequestProvider}
+      sourcesLoadingMore={sourcesLoadingMore}
+      sourceStatusMessage={warningMessage ?? sourceStatusMessage}
+      onRefetchSources={refetchSources}
+      unavailableProviders={unavailableProviders}
+      sourceHealth={sourceHealth}
+      activeTestingProviderId={activeTestingProviderId}
+      showRealProviderNames={showRealProviderNames}
+      hiddenProviderIds={hiddenProviderIds}
+    />
+  ) : null
+
+  const titleUnavailableMessage = getTitleUnavailableMessage(t)
+  const emptyStateStatusMessage = warningMessage ?? sourceStatusMessage
+  const emptyStateDetailMessage =
+    emptyStateStatusMessage &&
+    emptyStateStatusMessage !== titleUnavailableMessage
+      ? emptyStateStatusMessage
+      : undefined
+
   const builtinPlayerStage =
     isOpen && dialogOpen ? (
       <ExternalPlayerPanel
@@ -2215,42 +2253,13 @@ const quietStallAttemptRef = useRef(0)
               />
             ) : (
               <div className="relative flex h-full flex-col items-center justify-center gap-3 rounded-md border border-white/10 bg-black/70 px-6 py-8 text-center text-sm text-white/70">
-                <div className="absolute right-3 top-3 z-30">
-                  <PlayerSettings
-                    playbackRate={1}
-                    onPlaybackRateChange={() => undefined}
-                    qualities={[]}
-                    currentQuality={-1}
-                    onQualityChange={() => undefined}
-                    sources={playbackOptions.map((option) => ({
-                      id: option.id,
-                      label: option.label,
-                      provider: option.provider,
-                      providerId: option.providerId,
-                      quality: option.quality,
-                    }))}
-                    currentSourceId={selectedSourceId || resolvedSourceId}
-                    onSelectSource={handleSelectSource}
-                    onRequestProvider={handleRequestProvider}
-                    sourcesLoadingMore={sourcesLoadingMore}
-                    sourceStatusMessage={
-                      warningMessage ?? sourceStatusMessage
-                    }
-                    onRefetchSources={refetchSources}
-                    unavailableProviders={unavailableProviders}
-                    sourceHealth={sourceHealth}
-                    activeTestingProviderId={activeTestingProviderId}
-                    showRealProviderNames={showRealProviderNames}
-                    hiddenProviderIds={hiddenProviderIds}
-                  />
-                </div>
-                <p>{getTitleUnavailableMessage(t)}</p>
+                <p>{titleUnavailableMessage}</p>
                 <PlaybackSourceRetryPanel
-                  message={warningMessage ?? sourceStatusMessage}
+                  message={emptyStateDetailMessage}
                   onRetry={refetchSources}
                   messageClassName="text-white/50"
                   showRetryButton={shouldShowPlaybackRetryButton(
-                    warningMessage ?? sourceStatusMessage
+                    emptyStateStatusMessage
                   )}
                 />
                 <p className="text-[11px] text-white/45">
@@ -2307,14 +2316,16 @@ const quietStallAttemptRef = useRef(0)
               ref={setCinemaShellRef}
               className="min-h-0 flex-1 bg-black"
             >
-              <div
-                className={cn(
-                  "absolute inset-x-0 top-0 z-[10003] px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-4 md:pb-3 md:pt-4",
-                  "transition-opacity duration-300",
-                  cinemaControlsVisible ? "opacity-100" : "opacity-0"
-                )}
-                onMouseMove={wakeCinemaChrome}
-              >
+                <div
+                  className={cn(
+                    "absolute inset-x-0 top-0 z-[10003] px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-4 md:pb-3 md:pt-4",
+                    "transition-opacity duration-300",
+                    cinemaControlsVisible || !playerSource
+                      ? "opacity-100"
+                      : "opacity-0"
+                  )}
+                  onMouseMove={wakeCinemaChrome}
+                >
                 <div className="relative flex min-h-9 items-center">
                   <div className="relative z-10 shrink-0 pointer-events-auto">
                     <Button
@@ -2354,6 +2365,7 @@ const quietStallAttemptRef = useRef(0)
                         className="h-9 w-auto rounded-full border border-white/10 bg-black/70 text-white hover:bg-white/10"
                       />
                     ) : null}
+                    {chromePlayerSettings}
                     {watchPartyEnabled ? (
                       <WatchPartyDropdown
                         open={watchPartyOpen}
@@ -2431,7 +2443,9 @@ const quietStallAttemptRef = useRef(0)
                   className={cn(
                     "absolute inset-x-0 top-0 z-[10003] px-3 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))] md:px-4 md:pb-3 md:pt-4",
                     "transition-opacity duration-300",
-                    cinemaControlsVisible ? "opacity-100" : "opacity-0"
+                    cinemaControlsVisible || !playerSource
+                      ? "opacity-100"
+                      : "opacity-0"
                   )}
                   onMouseMove={wakeCinemaChrome}
                 >
@@ -2474,6 +2488,7 @@ const quietStallAttemptRef = useRef(0)
                           className="h-9 w-auto rounded-full border border-white/10 bg-black/70 text-white hover:bg-white/10"
                         />
                       ) : null}
+                      {chromePlayerSettings}
                       {watchPartyEnabled ? (
                         <WatchPartyDropdown
                           open={watchPartyOpen}

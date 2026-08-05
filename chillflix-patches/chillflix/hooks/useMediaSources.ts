@@ -241,8 +241,8 @@ function buildSourcesFetchDedupeKey(
   ].join("|")
 }
 
-/** Auto-scan failover budget — do not burn the full 45s admin link-fetch on each miss. */
-const AUTO_PROVIDER_SCAN_TIMEOUT_MS = 12_000
+/** Auto-scan per-provider budget (Vuflix-style one-by-one). Keep short so a miss fails over fast. */
+const AUTO_PROVIDER_SCAN_TIMEOUT_MS = 8_000
 
 function shouldAutoRetry(diagnostics: MediaDiagnostic[]) {
   return diagnostics.some((item) => item.code === "CINEPRO_OFFLINE")
@@ -994,6 +994,12 @@ export function useMediaSources({
       }, INITIAL_LOADING_CAP_MS)
 
       try {
+        // Unlock the one-by-one provider scan immediately. Waiting on the bulk
+        // /sources response before scanning made every cold open feel stuck.
+        if (!isStale()) {
+          setResolvedParamsKey(cacheKey)
+        }
+
         if (!cacheHit && !isStale()) {
           const scanIds = withoutManualOnlyProviders(
             getOrderedEnabledProviderIds(config.order, config.enabledIds)
@@ -1013,56 +1019,79 @@ export function useMediaSources({
           }
         }
 
-        const result = await fetchSources()
-        if (isStale()) return
+        // Bulk fetch stays in the background — do not block first play on it.
+        void fetchSources()
+          .then((result) => {
+            if (isStale()) return
 
-        if (
-          result.sources.length === 0 &&
-          isBackgroundSourcesPending(result.diagnostics)
-        ) {
-          window.setTimeout(() => {
-            if (!isStale() && sourcesRef.current.length === 0) {
+            if (
+              result.sources.length === 0 &&
+              isBackgroundSourcesPending(result.diagnostics)
+            ) {
+              window.setTimeout(() => {
+                if (!isStale() && sourcesRef.current.length === 0) {
+                  void fetchSources({ merge: true }).catch(() => undefined)
+                }
+              }, BACKGROUND_MERGE_KICK_MS)
+            }
+
+            if (shouldAutoRetry(result.diagnostics)) {
+              retryTimer = window.setTimeout(() => {
+                if (!isStale()) {
+                  void fetchSources({
+                    retry: true,
+                    fresh: true,
+                    merge: true,
+                  }).catch(() => undefined)
+                }
+              }, OFFLINE_RETRY_MS)
+            }
+          })
+          .catch((err) => {
+            if (isStale()) return
+
+            const isTimeout =
+              err instanceof Error &&
+              (err.name === "AbortError" ||
+                err.message === "Provider scan timed out")
+
+            if (isTimeout) {
+              setError(undefined)
+              retryTimer = window.setTimeout(() => {
+                if (!isStale()) {
+                  void fetchSources({
+                    retry: true,
+                    fresh: true,
+                    merge: true,
+                  }).catch(() => undefined)
+                }
+              }, OFFLINE_RETRY_MS)
+              return
+            }
+
+            const message =
+              err instanceof Error ? err.message : "Failed to load sources"
+
+            void applyEmergencyFallback(message).then((fallback) => {
+              if (isStale()) return
               void fetchSources({ merge: true }).catch(() => undefined)
-            }
-          }, BACKGROUND_MERGE_KICK_MS)
-        }
-
-        if (shouldAutoRetry(result.diagnostics)) {
-          retryTimer = window.setTimeout(() => {
+              if (fallback.sources.length === 0) {
+                setError(message)
+              }
+            })
+          })
+          .finally(() => {
+            if (loadingCapTimer) window.clearTimeout(loadingCapTimer)
             if (!isStale()) {
-              void fetchSources({ retry: true, fresh: true, merge: true }).catch(() => undefined)
+              setIsLoading(false)
+              setIsRefreshing(false)
             }
-          }, OFFLINE_RETRY_MS)
-        }
+          })
       } catch (err) {
         if (isStale()) return
-
-        const isTimeout =
-          err instanceof Error &&
-          (err.name === "AbortError" || err.message === "Provider scan timed out")
-
-        if (isTimeout) {
-          setError(undefined)
-          retryTimer = window.setTimeout(() => {
-            if (!isStale()) {
-              void fetchSources({ retry: true, fresh: true, merge: true }).catch(() => undefined)
-            }
-          }, OFFLINE_RETRY_MS)
-        } else {
-          const message =
-            err instanceof Error ? err.message : "Failed to load sources"
-
-          const fallback = await applyEmergencyFallback(message)
-          if (isStale()) return
-
-          void fetchSources({ merge: true }).catch(() => undefined)
-
-          if (fallback.sources.length === 0) {
-            setError(message)
-          }
-        }
-      } finally {
-        if (loadingCapTimer) window.clearTimeout(loadingCapTimer)
+        const message =
+          err instanceof Error ? err.message : "Failed to load sources"
+        setError(message)
         if (!isStale()) {
           setResolvedParamsKey(cacheKey)
           setIsLoading(false)
@@ -1397,40 +1426,19 @@ export function useMediaSources({
 
           if (cancelled || playbackActiveRef.current) return
 
-          // Race a small batch of secondaries (not the whole list) until one
-          // hits. Cap each attempt so a dead provider cannot burn the full 45s.
+          // Vuflix-style: test one provider at a time until the first real
+          // stream appears, then stop. Cap each miss so failover stays snappy.
           if (!hasPlayableAutomaticSource()) {
-            const missingSecondaries = secondaryProviderIds.filter(
-              (providerId) =>
-                !sourcesIncludeProvider(sourcesRef.current, providerId)
-            )
-            const SECONDARY_RACE_BATCH = 2
-
-            for (
-              let index = 0;
-              index < missingSecondaries.length;
-              index += SECONDARY_RACE_BATCH
-            ) {
+            for (const providerId of secondaryProviderIds) {
               if (cancelled || playbackActiveRef.current) break
               if (hasPlayableAutomaticSource()) break
+              if (sourcesIncludeProvider(sourcesRef.current, providerId)) continue
 
-              const batch = missingSecondaries.slice(
-                index,
-                index + SECONDARY_RACE_BATCH
-              )
-              for (const providerId of batch) {
-                setScanningProviderId(providerId)
-              }
-
-              await Promise.allSettled(
-                batch.map((providerId) =>
-                  tryProvider(providerId, {
-                    useFetchTimeout: true,
-                    markFailedOnMiss: true,
-                    scanTimeoutMs: AUTO_PROVIDER_SCAN_TIMEOUT_MS,
-                  })
-                )
-              )
+              await tryProvider(providerId, {
+                useFetchTimeout: true,
+                markFailedOnMiss: true,
+                scanTimeoutMs: AUTO_PROVIDER_SCAN_TIMEOUT_MS,
+              })
             }
           }
 
