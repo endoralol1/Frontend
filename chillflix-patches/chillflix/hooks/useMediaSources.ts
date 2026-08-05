@@ -241,8 +241,10 @@ function buildSourcesFetchDedupeKey(
   ].join("|")
 }
 
-/** Auto-scan per-provider budget (Vuflix-style one-by-one). Keep short so a miss fails over fast. */
+/** Auto-scan per-provider budget. Keep short so a dead provider cannot block the race. */
 const AUTO_PROVIDER_SCAN_TIMEOUT_MS = 8_000
+/** How many secondary providers to race at once after the primary head-start. */
+const SECONDARY_RACE_BATCH = 3
 
 function shouldAutoRetry(diagnostics: MediaDiagnostic[]) {
   return diagnostics.some((item) => item.code === "CINEPRO_OFFLINE")
@@ -1408,7 +1410,10 @@ export function useMediaSources({
 
           const headStartDeadline = Date.now() + getHeadStartMs()
           while (Date.now() < headStartDeadline) {
-            if (cancelled || playbackActiveRef.current) return
+            if (cancelled || playbackActiveRef.current) {
+              setScanningProviderId(undefined)
+              return
+            }
             // Already have a stream (primary or bulk) — stop discovering more.
             if (hasPlayableAutomaticSource()) break
             // Primary miss → test others now (do not wait out the head-start).
@@ -1424,27 +1429,91 @@ export function useMediaSources({
             await sleep(100)
           }
 
-          if (cancelled || playbackActiveRef.current) return
+          if (cancelled || playbackActiveRef.current) {
+            setScanningProviderId(undefined)
+            return
+          }
 
-          // Vuflix-style: test one provider at a time until the first real
-          // stream appears, then stop. Cap each miss so failover stays snappy.
+          // Race secondary providers in the background while primary may still
+          // be in flight. First real stream wins — do not wait for VAPlayer
+          // (or any slow primary) before starting playback from a faster hit.
+          const raceProviderBatch = async (batch: string[]) => {
+            if (batch.length === 0) return false
+
+            setScanningProviderId(batch[0])
+
+            return new Promise<boolean>((resolve) => {
+              let settled = 0
+              let resolved = false
+              const finish = (won: boolean) => {
+                if (resolved) return
+                resolved = true
+                resolve(won)
+              }
+
+              for (const providerId of batch) {
+                void tryProvider(providerId, {
+                  useFetchTimeout: true,
+                  markFailedOnMiss: true,
+                  scanTimeoutMs: AUTO_PROVIDER_SCAN_TIMEOUT_MS,
+                })
+                  .then((found) => {
+                    settled += 1
+                    if (
+                      found ||
+                      hasPlayableAutomaticSource() ||
+                      playbackActiveRef.current
+                    ) {
+                      finish(true)
+                      return
+                    }
+                    if (settled >= batch.length) {
+                      finish(hasPlayableAutomaticSource())
+                    }
+                  })
+                  .catch(() => {
+                    settled += 1
+                    if (settled >= batch.length) {
+                      finish(hasPlayableAutomaticSource())
+                    }
+                  })
+              }
+            })
+          }
+
           if (!hasPlayableAutomaticSource()) {
-            for (const providerId of secondaryProviderIds) {
+            const missingSecondaries = secondaryProviderIds.filter(
+              (providerId) =>
+                !sourcesIncludeProvider(sourcesRef.current, providerId)
+            )
+
+            for (
+              let index = 0;
+              index < missingSecondaries.length;
+              index += SECONDARY_RACE_BATCH
+            ) {
               if (cancelled || playbackActiveRef.current) break
               if (hasPlayableAutomaticSource()) break
-              if (sourcesIncludeProvider(sourcesRef.current, providerId)) continue
 
-              await tryProvider(providerId, {
-                useFetchTimeout: true,
-                markFailedOnMiss: true,
-                scanTimeoutMs: AUTO_PROVIDER_SCAN_TIMEOUT_MS,
-              })
+              const batch = missingSecondaries.slice(
+                index,
+                index + SECONDARY_RACE_BATCH
+              )
+              const won = await raceProviderBatch(batch)
+              if (won || hasPlayableAutomaticSource()) break
             }
           }
 
-          if (primaryPromise) {
+          // Primary may still be resolving in the background. If secondaries
+          // already won, stop waiting on it for the scan UI.
+          if (hasPlayableAutomaticSource() || playbackActiveRef.current) {
+            setScanningProviderId(undefined)
+          } else if (primaryPromise) {
             const primaryFound = await primaryPromise
-            if (primaryFound || sourcesIncludeProvider(sourcesRef.current, primaryProviderId)) {
+            if (
+              primaryFound ||
+              sourcesIncludeProvider(sourcesRef.current, primaryProviderId)
+            ) {
               clearProviderFailed(primaryProviderId)
             } else if (
               !sourcesIncludeProvider(sourcesRef.current, primaryProviderId) &&
@@ -1456,14 +1525,32 @@ export function useMediaSources({
             }
           }
         } else if (secondaryProviderIds.length > 0) {
-          for (const providerId of secondaryProviderIds) {
+          const missingSecondaries = secondaryProviderIds.filter(
+            (providerId) =>
+              !sourcesIncludeProvider(sourcesRef.current, providerId)
+          )
+          for (
+            let index = 0;
+            index < missingSecondaries.length;
+            index += SECONDARY_RACE_BATCH
+          ) {
             if (cancelled || playbackActiveRef.current) break
             if (hasPlayableAutomaticSource()) break
-            await tryProvider(providerId, {
-              useFetchTimeout: true,
-              markFailedOnMiss: true,
-              scanTimeoutMs: AUTO_PROVIDER_SCAN_TIMEOUT_MS,
-            })
+            const batch = missingSecondaries.slice(
+              index,
+              index + SECONDARY_RACE_BATCH
+            )
+            setScanningProviderId(batch[0])
+            await Promise.allSettled(
+              batch.map((providerId) =>
+                tryProvider(providerId, {
+                  useFetchTimeout: true,
+                  markFailedOnMiss: true,
+                  scanTimeoutMs: AUTO_PROVIDER_SCAN_TIMEOUT_MS,
+                })
+              )
+            )
+            if (hasPlayableAutomaticSource()) break
           }
         }
       } catch {
@@ -1473,28 +1560,36 @@ export function useMediaSources({
       if (!cancelled) {
         setScanningProviderId(undefined)
         setIsRefreshing(false)
-        setDiagnostics((previous) => {
-          const withoutBackground = previous.filter(
-            (item) => item.code !== "CINEPRO_BACKGROUND"
-          )
+        // Only declare "no source" after the full race finishes with nothing.
+        // Emitting this while a provider is still testing made the empty-state
+        // UI appear too early on cold opens (e.g. Interstellar + VAPlayer).
+        if (!hasPlayableAutomaticSource()) {
+          setDiagnostics((previous) => {
+            const withoutBackground = previous.filter(
+              (item) => item.code !== "CINEPRO_BACKGROUND"
+            )
 
-          const hasAutomaticSource = getEnabledProviderIds()
-            .filter((providerId) => providerId !== "vidlink")
-            .some((providerId) => sourcesIncludeProvider(sourcesRef.current, providerId))
+            const hasAutomaticSource = getEnabledProviderIds()
+              .filter((providerId) => providerId !== "vidlink")
+              .some((providerId) =>
+                sourcesIncludeProvider(sourcesRef.current, providerId)
+              )
 
-          if (hasAutomaticSource) {
-            return withoutBackground
-          }
+            if (hasAutomaticSource) {
+              return withoutBackground
+            }
 
-          return [
-            ...withoutBackground,
-            {
-              code: "ENABLED_PROVIDER_UNAVAILABLE",
-              message: "No enabled provider returned a stream for this title.",
-              severity: "warning",
-            },
-          ]
-        })
+            return [
+              ...withoutBackground,
+              {
+                code: "ENABLED_PROVIDER_UNAVAILABLE",
+                message:
+                  "No enabled provider returned a stream for this title.",
+                severity: "warning",
+              },
+            ]
+          })
+        }
       }
     }
 
@@ -1505,6 +1600,7 @@ export function useMediaSources({
         if (!cancelled) {
           setIsScanningProviders(false)
           setIsRefreshing(false)
+          setScanningProviderId(undefined)
           setProviderScanStartedAt(undefined)
         }
       })
@@ -1721,6 +1817,7 @@ export function useMediaSources({
     isLoading: !enabled ? false : isLoading,
     isLoadingMore:
       (isScanningProviders && sources.length === 0) ||
+      (Boolean(scanningProviderId) && sources.length === 0) ||
       (isRefreshing && sources.length === 0) ||
       (sources.length === 0 &&
         isBackgroundSourcesPending(diagnostics) &&

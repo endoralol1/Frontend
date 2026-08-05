@@ -1168,8 +1168,11 @@ export const MediaPlayerModal: React.FC<MediaPlayerModalProps> = ({
 
   useEffect(() => {
     if (!isOpen || !resolvedSourceId || !sourcesReadyForEpisode) return
+    // Mark that we tried to start — but do NOT set playbackActive yet.
+    // playbackActive stops the provider scan; only real playback-ready
+    // should do that (handlePlaybackReady). A dead first pick must not
+    // freeze discovery while other sources could still return.
     setHasStartedPlaybackAttempt(true)
-    setPlaybackActive(true)
   }, [isOpen, resolvedSourceId, sourcesReadyForEpisode])
 
   useEffect(() => {
@@ -1318,14 +1321,19 @@ export const MediaPlayerModal: React.FC<MediaPlayerModalProps> = ({
   const isEpisodeSourceTransition =
     hasStartedPlaybackAttempt && !sourcesReadyForEpisode
 
+  // Keep the loading UI up while discovery is still running — even after a
+  // previous pick failed. Showing "no source" while Settings still says
+  // "Testing VAPlayer…" is the Interstellar first-open bug.
+  const discoveryInProgress =
+    sourceLoading ||
+    sourcesLoadingMore ||
+    Boolean(scanningProviderId) ||
+    (isScanningProviders && !playbackStable)
+
   const showSourceLoading =
     isEpisodeSourceTransition ||
-    (!hasStartedPlaybackAttempt &&
-      (isAwaitingInitialPick ||
-        (playbackOptions.length === 0 &&
-          (sourceLoading ||
-            sourcesLoadingMore ||
-            (isScanningProviders && !playbackActive)))))
+    ((!resolvedSourceId || !hasPlayableBatch) &&
+      (isAwaitingInitialPick || discoveryInProgress))
 
   useEffect(() => {
     if (!isOpen || !showSourceLoading) return
@@ -1606,6 +1614,36 @@ export const MediaPlayerModal: React.FC<MediaPlayerModalProps> = ({
       if (matching) {
         handleSelectSource(matching.id)
         return
+      }
+
+      // Manual pick returned nothing — auto-swap through the next providers
+      // instead of leaving the user on a dead "no stream" state.
+      const fallbackProviders = orderedEnabledProviderIds.filter(
+        (id) =>
+          normalizeProviderName(id) !== "vidlink" &&
+          normalizeProviderName(id) !== providerKey
+      )
+
+      for (const nextProviderId of fallbackProviders.slice(0, 4)) {
+        const nextPayload = await requestProvider(nextProviderId)
+        const nextOptions = mapSourcesToPlaybackOptions(nextPayload.sources, {
+          providerOrder: orderedEnabledProviderIds,
+          showRealProviderNames,
+        })
+        const byProvider = nextOptions.find(
+          (option) =>
+            normalizeProviderName(option.providerId) ===
+            normalizeProviderName(nextProviderId)
+        )
+        if (byProvider) {
+          handleSelectSource(byProvider.id)
+          return
+        }
+        const picked = pickSourceAfterRefetch(nextOptions)
+        if (picked?.nextSourceId) {
+          handleSelectSource(picked.nextSourceId)
+          return
+        }
       }
 
       const diagnosticMessage = payload.diagnostics.find((item) =>
@@ -2354,7 +2392,7 @@ const quietStallAttemptRef = useRef(0)
                       </p>
                     ) : null}
                   </div>
-                  <div className="relative z-10 ml-auto flex shrink-0 items-center gap-2 pointer-events-auto">
+                  <div className="relative z-10 ml-auto flex shrink-0 items-center gap-2.5 pointer-events-auto">
                     {enabledPlayers.length > 0 ? (
                       <PlayerEngineDropdown
                         activePlayerId={effectiveActivePlayerId}
@@ -2365,21 +2403,27 @@ const quietStallAttemptRef = useRef(0)
                         className="h-9 w-auto rounded-full border border-white/10 bg-black/70 text-white hover:bg-white/10"
                       />
                     ) : null}
-                    {chromePlayerSettings}
+                    {chromePlayerSettings ? (
+                      <div className="relative z-20 shrink-0 [&_button]:h-9 [&_button]:w-9 [&_button]:rounded-full [&_button]:border [&_button]:border-white/10 [&_button]:bg-black/70">
+                        {chromePlayerSettings}
+                      </div>
+                    ) : null}
                     {watchPartyEnabled ? (
-                      <WatchPartyDropdown
-                        open={watchPartyOpen}
-                        onOpenChange={setWatchPartyOpen}
-                        mediaType={mediaType}
-                        mediaId={mediaId}
-                        mediaTitle={title}
-                        season={season}
-                        episode={episode}
-                        room={watchPartyRoom}
-                        onRoomChange={setWatchPartyRoom}
-                        onJoinHostMedia={handleJoinHostMedia}
-                        triggerClassName="h-9 rounded-full border border-white/10 bg-black/70 text-white hover:bg-white/10"
-                      />
+                      <div className="relative z-10 shrink-0">
+                        <WatchPartyDropdown
+                          open={watchPartyOpen}
+                          onOpenChange={setWatchPartyOpen}
+                          mediaType={mediaType}
+                          mediaId={mediaId}
+                          mediaTitle={title}
+                          season={season}
+                          episode={episode}
+                          room={watchPartyRoom}
+                          onRoomChange={setWatchPartyRoom}
+                          onJoinHostMedia={handleJoinHostMedia}
+                          triggerClassName="h-9 rounded-full border border-white/10 bg-black/70 text-white hover:bg-white/10"
+                        />
+                      </div>
                     ) : null}
                   </div>
                 </div>
@@ -2477,7 +2521,7 @@ const quietStallAttemptRef = useRef(0)
                         </p>
                       ) : null}
                     </div>
-                    <div className="relative z-10 ml-auto flex shrink-0 items-center gap-2 pointer-events-auto">
+                    <div className="relative z-10 ml-auto flex shrink-0 items-center gap-2.5 pointer-events-auto">
                       {enabledPlayers.length > 0 ? (
                         <PlayerEngineDropdown
                           activePlayerId={effectiveActivePlayerId}
@@ -2488,21 +2532,27 @@ const quietStallAttemptRef = useRef(0)
                           className="h-9 w-auto rounded-full border border-white/10 bg-black/70 text-white hover:bg-white/10"
                         />
                       ) : null}
-                      {chromePlayerSettings}
+                      {chromePlayerSettings ? (
+                        <div className="relative z-20 shrink-0 [&_button]:h-9 [&_button]:w-9 [&_button]:rounded-full [&_button]:border [&_button]:border-white/10 [&_button]:bg-black/70">
+                          {chromePlayerSettings}
+                        </div>
+                      ) : null}
                       {watchPartyEnabled ? (
-                        <WatchPartyDropdown
-                          open={watchPartyOpen}
-                          onOpenChange={setWatchPartyOpen}
-                          mediaType={mediaType}
-                          mediaId={mediaId}
-                          mediaTitle={title}
-                          season={season}
-                          episode={episode}
-                          room={watchPartyRoom}
-                          onRoomChange={setWatchPartyRoom}
-                          onJoinHostMedia={handleJoinHostMedia}
-                          triggerClassName="h-9 rounded-full border border-white/10 bg-black/70 text-white hover:bg-white/10"
-                        />
+                        <div className="relative z-10 shrink-0">
+                          <WatchPartyDropdown
+                            open={watchPartyOpen}
+                            onOpenChange={setWatchPartyOpen}
+                            mediaType={mediaType}
+                            mediaId={mediaId}
+                            mediaTitle={title}
+                            season={season}
+                            episode={episode}
+                            room={watchPartyRoom}
+                            onRoomChange={setWatchPartyRoom}
+                            onJoinHostMedia={handleJoinHostMedia}
+                            triggerClassName="h-9 rounded-full border border-white/10 bg-black/70 text-white hover:bg-white/10"
+                          />
+                        </div>
                       ) : null}
                     </div>
                   </div>
