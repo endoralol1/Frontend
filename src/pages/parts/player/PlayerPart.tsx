@@ -262,6 +262,7 @@ export function PlayerPart(props: PlayerPartProps) {
       <Player.SpeedChangedPopout />
       <Player.TIDBSubmissionSuccessPopout />
       <Player.UnreleasedEpisodeOverlay />
+      {status === playerStatus.PLAYING ? <Player.ChangeSourceHint /> : null}
 
       <Player.NextEpisodeButton
         controlsShowing={showTargets}

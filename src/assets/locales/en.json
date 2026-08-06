@@ -927,6 +927,11 @@
       "resume": "Resume",
       "restart": "Restart"
     },
+    "changeSourceHint": {
+      "dismiss": "Dismiss",
+      "text": "Tap to open Sources and switch",
+      "title": "Not working? Change source"
+    },
     "playbackError": {
       "badge": "Playback error",
       "errors": {
