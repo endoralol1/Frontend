@@ -21,3 +21,4 @@ export * from "./Captions";
 export * from "./SpeedChangedPopout";
 export * from "./TIDBSubmissionSuccessPopout";
 export * from "./UnreleasedEpisodeOverlay";
+export * from "./ChangeSourceHint";
