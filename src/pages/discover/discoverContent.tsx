@@ -7,7 +7,6 @@ import { Button } from "@/components/buttons/Button";
 import { WideContainer } from "@/components/layout/WideContainer";
 import { useDiscoverStore } from "@/stores/discover";
 import { useOverlayStack } from "@/stores/interface/overlayStack";
-import { useProgressStore } from "@/stores/progress";
 import { MediaItem } from "@/utils/mediaTypes";
 
 import { DiscoverNavigation } from "./components/DiscoverNavigation";
@@ -21,7 +20,6 @@ export function DiscoverContent() {
   const navigate = useNavigate();
   const { showModal } = useOverlayStack();
   const carouselRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
-  const progressItems = useProgressStore((state) => state.items);
 
   // Only load data for the active tab
   const isMoviesTab = selectedCategory === "movies";
@@ -39,13 +37,6 @@ export function DiscoverContent() {
     });
   };
 
-  const movieProgressItems = Object.entries(progressItems || {}).filter(
-    ([_, item]) => item.type === "movie",
-  );
-  const tvProgressItems = Object.entries(progressItems || {}).filter(
-    ([_, item]) => item.type === "show",
-  );
-
   // Render Movies content with lazy loading
   const renderMoviesContent = () => {
     const carousels = [];
@@ -60,21 +51,7 @@ export function DiscoverContent() {
       />,
     );
 
-    // Movie Recommendations - only show if there are movie progress items
-    if (movieProgressItems.length > 0) {
-      carousels.push(
-        <LazyMediaCarousel
-          key="movie-recommendations"
-          content={{ type: "recommendations" }}
-          isTVShow={false}
-          carouselRefs={carouselRefs}
-          onShowDetails={handleShowDetails}
-          moreContent
-          showRecommendations
-          priority={carousels.length < 2} // First 2 carousels load immediately
-        />,
-      );
-    }
+    // "Because you watched" + provider rows live on the homepage above Discover.
 
     // Top 10 Movies
     carousels.push(
@@ -128,19 +105,6 @@ export function DiscoverContent() {
       />,
     );
 
-    // Provider Movies
-    carousels.push(
-      <LazyMediaCarousel
-        key="movie-providers"
-        content={{ type: "provider" }}
-        isTVShow={false}
-        carouselRefs={carouselRefs}
-        onShowDetails={handleShowDetails}
-        showProviders
-        moreContent
-      />,
-    );
-
     // Genre Movies
     carousels.push(
       <LazyMediaCarousel
@@ -171,21 +135,7 @@ export function DiscoverContent() {
       />,
     );
 
-    // TV Show Recommendations - only show if there are TV show progress items
-    if (tvProgressItems.length > 0) {
-      carousels.push(
-        <LazyMediaCarousel
-          key="tv-recommendations"
-          content={{ type: "recommendations" }}
-          isTVShow
-          carouselRefs={carouselRefs}
-          onShowDetails={handleShowDetails}
-          moreContent
-          showRecommendations
-          priority={carousels.length < 2} // First 2 carousels load immediately
-        />,
-      );
-    }
+    // "Because you watched" + provider rows live on the homepage above Discover.
 
     // On Air
     carousels.push(
@@ -223,19 +173,6 @@ export function DiscoverContent() {
         onShowDetails={handleShowDetails}
         moreContent
         priority={carousels.length < 2}
-      />,
-    );
-
-    // Provider TV Shows
-    carousels.push(
-      <LazyMediaCarousel
-        key="tv-providers"
-        content={{ type: "provider" }}
-        isTVShow
-        carouselRefs={carouselRefs}
-        onShowDetails={handleShowDetails}
-        showProviders
-        moreContent
       />,
     );
 

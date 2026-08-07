@@ -14,6 +14,7 @@ import { HomeLayout } from "@/pages/layouts/HomeLayout";
 import { BookmarksCarousel } from "@/pages/parts/home/BookmarksCarousel";
 import { BookmarksPart } from "@/pages/parts/home/BookmarksPart";
 import { HeroPart } from "@/pages/parts/home/HeroPart";
+import { HomePersonalizedRows } from "@/pages/parts/home/HomePersonalizedRows";
 import { WatchingCarousel } from "@/pages/parts/home/WatchingCarousel";
 import { WatchingPart } from "@/pages/parts/home/WatchingPart";
 import { SearchListPart } from "@/pages/parts/search/SearchListPart";
@@ -196,6 +197,16 @@ export function HomePage() {
       {/* User Content */}
       {!search && renderHomeSections()}
 
+      {/* Because you watched + Only on [network] */}
+      {!search && !enableLowPerformanceMode ? (
+        <WideContainer ultraWide classNames="!px-3 md:!px-9">
+          <HomePersonalizedRows
+            carouselRefs={carouselRefs}
+            onShowDetails={handleShowDetails}
+          />
+        </WideContainer>
+      ) : null}
+
       {/* Under user content */}
       <WideContainer ultraWide classNames="!px-3 md:!px-9">
         {/* Empty text */}
@@ -211,9 +222,9 @@ export function HomePage() {
           (enableFeatured ? (
             <div className="pb-4" />
           ) : showBookmarks || showWatching ? (
-            <div className="pb-10" />
+            <div className="pb-6" />
           ) : (
-            <div className="pb-20" />
+            <div className="pb-10" />
           ))}
         {/* there... perfect. */}
 

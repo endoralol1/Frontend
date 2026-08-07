@@ -44,7 +44,9 @@ export function ChangeSourceHint() {
     }
 
     // First spin-up can be slower than mid-stream stalls.
-    const waitMs = hasPlayedOnce ? STUCK_BUFFERING_MS : STUCK_BUFFERING_MS + 4_000;
+    const waitMs = hasPlayedOnce
+      ? STUCK_BUFFERING_MS
+      : STUCK_BUFFERING_MS + 4_000;
     const remaining = Math.max(
       0,
       waitMs - (Date.now() - loadingSinceRef.current),
@@ -97,7 +99,10 @@ export function ChangeSourceHint() {
               {t("player.changeSourceHint.text")}
             </span>
           </span>
-          <Icon icon={Icons.CHEVRON_RIGHT} className="flex-shrink-0 text-sm text-white/60" />
+          <Icon
+            icon={Icons.CHEVRON_RIGHT}
+            className="flex-shrink-0 text-sm text-white/60"
+          />
         </button>
         <button
           type="button"

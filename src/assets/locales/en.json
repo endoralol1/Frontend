@@ -378,6 +378,14 @@
         }
       }
     },
+    "becauseYouWatched": {
+      "prefix": "Because you watched",
+      "movie": "Movie",
+      "show": "TV Show"
+    },
+    "onlyOnNetwork": {
+      "prefix": "Only on"
+    },
     "mediaList": {
       "stopEditing": "Stop editing"
     },
