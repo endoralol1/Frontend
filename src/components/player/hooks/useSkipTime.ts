@@ -10,10 +10,18 @@ import { usePreferencesStore } from "@/stores/preferences";
 import { getTurnstileToken } from "@/utils/turnstile";
 
 // Thanks Nemo for this API
-const THE_INTRO_DB_BASE_URL = "https://api.theintrodb.org/v2";
+const THE_INTRO_DB_BASE_URL = "https://api.theintrodb.org/v3";
 const FED_SKIPS_BASE_URL = "";
 const INTRODB_BASE_URL = "https://api.introdb.app/intro";
 const MAX_RETRIES = 3;
+
+/** Public IntroDB payloads often omit submission_count; treat missing as accepted. */
+function hasAcceptedSubmissions(segment: {
+  submission_count?: number | null;
+}): boolean {
+  if (segment.submission_count == null) return true;
+  return Number(segment.submission_count) > 0;
+}
 
 // Track the source of the current skip time (for analytics filtering)
 let currentSkipTimeSource: "fed-skips" | "introdb" | "theintrodb" | null = null;
@@ -84,61 +92,61 @@ export function useSkipTime() {
 
         const fetchedSegments: SegmentData[] = [];
 
-        // Process intro segments (v2: array of segments)
+        // Process intro segments (array of segments)
         if (Array.isArray(data?.intro) && data.intro.length > 0) {
           for (const segment of data.intro) {
-            if (segment.submission_count > 0) {
+            if (hasAcceptedSubmissions(segment)) {
               fetchedSegments.push({
                 type: "intro",
                 start_ms: segment.start_ms,
                 end_ms: segment.end_ms,
-                confidence: segment.confidence,
-                submission_count: segment.submission_count,
+                confidence: segment.confidence ?? null,
+                submission_count: segment.submission_count ?? 1,
               });
             }
           }
         }
 
-        // Process recap segments (v2: array of segments)
+        // Process recap segments (array of segments)
         if (Array.isArray(data?.recap) && data.recap.length > 0) {
           for (const segment of data.recap) {
-            if (segment.submission_count > 0) {
+            if (hasAcceptedSubmissions(segment)) {
               fetchedSegments.push({
                 type: "recap",
                 start_ms: segment.start_ms,
                 end_ms: segment.end_ms,
-                confidence: segment.confidence,
-                submission_count: segment.submission_count,
+                confidence: segment.confidence ?? null,
+                submission_count: segment.submission_count ?? 1,
               });
             }
           }
         }
 
-        // Process credits segments (v2: array of segments)
+        // Process credits segments (array of segments)
         if (Array.isArray(data?.credits) && data.credits.length > 0) {
           for (const segment of data.credits) {
-            if (segment.submission_count > 0) {
+            if (hasAcceptedSubmissions(segment)) {
               fetchedSegments.push({
                 type: "credits",
                 start_ms: segment.start_ms,
                 end_ms: segment.end_ms,
-                confidence: segment.confidence,
-                submission_count: segment.submission_count,
+                confidence: segment.confidence ?? null,
+                submission_count: segment.submission_count ?? 1,
               });
             }
           }
         }
 
-        // Process preview segments (v2: array of segments)
+        // Process preview segments (array of segments)
         if (Array.isArray(data?.preview) && data.preview.length > 0) {
           for (const segment of data.preview) {
-            if (segment.submission_count > 0) {
+            if (hasAcceptedSubmissions(segment)) {
               fetchedSegments.push({
                 type: "preview",
                 start_ms: segment.start_ms,
                 end_ms: segment.end_ms,
-                confidence: segment.confidence,
-                submission_count: segment.submission_count,
+                confidence: segment.confidence ?? null,
+                submission_count: segment.submission_count ?? 1,
               });
             }
           }
