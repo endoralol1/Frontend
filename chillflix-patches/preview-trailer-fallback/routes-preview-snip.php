@@ -11,8 +11,10 @@ if (!function_exists('cf_resolve_youtube_preview_stream')) {
         if ($ytDlp !== '') {
             $watch = 'https://www.youtube.com/watch?v=' . $videoId;
             $wait = $quick ? 6 : 8;
+            // android client unlocks many studio trailers that default web client marks unavailable
             $cmd = 'timeout ' . $wait . ' ' . escapeshellarg($ytDlp)
                 . ' -f ' . escapeshellarg('best[height<=480][ext=mp4]/best[height<=480]/best[ext=mp4]/best')
+                . ' --extractor-args ' . escapeshellarg('youtube:player_client=android')
                 . ' -g --no-warnings --no-playlist '
                 . escapeshellarg($watch) . ' 2>/dev/null';
             $lines = [];
@@ -48,7 +50,17 @@ if (!function_exists('cf_resolve_youtube_preview_stream')) {
                 CURLOPT_HTTPHEADER => ['Accept: application/json', 'User-Agent: VuflixPreview/1.1'],
             ]);
             $body = curl_exec($ch);
+            $http = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if ($http < 200 || $http >= 300 || !is_string($body) || $body === '') {
 ====PREVIEW====
+            if (!empty($cached['stream']) && $age < 1500) {
+                json_response($cached);
+            }
+            if (empty($cached['stream']) && $age < 90) {
+                json_response($cached);
+            }
+        }
     }
 
     $item = $tmdb->details($type, $id);
@@ -56,7 +68,7 @@ if (!function_exists('cf_resolve_youtube_preview_stream')) {
         json_response(['error' => 'not_found'], 404);
     }
 
-    $trailerKeys = array_slice($tmdb->trailerKeys($item), 0, 12);
+    $trailerKeys = array_slice($tmdb->trailerKeys($item), 0, 6);
     $trailer = $trailerKeys[0] ?? null;
     $stream = null;
     foreach ($trailerKeys as $i => $tryKey) {
@@ -73,5 +85,3 @@ if (!function_exists('cf_resolve_youtube_preview_stream')) {
         $logoLangs = class_exists('Locale') ? Locale::logoImageLanguages() : 'en,null';
         $imgs = $tmdb->get($type . '/' . $id . '/images', [
             'include_image_language' => $logoLangs,
-        ]);
-        $logoPath = $tmdb->pickPreferredLogo(

@@ -1,8 +1,10 @@
 # Preview trailer fallback
 
-Some card hovers had no trailer because TMDB’s primary YouTube key was deleted/blocked.
-- `Tmdb::trailerKeys()` returns ordered YouTube keys (official trailers → trailers → official alts → alts)
-- `/api/preview` tries up to 12 keys via yt-dlp until one resolves
-- Piped fallback disabled (returned unusable proxy URLs for dead videos)
+Card hover previews pull YouTube streams via yt-dlp.
 
-Example: Minions & Monsters (`1315772`) Final Trailer `V-O-uBaHk3c` unavailable → falls back to a working Featurette.
+Fixes:
+- Use `youtube:player_client=android` so studio trailers YouTube marks “unavailable” on the default client still resolve (e.g. Minions Final Trailer).
+- Prefer Trailer → Teaser → Clip only (skip Featurette/interview talk clips).
+- Try up to 6 TMDB YouTube keys until one resolves.
+
+Piped fallback stays disabled (false-positive proxy URLs).

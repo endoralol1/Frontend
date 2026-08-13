@@ -233,10 +233,13 @@ final class Tmdb
     public function trailerKeys(?array $details): array
     {
         $videos = $details['videos']['results'] ?? [];
+        // Hover previews want actual trailers — not interview/featurette talk clips.
         $trailersOfficial = [];
         $trailers = [];
-        $altsOfficial = [];
-        $alts = [];
+        $teasersOfficial = [];
+        $teasers = [];
+        $clipsOfficial = [];
+        $clips = [];
         $seen = [];
 
         foreach ($videos as $v) {
@@ -258,17 +261,34 @@ final class Tmdb
                 }
                 continue;
             }
-            if (in_array($type, ['Teaser', 'Clip', 'Featurette'], true)) {
+            if ($type === 'Teaser') {
                 $seen[$key] = true;
                 if ($official) {
-                    $altsOfficial[] = $key;
+                    $teasersOfficial[] = $key;
                 } else {
-                    $alts[] = $key;
+                    $teasers[] = $key;
+                }
+                continue;
+            }
+            if ($type === 'Clip') {
+                $seen[$key] = true;
+                if ($official) {
+                    $clipsOfficial[] = $key;
+                } else {
+                    $clips[] = $key;
                 }
             }
+            // Featurette / Behind the Scenes intentionally omitted for card previews
         }
 
-        return array_values(array_merge($trailersOfficial, $trailers, $altsOfficial, $alts));
+        return array_values(array_merge(
+            $trailersOfficial,
+            $trailers,
+            $teasersOfficial,
+            $teasers,
+            $clipsOfficial,
+            $clips
+        ));
     }
 
     public function trailerKey(?array $details): ?string
