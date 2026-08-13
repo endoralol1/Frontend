@@ -1,0 +1,926 @@
+/* Vuflix watch page — cinematic backdrop + clean chrome
+   Full-bleed movie art behind the page. Less gray boxes.
+   Player fills the content column; height capped on ultrawide.
+   Moon/stars stay behind content. */
+
+:root {
+  --cf-watch-radius: 1rem;
+  --cf-watch-max-h: min(78vh, 52rem);
+  --cf-watch-glass: rgba(8, 10, 15, 0.42);
+  --cf-watch-glass-strong: rgba(8, 10, 15, 0.62);
+  --cf-watch-line: rgba(255, 255, 255, 0.045);
+}
+
+/* ——— Full-bleed movie backdrop (the picture through the page) ——— */
+body.page-watch .cf-watch-cinema {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+body.page-watch .cf-watch-cinema-img {
+  position: absolute;
+  inset: -2%;
+  background-image: var(--cf-watch-backdrop);
+  background-position: center 22%;
+  background-size: cover;
+  background-repeat: no-repeat;
+  transform: scale(1.04);
+  filter: saturate(1.08) contrast(1.05);
+}
+
+body.page-watch .cf-watch-cinema-wash {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(8, 10, 15, 0.55) 0%,
+      rgba(8, 10, 15, 0.42) 18%,
+      rgba(8, 10, 15, 0.72) 58%,
+      rgba(8, 10, 15, 0.94) 100%
+    ),
+    radial-gradient(
+      120% 70% at 50% 0%,
+      transparent 20%,
+      rgba(8, 10, 15, 0.55) 100%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(8, 10, 15, 0.5) 0%,
+      transparent 18%,
+      transparent 82%,
+      rgba(8, 10, 15, 0.5) 100%
+    );
+}
+
+/* Let the art read; calm generic FX so they don't fight the poster */
+body.page-watch:has(.cf-watch-cinema) .cf-bgfx-aurora,
+body.page-watch:has(.cf-watch-cinema) .cf-bgfx-wave,
+body.page-watch:has(.cf-watch-cinema) .cf-bgfx-glow {
+  opacity: 0.1 !important;
+}
+body.page-watch:has(.cf-watch-cinema) .cf-bgfx-moon {
+  opacity: 0.14 !important;
+}
+body.page-watch:has(.cf-watch-cinema) .cf-bgfx-stars {
+  opacity: 0.22 !important;
+}
+
+body.page-watch .cf-watch-content,
+body.page-watch .watch-wrap {
+  position: relative;
+  z-index: 2;
+}
+
+/* Kill style.css padding-bottom:56% height bomb; keep full column width */
+body.page-watch #movie-player {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-inline: 0 !important;
+  border-radius: var(--cf-watch-radius);
+  overflow: hidden;
+  background: #05060a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 18px 48px rgba(0, 0, 0, 0.35);
+}
+
+body.page-watch #movie-player .movie-player-wrap {
+  padding-bottom: 0 !important;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  max-height: none;
+  border-radius: var(--cf-watch-radius) var(--cf-watch-radius) 0 0;
+  position: relative;
+  /* idle shade is enough — drop extra gray inset haze */
+  box-shadow: none !important;
+}
+
+@media (min-width: 992px) {
+  body.page-watch main.watch-p {
+    padding-top: 3.85rem;
+  }
+
+  body.page-watch .watch-wrap.container {
+    max-width: min(var(--cf-page-max, 1800px), 100%);
+  }
+
+  body.page-watch #movie-player .movie-player-wrap,
+  body.page-watch #movie-player.np-active .movie-player-wrap,
+  body.page-watch #movie-player.playing .movie-player-wrap {
+    max-height: var(--cf-watch-max-h);
+  }
+}
+
+@media (min-width: 1600px) {
+  :root {
+    --cf-watch-max-h: min(80vh, 56rem);
+  }
+}
+
+@media (min-width: 2000px) {
+  :root {
+    --cf-watch-max-h: min(82vh, 60rem);
+  }
+}
+
+/* Fullscreen uncapped */
+body.page-player .np-shell,
+#movie-player .np-shell.is-fullscreen,
+#movie-player .np-shell:fullscreen,
+#movie-player .np-shell:-webkit-full-screen {
+  max-width: none !important;
+  max-height: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0 !important;
+  border: 0 !important;
+}
+
+body.page-watch #movie-player .np-shell.np-embed {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+}
+
+/* ——— Managers: glass strip, not a gray slab ——— */
+body.page-watch #movie-managers {
+  background: linear-gradient(
+    180deg,
+    rgba(10, 12, 18, 0.55) 0%,
+    rgba(8, 10, 15, 0.78) 100%
+  ) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-radius: 0 0 var(--cf-watch-radius) var(--cf-watch-radius);
+  padding: 0.55rem 0.7rem;
+  box-shadow: none !important;
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+}
+
+body.page-watch #movie-managers .movie-managers-wrap .movie-manager,
+body.page-watch #movie-managers .movie-manager {
+  font-family: Outfit, Poppins, system-ui, sans-serif;
+  font-size: 0.84rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: 0.7rem !important;
+  padding: 0.48rem 0.85rem !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+  box-shadow: none !important;
+}
+
+body.page-watch #movie-managers .movie-manager:hover {
+  background: rgba(255, 255, 255, 0.09) !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #fff !important;
+}
+
+body.page-watch #movie-managers .watch-now-btn,
+body.page-watch #btn-watch-now.movie-manager {
+  background: linear-gradient(
+    180deg,
+    var(--cf-orange, #db6937) 0%,
+    var(--cf-orange-deep, #c43c2e) 100%
+  ) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  font-weight: 750;
+  box-shadow: 0 6px 18px rgba(var(--cf-orange-deep-rgb, 196, 60, 46), 0.35) !important;
+}
+
+body.page-watch #movie-managers .movie-manager.trailer {
+  background: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.12) !important;
+  border-color: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.35) !important;
+  color: var(--cf-orange-soft, #ffd2b8) !important;
+}
+
+body.page-watch #btn-autoplay.is-on,
+body.page-watch #btn-autoplay[aria-pressed="true"] {
+  background: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.18) !important;
+  border-color: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.45) !important;
+  color: #fff !important;
+}
+
+body.page-watch #movie-managers .movie-manager.share-btn,
+body.page-watch #btn-share {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ——— Info card: glass over cinema, not gray panel ——— */
+@media (min-width: 992px) {
+  body.page-watch #w-info {
+    margin-top: 1.15rem;
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0;
+    border-radius: 1.05rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--cf-watch-glass-strong) !important;
+    backdrop-filter: blur(16px) saturate(1.15);
+    -webkit-backdrop-filter: blur(16px) saturate(1.15);
+    overflow: hidden;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+  }
+
+  body.page-watch #w-info .item-poster > img {
+    border-radius: 1.05rem 0 0 1.05rem;
+    max-width: 200px;
+    width: 200px;
+  }
+
+  body.page-watch #w-info .info {
+    margin-left: 1.15rem;
+    padding: 1.05rem 1.1rem 1.05rem 0;
+  }
+
+  body.page-watch #w-info .info .name {
+    font-family: Outfit, Poppins, system-ui, sans-serif;
+    font-size: clamp(1.35rem, 1.55vw, 1.7rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+    margin: 0.28rem 8.5rem 0.65rem 0;
+    color: #f5f6f8;
+  }
+
+  body.page-watch #w-info .w-desc {
+    color: rgba(233, 236, 239, 0.78);
+    line-height: 1.55;
+  }
+
+  body.page-watch #w-info .info .detail > div > div:first-child {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    width: 7rem;
+  }
+
+  body.page-watch #w-info .rating-box {
+    background: rgba(8, 10, 15, 0.72) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-left: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 0 1.05rem 0 0.85rem;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: none !important;
+  }
+
+  body.page-watch .aside-wrapper.swap {
+    gap: 0.95rem;
+    align-items: stretch;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+  /* Critical: main was width:100% + sidebar = off-screen “You may also like” at 100% zoom */
+  body.page-watch .aside-wrapper.swap > .main {
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    flex: 1 1 0 !important;
+    margin-right: 0 !important;
+  }
+  body.page-watch .aside-wrapper.swap > .sidebar {
+    flex: 0 0 auto !important;
+    min-width: 17.5rem !important;
+    max-width: 20rem !important;
+    width: 19rem !important;
+  }
+  body.page-watch .aside-wrapper.swap > .sidebar.watch-episode-sidebar {
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+    min-height: 0;
+  }
+  body.page-watch .aside-wrapper.swap > .sidebar.watch-episode-sidebar > #movie-episode.tv {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    max-height: none;
+  }
+
+  body.page-watch .watch-similar {
+    border-radius: 1.05rem;
+    border: 1px solid var(--cf-watch-line);
+    background: var(--cf-watch-glass) !important;
+    backdrop-filter: blur(14px) saturate(1.15);
+    -webkit-backdrop-filter: blur(14px) saturate(1.15);
+    padding: 0.8rem 0.85rem 0.9rem;
+    box-shadow: none;
+  }
+
+  body.page-watch .watch-similar .title,
+  body.page-watch .watch-cast .title {
+    font-family: Outfit, Poppins, system-ui, sans-serif;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+  }
+
+  body.page-watch .watch-cast,
+  body.page-watch .section.watch-cast,
+  body.page-watch .horizontal-episode-card-container,
+  body.page-watch .cf-party-chat:not([hidden]) {
+    width: 100%;
+    max-width: 100%;
+    margin-inline: 0;
+  }
+
+  body.page-watch .section.watch-cast {
+    margin-top: 1.15rem !important;
+    padding: 0.85rem 0 0.2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.035);
+    background: transparent !important;
+  }
+
+  body.page-watch .horizontal-episode-card-container,
+  body.page-watch #w-info {
+    margin-top: 1.15rem;
+  }
+}
+
+/* Mobile glass too */
+@media (max-width: 991.98px) {
+  body.page-watch #movie-player {
+    border-radius: 0.85rem;
+  }
+
+  body.page-watch #movie-player .movie-player-wrap {
+    border-radius: 0.85rem 0.85rem 0 0;
+  }
+
+  body.page-watch #movie-managers {
+    border-radius: 0 0 0.85rem 0.85rem;
+  }
+
+  body.page-watch #w-info {
+    background: var(--cf-watch-glass-strong) !important;
+    border: 1px solid var(--cf-watch-line);
+    border-radius: 1rem;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  body.page-watch .watch-similar {
+    background: var(--cf-watch-glass) !important;
+    border: 1px solid var(--cf-watch-line);
+    border-radius: 1rem;
+    padding: 0.75rem;
+  }
+
+  body.page-watch .cf-watch-cinema-img {
+    background-position: center 18%;
+  }
+}
+
+/* ——— In-player chrome (quiet; detailed rules in player.css) ——— */
+#movie-player .np-shell,
+.np-shell.np-embed {
+  font-family: Outfit, Poppins, ui-sans-serif, system-ui, sans-serif;
+  --np-accent: var(--cf-orange, #db6937);
+  --np-accent-2: var(--cf-orange-deep, #c43c2e);
+}
+
+
+
+/* ===== Rating box: clean modern score card ===== */
+body.page-watch #w-info .rating-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.85rem 1rem 0.8rem !important;
+  min-width: 7.25rem;
+  text-align: center;
+  z-index: 3;
+}
+
+body.page-watch #w-info .rating-box-score {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.12rem;
+  line-height: 1;
+}
+
+body.page-watch #w-info .rating-box-value {
+  font-family: Outfit, Poppins, system-ui, sans-serif;
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
+body.page-watch #w-info .rating-box-value--na {
+  color: rgba(255, 255, 255, 0.45);
+  font-weight: 600;
+}
+
+body.page-watch #w-info .rating-box-scale {
+  font-family: Outfit, Poppins, system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.38);
+  letter-spacing: 0.02em;
+}
+
+body.page-watch #w-info .rating-box .stars {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.12rem;
+  margin: 0;
+}
+
+body.page-watch #w-info .rating-box .stars svg {
+  width: 0.92rem !important;
+  height: 0.92rem !important;
+  margin: 0 !important;
+  color: rgba(255, 255, 255, 0.22);
+  transition: color 0.15s ease;
+}
+
+body.page-watch #w-info .rating-box .stars svg.active {
+  color: var(--cf-orange, #db6937) !important;
+}
+
+body.page-watch #w-info .rating-box .stars svg.empty {
+  color: rgba(255, 255, 255, 0.18) !important;
+}
+
+body.page-watch #w-info .rating-box-meta,
+body.page-watch #w-info .rating-box .score {
+  margin: 0 !important;
+  font-family: Outfit, Poppins, system-ui, sans-serif;
+  font-size: 0.62rem !important;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.42);
+  line-height: 1.2;
+}
+
+body.page-watch #w-info .rating-box-meta .vcount,
+body.page-watch #w-info .rating-box .vcount {
+  color: rgba(255, 255, 255, 0.62);
+  font-weight: 650;
+  font-style: normal;
+}
+
+/* Kill leftover shiny top edge between episode + info */
+body.page-watch .aside-wrapper.swap.mt-4 {
+  margin-top: 1.15rem !important;
+  padding-top: 0 !important;
+  border-top: 0 !important;
+  box-shadow: none !important;
+}
+body.page-watch .aside-wrapper.swap.mt-4::before,
+body.page-watch .aside-wrapper.swap.mt-4::after,
+body.page-watch #w-info::before,
+body.page-watch #w-info::after {
+  display: none !important;
+  content: none !important;
+  background: none !important;
+  box-shadow: none !important;
+}
+
+body.page-watch .horizontal-episode-card-container {
+  border: 0 !important;
+  box-shadow: none !important;
+}
+body.page-watch .horizontal-episode-card {
+  border: 1px solid rgba(255, 255, 255, 0.045) !important;
+  background: rgba(8, 10, 15, 0.55) !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 991.98px) {
+  body.page-watch #w-info .rating-box {
+    border-radius: 0.85rem !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    min-width: 0;
+    width: auto;
+    margin: 0.85rem auto 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.45rem 0.75rem;
+    padding: 0.7rem 0.95rem !important;
+  }
+  body.page-watch #w-info .rating-box-score {
+    order: 0;
+  }
+  body.page-watch #w-info .rating-box .stars {
+    order: 1;
+  }
+  body.page-watch #w-info .rating-box-meta {
+    order: 2;
+    width: 100%;
+    text-align: center;
+  }
+}
+
+
+/* ===== Season / episode sidebar — visible list + clean chrome ===== */
+body.page-watch #movie-episode.tv {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 0% !important;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
+  width: 100% !important;
+  background: rgba(8, 10, 15, 0.62) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 1.05rem !important;
+  box-shadow: none !important;
+  overflow: visible; /* allow season menu to open (was clipped) */
+}
+
+body.page-watch #movie-episode .episode-top {
+  margin: 0 !important;
+  padding: 0.85rem 0.9rem 0.65rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+body.page-watch #movie-episode .episode-top-label {
+  font-family: Outfit, Poppins, system-ui, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.38);
+  margin-bottom: 0.4rem;
+  text-align: left;
+}
+
+body.page-watch #movie-episode .episode-top .dropdown {
+  width: 100%;
+}
+
+body.page-watch #movie-episode .episode-top .dropdown .dropdown-toggle {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100% !important;
+  gap: 0.5rem;
+  padding: 0.55rem 0.75rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0.65rem !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #f2f3f5 !important;
+  font-family: Outfit, Poppins, system-ui, sans-serif !important;
+  font-size: 0.88rem !important;
+  font-weight: 650 !important;
+  text-align: left !important;
+  box-shadow: none !important;
+}
+
+body.page-watch #movie-episode .episode-top .dropdown .dropdown-toggle:hover,
+body.page-watch #movie-episode .episode-top .dropdown .dropdown-toggle:focus {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #fff !important;
+}
+
+body.page-watch #movie-episode .episode-top .dropdown .dropdown-toggle .uil-angle-down {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 1.05rem;
+}
+
+body.page-watch #movie-episode .episode-top .dropdown .dropdown-menu {
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  max-height: 14rem !important;
+  margin-top: 0.35rem !important;
+  padding: 0.3rem !important;
+  border-radius: 0.7rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: #12141a !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4) !important;
+  overflow: auto;
+  z-index: 30;
+}
+
+body.page-watch #movie-episode .episode-top .dropdown-item.season-item {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem !important;
+  border-radius: 0.5rem !important;
+  color: rgba(255, 255, 255, 0.82) !important;
+  font-size: 0.84rem !important;
+  font-weight: 550 !important;
+  text-align: left !important;
+  background: transparent !important;
+}
+
+body.page-watch #movie-episode .episode-top .dropdown-item.season-item small {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.68rem;
+}
+
+body.page-watch #movie-episode .episode-top .dropdown-item.season-item:hover,
+body.page-watch #movie-episode .episode-top .dropdown-item.season-item.active {
+  background: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.16) !important;
+  color: #fff !important;
+}
+
+/* Episodes fill remaining sidebar height — scroll only after the panel is full */
+body.page-watch #movie-episode .episode-range {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+body.page-watch #movie-episode .episode-range .episodes {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  max-height: none !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding: 0.55rem 0.65rem 0.7rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.28rem !important;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+body.page-watch #movie-episode .episode-range .episodes > div,
+body.page-watch #movie-episode .episode-row {
+  float: none !important;
+  width: 100% !important;
+  padding: 0 !important;
+}
+
+body.page-watch #movie-episode .episode-empty {
+  padding: 1.25rem 0.75rem;
+  text-align: left;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.8rem;
+}
+
+body.page-watch #movie-episode .episode-range .episodes > div > a,
+body.page-watch #movie-episode .episode-row > a {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.65rem !important;
+  width: 100% !important;
+  padding: 0.55rem 0.6rem !important;
+  border-radius: 0.65rem !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid transparent !important;
+  color: rgba(255, 255, 255, 0.82) !important;
+  font-size: 0.82rem !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-align: left !important;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+body.page-watch #movie-episode .ep-num {
+  flex: 0 0 1.7rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.45rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+  font-family: Outfit, Poppins, system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+body.page-watch #movie-episode .ep-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  text-align: left;
+}
+
+body.page-watch #movie-episode .ep-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: inherit;
+  margin: 0 !important;
+}
+
+body.page-watch #movie-episode .ep-meta {
+  font-size: 0.64rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+body.page-watch #movie-episode .ep-now {
+  flex-shrink: 0;
+  color: var(--cf-orange, #db6937);
+  font-size: 0.65rem;
+}
+
+body.page-watch #movie-episode .episode-range .episodes > div > a:hover,
+body.page-watch #movie-episode .episode-row > a:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  color: #fff !important;
+}
+
+body.page-watch #movie-episode .episode-range .episodes > div > a.active,
+body.page-watch #movie-episode .episode-row > a.active,
+body.page-watch #movie-episode .episode-row.is-active > a {
+  background: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.16) !important;
+  border-color: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.35) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+body.page-watch #movie-episode .episode-row.is-active .ep-num,
+body.page-watch #movie-episode .episode-range .episodes > div > a.active .ep-num {
+  background: var(--cf-orange, #db6937);
+  color: #fff;
+}
+
+body.page-watch #movie-episode .episode-bottom {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.65rem;
+  padding: 0.7rem 0.85rem 0.85rem !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+body.page-watch #movie-episode .episode-bottom-label {
+  font-family: Outfit, Poppins, system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 550;
+  color: rgba(255, 255, 255, 0.45);
+  text-align: left;
+  white-space: nowrap;
+}
+
+body.page-watch #movie-episode .episode-bottom form {
+  display: flex !important;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+body.page-watch #movie-episode .episode-bottom form .form-control,
+body.page-watch #movie-episode .episode-input {
+  width: 3.4rem !important;
+  margin: 0 !important;
+  padding: 0.4rem 0.35rem !important;
+  border-radius: 0.5rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(0, 0, 0, 0.28) !important;
+  color: #fff !important;
+  text-align: center !important;
+  font-weight: 650;
+}
+
+body.page-watch #movie-episode .episode-bottom form .btn-primary {
+  width: 2.15rem;
+  height: 2.15rem;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem !important;
+  border: 0 !important;
+  background: var(--cf-orange, #db6937) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 1199.98px) {
+  body.page-watch .aside-wrapper.swap > .sidebar.watch-episode-sidebar {
+    max-width: none;
+    width: 100%;
+    min-width: 0;
+  }
+  body.page-watch #movie-episode.tv {
+    max-height: none;
+    min-height: 0;
+  }
+  /* Keep flex-fill behavior when sidebar stacks; do not re-cap and create dead space */
+  body.page-watch #movie-episode .episode-range .episodes {
+    max-height: none !important;
+  }
+  body.page-watch .aside-wrapper.swap > .sidebar.watch-episode-sidebar {
+    min-height: min(70vh, 36rem);
+  }
+  body.page-watch .aside-wrapper.swap > .sidebar.watch-episode-sidebar > #movie-episode.tv {
+    min-height: min(70vh, 36rem);
+  }
+}
+
+
+/* Season dropdown: one arrow, open above episode list */
+body.page-watch #movie-episode .dropdown-toggle::after {
+  display: none !important;
+  content: none !important;
+}
+body.page-watch #movie-episode .episode-top {
+  position: relative;
+  z-index: 45;
+  overflow: visible !important;
+}
+body.page-watch #movie-episode .episode-top .dropdown {
+  position: relative;
+}
+body.page-watch #movie-episode .episode-top .dropdown-menu {
+  position: absolute !important;
+  top: calc(100% + 0.3rem) !important;
+  bottom: auto !important;
+  display: none;
+  z-index: 60 !important;
+}
+body.page-watch #movie-episode .episode-top .dropdown.show > .dropdown-menu,
+body.page-watch #movie-episode .episode-top .dropdown-menu.show {
+  display: block !important;
+}
+body.page-watch #movie-episode .episode-range {
+  border-radius: 0 0 0 0;
+  overflow: hidden !important; /* clip episode scroll only */
+}
+
+/* Similar sidebar must stay on-screen at normal zoom */
+body.page-watch .aside-wrapper.swap.mt-4 {
+  display: flex !important;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 0.95rem !important;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+body.page-watch .aside-wrapper.swap.mt-4 > .sidebar {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+body.page-watch .watch-similar {
+  display: block !important;
+  width: 100%;
+}
+
+@media (max-width: 1199.98px) {
+  body.page-watch .aside-wrapper.swap {
+    flex-direction: column;
+    gap: 0.85rem !important;
+  }
+  body.page-watch .aside-wrapper.swap > .sidebar,
+  body.page-watch .aside-wrapper.swap > .sidebar.watch-episode-sidebar {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+}
+
+
+/* You may also like: slightly wider column for titles */
+body.page-watch .aside-wrapper.swap.mt-4 > .sidebar {
+  min-width: 18rem !important;
+  max-width: 21rem !important;
+  width: 20rem !important;
+}
+body.page-watch .watch-similar .movie-sidebar.items .movie-item .info .name {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
