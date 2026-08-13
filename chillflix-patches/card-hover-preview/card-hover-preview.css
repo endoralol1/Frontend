@@ -1,0 +1,195 @@
+/* Card hover preview — expand RIGHT only, clean HTML5 video (no YouTube chrome) */
+@media (min-width: 992px) {
+  .section-rail .media-rail-items,
+  .section-top10 .top10-items {
+    align-items: flex-start !important;
+  }
+
+  .section-rail .media-rail-items .movie-item.media-card,
+  .section-top10 .top10-items .movie-item.media-card {
+    transition:
+      flex-basis 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+      width 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+      max-width 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+    align-self: flex-start !important;
+  }
+
+  .section-rail .media-rail-items .movie-item.media-card.is-hover-preview,
+  .section-top10 .top10-items .movie-item.media-card.is-hover-preview {
+    flex: 0 0 23rem !important;
+    width: 23rem !important;
+    max-width: 23rem !important;
+    z-index: 12 !important;
+  }
+
+  .movie-item.media-card.is-hover-preview .inner {
+    height: var(--cf-preview-h, auto) !important;
+    border-color: rgba(var(--cf-orange-rgb), 0.9) !important;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42) !important;
+    transform: none !important;
+  }
+
+  .movie-item.media-card.is-hover-preview .inner .item-poster,
+  .section-top10 .top10-items .movie-item.media-card.is-hover-preview .inner .item-poster {
+    aspect-ratio: auto !important;
+    height: var(--cf-preview-h, 15rem) !important;
+    max-height: var(--cf-preview-h, 15rem) !important;
+    width: 100% !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+
+  /* Media layer fills the poster box exactly — never shift/crop with transforms */
+  .movie-item.media-card.is-hover-preview .poster-media {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    background: #0b0d12 !important;
+  }
+
+  .movie-item.media-card .poster-media > img {
+    transition: opacity 0.4s ease;
+  }
+
+  .movie-item.media-card.is-hover-preview.has-preview-media .poster-media > img {
+    opacity: 0 !important;
+    transform: none !important;
+  }
+
+  /* Kill any leftover YouTube iframe crop hacks */
+  .movie-item.media-card .cf-card-yt,
+  .movie-item.media-card .cf-card-yt-wrap,
+  .movie-item.media-card iframe.cf-card-yt {
+    display: none !important;
+  }
+
+  /* HTML5 video fills the card — object-fit cover, no translate/scale tricks */
+  .movie-item.media-card .cf-card-video {
+    position: absolute !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+    transform: none !important;
+    opacity: 0;
+    pointer-events: none !important;
+    transition: opacity 0.4s ease;
+    background: #0b0d12;
+    z-index: 2;
+    border: 0;
+  }
+
+  .movie-item.media-card.is-hover-preview .cf-card-video.is-ready {
+    opacity: 1;
+  }
+
+  .movie-item.media-card .cf-card-video-shield {
+    position: absolute !important;
+    inset: 0 !important;
+    z-index: 30 !important;
+    pointer-events: auto !important;
+    background: rgba(0, 0, 0, 0.01) !important;
+    cursor: pointer;
+  }
+
+  .movie-item.media-card .cf-card-preview-ui {
+    position: absolute;
+    inset: 0;
+    z-index: 40 !important;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+
+  .movie-item.media-card.is-hover-preview .cf-card-preview-ui {
+    opacity: 1;
+  }
+
+  .movie-item.media-card .cf-card-preview-ui .cf-card-mute {
+    pointer-events: auto;
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border: 0;
+    border-radius: 999px;
+    padding: 0.26rem 0.5rem;
+    background: rgba(12, 14, 18, 0.72);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 600;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    cursor: pointer;
+  }
+
+  .movie-item.media-card .cf-card-preview-ui .cf-card-actions {
+    pointer-events: auto;
+    position: absolute;
+    right: 0.5rem;
+    bottom: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .movie-item.media-card .cf-card-preview-ui .cf-card-play {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border: 0;
+    border-radius: 999px;
+    padding: 0.38rem 0.78rem;
+    background: #fff;
+    color: #111;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+  }
+
+  .movie-item.media-card.is-hover-preview .item-poster::before {
+    opacity: 0 !important;
+  }
+
+  .movie-item.media-card.is-hover-preview .card-caption {
+    opacity: 0 !important;
+    transition: opacity 0.2s ease !important;
+  }
+
+  .section-top10 .top10-items .movie-item.media-card.is-hover-preview .inner:hover,
+  .movies.items .movie-item.media-card.is-hover-preview .inner:hover {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .cf-card-video,
+  .cf-card-video-shield,
+  .cf-card-preview-ui {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-rail .media-rail-items .movie-item.media-card,
+  .section-top10 .top10-items .movie-item.media-card,
+  .movie-item.media-card .poster-media > img,
+  .movie-item.media-card .cf-card-video,
+  .movie-item.media-card .cf-card-preview-ui {
+    transition: none !important;
+  }
+}
