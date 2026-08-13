@@ -1,12 +1,7 @@
-# Watch info under player + movie YMAL sidebar
+# Watch info under player
 
-## Layout
-- TV: player + info/cast on the left; episodes + YMAL stacked on the right.
-- Movies: player + info/cast on the left; YMAL on the right (same row). No lone bottom YMAL row.
+**TV:** `#w-info` / cast / report sit in the left column under the player beside episodes + YMAL.
 
-## Info
-- `#w-info` lives in `.watch-info-below-player` under the player.
-- Compact desktop sizing so it fits beside YMAL (smaller poster, clamped description).
-- YMAL is never forced into an inner scroll cage.
+**Movies:** player alone on top; second row is compact `#w-info` | You May Also Like (beside info, not player).
 
-Live CSS: `watch-player.css?v=20260813-movie-ymal1`
+No YMAL inner scroll cage. Live CSS `?v=20260813-movie-info-side1`.
