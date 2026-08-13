@@ -142,6 +142,7 @@
 
   function stopCard(card) {
     if (!card) return;
+    try { if (hoverIO) hoverIO.unobserve(card); } catch (eUn) {}
     clearCollapseTimer(card);
 
     // Keep height locked while width animates back — otherwise aspect-ratio
@@ -217,6 +218,7 @@
 
     if (activeCard && activeCard !== card) stopCard(activeCard);
     activeCard = card;
+    try { if (hoverIO) hoverIO.observe(card); } catch (eObs) {}
     clearCollapseTimer(card);
     card.classList.remove("is-hover-collapsing");
 
@@ -374,6 +376,23 @@
     }
   }
 
+
+  // Stop hover trailer if the active card scrolls off-screen
+  var hoverIO = null;
+  if ("IntersectionObserver" in window) {
+    hoverIO = new IntersectionObserver(function (entries) {
+      var i;
+      for (i = 0; i < entries.length; i++) {
+        var en = entries[i];
+        if (en.isIntersecting) continue;
+        if (activeCard && en.target === activeCard) {
+          stopCard(activeCard);
+          activeCard = null;
+        }
+      }
+    }, { root: null, rootMargin: "40px", threshold: 0 });
+  }
+
   function bind() {
     if (bound) return;
     bound = true;
@@ -422,6 +441,7 @@
         activeCard = null;
       }
     });
+
     window.addEventListener("cf:softnav", function () {
       if (activeCard) {
         stopCard(activeCard);
