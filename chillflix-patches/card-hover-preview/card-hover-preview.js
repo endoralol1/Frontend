@@ -91,23 +91,24 @@
       ui = document.createElement("div");
       ui.className = "cf-card-preview-ui";
     }
-    if (ui.getAttribute("data-cf-ui") !== "v22") {
-      ui.setAttribute("data-cf-ui", "v22");
+    if (ui.getAttribute("data-cf-ui") !== "v24") {
+      ui.setAttribute("data-cf-ui", "v24");
       ui.innerHTML =
-        '<div class="cf-card-preview-top">' +
-          '<button type="button" class="cf-card-mute" aria-label="Toggle sound">' +
-            '<i class="uil uil-volume-mute" aria-hidden="true"></i>' +
-          "</button>" +
-          '<button type="button" class="cf-card-watchlist favo user-bookmark-toggle" aria-label="Add to watchlist">' +
-            '<i class="uil uil-plus-circle" aria-hidden="true"></i>' +
-          "</button>" +
-        "</div>" +
-        '<a class="cf-card-play" href="#" aria-label="Play">' +
-          '<i class="uil uil-play" aria-hidden="true"></i>' +
-        "</a>" +
+        '<button type="button" class="cf-card-mute" aria-label="Toggle sound">' +
+          '<i class="uil uil-volume-mute" aria-hidden="true"></i>' +
+          '<span class="cf-card-mute-label"></span>' +
+        "</button>" +
         '<div class="cf-card-preview-foot">' +
-          '<div class="cf-card-preview-chips"></div>' +
           '<div class="cf-card-preview-title"></div>' +
+          '<div class="cf-card-preview-actions">' +
+            '<a class="cf-card-play" href="#">' +
+              '<i class="uil uil-play" aria-hidden="true"></i>' +
+              '<span class="cf-card-play-label">Play</span>' +
+            "</a>" +
+            '<button type="button" class="cf-card-watchlist favo user-bookmark-toggle" aria-label="Add to watchlist">' +
+              '<i class="uil uil-star" aria-hidden="true"></i>' +
+            "</button>" +
+          "</div>" +
         "</div>";
     }
     inner.appendChild(ui);
@@ -232,31 +233,25 @@
     if (playBtn) playBtn.setAttribute("href", meta.href || "#");
 
     var titleEl = layers.ui.querySelector(".cf-card-preview-title");
-    var chipsEl = layers.ui.querySelector(".cf-card-preview-chips");
+    var muteLabel = layers.ui.querySelector(".cf-card-mute-label");
     var captionTitle = card.querySelector(".card-title");
     var captionKicker = card.querySelector(".card-kicker");
     var localTitle = captionTitle ? captionTitle.textContent.trim() : "";
     if (titleEl) titleEl.textContent = localTitle;
 
-    function renderChips(typeLabel, year, rating) {
-      if (!chipsEl) return;
-      var html = "";
-      if (typeLabel) html += '<span class="cf-card-preview-chip is-type">' + typeLabel + "</span>";
-      if (year) html += '<span class="cf-card-preview-chip">' + year + "</span>";
-      if (rating != null && rating !== "") html += '<span class="cf-card-preview-chip is-rating">★ ' + rating + "</span>";
-      chipsEl.innerHTML = html;
-    }
-
-    var typeLabel = meta.type === "tv" ? "TV" : "MOVIE";
     var yearBit = "";
     var ratingBit = "";
     if (captionKicker) {
       var spans = captionKicker.querySelectorAll(":scope > span");
-      if (spans[0]) typeLabel = (spans[0].textContent || typeLabel).trim().toUpperCase();
       if (spans[1]) yearBit = (spans[1].textContent || "").trim();
       if (spans[2]) ratingBit = (spans[2].textContent || "").replace("★", "").trim();
+      else if (spans[1] && /\d\.\d/.test(spans[1].textContent || "")) {
+        ratingBit = (spans[1].textContent || "").replace("★", "").trim();
+      }
     }
-    renderChips(typeLabel, yearBit, ratingBit);
+    var ratingEl = card.querySelector(".card-rating");
+    if (!ratingBit && ratingEl) ratingBit = (ratingEl.textContent || "").replace("★", "").trim();
+    if (muteLabel) muteLabel.textContent = ratingBit || "";
 
     var posterImg = card.querySelector(".poster-media img");
     var posterUrl = "";
@@ -271,7 +266,7 @@
       wl.setAttribute("data-year", yearBit || "");
       wl.setAttribute("aria-label", "Add to watchlist");
       var wli = wl.querySelector("i");
-      if (wli) wli.className = "uil uil-plus-circle";
+      if (wli) wli.className = "uil uil-star";
     }
 
     var icon = layers.ui.querySelector(".cf-card-mute i");
@@ -283,8 +278,7 @@
         if (activeCard !== card) return;
         if (playBtn && data.url) playBtn.setAttribute("href", data.url);
         if (titleEl && data.title) titleEl.textContent = data.title;
-        var tLab = data.type === "tv" ? "TV" : "MOVIE";
-        renderChips(tLab, data.year ? String(data.year) : yearBit, data.rating != null ? String(data.rating) : ratingBit);
+        if (muteLabel && data.rating != null) muteLabel.textContent = String(data.rating);
         if (wl) {
           if (data.title) wl.setAttribute("data-title", data.title);
           if (data.poster) wl.setAttribute("data-poster", data.poster);
