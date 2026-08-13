@@ -17,16 +17,6 @@
 }
 
 
-html.cf-perf-mode {
-  zoom: 1 !important;
-}
-
-@media (min-width: 1600px) {
-  html.cf-perf-mode {
-    zoom: 1 !important;
-  }
-}
-
 html.cf-perf-mode .cf-bgfx-grain {
   animation: none !important;
   opacity: 0 !important;
