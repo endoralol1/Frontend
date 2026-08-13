@@ -1,0 +1,3 @@
+8:$router->get('/home', function () { redirect('/', 301); });
+323:            'canonical' => url('/favorites'),
+1809:            'canonical' => url('/'),
