@@ -1,0 +1,59 @@
+/* Performance mode — opt-in via Browse Settings (cf_pref_performance) */
+html.cf-perf-mode {
+  zoom: 1 !important;
+}
+
+@media (min-width: 1600px) {
+  html.cf-perf-mode {
+    zoom: 1 !important;
+  }
+}
+
+html.cf-perf-mode .cf-bgfx-grain {
+  animation: none !important;
+  opacity: 0 !important;
+  display: none !important;
+}
+
+html.cf-perf-mode .cf-bgfx-moon {
+  animation: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+  opacity: 0.72 !important;
+  will-change: auto !important;
+}
+
+html.cf-perf-mode .cf-bgfx-aurora,
+html.cf-perf-mode .cf-bgfx-wave,
+html.cf-perf-mode .cf-bgfx-glow {
+  animation: none !important;
+  display: none !important;
+}
+
+html.cf-perf-mode .movies.items .movie-item.media-card .card-title {
+  animation: none !important;
+  background-image: none !important;
+  -webkit-text-fill-color: #cfd6de !important;
+  color: #cfd6de !important;
+  filter: none !important;
+  background-clip: border-box !important;
+  -webkit-background-clip: border-box !important;
+}
+
+/* Soften expensive blurs while keeping surfaces readable */
+html.cf-perf-mode .browse-sheet,
+html.cf-perf-mode .browse-settings-panel,
+html.cf-perf-mode .browse-auth-panel,
+html.cf-perf-mode .site-header,
+html.cf-perf-mode .bottom-nav,
+html.cf-perf-mode .movies.items .movie-item.media-card .inner .quality,
+html.cf-perf-mode [class*="backdrop"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html.cf-perf-mode .cf-card-preview-ui,
+html.cf-perf-mode .cf-card-video,
+html.cf-perf-mode video.cf-card-video {
+  display: none !important;
+}
