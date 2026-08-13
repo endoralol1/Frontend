@@ -91,15 +91,18 @@
       ui = document.createElement("div");
       ui.className = "cf-card-preview-ui";
     }
-    if (ui.getAttribute("data-cf-ui") !== "v24") {
-      ui.setAttribute("data-cf-ui", "v24");
+    if (ui.getAttribute("data-cf-ui") !== "v25") {
+      ui.setAttribute("data-cf-ui", "v25");
       ui.innerHTML =
         '<button type="button" class="cf-card-mute" aria-label="Toggle sound">' +
           '<i class="uil uil-volume-mute" aria-hidden="true"></i>' +
           '<span class="cf-card-mute-label"></span>' +
         "</button>" +
         '<div class="cf-card-preview-foot">' +
-          '<div class="cf-card-preview-title"></div>' +
+          '<div class="cf-card-preview-brand">' +
+            '<img class="cf-card-preview-logo" alt="" hidden decoding="async">' +
+            '<div class="cf-card-preview-title"></div>' +
+          "</div>" +
           '<div class="cf-card-preview-actions">' +
             '<a class="cf-card-play" href="#">' +
               '<i class="uil uil-play" aria-hidden="true"></i>' +
@@ -233,11 +236,40 @@
     if (playBtn) playBtn.setAttribute("href", meta.href || "#");
 
     var titleEl = layers.ui.querySelector(".cf-card-preview-title");
+    var logoEl = layers.ui.querySelector(".cf-card-preview-logo");
     var muteLabel = layers.ui.querySelector(".cf-card-mute-label");
     var captionTitle = card.querySelector(".card-title");
     var captionKicker = card.querySelector(".card-kicker");
     var localTitle = captionTitle ? captionTitle.textContent.trim() : "";
-    if (titleEl) titleEl.textContent = localTitle;
+    if (titleEl) {
+      titleEl.textContent = localTitle;
+      titleEl.hidden = false;
+    }
+    if (logoEl) {
+      logoEl.hidden = true;
+      logoEl.removeAttribute("src");
+      logoEl.alt = localTitle || "";
+    }
+
+    function applyLogo(url, title) {
+      if (!logoEl) return;
+      if (url) {
+        logoEl.onload = function () {
+          logoEl.hidden = false;
+          if (titleEl) titleEl.hidden = true;
+        };
+        logoEl.onerror = function () {
+          logoEl.hidden = true;
+          if (titleEl) titleEl.hidden = false;
+        };
+        logoEl.alt = title || localTitle || "";
+        logoEl.src = url;
+      } else {
+        logoEl.hidden = true;
+        logoEl.removeAttribute("src");
+        if (titleEl) titleEl.hidden = false;
+      }
+    }
 
     var yearBit = "";
     var ratingBit = "";
@@ -277,7 +309,11 @@
       .then(function (data) {
         if (activeCard !== card) return;
         if (playBtn && data.url) playBtn.setAttribute("href", data.url);
-        if (titleEl && data.title) titleEl.textContent = data.title;
+        if (titleEl && data.title) {
+          titleEl.textContent = data.title;
+          if (logoEl) logoEl.alt = data.title;
+        }
+        applyLogo(data.logo || "", data.title || localTitle);
         if (muteLabel && data.rating != null) muteLabel.textContent = String(data.rating);
         if (wl) {
           if (data.title) wl.setAttribute("data-title", data.title);
