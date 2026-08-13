@@ -1,4 +1,4 @@
-/* Card hover preview — expand RIGHT only, clean HTML5 video (no YouTube chrome) */
+/* Card hover preview — expand RIGHT only, clean HTML5 video + bottom-left play */
 @media (min-width: 992px) {
   .section-rail .media-rail-items,
   .section-top10 .top10-items {
@@ -28,13 +28,15 @@
     transform: none !important;
   }
 
+  .movie-item.media-card .inner {
+    position: relative !important;
+  }
+
   .movie-item.media-card.is-hover-preview .inner {
     border-color: rgba(var(--cf-orange-rgb), 0.9) !important;
     box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42) !important;
   }
 
-  /* Lock poster height during expand AND collapse so 2/3 aspect-ratio
-     cannot re-apply while width is still wide (that caused a downward jump). */
   .movie-item.media-card.is-hover-preview .inner .item-poster,
   .section-top10 .top10-items .movie-item.media-card.is-hover-preview .inner .item-poster,
   .movie-item.media-card.is-hover-collapsing .inner .item-poster,
@@ -47,21 +49,8 @@
     overflow: hidden !important;
   }
 
+  .movie-item.media-card.is-hover-preview .poster-media,
   .movie-item.media-card.is-hover-collapsing .poster-media {
-    position: absolute !important;
-    inset: 0 !important;
-    width: 100% !important;
-    height: 100% !important;
-  }
-
-  .movie-item.media-card.is-hover-collapsing .cf-card-preview-ui,
-  .movie-item.media-card.is-hover-collapsing .cf-card-video {
-    opacity: 0 !important;
-    pointer-events: none !important;
-  }
-
-  /* Media layer fills the poster box exactly — never shift/crop with transforms */
-  .movie-item.media-card.is-hover-preview .poster-media {
     position: absolute !important;
     inset: 0 !important;
     width: 100% !important;
@@ -70,10 +59,11 @@
     margin: 0 !important;
     overflow: hidden !important;
     background: #0b0d12 !important;
+    z-index: 1 !important;
   }
 
   .movie-item.media-card .poster-media > img {
-    transition: opacity 0.4s ease;
+    transition: opacity 0.35s ease;
   }
 
   .movie-item.media-card.is-hover-preview.has-preview-media .poster-media > img {
@@ -81,31 +71,23 @@
     transform: none !important;
   }
 
-  /* Kill any leftover YouTube iframe crop hacks */
   .movie-item.media-card .cf-card-yt,
   .movie-item.media-card .cf-card-yt-wrap,
   .movie-item.media-card iframe.cf-card-yt {
     display: none !important;
   }
 
-  /* HTML5 video fills the card — object-fit cover, no translate/scale tricks */
   .movie-item.media-card .cf-card-video {
     position: absolute !important;
     inset: 0 !important;
-    top: 0 !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
     width: 100% !important;
     height: 100% !important;
-    max-width: none !important;
-    max-height: none !important;
     object-fit: cover !important;
     object-position: center center !important;
     transform: none !important;
     opacity: 0;
     pointer-events: none !important;
-    transition: opacity 0.4s ease;
+    transition: opacity 0.35s ease;
     background: #0b0d12;
     z-index: 2;
     border: 0;
@@ -115,71 +97,189 @@
     opacity: 1;
   }
 
+  /* Click catcher under the UI chrome */
   .movie-item.media-card .cf-card-video-shield {
     position: absolute !important;
     inset: 0 !important;
     z-index: 30 !important;
     pointer-events: auto !important;
-    background: rgba(0, 0, 0, 0.01) !important;
+    background: transparent !important;
     cursor: pointer;
   }
 
+  /* ========== Hover chrome (must be visible) ========== */
   .movie-item.media-card .cf-card-preview-ui {
-    position: absolute;
-    inset: 0;
+    position: absolute !important;
+    inset: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
     z-index: 40 !important;
-    pointer-events: none;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    pointer-events: none !important;
     opacity: 0;
-    transition: opacity 0.25s ease;
+    transition: opacity 0.22s ease;
+    background: linear-gradient(
+      180deg,
+      rgba(6, 8, 12, 0.45) 0%,
+      transparent 28%,
+      transparent 48%,
+      rgba(6, 8, 12, 0.55) 72%,
+      rgba(5, 6, 10, 0.92) 100%
+    ) !important;
   }
 
   .movie-item.media-card.is-hover-preview .cf-card-preview-ui {
-    opacity: 1;
+    opacity: 1 !important;
   }
 
-  .movie-item.media-card .cf-card-preview-ui .cf-card-mute {
-    pointer-events: auto;
-    position: absolute;
-    top: 0.5rem;
-    left: 0.5rem;
-    display: inline-flex;
+  .movie-item.media-card.is-hover-collapsing .cf-card-preview-ui,
+  .movie-item.media-card.is-hover-collapsing .cf-card-video {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  .movie-item.media-card .cf-card-preview-top {
+    display: flex !important;
     align-items: center;
-    gap: 0.3rem;
-    border: 0;
-    border-radius: 999px;
-    padding: 0.26rem 0.5rem;
-    background: rgba(12, 14, 18, 0.72);
-    color: #fff;
-    font-size: 0.7rem;
-    font-weight: 600;
+    justify-content: flex-end;
+    gap: 0.4rem;
+    padding: 0.55rem 0.55rem 0;
+  }
+
+  .movie-item.media-card .cf-card-mute,
+  .movie-item.media-card .cf-card-watchlist {
+    pointer-events: auto !important;
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 1.5px solid rgba(255, 255, 255, 0.85) !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(10, 12, 18, 0.55) !important;
+    color: #fff !important;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     cursor: pointer;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+    transition: background 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
   }
 
-  .movie-item.media-card .cf-card-preview-ui .cf-card-actions {
-    pointer-events: auto;
-    position: absolute;
-    right: 0.5rem;
-    bottom: 0.5rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
+  .movie-item.media-card .cf-card-mute i,
+  .movie-item.media-card .cf-card-watchlist i {
+    font-size: 1.05rem !important;
+    line-height: 1 !important;
+    color: inherit !important;
   }
 
-  .movie-item.media-card .cf-card-preview-ui .cf-card-play {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-    border: 0;
-    border-radius: 999px;
-    padding: 0.38rem 0.78rem;
-    background: #fff;
-    color: #111;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-decoration: none;
-    box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+  .movie-item.media-card .cf-card-mute:hover,
+  .movie-item.media-card .cf-card-watchlist:hover {
+    background: rgba(var(--cf-orange-rgb), 0.95) !important;
+    border-color: #fff !important;
+    transform: scale(1.06);
+  }
+
+  /* Bottom-left play + title — same language as watchlist hover controls */
+  .movie-item.media-card .cf-card-preview-foot {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.65rem !important;
+    padding: 0 0.65rem 0.7rem !important;
+    margin: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    pointer-events: none !important;
+  }
+
+  .movie-item.media-card .cf-card-play {
+    pointer-events: auto !important;
+    flex: 0 0 auto !important;
+    width: 2.85rem !important;
+    height: 2.85rem !important;
+    min-width: 2.85rem !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: rgba(var(--cf-orange-rgb), 0.95) !important;
+    border: 2px solid #fff !important;
+    color: #fff !important;
+    text-decoration: none !important;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.4) !important;
+    transform: scale(0.86);
+    opacity: 0;
+    transition: opacity 0.22s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), background 0.18s ease;
+  }
+
+  .movie-item.media-card .cf-card-play i {
+    font-size: 1.15rem !important;
+    margin-left: 0.1rem !important;
+    line-height: 1 !important;
+    color: #fff !important;
+  }
+
+  .movie-item.media-card.is-hover-preview .cf-card-play {
+    opacity: 1 !important;
+    transform: scale(1) !important;
+  }
+
+  .movie-item.media-card .cf-card-play:hover {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  .movie-item.media-card .cf-card-play:hover i {
+    color: #111 !important;
+  }
+
+  .movie-item.media-card .cf-card-preview-copy {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.12rem !important;
+  }
+
+  .movie-item.media-card .cf-card-preview-title {
+    font-family: Outfit, Poppins, sans-serif !important;
+    font-size: 0.95rem !important;
+    font-weight: 750 !important;
+    letter-spacing: -0.02em !important;
+    line-height: 1.2 !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+    background: none !important;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65) !important;
+    display: -webkit-box !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    overflow: hidden !important;
+    max-width: 100% !important;
+  }
+
+  .movie-item.media-card .cf-card-preview-meta {
+    font-family: Outfit, Poppins, sans-serif !important;
+    font-size: 0.68rem !important;
+    font-weight: 650 !important;
+    letter-spacing: 0.02em !important;
+    color: rgba(230, 234, 240, 0.9) !important;
+    -webkit-text-fill-color: rgba(230, 234, 240, 0.9) !important;
+    background: none !important;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
   }
 
   .movie-item.media-card.is-hover-preview .item-poster::before {
@@ -188,7 +288,7 @@
 
   .movie-item.media-card.is-hover-preview .card-caption {
     opacity: 0 !important;
-    transition: opacity 0.2s ease !important;
+    visibility: hidden !important;
   }
 
   .section-top10 .top10-items .movie-item.media-card.is-hover-preview .inner:hover,
@@ -210,7 +310,8 @@
   .section-top10 .top10-items .movie-item.media-card,
   .movie-item.media-card .poster-media > img,
   .movie-item.media-card .cf-card-video,
-  .movie-item.media-card .cf-card-preview-ui {
+  .movie-item.media-card .cf-card-preview-ui,
+  .movie-item.media-card .cf-card-play {
     transition: none !important;
   }
 }

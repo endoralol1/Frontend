@@ -43,7 +43,8 @@
   function ensureLayers(card) {
     var media = card.querySelector(".poster-media");
     var host = card.querySelector(".item-poster") || media;
-    if (!media || !host) return null;
+    var inner = card.querySelector(".inner") || host;
+    if (!media || !host || !inner) return null;
 
     var video = media.querySelector("video.cf-card-video");
     if (!video) {
@@ -63,34 +64,57 @@
       media.appendChild(video);
     }
 
-    // Remove any legacy YouTube iframe leftovers
     media.querySelectorAll("iframe.cf-card-yt, .cf-card-yt-wrap").forEach(function (n) {
       try { n.remove(); } catch (e) {}
     });
 
-    var shield = host.querySelector(":scope > .cf-card-video-shield");
+    // Strip leftovers from older mounts (item-poster / poster-media)
+    host.querySelectorAll(":scope > .cf-card-preview-ui, :scope > .cf-card-video-shield").forEach(function (n) {
+      try { n.remove(); } catch (e0) {}
+    });
+    media.querySelectorAll(":scope > .cf-card-preview-ui, :scope > .cf-card-video-shield").forEach(function (n) {
+      try { n.remove(); } catch (e1) {}
+    });
+
+    // Mount on .inner — locked hover height, overflow hidden, always the visible frame
+    if (!inner.style.position) inner.style.position = "relative";
+
+    var shield = inner.querySelector(":scope > .cf-card-video-shield");
     if (!shield) {
       shield = document.createElement("div");
       shield.className = "cf-card-video-shield";
     }
-    host.appendChild(shield);
+    inner.appendChild(shield);
 
-    var ui = host.querySelector(":scope > .cf-card-preview-ui");
+    var ui = inner.querySelector(":scope > .cf-card-preview-ui");
     if (!ui) {
       ui = document.createElement("div");
       ui.className = "cf-card-preview-ui";
+    }
+    if (ui.getAttribute("data-cf-ui") !== "v21") {
+      ui.setAttribute("data-cf-ui", "v21");
       ui.innerHTML =
-        '<button type="button" class="cf-card-mute" aria-label="Toggle sound">' +
-          '<i class="uil uil-volume-mute" aria-hidden="true"></i>' +
-          '<span class="cf-card-mute-label"></span>' +
-        "</button>" +
-        '<div class="cf-card-actions">' +
-          '<a class="cf-card-play" href="#"><i class="uil uil-play" aria-hidden="true"></i> Play</a>' +
+        '<div class="cf-card-preview-top">' +
+          '<button type="button" class="cf-card-mute" aria-label="Toggle sound">' +
+            '<i class="uil uil-volume-mute" aria-hidden="true"></i>' +
+          "</button>" +
+          '<button type="button" class="cf-card-watchlist favo user-bookmark-toggle" aria-label="Add to watchlist">' +
+            '<i class="uil uil-plus-circle" aria-hidden="true"></i>' +
+          "</button>" +
+        "</div>" +
+        '<div class="cf-card-preview-foot">' +
+          '<a class="cf-card-play" href="#" aria-label="Play">' +
+            '<i class="uil uil-play" aria-hidden="true"></i>' +
+          "</a>" +
+          '<div class="cf-card-preview-copy">' +
+            '<div class="cf-card-preview-title"></div>' +
+            '<div class="cf-card-preview-meta"></div>' +
+          "</div>" +
         "</div>";
     }
-    host.appendChild(ui);
+    inner.appendChild(ui);
 
-    return { media: media, host: host, video: video, ui: ui, shield: shield };
+    return { media: media, host: host, inner: inner, video: video, ui: ui, shield: shield };
   }
 
   var collapseTimers = typeof WeakMap !== "undefined" ? new WeakMap() : null;
@@ -209,11 +233,38 @@
     var playBtn = layers.ui.querySelector(".cf-card-play");
     if (playBtn) playBtn.setAttribute("href", meta.href || "#");
 
-    var muteLabel = layers.ui.querySelector(".cf-card-mute-label");
-    var rating = card.querySelector(".card-rating");
-    if (muteLabel) {
-      muteLabel.textContent = rating ? rating.textContent.replace("★", "").trim() : "";
+    var titleEl = layers.ui.querySelector(".cf-card-preview-title");
+    var metaEl = layers.ui.querySelector(".cf-card-preview-meta");
+    var captionTitle = card.querySelector(".card-title");
+    var captionKicker = card.querySelector(".card-kicker");
+    var localTitle = captionTitle ? captionTitle.textContent.trim() : "";
+    if (titleEl) titleEl.textContent = localTitle;
+
+    var metaBits = [];
+    if (captionKicker) {
+      captionKicker.querySelectorAll(":scope > span").forEach(function (s) {
+        var tx = (s.textContent || "").replace("★", "").trim();
+        if (tx) metaBits.push(tx);
+      });
     }
+    if (metaEl) metaEl.textContent = metaBits.join(" · ");
+
+    var posterImg = card.querySelector(".poster-media img");
+    var posterUrl = "";
+    if (posterImg) posterUrl = posterImg.getAttribute("data-src") || posterImg.getAttribute("src") || "";
+
+    var wl = layers.ui.querySelector(".cf-card-watchlist");
+    if (wl) {
+      wl.setAttribute("data-id", meta.id);
+      wl.setAttribute("data-media-type", meta.type);
+      wl.setAttribute("data-title", localTitle);
+      wl.setAttribute("data-poster", posterUrl.indexOf("data:") === 0 ? "" : posterUrl);
+      wl.setAttribute("data-year", metaBits.length > 1 ? metaBits[1] : "");
+      wl.setAttribute("aria-label", "Add to watchlist");
+      var wli = wl.querySelector("i");
+      if (wli) wli.className = "uil uil-plus-circle";
+    }
+
     var icon = layers.ui.querySelector(".cf-card-mute i");
     if (icon) icon.className = "uil uil-volume-mute";
     card.dataset.cfMuted = "1";
@@ -222,7 +273,20 @@
       .then(function (data) {
         if (activeCard !== card) return;
         if (playBtn && data.url) playBtn.setAttribute("href", data.url);
-        if (muteLabel && data.rating != null) muteLabel.textContent = String(data.rating);
+        if (titleEl && data.title) titleEl.textContent = data.title;
+        var bits = [];
+        if (data.type === "tv") bits.push("TV");
+        else if (data.type === "movie") bits.push("Movie");
+        if (data.year) bits.push(String(data.year));
+        if (data.rating != null) bits.push("★ " + String(data.rating));
+        if (metaEl && bits.length) metaEl.textContent = bits.join(" · ");
+        if (wl) {
+          if (data.title) wl.setAttribute("data-title", data.title);
+          if (data.poster) wl.setAttribute("data-poster", data.poster);
+          if (data.year) wl.setAttribute("data-year", String(data.year));
+          wl.setAttribute("data-id", String(data.id || meta.id));
+          wl.setAttribute("data-media-type", data.type || meta.type);
+        }
 
         // Only HTML5 video — never YouTube iframe (avoids pause/prev/next chrome)
         if (!data.stream) return;
