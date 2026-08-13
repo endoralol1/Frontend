@@ -192,10 +192,13 @@
     } catch (e) {}
   }
 
+  var inflight = Object.create(null);
+
   function fetchPreview(type, id) {
     var key = type + ":" + id;
     if (cache[key]) return Promise.resolve(cache[key]);
-    return fetch(baseUrl() + "/api/preview/" + encodeURIComponent(type) + "/" + encodeURIComponent(id), {
+    if (inflight[key]) return inflight[key];
+    inflight[key] = fetch(baseUrl() + "/api/preview/" + encodeURIComponent(type) + "/" + encodeURIComponent(id), {
       credentials: "same-origin",
       headers: { Accept: "application/json" },
     })
@@ -205,8 +208,21 @@
       })
       .then(function (data) {
         cache[key] = data;
+        delete inflight[key];
         return data;
+      })
+      .catch(function (err) {
+        delete inflight[key];
+        throw err;
       });
+    return inflight[key];
+  }
+
+  function prefetchCard(card) {
+    if (!canPreview() || !card) return;
+    var meta = cardMeta(card);
+    if (!meta.id) return;
+    fetchPreview(meta.type, meta.id).catch(function () {});
   }
 
   function playPreview(card) {
@@ -249,9 +265,12 @@
     var captionTitle = card.querySelector(".card-title");
     var captionKicker = card.querySelector(".card-kicker");
     var localTitle = captionTitle ? captionTitle.textContent.trim() : "";
+    var cached = cache[meta.type + ":" + meta.id] || null;
+
+    // Avoid text→logo flash: hide both until we know; if cache has logo, show it immediately.
     if (titleEl) {
       titleEl.textContent = localTitle;
-      titleEl.hidden = false;
+      titleEl.hidden = true;
     }
     if (logoEl) {
       logoEl.hidden = true;
@@ -260,23 +279,48 @@
     }
 
     function applyLogo(url, title) {
-      if (!logoEl) return;
+      if (!logoEl) {
+        if (titleEl) titleEl.hidden = false;
+        return;
+      }
       if (url) {
-        logoEl.onload = function () {
+        // If already showing this logo, keep it
+        if (logoEl.getAttribute("src") === url && !logoEl.hidden) {
+          if (titleEl) titleEl.hidden = true;
+          return;
+        }
+        var done = false;
+        function showLogo() {
+          if (done) return;
+          done = true;
           logoEl.hidden = false;
           if (titleEl) titleEl.hidden = true;
-        };
-        logoEl.onerror = function () {
+        }
+        function showText() {
+          if (done) return;
+          done = true;
           logoEl.hidden = true;
           if (titleEl) titleEl.hidden = false;
-        };
+        }
+        logoEl.onload = showLogo;
+        logoEl.onerror = showText;
         logoEl.alt = title || localTitle || "";
+        // Decode ASAP; if cached by browser, onload may be sync
         logoEl.src = url;
+        if (logoEl.complete && logoEl.naturalWidth > 0) showLogo();
       } else {
         logoEl.hidden = true;
         logoEl.removeAttribute("src");
-        if (titleEl) titleEl.hidden = false;
+        if (titleEl) {
+          titleEl.textContent = title || localTitle || "";
+          titleEl.hidden = false;
+        }
       }
+    }
+
+    if (cached) {
+      if (titleEl && cached.title) titleEl.textContent = cached.title;
+      applyLogo(cached.logo || "", cached.title || localTitle);
     }
 
     var yearBit = "";
@@ -313,6 +357,51 @@
     if (icon) icon.className = "uil uil-volume-mute";
     card.dataset.cfMuted = "1";
 
+    function startStream(streamUrl) {
+      if (!streamUrl || activeCard !== card) return;
+      card.classList.add("has-preview-media");
+      var video = layers.video;
+      video.controls = false;
+      video.removeAttribute("controls");
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = "auto";
+      var src = String(streamUrl);
+      if (video.getAttribute("src") === src && !video.error) {
+        var p0 = video.play();
+        if (p0 && p0.then) p0.then(function () { if (activeCard === card) video.classList.add("is-ready"); }).catch(function () {});
+        return;
+      }
+      video.classList.remove("is-ready");
+      try { delete video.dataset.cfRetried; } catch (e0) {}
+      video.onerror = function () {
+        try {
+          if (!video.dataset.cfRetried) {
+            video.dataset.cfRetried = "1";
+            video.src = src + (src.indexOf("?") >= 0 ? "&" : "?") + "_t=" + Date.now();
+            video.play().catch(function () {});
+            return;
+          }
+          video.classList.remove("is-ready");
+          card.classList.remove("has-preview-media");
+        } catch (eE) {}
+      };
+      video.onloadeddata = function () {
+        if (activeCard !== card) return;
+        video.classList.add("is-ready");
+      };
+      video.src = src;
+      var p = video.play();
+      if (p && p.then) {
+        p.then(function () {
+          if (activeCard === card) video.classList.add("is-ready");
+        }).catch(function () {});
+      }
+    }
+
+    // Warm start from memory cache (logo already applied above)
+    if (cached && cached.stream) startStream(cached.stream);
+
     fetchPreview(meta.type, meta.id)
       .then(function (data) {
         if (activeCard !== card) return;
@@ -333,41 +422,16 @@
 
         // Only HTML5 video — never YouTube iframe (avoids pause/prev/next chrome)
         if (!data.stream) return;
-
-        card.classList.add("has-preview-media");
-        var video = layers.video;
-        video.controls = false;
-        video.removeAttribute("controls");
-        video.muted = true;
-        video.classList.remove("is-ready");
-        // Bust CDN/browser cache on each hover so expired googlevideo proxies refresh
-        var src = String(data.stream);
-        src += (src.indexOf("?") >= 0 ? "&" : "?") + "_t=" + Date.now();
-        video.onerror = function () {
-          try {
-            video.classList.remove("is-ready");
-            card.classList.remove("has-preview-media");
-          } catch (eE) {}
-        };
-        video.onloadeddata = function () {
-          if (activeCard !== card) return;
-          video.classList.add("is-ready");
-        };
-        video.src = src;
-        var p = video.play();
-        if (p && p.then) {
-          p.then(function () {
-            if (activeCard === card) video.classList.add("is-ready");
-          }).catch(function () {});
-        }
+        startStream(data.stream);
       })
       .catch(function () {});
   }
 
   function onEnter(card) {
     if (!canPreview()) return;
+    prefetchCard(card);
     clearTimeout(hoverTimer);
-    hoverTimer = setTimeout(function () { playPreview(card); }, 260);
+    hoverTimer = setTimeout(function () { playPreview(card); }, 120);
   }
 
   function onLeave(card, related) {
@@ -459,6 +523,24 @@
         activeCard = null;
       }
     });
+
+    // Prefetch preview JSON for nearby cards so logo+stream are warm
+    if ("IntersectionObserver" in window) {
+      var warmIO = new IntersectionObserver(function (entries) {
+        var i;
+        for (i = 0; i < entries.length; i++) {
+          if (!entries[i].isIntersecting) continue;
+          prefetchCard(entries[i].target);
+        }
+      }, { root: null, rootMargin: "80px", threshold: 0.15 });
+      function warmScan() {
+        document.querySelectorAll(SELECTOR).forEach(function (card) {
+          try { warmIO.observe(card); } catch (eW) {}
+        });
+      }
+      warmScan();
+      window.addEventListener("cf:softnav", function () { setTimeout(warmScan, 80); });
+    }
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
