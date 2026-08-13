@@ -167,10 +167,9 @@
 
     // Keep height locked while width animates back — otherwise aspect-ratio
     // (2/3) applies at the still-wide width and the card briefly grows downward.
-    // Touch previews do not expand width, so skip the collapse lock.
     var keepH = false;
     try {
-      keepH = isDesktop() && !!(card.style.getPropertyValue("--cf-preview-h") || card.classList.contains("is-hover-preview"));
+      keepH = !!(card.style.getPropertyValue("--cf-preview-h") || card.classList.contains("is-hover-preview"));
     } catch (eK) {}
 
     card.classList.remove("is-hover-preview", "has-preview-media", "is-touch-preview");
@@ -278,6 +277,16 @@
     if (touchPreview) card.classList.add("is-touch-preview");
     else card.classList.remove("is-touch-preview");
     hideTip();
+
+    // Phone: keep the right-expanded card in view inside the horizontal rail
+    if (touchPreview) {
+      try {
+        setTimeout(function () {
+          if (activeCard !== card) return;
+          card.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+        }, 40);
+      } catch (eScroll) {}
+    }
 
     var playBtn = layers.ui.querySelector(".cf-card-play");
     if (playBtn) playBtn.setAttribute("href", meta.href || "#");

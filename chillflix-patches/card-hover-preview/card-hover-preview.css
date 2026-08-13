@@ -369,8 +369,22 @@
   }
 }
 
-/* Phone: long-press preview — play in-place (no desktop width expand) */
+/* Phone: long-press preview — expand RIGHT like desktop, trailer plays in expanded card */
 @media (max-width: 991.98px) {
+  .section-rail .media-rail-items,
+  .section-top10 .top10-items {
+    align-items: flex-start !important;
+  }
+
+  .section-rail .media-rail-items .movie-item.media-card,
+  .section-top10 .top10-items .movie-item.media-card {
+    transition:
+      flex-basis 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+      width 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+      max-width 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+    align-self: flex-start !important;
+  }
+
   .movie-item.media-card .inner {
     position: relative !important;
   }
@@ -381,25 +395,41 @@
     display: none !important;
   }
 
-  .movie-item.media-card.is-hover-preview {
+  .section-rail .media-rail-items .movie-item.media-card.is-hover-preview,
+  .section-top10 .top10-items .movie-item.media-card.is-hover-preview {
+    flex: 0 0 min(88vw, 22rem) !important;
+    width: min(88vw, 22rem) !important;
+    max-width: min(88vw, 22rem) !important;
     z-index: 24 !important;
     -webkit-user-select: none;
     user-select: none;
   }
 
-  .movie-item.media-card.is-hover-preview .inner {
-    border-color: rgba(var(--cf-orange-rgb), 0.95) !important;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5) !important;
+  .movie-item.media-card.is-hover-preview .inner,
+  .movie-item.media-card.is-hover-collapsing .inner {
+    height: var(--cf-preview-h, auto) !important;
     transform: none !important;
   }
 
+  .movie-item.media-card.is-hover-preview .inner {
+    border-color: rgba(var(--cf-orange-rgb), 0.95) !important;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5) !important;
+  }
+
   .movie-item.media-card.is-hover-preview .inner .item-poster,
-  .section-top10 .top10-items .movie-item.media-card.is-hover-preview .inner .item-poster {
+  .section-top10 .top10-items .movie-item.media-card.is-hover-preview .inner .item-poster,
+  .movie-item.media-card.is-hover-collapsing .inner .item-poster,
+  .section-top10 .top10-items .movie-item.media-card.is-hover-collapsing .inner .item-poster {
+    aspect-ratio: auto !important;
+    height: var(--cf-preview-h, 14rem) !important;
+    max-height: var(--cf-preview-h, 14rem) !important;
+    width: 100% !important;
     position: relative !important;
     overflow: hidden !important;
   }
 
-  .movie-item.media-card.is-hover-preview .poster-media {
+  .movie-item.media-card.is-hover-preview .poster-media,
+  .movie-item.media-card.is-hover-collapsing .poster-media {
     position: absolute !important;
     inset: 0 !important;
     width: 100% !important;
