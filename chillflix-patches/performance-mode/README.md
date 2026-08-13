@@ -2,31 +2,18 @@
 
 Opt-in toggle for lower-end PCs. Default **off**.
 
+## Always on (everyone)
+- Starfield is **static** (no twinkle RAF loop)
+- Moon glow pulse off; aurora/wave/glow orbs hidden
+
+## Performance mode only (`cf_pref_performance=1` → `html.cf-perf-mode`)
+- Film grain off
+- Card title shine off
+- Large-display zoom (`1.25`) forced to `1`
+- Frosted-glass panels off (`backdrop-filter` on nav/menus)
+- Card hover trailers off
+
 ## User path
-Browse sheet → Settings → **Performance** → **Performance mode**
+Browse → Settings → Performance → Performance mode
 
-## Pref
-- `localStorage` / cookie: `cf_pref_performance` (`1` = on, `0` = off)
-- Applies `html.cf-perf-mode` / `body.cf-perf-mode` (early head script before paint)
-
-## What it disables
-- Starfield RAF (static stars via `CF_refreshSkyMotion`)
-- Film grain animation
-- Card title shine animation
-- Moon glow animation
-- Large-display `zoom: 1.25`
-- Heavy `backdrop-filter` on common chrome
-- Card hover trailer previews (`canPreview` returns false)
-
-## Live files (VPS)
-| Path | Role |
-|------|------|
-| `app/Views/partials/bottom-nav.php` | Settings toggle UI |
-| `app/Views/layouts/main.php` | Early class + `perf-mode.css` |
-| `public/assets/css/perf-mode.css` | Effect overrides |
-| `public/assets/js/app.docksearch-1228.js` | Pref wiring + sky |
-| `public/assets/js/card-hover-preview.js` | Skip hover trailers |
-
-Asset cache bust: `?v=20260813-perf02`
-
-Settings order: Theme → Language → **Performance** → Playback → Library (Performance placed high so it is visible without relying on dropdown scroll).
+Asset bust: `?v=20260813-perf03`

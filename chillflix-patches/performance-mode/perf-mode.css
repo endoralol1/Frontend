@@ -1,4 +1,22 @@
 /* Performance mode — opt-in via Browse Settings (cf_pref_performance) */
+
+/* Always-on: static sky companion — no moon pulse / ambient glow orbs */
+.cf-bgfx-moon {
+  animation: none !important;
+  filter: none !important;
+  box-shadow:
+    0 0 18px 6px rgba(200, 215, 255, 0.08),
+    0 0 40px 12px rgba(180, 200, 255, 0.04) !important;
+  will-change: auto !important;
+}
+.cf-bgfx-aurora,
+.cf-bgfx-wave,
+.cf-bgfx-glow {
+  animation: none !important;
+  display: none !important;
+}
+
+
 html.cf-perf-mode {
   zoom: 1 !important;
 }
@@ -40,7 +58,7 @@ html.cf-perf-mode .movies.items .movie-item.media-card .card-title {
   -webkit-background-clip: border-box !important;
 }
 
-/* Soften expensive blurs while keeping surfaces readable */
+/* Performance only: turn off frosted-glass panels (backdrop-filter) */
 html.cf-perf-mode .browse-sheet,
 html.cf-perf-mode .browse-settings-panel,
 html.cf-perf-mode .browse-auth-panel,
