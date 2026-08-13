@@ -1,4 +1,4 @@
-/* Skip layout/paint work for off-screen rails & cards (keeps DOM, cheaper render) */
+/* Skip paint for off-screen rails (keep cards interactive when visible) */
 .section-rail,
 .section-top10,
 .home-section.section-rail {
@@ -6,20 +6,4 @@
   contain-intrinsic-size: auto 22rem;
 }
 
-.movies.items .movie-item.media-card {
-  content-visibility: auto;
-  contain-intrinsic-size: 9.5rem 18rem;
-}
-
-/* Hover expand must not be contained/skipped */
-.movies.items .movie-item.media-card.is-hover-preview,
-.movies.items .movie-item.media-card.is-hover-collapsing {
-  content-visibility: visible;
-  contain-intrinsic-size: auto;
-}
-
-@media (max-width: 991.98px) {
-  .movies.items .movie-item.media-card {
-    contain-intrinsic-size: 7.5rem 14.5rem;
-  }
-}
+/* Do NOT set content-visibility on individual cards — breaks hover/trailer on Safari/Mac */
