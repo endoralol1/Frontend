@@ -22,21 +22,42 @@
     z-index: 12 !important;
   }
 
-  .movie-item.media-card.is-hover-preview .inner {
+  .movie-item.media-card.is-hover-preview .inner,
+  .movie-item.media-card.is-hover-collapsing .inner {
     height: var(--cf-preview-h, auto) !important;
-    border-color: rgba(var(--cf-orange-rgb), 0.9) !important;
-    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42) !important;
     transform: none !important;
   }
 
+  .movie-item.media-card.is-hover-preview .inner {
+    border-color: rgba(var(--cf-orange-rgb), 0.9) !important;
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42) !important;
+  }
+
+  /* Lock poster height during expand AND collapse so 2/3 aspect-ratio
+     cannot re-apply while width is still wide (that caused a downward jump). */
   .movie-item.media-card.is-hover-preview .inner .item-poster,
-  .section-top10 .top10-items .movie-item.media-card.is-hover-preview .inner .item-poster {
+  .section-top10 .top10-items .movie-item.media-card.is-hover-preview .inner .item-poster,
+  .movie-item.media-card.is-hover-collapsing .inner .item-poster,
+  .section-top10 .top10-items .movie-item.media-card.is-hover-collapsing .inner .item-poster {
     aspect-ratio: auto !important;
     height: var(--cf-preview-h, 15rem) !important;
     max-height: var(--cf-preview-h, 15rem) !important;
     width: 100% !important;
     position: relative !important;
     overflow: hidden !important;
+  }
+
+  .movie-item.media-card.is-hover-collapsing .poster-media {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .movie-item.media-card.is-hover-collapsing .cf-card-preview-ui,
+  .movie-item.media-card.is-hover-collapsing .cf-card-video {
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
 
   /* Media layer fills the poster box exactly — never shift/crop with transforms */

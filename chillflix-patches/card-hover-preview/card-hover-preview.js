@@ -93,10 +93,38 @@
     return { media: media, host: host, video: video, ui: ui, shield: shield };
   }
 
+  var collapseTimers = typeof WeakMap !== "undefined" ? new WeakMap() : null;
+
+  function clearCollapseTimer(card) {
+    if (!collapseTimers || !card) return;
+    var t = collapseTimers.get(card);
+    if (t) {
+      clearTimeout(t);
+      collapseTimers.delete(card);
+    }
+  }
+
+  function finishCollapse(card) {
+    if (!card) return;
+    clearCollapseTimer(card);
+    card.classList.remove("is-hover-collapsing");
+    try { card.style.removeProperty("--cf-preview-h"); } catch (e) {}
+  }
+
   function stopCard(card) {
     if (!card) return;
+    clearCollapseTimer(card);
+
+    // Keep height locked while width animates back — otherwise aspect-ratio
+    // (2/3) applies at the still-wide width and the card briefly grows downward.
+    var keepH = false;
+    try {
+      keepH = !!(card.style.getPropertyValue("--cf-preview-h") || card.classList.contains("is-hover-preview"));
+    } catch (eK) {}
+
     card.classList.remove("is-hover-preview", "has-preview-media");
-    try { card.style.removeProperty("--cf-preview-h"); } catch (e) {}
+    if (keepH) card.classList.add("is-hover-collapsing");
+
     var video = card.querySelector("video.cf-card-video");
     if (video) {
       try {
@@ -105,6 +133,22 @@
         video.load();
       } catch (e2) {}
       video.classList.remove("is-ready");
+    }
+
+    if (keepH) {
+      var done = function () { finishCollapse(card); };
+      if (collapseTimers) collapseTimers.set(card, setTimeout(done, 380));
+      else setTimeout(done, 380);
+      try {
+        var onEnd = function (ev) {
+          if (!ev || (ev.propertyName !== "width" && ev.propertyName !== "flex-basis" && ev.propertyName !== "max-width")) return;
+          card.removeEventListener("transitionend", onEnd);
+          done();
+        };
+        card.addEventListener("transitionend", onEnd);
+      } catch (eT) {}
+    } else {
+      try { card.style.removeProperty("--cf-preview-h"); } catch (e3) {}
     }
   }
 
@@ -144,6 +188,8 @@
 
     if (activeCard && activeCard !== card) stopCard(activeCard);
     activeCard = card;
+    clearCollapseTimer(card);
+    card.classList.remove("is-hover-collapsing");
 
     try {
       var poster = card.querySelector(".item-poster");
