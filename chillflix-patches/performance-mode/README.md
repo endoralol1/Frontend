@@ -14,3 +14,7 @@ Opt-in toggle for lower-end PCs. Default **off**.
 - Card hover trailers off
 
 Asset bust: `?v=20260813-perf06`
+
+## 20260813-perf13
+- Shiny card titles disabled for everyone (was main idle ~20fps cause)
+- Hero swiper: no autoplay, slide instead of fade
