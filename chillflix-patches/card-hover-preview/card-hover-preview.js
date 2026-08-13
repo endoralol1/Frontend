@@ -91,8 +91,8 @@
       ui = document.createElement("div");
       ui.className = "cf-card-preview-ui";
     }
-    if (ui.getAttribute("data-cf-ui") !== "v21") {
-      ui.setAttribute("data-cf-ui", "v21");
+    if (ui.getAttribute("data-cf-ui") !== "v22") {
+      ui.setAttribute("data-cf-ui", "v22");
       ui.innerHTML =
         '<div class="cf-card-preview-top">' +
           '<button type="button" class="cf-card-mute" aria-label="Toggle sound">' +
@@ -102,14 +102,12 @@
             '<i class="uil uil-plus-circle" aria-hidden="true"></i>' +
           "</button>" +
         "</div>" +
+        '<a class="cf-card-play" href="#" aria-label="Play">' +
+          '<i class="uil uil-play" aria-hidden="true"></i>' +
+        "</a>" +
         '<div class="cf-card-preview-foot">' +
-          '<a class="cf-card-play" href="#" aria-label="Play">' +
-            '<i class="uil uil-play" aria-hidden="true"></i>' +
-          "</a>" +
-          '<div class="cf-card-preview-copy">' +
-            '<div class="cf-card-preview-title"></div>' +
-            '<div class="cf-card-preview-meta"></div>' +
-          "</div>" +
+          '<div class="cf-card-preview-chips"></div>' +
+          '<div class="cf-card-preview-title"></div>' +
         "</div>";
     }
     inner.appendChild(ui);
@@ -234,20 +232,31 @@
     if (playBtn) playBtn.setAttribute("href", meta.href || "#");
 
     var titleEl = layers.ui.querySelector(".cf-card-preview-title");
-    var metaEl = layers.ui.querySelector(".cf-card-preview-meta");
+    var chipsEl = layers.ui.querySelector(".cf-card-preview-chips");
     var captionTitle = card.querySelector(".card-title");
     var captionKicker = card.querySelector(".card-kicker");
     var localTitle = captionTitle ? captionTitle.textContent.trim() : "";
     if (titleEl) titleEl.textContent = localTitle;
 
-    var metaBits = [];
-    if (captionKicker) {
-      captionKicker.querySelectorAll(":scope > span").forEach(function (s) {
-        var tx = (s.textContent || "").replace("★", "").trim();
-        if (tx) metaBits.push(tx);
-      });
+    function renderChips(typeLabel, year, rating) {
+      if (!chipsEl) return;
+      var html = "";
+      if (typeLabel) html += '<span class="cf-card-preview-chip is-type">' + typeLabel + "</span>";
+      if (year) html += '<span class="cf-card-preview-chip">' + year + "</span>";
+      if (rating != null && rating !== "") html += '<span class="cf-card-preview-chip is-rating">★ ' + rating + "</span>";
+      chipsEl.innerHTML = html;
     }
-    if (metaEl) metaEl.textContent = metaBits.join(" · ");
+
+    var typeLabel = meta.type === "tv" ? "TV" : "MOVIE";
+    var yearBit = "";
+    var ratingBit = "";
+    if (captionKicker) {
+      var spans = captionKicker.querySelectorAll(":scope > span");
+      if (spans[0]) typeLabel = (spans[0].textContent || typeLabel).trim().toUpperCase();
+      if (spans[1]) yearBit = (spans[1].textContent || "").trim();
+      if (spans[2]) ratingBit = (spans[2].textContent || "").replace("★", "").trim();
+    }
+    renderChips(typeLabel, yearBit, ratingBit);
 
     var posterImg = card.querySelector(".poster-media img");
     var posterUrl = "";
@@ -259,7 +268,7 @@
       wl.setAttribute("data-media-type", meta.type);
       wl.setAttribute("data-title", localTitle);
       wl.setAttribute("data-poster", posterUrl.indexOf("data:") === 0 ? "" : posterUrl);
-      wl.setAttribute("data-year", metaBits.length > 1 ? metaBits[1] : "");
+      wl.setAttribute("data-year", yearBit || "");
       wl.setAttribute("aria-label", "Add to watchlist");
       var wli = wl.querySelector("i");
       if (wli) wli.className = "uil uil-plus-circle";
@@ -274,12 +283,8 @@
         if (activeCard !== card) return;
         if (playBtn && data.url) playBtn.setAttribute("href", data.url);
         if (titleEl && data.title) titleEl.textContent = data.title;
-        var bits = [];
-        if (data.type === "tv") bits.push("TV");
-        else if (data.type === "movie") bits.push("Movie");
-        if (data.year) bits.push(String(data.year));
-        if (data.rating != null) bits.push("★ " + String(data.rating));
-        if (metaEl && bits.length) metaEl.textContent = bits.join(" · ");
+        var tLab = data.type === "tv" ? "TV" : "MOVIE";
+        renderChips(tLab, data.year ? String(data.year) : yearBit, data.rating != null ? String(data.rating) : ratingBit);
         if (wl) {
           if (data.title) wl.setAttribute("data-title", data.title);
           if (data.poster) wl.setAttribute("data-poster", data.poster);
