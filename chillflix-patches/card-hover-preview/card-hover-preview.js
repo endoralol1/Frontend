@@ -3,16 +3,36 @@
 
   var MQ = "(min-width: 992px)";
   var SELECTOR = ".section-rail .media-rail-items .movie-item.media-card, .section-top10 .top10-items .movie-item.media-card";
+  var LONG_PRESS_MS = 420;
   var cache = Object.create(null);
   var hoverTimer = null;
   var activeCard = null;
   var bound = false;
+  var longPressTimer = null;
+  var longPressCard = null;
+  var longPressMoved = false;
+  var longPressX = 0;
+  var longPressY = 0;
+  var suppressClick = false;
+  var touchPreview = false;
+
+  function isDesktop() {
+    try { return window.matchMedia(MQ).matches; } catch (e) { return false; }
+  }
 
   function canPreview() {
     try {
       if (document.documentElement.classList.contains("cf-perf-mode")) return false;
     } catch (e0) {}
-    try { return window.matchMedia(MQ).matches; } catch (e) { return false; }
+    return true;
+  }
+
+  function canHoverPreview() {
+    return canPreview() && isDesktop();
+  }
+
+  function canTouchPreview() {
+    return canPreview() && !isDesktop();
   }
 
   function baseUrl() {
@@ -147,12 +167,13 @@
 
     // Keep height locked while width animates back — otherwise aspect-ratio
     // (2/3) applies at the still-wide width and the card briefly grows downward.
+    // Touch previews do not expand width, so skip the collapse lock.
     var keepH = false;
     try {
-      keepH = !!(card.style.getPropertyValue("--cf-preview-h") || card.classList.contains("is-hover-preview"));
+      keepH = isDesktop() && !!(card.style.getPropertyValue("--cf-preview-h") || card.classList.contains("is-hover-preview"));
     } catch (eK) {}
 
-    card.classList.remove("is-hover-preview", "has-preview-media");
+    card.classList.remove("is-hover-preview", "has-preview-media", "is-touch-preview");
     if (keepH) card.classList.add("is-hover-collapsing");
 
     var video = card.querySelector("video.cf-card-video");
@@ -254,6 +275,8 @@
     } catch (eH) {}
 
     card.classList.add("is-hover-preview");
+    if (touchPreview) card.classList.add("is-touch-preview");
+    else card.classList.remove("is-touch-preview");
     hideTip();
 
     var playBtn = layers.ui.querySelector(".cf-card-play");
@@ -428,7 +451,7 @@
   }
 
   function onEnter(card) {
-    if (!canPreview()) return;
+    if (!canHoverPreview()) return;
     prefetchCard(card);
     clearTimeout(hoverTimer);
     hoverTimer = setTimeout(function () { playPreview(card); }, 120);
@@ -468,6 +491,22 @@
     }, { root: null, rootMargin: "80px", threshold: 0 });
   }
 
+  function clearLongPress() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+    longPressCard = null;
+    longPressMoved = false;
+  }
+
+  function dismissTouchPreview() {
+    if (!activeCard) return;
+    stopCard(activeCard);
+    activeCard = null;
+    touchPreview = false;
+  }
+
   function bind() {
     if (bound) return;
     bound = true;
@@ -485,7 +524,84 @@
       if (to && card.contains(to)) return;
       onLeave(card, to);
     });
+
+    /* Phone: long-press a media card to play the trailer preview */
+    document.addEventListener("touchstart", function (e) {
+      if (!canTouchPreview()) return;
+      if (!e.touches || e.touches.length !== 1) return;
+      var t = e.touches[0];
+      var target = e.target;
+      if (target && target.closest && target.closest(".cf-card-mute, .cf-card-play, .cf-card-watchlist, .cf-card-preview-actions")) {
+        clearLongPress();
+        return;
+      }
+      var card = target && target.closest ? target.closest(SELECTOR) : null;
+      clearLongPress();
+      if (!card) return;
+      longPressCard = card;
+      longPressMoved = false;
+      longPressX = t.clientX;
+      longPressY = t.clientY;
+      longPressTimer = setTimeout(function () {
+        longPressTimer = null;
+        if (!longPressCard || longPressMoved) return;
+        if (!canTouchPreview()) return;
+        suppressClick = true;
+        touchPreview = true;
+        prefetchCard(longPressCard);
+        playPreview(longPressCard);
+        try {
+          if (navigator.vibrate) navigator.vibrate(10);
+        } catch (eV) {}
+      }, LONG_PRESS_MS);
+    }, { passive: true });
+
+    document.addEventListener("touchmove", function (e) {
+      if (!longPressCard || !e.touches || !e.touches[0]) return;
+      var t = e.touches[0];
+      if (Math.abs(t.clientX - longPressX) > 12 || Math.abs(t.clientY - longPressY) > 12) {
+        longPressMoved = true;
+        clearLongPress();
+      }
+    }, { passive: true });
+
+    document.addEventListener("touchend", function () {
+      clearLongPress();
+      if (suppressClick) {
+        setTimeout(function () { suppressClick = false; }, 550);
+      }
+    }, { passive: true });
+
+    document.addEventListener("touchcancel", function () {
+      clearLongPress();
+    }, { passive: true });
+
+    document.addEventListener("contextmenu", function (e) {
+      if (!canTouchPreview()) return;
+      var card = e.target && e.target.closest ? e.target.closest(SELECTOR) : null;
+      if (card) {
+        e.preventDefault();
+      }
+    });
+
     document.addEventListener("click", function (e) {
+      if (suppressClick) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      /* Tap outside an active touch preview dismisses it */
+      if (touchPreview && activeCard) {
+        var inUi = e.target && e.target.closest
+          ? e.target.closest(".cf-card-mute, .cf-card-play, .cf-card-watchlist, .cf-card-preview-actions")
+          : null;
+        if (!inUi && !activeCard.contains(e.target)) {
+          dismissTouchPreview();
+          return;
+        }
+      }
+
       var shield = e.target && e.target.closest ? e.target.closest(".cf-card-video-shield") : null;
       if (shield) {
         var card = shield.closest(".movie-item");
@@ -514,6 +630,7 @@
       if (document.hidden && activeCard) {
         stopCard(activeCard);
         activeCard = null;
+        touchPreview = false;
       }
     });
 
@@ -521,6 +638,7 @@
       if (activeCard) {
         stopCard(activeCard);
         activeCard = null;
+        touchPreview = false;
       }
     });
 
