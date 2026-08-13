@@ -2,7 +2,7 @@
         'nextEpisode' => $nextEpisode,
         'extraCss' => [
             asset('css/player.css') . '?v=20260812-personpop1',
-            asset('css/watch-player.css') . '?v=20260813-eps-fill2',
+            asset('css/watch-player.css') . '?v=20260813-eps-fit5',
         ],
         'extraJs' => [
             'https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js',

@@ -302,14 +302,15 @@ body.page-watch #btn-share {
   body.page-watch .aside-wrapper.swap > .sidebar.watch-episode-sidebar {
     display: flex;
     flex-direction: column;
-    align-self: stretch;
+    align-self: stretch; /* definite height so max-height:100% works */
+    justify-content: flex-start;
     min-height: 0;
   }
   body.page-watch .aside-wrapper.swap > .sidebar.watch-episode-sidebar > #movie-episode.tv {
-    flex: 1 1 auto;
+    flex: 0 1 auto; /* size to content; only shrink when capped */
     min-height: 0;
-    height: 100%;
-    max-height: none;
+    height: auto;
+    max-height: 100%;
   }
 
   body.page-watch .watch-similar {
@@ -537,16 +538,16 @@ body.page-watch .horizontal-episode-card {
 body.page-watch #movie-episode.tv {
   display: flex !important;
   flex-direction: column !important;
-  flex: 1 1 0% !important;
+  flex: 0 1 auto !important;
   min-height: 0;
-  height: 100%;
-  max-height: none;
+  height: auto;
+  max-height: 100%; /* cap to sidebar (= player column); shrink-wrap when few episodes */
   width: 100% !important;
   background: rgba(8, 10, 15, 0.62) !important;
   border: 1px solid rgba(255, 255, 255, 0.05) !important;
   border-radius: 1.05rem !important;
   box-shadow: none !important;
-  overflow: visible; /* allow season menu to open (was clipped) */
+  overflow: visible; /* season dropdown; list scroll stays on .episodes */
 }
 
 body.page-watch #movie-episode .episode-top {
@@ -642,9 +643,9 @@ body.page-watch #movie-episode .episode-top .dropdown-item.season-item.active {
   color: #fff !important;
 }
 
-/* Episodes fill remaining sidebar height — scroll only after the panel is full */
+/* Size to episodes; scroll only when the panel hits max-height (sidebar height) */
 body.page-watch #movie-episode .episode-range {
-  flex: 1 1 0% !important;
+  flex: 0 1 auto !important;
   min-height: 0 !important;
   display: flex !important;
   flex-direction: column !important;
@@ -656,9 +657,9 @@ body.page-watch #movie-episode .episode-range .episodes {
   position: static !important;
   left: auto !important;
   right: auto !important;
-  flex: 1 1 0% !important;
+  flex: 0 1 auto !important;
   min-height: 0 !important;
-  height: 100% !important;
+  height: auto !important;
   max-height: none !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
@@ -832,18 +833,12 @@ body.page-watch #movie-episode .episode-bottom form .btn-primary {
     min-width: 0;
   }
   body.page-watch #movie-episode.tv {
-    max-height: none;
+    max-height: min(70vh, 36rem);
     min-height: 0;
+    height: auto;
   }
-  /* Keep flex-fill behavior when sidebar stacks; do not re-cap and create dead space */
   body.page-watch #movie-episode .episode-range .episodes {
     max-height: none !important;
-  }
-  body.page-watch .aside-wrapper.swap > .sidebar.watch-episode-sidebar {
-    min-height: min(70vh, 36rem);
-  }
-  body.page-watch .aside-wrapper.swap > .sidebar.watch-episode-sidebar > #movie-episode.tv {
-    min-height: min(70vh, 36rem);
   }
 }
 
@@ -923,4 +918,32 @@ body.page-watch .watch-similar .movie-sidebar.items .movie-item .info .name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+
+/* Cast person cards: horizontal scroller clips overflow — keep hover border inside the image box */
+body.page-watch .section.watch-cast .body {
+  overflow: visible;
+}
+body.page-watch .section.watch-cast .cast-row {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.35rem 0.25rem 0.65rem;
+  margin: 0;
+  scrollbar-width: thin;
+}
+body.page-watch .section.watch-cast a.cast-item-link {
+  transform: none !important; /* lift was clipped by overflow-x */
+}
+body.page-watch .section.watch-cast a.cast-item-link img {
+  box-sizing: border-box;
+  border: 2px solid transparent;
+  border-radius: 0.5rem;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+body.page-watch .section.watch-cast a.cast-item-link:hover img,
+body.page-watch .section.watch-cast a.cast-item-link:focus-visible img {
+  outline: none !important;
+  border-color: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.95);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4);
 }

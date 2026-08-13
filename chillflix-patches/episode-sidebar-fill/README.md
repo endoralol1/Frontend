@@ -1,14 +1,9 @@
-# Episode sidebar fill
+# Episode sidebar fit + cast hover border
 
-Fixes TV watch episode list scrolling too early while leaving empty space above "Go to episode".
+## Episodes
+Previously forced the episode panel to fill the full sidebar height (`height: 100%` / `flex-grow`), which left a large empty gap when a season had few episodes.
 
-## Cause
-`.episodes` was capped (`max-height: min(42vh, 24rem)` / mobile `22rem`/`58vh` caps) while the sidebar stretched beside the player. The list scrolled inside a short box; dead space sat unused below it.
+Now the panel **shrink-wraps to content** and only scrolls when it hits `max-height: 100%` of the stretched sidebar (player column height). Live: `watch-player.css?v=20260813-eps-fit5`.
 
-## Fix (live `?v=20260813-eps-fill2`)
-- `#movie-episode` / `.episode-range` / `.episodes` use `flex: 1 1 0%` + `min-height: 0` so the list fills remaining sidebar height
-- `max-height: none` on the episode scroller (desktop + stacked)
-- Stacked sidebar (`max-width: 1199.98px`) gets `min-height: min(70vh, 36rem)` so the list still has room when not beside the player
-
-## Verify
-On `/tv/breaking-bad/1396?s=5&e=7`: `#movie-episode` ~ full sidebar height; `.episodes` `clientHeight === scrollHeight` when episodes fit; scroll only when content exceeds the filled panel.
+## Cast person cards (watch page)
+`.cast-row { overflow-x: auto }` clips hover lift + outline. Watch page now uses an **inset orange border** on the photo (no upward translate) so the hover ring is fully visible.
