@@ -57,3 +57,29 @@ html.cf-perf-mode .cf-card-video,
 html.cf-perf-mode video.cf-card-video {
   display: none !important;
 }
+
+
+/* Settings panel must scroll when Performance + other blocks exceed dropdown height */
+@media (min-width: 992px) {
+  .browse-sheet.settings-open .browse-sheet-panel {
+    max-height: min(88vh, 46rem) !important;
+    height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .browse-sheet.settings-open .browse-sheet-body {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .browse-sheet.settings-open .browse-settings-panel {
+    padding-bottom: 0.85rem;
+  }
+}
+
+.browse-sheet.settings-open .browse-sheet-panel {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}

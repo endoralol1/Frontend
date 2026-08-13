@@ -27,4 +27,6 @@ Browse sheet → Settings → **Performance** → **Performance mode**
 | `public/assets/js/app.docksearch-1228.js` | Pref wiring + sky |
 | `public/assets/js/card-hover-preview.js` | Skip hover trailers |
 
-Asset cache bust: `?v=20260813-perf01`
+Asset cache bust: `?v=20260813-perf02`
+
+Settings order: Theme → Language → **Performance** → Playback → Library (Performance placed high so it is visible without relying on dropdown scroll).
