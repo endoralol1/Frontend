@@ -915,13 +915,11 @@ body.page-watch .watch-similar {
 }
 
 
-/* You may also like: slightly wider column for titles (desktop only — don't pin 20rem when stacked) */
-@media (min-width: 1200px) {
-  body.page-watch .aside-wrapper.swap.mt-4 > .sidebar {
-    min-width: 18rem !important;
-    max-width: 21rem !important;
-    width: 20rem !important;
-  }
+/* You may also like: slightly wider column for titles */
+body.page-watch .aside-wrapper.swap.mt-4 > .sidebar {
+  min-width: 18rem !important;
+  max-width: 21rem !important;
+  width: 20rem !important;
 }
 body.page-watch .watch-similar .movie-sidebar.items .movie-item .info .name {
   max-width: 100%;
@@ -990,8 +988,7 @@ body.page-watch .watch-info-below-player #w-info {
 /* Movies: second row = compact info | YMAL (YMAL beside INFO, not player) */
 body.page-watch .aside-wrapper.swap.watch-movie-info-row {
   display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
+  flex-wrap: nowrap;
   align-items: flex-start;
   gap: 0.95rem !important;
   width: 100%;
@@ -1091,51 +1088,14 @@ body.page-watch .aside-wrapper.swap.watch-movie-info-row .movie-sidebar.items {
   }
 }
 
-/* Movies: keep INFO | YMAL side-by-side (never dump YMAL alone bottom-left) */
 @media (max-width: 1199.98px) {
   body.page-watch .aside-wrapper.swap.watch-movie-info-row {
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: flex-start !important;
+    flex-direction: column;
   }
-  body.page-watch .aside-wrapper.swap.watch-movie-info-row > .main {
-    flex: 1 1 0 !important;
+  body.page-watch .aside-wrapper.swap.watch-movie-info-row > .sidebar.watch-similar-sidebar {
+    width: 100% !important;
+    max-width: none !important;
     min-width: 0 !important;
-    width: auto !important;
-  }
-  body.page-watch .aside-wrapper.swap.watch-movie-info-row > .sidebar.watch-similar-sidebar {
-    flex: 0 0 14.5rem !important;
-    width: 14.5rem !important;
-    min-width: 13.5rem !important;
-    max-width: 15.5rem !important;
-  }
-}
-
-@media (max-width: 575.98px) {
-  body.page-watch .aside-wrapper.swap.watch-movie-info-row {
-    gap: 0.55rem !important;
-  }
-  body.page-watch .aside-wrapper.swap.watch-movie-info-row > .sidebar.watch-similar-sidebar {
-    flex: 0 0 11.5rem !important;
-    width: 11.5rem !important;
-    min-width: 11rem !important;
-    max-width: 12rem !important;
-  }
-  /* Compact movie info so it still fits beside YMAL on phones */
-  body.page-watch .watch-movie-info-row #w-info .item-poster > img {
-    max-width: 88px !important;
-    width: 88px !important;
-  }
-  body.page-watch .watch-movie-info-row #w-info .info .name {
-    font-size: 1rem !important;
-    margin-right: 0.35rem !important;
-  }
-  body.page-watch .watch-movie-info-row #w-info .w-desc {
-    font-size: 0.78rem;
-    -webkit-line-clamp: 3;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
   }
 }
 

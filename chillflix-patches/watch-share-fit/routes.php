@@ -2438,7 +2438,7 @@ function watch_page(Tmdb $tmdb, string $type, int $id, string $slug): void
         'nextEpisode' => $nextEpisode,
         'extraCss' => [
             asset('css/player.css') . '?v=20260812-personpop1',
-            asset('css/watch-player.css') . '?v=20260814-movie-ymal-beside1',
+            asset('css/watch-player.css') . '?v=20260814-layout-restore1',
         ],
         'extraJs' => [
             'https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js',
