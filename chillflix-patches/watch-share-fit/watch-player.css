@@ -1138,7 +1138,7 @@ body.page-watch .watch-similar .movie-sidebar.items {
   body.page-watch #movie-managers .movie-managers-wrap .movie-manager i {
     font-size: 0.95rem;
   }
-  /* Share: icon-only, pinned right so it always fits */
+  /* Only Share is icon-only — other buttons keep their labels */
   body.page-watch #movie-managers .movie-manager.share-btn,
   body.page-watch #btn-share {
     margin-left: auto !important;
@@ -1154,28 +1154,6 @@ body.page-watch .watch-similar .movie-sidebar.items {
     display: none !important;
   }
 }
-
-@media (max-width: 420px) {
-  /* Drop secondary labels so Trailer/Watch/Auto/Watchlist + Share fit one row */
-  body.page-watch #movie-managers .movie-manager.trailer span.ml-1,
-  body.page-watch #movie-managers .movie-manager.auto-play span.ml-1,
-  body.page-watch #movie-managers .user-bookmark-toggle span.ml-1,
-  body.page-watch #movie-managers .user-bookmark-toggle .fav-label {
-    display: none !important;
-  }
-  body.page-watch #movie-managers .movie-manager.trailer,
-  body.page-watch #movie-managers .movie-manager.auto-play,
-  body.page-watch #movie-managers .user-bookmark-toggle {
-    width: 2.35rem !important;
-    min-width: 2.35rem !important;
-    padding: 0.38rem 0 !important;
-    justify-content: center !important;
-  }
-  /* Keep Watch label — primary CTA */
-  body.page-watch #movie-managers .watch-now-btn span.ml-1,
-  body.page-watch #btn-watch-now.movie-manager span.ml-1 {
-    display: inline !important;
-  }
-}
 /* /Mobile managers */
+
 
