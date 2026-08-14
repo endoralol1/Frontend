@@ -1,11 +1,13 @@
+}
+#btn-autoplay.is-on i,
 #btn-autoplay[aria-pressed="true"] i {
   color: #ff5c6a;
 }
 
-/* Share — do NOT margin-left:auto (bunches other actions on the left) */
+/* Share pinned right, icon-forward */
 #movie-managers .movie-manager.share-btn,
 #btn-share {
-  margin-left: 0 !important;
+  margin-left: auto !important;
   background: transparent;
   border-color: rgba(255, 255, 255, 0.1);
   color: #d5d9e2;
@@ -14,8 +16,3 @@
 #movie-managers .movie-manager.share-btn:hover,
 #btn-share:hover {
   background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-}
-
-#movie-player.np-active #movie-managers {
-  opacity: 1;

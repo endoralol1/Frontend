@@ -1107,72 +1107,30 @@ body.page-watch .watch-similar .movie-sidebar.items {
   overflow: visible !important;
 }
 
-/* Mobile managers: equal-width fill, no empty gaps, full labels */
-@media (max-width: 991.98px) {
-  body.page-watch #movie-managers {
-    padding: 0.4rem 0.4rem !important;
-    width: 100% !important;
-  }
+/* Share-only mobile fit — leave other manager buttons unchanged */
+@media (max-width: 767.98px) {
   body.page-watch #movie-managers .movie-managers-wrap {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: stretch !important;
-    justify-content: stretch !important;
-    gap: 0.3rem !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    overflow: visible !important;
+    overflow: visible;
   }
-  /* Each action grows equally — fills the row, no dead space */
-  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager {
-    flex: 1 1 0 !important;
-    width: 0 !important; /* equal columns with flex-grow */
-    min-width: 0 !important;
-    max-width: none !important;
-    margin: 0 !important;
-    font-size: 0.68rem !important;
-    padding: 0.48rem 0.28rem !important;
-    border-radius: 0.65rem !important;
-    gap: 0.18rem !important;
-    justify-content: center !important;
-    align-items: center !important;
-    text-align: center !important;
-    white-space: normal !important; /* wrap label instead of clipping */
-    line-height: 1.15 !important;
-  }
-  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager i {
-    font-size: 0.95rem;
-    flex-shrink: 0;
-  }
-  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager span.ml-1,
-  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager .fav-label {
-    display: inline !important;
-    overflow: visible !important;
-    text-overflow: unset !important;
-    white-space: normal !important;
-    max-width: none !important;
-    text-align: center;
-  }
-  /* Share icon-only but same equal column width — fills its slot */
-  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager.share-btn,
-  body.page-watch #movie-managers .movie-managers-wrap > #btn-share,
+  /* Pin Share right as icon-only so it isn't clipped; Trailer/Watch/etc stay as before */
+  body.page-watch #movie-managers .movie-manager.share-btn,
   body.page-watch #movie-managers #btn-share {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    flex: 1 1 0 !important;
-    width: 0 !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    padding: 0.48rem 0.2rem !important;
+    margin-left: auto !important;
+    flex: 0 0 auto !important;
+    flex-shrink: 0 !important;
+    width: 2.35rem !important;
+    min-width: 2.35rem !important;
+    max-width: 2.35rem !important;
+    padding: 0.4rem 0 !important;
+    justify-content: center !important;
   }
-  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager.share-btn span.ml-1,
+  body.page-watch #movie-managers .movie-manager.share-btn span.ml-1,
   body.page-watch #movie-managers #btn-share span.ml-1 {
     display: none !important;
   }
 }
 /* /Mobile managers */
+
 
 
 

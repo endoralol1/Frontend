@@ -1,7 +1,6 @@
-# Mobile watch managers
+# Share button fit only
 
-- Equal-width buttons fill the full row (no empty gaps)
-- Labels can wrap instead of clipping
-- Share icon-only in its equal column
+Reverted Trailer/Watch/Auto/Watchlist to original layout.
+Only Share is icon-only + pinned right so it is not clipped on mobile.
 
-Live `?v=20260814-mgr-fill1`.
+Live `?v=20260814-share-only1`.
