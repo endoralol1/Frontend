@@ -148,6 +148,24 @@ $adminUser = $adminUser ?? Auth::user();
 .cf-ia-panel label.cf-ia-field {
   display: grid; gap: .2rem; font-size: .68rem; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .04em;
 }
+.cf-ia-ramp-live {
+  display: grid; gap: .2rem; padding: .45rem .55rem; border-radius: .55rem;
+  border: 1px solid rgba(var(--cf-orange-rgb, 219,105,55), .35);
+  background: rgba(var(--cf-orange-rgb, 219,105,55), .1);
+  font-size: .72rem; color: rgba(255,255,255,.78); line-height: 1.35;
+}
+.cf-ia-ramp-live strong { color: #ffd2b8; font-weight: 700; }
+.cf-ia-ramp-live .cf-ia-ramp-h {
+  font-size: .65rem; letter-spacing: .06em; text-transform: uppercase;
+  color: rgba(255,255,255,.5); font-weight: 700;
+}
+.cf-ia-opt-heads {
+  display: grid; grid-template-columns: 1fr auto auto; gap: .25rem .4rem;
+  font-size: .62rem; color: rgba(255,255,255,.4); letter-spacing: .04em; text-transform: uppercase;
+  padding: 0 .15rem;
+}
+.cf-ia-opt-heads span:nth-child(2),
+.cf-ia-opt-heads span:nth-child(3) { text-align: center; width: 3.6rem; }
 .cf-ia-ramp-status { font-size: .72rem; color: rgba(255,255,255,.5); line-height: 1.35; }
 .cf-ia-ramp-status strong { color: #ffd2b8; }
 @media (max-width: 640px) {
@@ -239,17 +257,31 @@ $adminUser = $adminUser ?? Auth::user();
       }).join('');
 
       var ramps = it.ramps || [];
+      function rampLabel(r) {
+        if (r.kind === 'like') return 'Likes';
+        if (r.kind === 'dislike') return 'Dislikes';
+        if (r.kind === 'option' && r.optionId) {
+          var match = (it.options || []).find(function (o) { return o.id === r.optionId; });
+          if (match) return 'Votes · ' + match.label;
+          return 'Votes';
+        }
+        return r.kind;
+      }
+      function rampLine(r) {
+        return '<div><strong>' + esc(rampLabel(r)) + '</strong>: ' +
+          r.lastApplied + ' / ' + r.targetCount +
+          ' · ' + Math.round((r.progress || 0) * 100) + '%' +
+          ' · ' + fmtRemain(r.remainingSec) + ' left</div>';
+      }
       var rampStatus = ramps.length
-        ? ramps.map(function (r) {
-            var label = r.kind;
-            if (r.kind === 'option' && r.optionId) {
-              var match = (it.options || []).find(function (o) { return o.id === r.optionId; });
-              if (match) label = match.label;
-            }
-            return '<div>· <strong>' + esc(label) + '</strong> ' + r.lastApplied + '→' + r.targetCount +
-              ' · ' + Math.round((r.progress || 0) * 100) + '% · ' + fmtRemain(r.remainingSec) + '</div>';
-          }).join('')
+        ? ramps.map(rampLine).join('')
         : '<div>No active ramps</div>';
+      var rampLive = ramps.length
+        ? '<div class="cf-ia-ramp-live"><div class="cf-ia-ramp-h">Gradual drip running</div>' +
+          ramps.map(rampLine).join('') +
+          '<div style="opacity:.75">Poll option votes stay separate from likes. Current likes: <strong>' +
+          (it.likeCount || 0) + '</strong></div></div>'
+        : '';
 
       var voteOff = s.votingEnabled === false || s.votingEnabled === 0;
       var flags = [];
@@ -281,7 +313,8 @@ $adminUser = $adminUser ?? Auth::user();
           '</div>' +
         '</div>' +
         (it.body ? '<p class="cf-ia-body">' + esc(it.body) + '</p>' : '') +
-        (opts ? '<div class="cf-ia-opts">' + opts + '</div><div class="cf-ia-meta">Total votes: ' + (it.totalVotes != null ? it.totalVotes : totalVotes) +
+        rampLive +
+        (opts ? '<div class="cf-ia-opt-heads"><span>Option</span><span>Now</span><span>+Drip</span></div><div class="cf-ia-opts">' + opts + '</div><div class="cf-ia-meta">Total votes: ' + (it.totalVotes != null ? it.totalVotes : totalVotes) +
           ' · Likes ' + (it.likeCount || 0) + ' · Dislikes ' + (it.dislikeCount || 0) + '</div>' : 
           '<div class="cf-ia-meta">Likes ' + (it.likeCount || 0) + ' · Dislikes ' + (it.dislikeCount || 0) + '</div>') +
 
@@ -359,11 +392,17 @@ $adminUser = $adminUser ?? Auth::user();
             '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="cancel-ramp">Cancel</button>' +
             '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="close-panel">Close</button>' +
           '</div>' +
-          '<p class="cf-ia-meta">Set the right-hand Add numbers on options, then Start.</p>' +
+          '<p class="cf-ia-meta">Put amounts in each option’s <strong>+Drip</strong> column and/or +Likes / +Dislikes, then Start.</p>' +
           '<div class="cf-ia-ramp-status">' + rampStatus + '</div>' +
         '</div>' +
       '</article>';
     }).join('');
+  }
+
+  var refreshTimer = null;
+  function scheduleRefresh(ms) {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(load, ms);
   }
 
   function load() {
@@ -371,7 +410,10 @@ $adminUser = $adminUser ?? Auth::user();
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (!d || !d.ok) { list.textContent = 'Failed'; return; }
-        render(d.items || []);
+        var items = d.items || [];
+        render(items);
+        var hasRamp = items.some(function (it) { return (it.ramps || []).length > 0; });
+        scheduleRefresh(hasRamp ? 15000 : 30000);
       })
       .catch(function () { list.textContent = 'Failed'; });
   }
@@ -562,6 +604,5 @@ $adminUser = $adminUser ?? Auth::user();
   });
 
   load();
-  setInterval(load, 30000);
 })();
 </script>
