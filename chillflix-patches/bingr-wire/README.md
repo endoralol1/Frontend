@@ -18,3 +18,12 @@ curl -sS 'https://vuflix.co/api/player/sources?type=movie&tmdbId=27205&provider=
 ## Notes
 - Do not hammer — provider caches 10m and only probes until one server works.
 - Turnstile on bingr.one is for auth only; stream API is open.
+
+## Playback fix (media-proxy)
+Sirius segments are MPEG-TS disguised as `.jpg` with `Content-Type: image/jpeg`.
+`VidmolySources` now forces `video/mp2t` (same idea as HDGHAR/`StreamLangProxy`) and
+strips dangling `SUBTITLES="subs"` so HLS.js can play.
+
+```bash
+python3 chillflix-patches/bingr-wire/patch_vidmoly_ts_mime.py
+```
