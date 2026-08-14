@@ -13,7 +13,7 @@ $adminUser = $adminUser ?? Auth::user();
 
     <div class="cf-admin-head">
       <h1>Inbox · Polls &amp; notifications</h1>
-      <p>Create polls and site notifications. The header bell appears only when something is active. Guests are tracked for the browser session; signed-in users keep votes/reads on their account.</p>
+      <p>Create polls and site notifications. Set vote counts and like/dislike totals from here. The header bell appears only while something is active.</p>
     </div>
 
     <div class="cf-admin-panel" id="inbox-create">
@@ -38,8 +38,17 @@ $adminUser = $adminUser ?? Auth::user();
         <textarea id="in-body" rows="3" placeholder="Message / poll description (optional)" style="width:100%;border-radius:.7rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.28);color:#fff;padding:.55rem .7rem;resize:vertical"></textarea>
 
         <div id="in-poll-opts" hidden>
-          <p class="muted" style="margin:0 0 .35rem;font-size:.82rem;color:rgba(255,255,255,.5)">Poll options (one per line, min 2)</p>
-          <textarea id="in-options" rows="4" placeholder="Option A&#10;Option B&#10;Option C" style="width:100%;border-radius:.7rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.28);color:#fff;padding:.55rem .7rem"></textarea>
+          <p class="muted" style="margin:0 0 .35rem;font-size:.82rem;color:rgba(255,255,255,.5)">Poll options (one per line, min 2). Optional seed votes: <code style="color:rgba(255,255,255,.7)">Option A|24</code></p>
+          <textarea id="in-options" rows="4" placeholder="Option A|10&#10;Option B|4&#10;Option C" style="width:100%;border-radius:.7rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.28);color:#fff;padding:.55rem .7rem"></textarea>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:.65rem;align-items:center">
+          <label>Likes
+            <input id="in-likes" type="number" min="0" value="0" style="width:5.5rem;min-height:2.2rem;margin-left:.35rem;border-radius:.55rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.28);color:#fff;padding:.25rem .45rem">
+          </label>
+          <label>Dislikes
+            <input id="in-dislikes" type="number" min="0" value="0" style="width:5.5rem;min-height:2.2rem;margin-left:.35rem;border-radius:.55rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.28);color:#fff;padding:.25rem .45rem">
+          </label>
         </div>
 
         <details open style="border:1px solid rgba(255,255,255,.08);border-radius:.85rem;padding:.65rem .8rem;background:rgba(255,255,255,.02)">
@@ -78,6 +87,33 @@ $adminUser = $adminUser ?? Auth::user();
     </div>
   </div>
 </main>
+<style>
+  .cf-inbox-admin-opts { display:grid; gap:.45rem; margin-top:.55rem; }
+  .cf-inbox-admin-opt {
+    display:grid; grid-template-columns:1fr auto; gap:.45rem .65rem; align-items:center;
+    padding:.55rem .65rem; border-radius:.75rem; border:1px solid rgba(255,255,255,.08);
+    background:rgba(0,0,0,.18);
+  }
+  .cf-inbox-admin-opt-label { color:#fff; font-size:.86rem; font-weight:650; }
+  .cf-inbox-admin-opt-meta { color:rgba(255,255,255,.5); font-size:.75rem; margin-top:.15rem; }
+  .cf-inbox-admin-bar {
+    grid-column:1 / -1; height:.42rem; border-radius:999px; background:rgba(255,255,255,.08); overflow:hidden;
+  }
+  .cf-inbox-admin-bar > i {
+    display:block; height:100%; background:linear-gradient(90deg,var(--cf-orange,#db6937),var(--cf-orange-deep,#c43c2e));
+  }
+  .cf-inbox-admin-num {
+    width:4.6rem; min-height:2.1rem; border-radius:.55rem; border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.28); color:#fff; padding:.25rem .4rem; text-align:center;
+  }
+  .cf-inbox-admin-reacts {
+    display:flex; flex-wrap:wrap; gap:.55rem; align-items:center; margin-top:.55rem;
+    font-size:.84rem; color:rgba(255,255,255,.7);
+  }
+  .cf-inbox-admin-total {
+    margin-top:.35rem; font-size:.78rem; color:rgba(255,255,255,.48);
+  }
+</style>
 <script>
 (function(){
   var API = <?= json_encode(url('/api/admin/inbox')) ?>;
@@ -104,11 +140,30 @@ $adminUser = $adminUser ?? Auth::user();
   document.getElementById('in-type').onchange = syncType;
   syncType();
 
+  function parseOptionLines(text){
+    return String(text||'').split(/\n+/).map(function(line){
+      line = line.trim();
+      if(!line) return null;
+      var m = line.match(/^(.*)\|(\d+)\s*$/);
+      if(m) return { label: m[1].trim(), voteCount: parseInt(m[2],10)||0 };
+      return { label: line, voteCount: 0 };
+    }).filter(Boolean);
+  }
+
   function render(items){
     if(!items || !items.length){ list.innerHTML = '<p class="muted" style="color:rgba(255,255,255,.45)">No inbox items yet.</p>'; return; }
     list.innerHTML = items.map(function(it){
+      var totalVotes = 0;
+      (it.options||[]).forEach(function(o){ totalVotes += (o.voteCount||0); });
       var opts = (it.options||[]).map(function(o){
-        return '<li>'+esc(o.label)+' <span style="color:rgba(255,255,255,.45)">('+(o.voteCount||0)+')</span></li>';
+        var vc = o.voteCount||0;
+        var pct = totalVotes > 0 ? Math.round((vc/totalVotes)*100) : 0;
+        return '<div class="cf-inbox-admin-opt" data-opt="'+esc(o.id)+'">'+
+          '<div><div class="cf-inbox-admin-opt-label">'+esc(o.label)+'</div>'+
+          '<div class="cf-inbox-admin-opt-meta">'+vc+' vote'+(vc===1?'':'s')+' · '+pct+'%</div></div>'+
+          '<input class="cf-inbox-admin-num" type="number" min="0" value="'+vc+'" data-vote-input aria-label="Votes for '+esc(o.label)+'">'+
+          '<div class="cf-inbox-admin-bar" aria-hidden="true"><i style="width:'+pct+'%"></i></div>'+
+        '</div>';
       }).join('');
       var ends = it.endsAt ? new Date(it.endsAt*1000).toLocaleString() : '—';
       return '<div class="cf-admin-source" data-id="'+esc(it.id)+'" style="flex-direction:column;align-items:stretch;gap:.45rem">'+
@@ -116,7 +171,7 @@ $adminUser = $adminUser ?? Auth::user();
           '<div><strong>'+esc(it.title)+'</strong> '+
           '<span style="color:rgba(255,255,255,.4)">('+esc(it.type)+' · '+esc(it.status)+')</span>'+
           (it.settings && it.settings.pin ? ' · pinned' : '')+
-          '<div style="font-size:.78rem;color:rgba(255,255,255,.45);margin-top:.15rem">Likes '+(it.likeCount||0)+' · Dislikes '+(it.dislikeCount||0)+' · ends '+esc(ends)+'</div></div>'+
+          '<div style="font-size:.78rem;color:rgba(255,255,255,.45);margin-top:.15rem">Ends '+esc(ends)+'</div></div>'+
           '<div style="display:flex;gap:.35rem;flex-wrap:wrap">'+
             (it.status!=='active'?'<button type="button" class="cf-admin-btn ghost" data-act="publish">Publish</button>':'')+
             (it.status==='active'?'<button type="button" class="cf-admin-btn ghost" data-act="close">Close</button>':'')+
@@ -125,7 +180,12 @@ $adminUser = $adminUser ?? Auth::user();
           '</div>'+
         '</div>'+
         (it.body ? '<div style="font-size:.86rem;color:rgba(255,255,255,.7)">'+esc(it.body)+'</div>' : '')+
-        (opts ? '<ul style="margin:.2rem 0 0;padding-left:1.1rem;font-size:.84rem">'+opts+'</ul>' : '')+
+        (opts ? '<div class="cf-inbox-admin-opts">'+opts+'</div><div class="cf-inbox-admin-total">Total poll votes: <strong style="color:#fff">'+(it.totalVotes!=null?it.totalVotes:totalVotes)+'</strong></div>' : '')+
+        '<div class="cf-inbox-admin-reacts">'+
+          '<label>Likes <input class="cf-inbox-admin-num" type="number" min="0" value="'+(it.likeCount||0)+'" data-like-input></label>'+
+          '<label>Dislikes <input class="cf-inbox-admin-num" type="number" min="0" value="'+(it.dislikeCount||0)+'" data-dislike-input></label>'+
+          '<button type="button" class="cf-admin-btn" data-act="save-counts">Save counts</button>'+
+        '</div>'+
       '</div>';
     }).join('');
   }
@@ -145,12 +205,14 @@ $adminUser = $adminUser ?? Auth::user();
       title: document.getElementById('in-title').value.trim(),
       body: document.getElementById('in-body').value.trim(),
       status: document.getElementById('in-status').value,
-      settings: settingsFromForm()
+      settings: settingsFromForm(),
+      likeCount: parseInt(document.getElementById('in-likes').value,10)||0,
+      dislikeCount: parseInt(document.getElementById('in-dislikes').value,10)||0
     };
     var ends = document.getElementById('in-ends').value;
     if(ends) payload.endsAt = Math.floor(new Date(ends).getTime()/1000);
     if(type==='poll'){
-      payload.options = document.getElementById('in-options').value.split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean);
+      payload.options = parseOptionLines(document.getElementById('in-options').value);
     }
     if(!payload.title){ show('Title required'); return; }
     show('Saving…');
@@ -161,6 +223,8 @@ $adminUser = $adminUser ?? Auth::user();
         document.getElementById('in-title').value='';
         document.getElementById('in-body').value='';
         document.getElementById('in-options').value='';
+        document.getElementById('in-likes').value='0';
+        document.getElementById('in-dislikes').value='0';
         load();
       }).catch(function(){ show('Save failed'); });
   };
@@ -176,6 +240,33 @@ $adminUser = $adminUser ?? Auth::user();
       if(!confirm('Delete this item?')) return;
       fetch(API+'/'+encodeURIComponent(id),{method:'DELETE',credentials:'same-origin'})
         .then(r=>r.json()).then(function(d){ if(d&&d.ok){ show('Deleted', true); load(); } else show('Delete failed'); });
+      return;
+    }
+    if(act==='save-counts'){
+      var optionVotes = [];
+      row.querySelectorAll('.cf-inbox-admin-opt').forEach(function(opt){
+        var oid = opt.getAttribute('data-opt');
+        var inp = opt.querySelector('[data-vote-input]');
+        if(!oid || !inp) return;
+        optionVotes.push({ id: oid, voteCount: parseInt(inp.value,10)||0 });
+      });
+      var likeEl = row.querySelector('[data-like-input]');
+      var dislikeEl = row.querySelector('[data-dislike-input]');
+      var body = {
+        likeCount: likeEl ? (parseInt(likeEl.value,10)||0) : 0,
+        dislikeCount: dislikeEl ? (parseInt(dislikeEl.value,10)||0) : 0
+      };
+      if(optionVotes.length) body.optionVotes = optionVotes;
+      btn.disabled = true;
+      fetch(API+'/'+encodeURIComponent(id),{
+        method:'POST', credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      }).then(r=>r.json()).then(function(d){
+        btn.disabled = false;
+        if(d&&d.ok){ show('Counts saved', true); load(); }
+        else show((d&&d.error)||'Save failed');
+      }).catch(function(){ btn.disabled=false; show('Save failed'); });
       return;
     }
     var status = act==='publish' ? 'active' : (act==='close' ? 'closed' : 'archived');

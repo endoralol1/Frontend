@@ -153,8 +153,13 @@
                 var selected = (it.myVotes || []).indexOf(o.id) >= 0;
                 var pct =
                   o.percent != null
-                    ? '<span class="cf-inbox-pct">' + o.percent + "%</span>"
-                    : "";
+                    ? '<span class="cf-inbox-pct">' +
+                      (o.voteCount != null ? o.voteCount + " · " : "") +
+                      o.percent +
+                      "%</span>"
+                    : o.voteCount != null
+                      ? '<span class="cf-inbox-pct">' + o.voteCount + "</span>"
+                      : "";
                 var bar =
                   o.percent != null
                     ? '<span class="cf-inbox-bar"><i style="width:' +

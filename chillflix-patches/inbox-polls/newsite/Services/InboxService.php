@@ -274,6 +274,7 @@ final class InboxService
                     $o['percent'] = null;
                 }
                 unset($o);
+                $totalVotes = null;
             }
         }
 
@@ -569,12 +570,26 @@ final class InboxService
             if (!is_array($rawOpts)) {
                 $rawOpts = [];
             }
-            foreach ($rawOpts as $i => $label) {
-                $label = trim(is_array($label) ? (string) ($label['label'] ?? '') : (string) $label);
+            foreach ($rawOpts as $i => $opt) {
+                $label = '';
+                $seedVotes = 0;
+                if (is_array($opt)) {
+                    $label = trim((string) ($opt['label'] ?? ''));
+                    $seedVotes = max(0, (int) ($opt['voteCount'] ?? $opt['votes'] ?? 0));
+                } else {
+                    $raw = trim((string) $opt);
+                    // Support "Label|12" seed votes in plain textarea lines.
+                    if (preg_match('/^(.*)\|(\d+)\s*$/', $raw, $m)) {
+                        $label = trim($m[1]);
+                        $seedVotes = max(0, (int) $m[2]);
+                    } else {
+                        $label = $raw;
+                    }
+                }
                 if ($label === '') {
                     continue;
                 }
-                $options[] = $label;
+                $options[] = ['label' => $label, 'voteCount' => $seedVotes];
             }
             if (count($options) < 2) {
                 throw new RuntimeException('Polls need at least 2 options');
@@ -604,11 +619,26 @@ final class InboxService
 
         if ($type === 'poll') {
             $ins = Database::pdo()->prepare(
-                'INSERT INTO inbox_options (id, item_id, label, sort_order, vote_count) VALUES (?, ?, ?, ?, 0)'
+                'INSERT INTO inbox_options (id, item_id, label, sort_order, vote_count) VALUES (?, ?, ?, ?, ?)'
             );
-            foreach ($options as $i => $label) {
-                $ins->execute([Auth::uuid(), $id, mb_substr($label, 0, 200), $i]);
+            foreach ($options as $i => $opt) {
+                $ins->execute([
+                    Auth::uuid(),
+                    $id,
+                    mb_substr((string) $opt['label'], 0, 200),
+                    $i,
+                    max(0, (int) ($opt['voteCount'] ?? 0)),
+                ]);
             }
+        }
+
+        // Optional seed reaction counts on create.
+        $likeSeed = max(0, (int) ($payload['likeCount'] ?? $payload['likes'] ?? 0));
+        $dislikeSeed = max(0, (int) ($payload['dislikeCount'] ?? $payload['dislikes'] ?? 0));
+        if ($likeSeed > 0 || $dislikeSeed > 0) {
+            Database::pdo()->prepare(
+                'UPDATE inbox_items SET like_count = ?, dislike_count = ? WHERE id = ?'
+            )->execute([$likeSeed, $dislikeSeed, $id]);
         }
 
         return self::mapItem(self::fetchRow($id) ?? [], 'admin', true, true);
@@ -707,7 +737,71 @@ final class InboxService
             }
         }
 
+        // Admin can set like / dislike totals (display counts; does not rewrite reaction rows).
+        $countFields = [];
+        $countVals = [];
+        if (array_key_exists('likeCount', $payload) || array_key_exists('likes', $payload)) {
+            $n = (int) ($payload['likeCount'] ?? $payload['likes'] ?? 0);
+            $countFields[] = 'like_count = ?';
+            $countVals[] = max(0, $n);
+        }
+        if (array_key_exists('dislikeCount', $payload) || array_key_exists('dislikes', $payload)) {
+            $n = (int) ($payload['dislikeCount'] ?? $payload['dislikes'] ?? 0);
+            $countFields[] = 'dislike_count = ?';
+            $countVals[] = max(0, $n);
+        }
+        if ($countFields !== []) {
+            $countFields[] = 'updated_at = ?';
+            $countVals[] = Auth::now();
+            $countVals[] = $id;
+            Database::pdo()->prepare('UPDATE inbox_items SET ' . implode(', ', $countFields) . ' WHERE id = ?')
+                ->execute($countVals);
+        }
+
+        // Admin can set per-option vote totals.
+        if ($type === 'poll' && isset($payload['optionVotes']) && is_array($payload['optionVotes'])) {
+            self::adminSetOptionVotes($id, $payload['optionVotes']);
+        }
+
         return self::mapItem(self::fetchRow($id) ?? [], 'admin', true, true);
+    }
+
+    /**
+     * Set poll option vote counts from admin.
+     * Accepts list of {id, voteCount} or map optionId => count.
+     *
+     * @param array<mixed> $votes
+     */
+    public static function adminSetOptionVotes(string $itemId, array $votes): void
+    {
+        $pdo = Database::pdo();
+        $upd = $pdo->prepare(
+            'UPDATE inbox_options SET vote_count = ? WHERE id = ? AND item_id = ?'
+        );
+        // Normalize map or list.
+        $pairs = [];
+        $isList = array_keys($votes) === range(0, count($votes) - 1);
+        if ($isList) {
+            foreach ($votes as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $oid = (string) ($row['id'] ?? $row['optionId'] ?? '');
+                if ($oid === '') {
+                    continue;
+                }
+                $pairs[$oid] = max(0, (int) ($row['voteCount'] ?? $row['votes'] ?? $row['count'] ?? 0));
+            }
+        } else {
+            foreach ($votes as $oid => $count) {
+                $pairs[(string) $oid] = max(0, (int) $count);
+            }
+        }
+        foreach ($pairs as $oid => $count) {
+            $upd->execute([$count, $oid, $itemId]);
+        }
+        $pdo->prepare('UPDATE inbox_items SET updated_at = ? WHERE id = ?')
+            ->execute([Auth::now(), $itemId]);
     }
 
     public static function adminDelete(string $id): void
