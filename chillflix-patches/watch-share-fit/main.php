@@ -129,7 +129,7 @@ $extraJs = $extraJs ?? [];
     <link rel="stylesheet" href="<?= e(asset('vendor/tooltipster.bundle.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/swiper.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/episode-carousel.css')) ?>?v=20260813-teal-default1">
-    <link rel="stylesheet" href="<?= e(asset('css/app-docksearch-1232.css')) ?>?v=20260814-pre-share1">
+    <link rel="stylesheet" href="<?= e(asset('css/app-docksearch-1232.css')) ?>?v=20260814-overflow-fix1">
 <link rel="stylesheet" href="<?= e(asset('css/card-hover-preview.css')) ?>?v=20260813-touch-expand2">
 <link rel="stylesheet" href="<?= e(asset('css/perf-mode.css')) ?>?v=20260813-teal-default1">
 <link rel="stylesheet" href="<?= e(asset('css/card-poster-lifecycle.css')) ?>?v=20260813-teal-default1">

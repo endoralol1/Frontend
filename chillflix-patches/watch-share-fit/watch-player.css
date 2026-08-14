@@ -915,11 +915,13 @@ body.page-watch .watch-similar {
 }
 
 
-/* You may also like: slightly wider column for titles */
-body.page-watch .aside-wrapper.swap.mt-4 > .sidebar {
-  min-width: 18rem !important;
-  max-width: 21rem !important;
-  width: 20rem !important;
+/* You may also like: slightly wider column for titles (desktop only) */
+@media (min-width: 1200px) {
+  body.page-watch .aside-wrapper.swap.mt-4 > .sidebar {
+    min-width: 18rem !important;
+    max-width: 21rem !important;
+    width: 20rem !important;
+  }
 }
 body.page-watch .watch-similar .movie-sidebar.items .movie-item .info .name {
   max-width: 100%;
@@ -999,10 +1001,11 @@ body.page-watch .aside-wrapper.swap.watch-movie-info-row {
 }
 body.page-watch .aside-wrapper.swap.watch-movie-info-row > .main {
   width: auto !important;
-  max-width: none !important;
+  max-width: 100% !important;
   min-width: 0 !important;
   flex: 1 1 0 !important;
   margin-right: 0 !important;
+  overflow-x: clip !important;
 }
 body.page-watch .aside-wrapper.swap.watch-movie-info-row > .sidebar.watch-similar-sidebar {
   display: block !important;
@@ -1090,12 +1093,39 @@ body.page-watch .aside-wrapper.swap.watch-movie-info-row .movie-sidebar.items {
 
 @media (max-width: 1199.98px) {
   body.page-watch .aside-wrapper.swap.watch-movie-info-row {
-    flex-direction: column;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: clip !important;
+  }
+  body.page-watch .aside-wrapper.swap.watch-movie-info-row > .main {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    flex: 0 1 auto !important;
   }
   body.page-watch .aside-wrapper.swap.watch-movie-info-row > .sidebar.watch-similar-sidebar {
     width: 100% !important;
-    max-width: none !important;
+    max-width: 100% !important;
     min-width: 0 !important;
+    flex: 0 1 auto !important;
+  }
+  /* Cast rail was expanding #w-info to ~1200px and blowing out the page */
+  body.page-watch .watch-movie-info-row #w-info,
+  body.page-watch .watch-movie-info-row .section.watch-cast,
+  body.page-watch .watch-movie-info-row .section.watch-report {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  body.page-watch .watch-movie-info-row .section.watch-cast .cast-row,
+  body.page-watch .watch-movie-info-row .section.watch-cast .body {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
   }
 }
 
@@ -1105,5 +1135,23 @@ body.page-watch .watch-similar .body,
 body.page-watch .watch-similar .movie-sidebar.items {
   max-height: none !important;
   overflow: visible !important;
+}
+
+/* Kill watch-page horizontal blowout from cinema/info intrinsic widths */
+@media (max-width: 1199.98px) {
+  body.page-watch,
+  body.page-watch main.watch-p,
+  body.page-watch main.watch-p > .container {
+    overflow-x: clip !important;
+    max-width: 100vw !important;
+  }
+  body.page-watch .cf-watch-cinema,
+  body.page-watch .cf-watch-cinema-img,
+  body.page-watch .cf-watch-cinema-wash,
+  body.page-watch .cf-ambient,
+  body.page-watch .cf-bgfx {
+    max-width: 100vw !important;
+    overflow: hidden !important;
+  }
 }
 
