@@ -1,0 +1,207 @@
+/* ===== CF professional discover pager ===== */
+body.page-discover .cf-pager {
+  --cf-pager-bg: rgba(12, 14, 20, 0.72);
+  --cf-pager-line: rgba(255, 255, 255, 0.08);
+  --cf-pager-soft: rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.75rem 0 2.25rem;
+  padding: 0 0.25rem;
+}
+body.page-discover .cf-pager-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  max-width: 100%;
+  padding: 0.4rem;
+  border-radius: 1.15rem;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%),
+    var(--cf-pager-bg);
+  border: 1px solid var(--cf-pager-line);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+}
+body.page-discover .cf-pager-btn,
+body.page-discover .cf-pager-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.35rem;
+  height: 2.35rem;
+  padding: 0 0.55rem;
+  border-radius: 0.75rem;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.82);
+  font-family: Outfit, Poppins, system-ui, sans-serif;
+  font-size: 0.86rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  line-height: 1;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+body.page-discover .cf-pager-btn {
+  background: var(--cf-pager-soft);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+body.page-discover .cf-pager-btn i {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+body.page-discover .cf-pager-btn:hover,
+body.page-discover .cf-pager-num:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  text-decoration: none;
+}
+body.page-discover .cf-pager-btn:active,
+body.page-discover .cf-pager-num:active {
+  transform: scale(0.97);
+}
+body.page-discover .cf-pager-btn.is-disabled {
+  opacity: 0.32;
+  pointer-events: none;
+}
+body.page-discover .cf-pager-pages {
+  display: flex;
+  align-items: center;
+  gap: 0.28rem;
+  margin: 0 0.15rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+body.page-discover .cf-pager-num.is-current {
+  background: linear-gradient(
+    180deg,
+    var(--cf-orange, #14b8a6) 0%,
+    color-mix(in srgb, var(--cf-orange, #14b8a6) 75%, #0a0c10) 100%
+  );
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(var(--cf-orange-rgb, 20, 184, 166), 0.35);
+  min-width: 2.5rem;
+}
+body.page-discover .cf-pager-ellipsis {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.4rem;
+  color: rgba(255, 255, 255, 0.35);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  user-select: none;
+}
+body.page-discover .cf-pager-jump {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.45rem 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(8, 10, 15, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+body.page-discover .cf-pager-jump-label {
+  margin: 0;
+  font-family: Outfit, Poppins, system-ui, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.42);
+  white-space: nowrap;
+}
+body.page-discover .cf-pager-jump-input {
+  width: 4.25rem;
+  height: 2rem;
+  margin: 0;
+  padding: 0 0.45rem;
+  border-radius: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  text-align: center;
+  font-family: Outfit, Poppins, system-ui, sans-serif;
+  font-size: 0.86rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+body.page-discover .cf-pager-jump-input:focus {
+  border-color: rgba(var(--cf-orange-rgb, 20, 184, 166), 0.55);
+  box-shadow: 0 0 0 3px rgba(var(--cf-orange-rgb, 20, 184, 166), 0.18);
+}
+body.page-discover .cf-pager-jump-of {
+  font-family: Outfit, Poppins, system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 550;
+  color: rgba(255, 255, 255, 0.45);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+body.page-discover .cf-pager-jump-go {
+  height: 2rem;
+  padding: 0 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    var(--cf-orange, #14b8a6) 0%,
+    color-mix(in srgb, var(--cf-orange, #14b8a6) 72%, #0a0c10) 100%
+  );
+  color: #fff;
+  font-family: Outfit, Poppins, system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(var(--cf-orange-rgb, 20, 184, 166), 0.3);
+}
+body.page-discover .cf-pager-jump-go:hover {
+  filter: brightness(1.06);
+}
+body.page-discover .cf-pager-jump-go:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 575.98px) {
+  body.page-discover .cf-pager {
+    gap: 0.65rem;
+    margin: 1.35rem 0 1.85rem;
+  }
+  body.page-discover .cf-pager-bar {
+    gap: 0.25rem;
+    padding: 0.35rem;
+    width: 100%;
+  }
+  body.page-discover .cf-pager-btn,
+  body.page-discover .cf-pager-num {
+    min-width: 2.15rem;
+    height: 2.15rem;
+    font-size: 0.8rem;
+    border-radius: 0.65rem;
+  }
+  body.page-discover .cf-pager-edge {
+    display: none; /* keep prev/next + numbers on small phones */
+  }
+  body.page-discover .cf-pager-jump {
+    width: 100%;
+    max-width: 22rem;
+    justify-content: center;
+  }
+  body.page-discover .cf-pager-jump-input {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: 5.5rem;
+  }
+}
+
