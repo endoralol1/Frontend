@@ -433,20 +433,41 @@ $adminUser = $adminUser ?? Auth::user();
   }
 
   var refreshTimer = null;
-  function scheduleRefresh(ms) {
-    if (refreshTimer) clearInterval(refreshTimer);
-    refreshTimer = setInterval(load, ms);
+  var lastItems = null;
+
+  function isEditing() {
+    var ae = document.activeElement;
+    if (ae && list.contains(ae) && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(ae.tagName)) return true;
+    if (list.querySelector('.cf-ia-card.is-edit, .cf-ia-card.is-counts, .cf-ia-card.is-drip')) return true;
+    if (list.querySelector('.cf-ia-card[open] input:focus, .cf-ia-card[open] textarea:focus, .cf-ia-card[open] select:focus')) return true;
+    return false;
   }
 
-  function load() {
+  function scheduleRefresh(ms) {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(function () { load(false); }, ms);
+  }
+
+  function load(force) {
+    if (!force && isEditing()) {
+      // Don't wipe open cards / focused inputs — auto-refresh waits.
+      scheduleRefresh(8000);
+      return;
+    }
     fetch(API, { credentials: 'same-origin' })
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (!d || !d.ok) { list.textContent = 'Failed'; return; }
+        if (!force && isEditing()) {
+          scheduleRefresh(8000);
+          return;
+        }
         var items = d.items || [];
+        lastItems = items;
         render(items);
         var hasRamp = items.some(function (it) { return (it.ramps || []).length > 0; });
-        scheduleRefresh(hasRamp ? 15000 : 30000);
+        var anyOpen = !!list.querySelector('.cf-ia-card[open]');
+        scheduleRefresh(anyOpen ? 45000 : (hasRamp ? 15000 : 30000));
       })
       .catch(function () { list.textContent = 'Failed'; });
   }
@@ -460,7 +481,7 @@ $adminUser = $adminUser ?? Auth::user();
     }).then(function (r) { return r.json(); });
   }
 
-  sel('in-refresh').onclick = load;
+  sel('in-refresh').onclick = function () { load(true); };
   sel('in-save').onclick = function () {
     var type = sel('in-type').value;
     var payload = {
@@ -491,7 +512,7 @@ $adminUser = $adminUser ?? Auth::user();
       sel('in-likes').value = '0';
       sel('in-dislikes').value = '0';
       document.querySelector('.cf-ia-create').open = false;
-      load();
+      load(true);
     }).catch(function () { show('Save failed'); });
   };
 
@@ -503,7 +524,7 @@ $adminUser = $adminUser ?? Auth::user();
     if (e.target.matches('[data-quick-status]')) {
       var status = e.target.value;
       patch(id, { status: status }).then(function (d) {
-        if (d && d.ok) { show('Status updated', true); load(); }
+        if (d && d.ok) { show('Status updated', true); load(true); }
         else show((d && d.error) || 'Update failed');
       });
       return;
@@ -518,7 +539,7 @@ $adminUser = $adminUser ?? Auth::user();
         fetch(API + '/' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin' })
           .then(function (r) { return r.json(); })
           .then(function (d) {
-            if (d && d.ok) { show('Deleted', true); load(); }
+            if (d && d.ok) { show('Deleted', true); load(true); }
             else show('Delete failed');
           });
         return;
@@ -561,7 +582,7 @@ $adminUser = $adminUser ?? Auth::user();
       btn.disabled = true;
       patch(id, body).then(function (d) {
         btn.disabled = false;
-        if (d && d.ok) { show('Settings saved', true); load(); }
+        if (d && d.ok) { show('Settings saved', true); load(true); }
         else show((d && d.error) || 'Save failed');
       }).catch(function () { btn.disabled = false; show('Save failed'); });
       return;
@@ -583,7 +604,7 @@ $adminUser = $adminUser ?? Auth::user();
       btn.disabled = true;
       patch(id, body).then(function (d) {
         btn.disabled = false;
-        if (d && d.ok) { show('Counts saved', true); load(); }
+        if (d && d.ok) { show('Counts saved', true); load(true); }
         else show((d && d.error) || 'Save failed');
       }).catch(function () { btn.disabled = false; show('Save failed'); });
       return;
@@ -613,7 +634,7 @@ $adminUser = $adminUser ?? Auth::user();
         body: JSON.stringify(votePayload)
       }).then(function (r) { return r.json(); }).then(function (d) {
         btn.disabled = false;
-        if (d && d.ok) { show('Vote drip started', true); load(); }
+        if (d && d.ok) { show('Vote drip started', true); load(true); }
         else show((d && d.error) || 'Vote drip failed');
       }).catch(function () { btn.disabled = false; show('Vote drip failed'); });
       return;
@@ -640,7 +661,7 @@ $adminUser = $adminUser ?? Auth::user();
         body: JSON.stringify(reactPayload)
       }).then(function (r) { return r.json(); }).then(function (d) {
         btn.disabled = false;
-        if (d && d.ok) { show('Likes drip started', true); load(); }
+        if (d && d.ok) { show('Likes drip started', true); load(true); }
         else show((d && d.error) || 'Likes drip failed');
       }).catch(function () { btn.disabled = false; show('Likes drip failed'); });
       return;
@@ -656,12 +677,22 @@ $adminUser = $adminUser ?? Auth::user();
         body: JSON.stringify({ group: group })
       }).then(function (r) { return r.json(); }).then(function (d) {
         btn.disabled = false;
-        if (d && d.ok) { show(group === 'votes' ? 'Vote drips cancelled' : 'Likes drips cancelled', true); load(); }
+        if (d && d.ok) { show(group === 'votes' ? 'Vote drips cancelled' : 'Likes drips cancelled', true); load(true); }
         else show('Cancel failed');
       }).catch(function () { btn.disabled = false; show('Cancel failed'); });
     }
   });
 
-  load();
+  // Keep open cards stable while typing; only force-refresh after saves/actions.
+  list.addEventListener('focusin', function () {
+    if (refreshTimer) clearInterval(refreshTimer);
+  });
+  list.addEventListener('focusout', function () {
+    setTimeout(function () {
+      if (!isEditing()) scheduleRefresh(20000);
+    }, 50);
+  });
+
+  load(true);
 })();
 </script>
