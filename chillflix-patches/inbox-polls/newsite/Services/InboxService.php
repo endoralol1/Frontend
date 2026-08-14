@@ -133,6 +133,7 @@ final class InboxService
             'showResults' => 'after_vote', // after_vote | always | after_close | never
             'allowGuests' => true,
             'allowReactions' => true,
+            'votingEnabled' => true,
             'requireAuthToVote' => false,
             'requireAuthToReact' => false,
             'pin' => false,
@@ -157,6 +158,7 @@ final class InboxService
         $out['allowMultiple'] = !empty($out['allowMultiple']);
         $out['allowGuests'] = !empty($out['allowGuests']);
         $out['allowReactions'] = !empty($out['allowReactions']);
+        $out['votingEnabled'] = !array_key_exists('votingEnabled', $out) || !empty($out['votingEnabled']);
         $out['requireAuthToVote'] = !empty($out['requireAuthToVote']);
         $out['requireAuthToReact'] = !empty($out['requireAuthToReact']);
         $out['pin'] = !empty($out['pin']);
@@ -331,6 +333,7 @@ final class InboxService
             'myReaction' => $myReaction,
             'canVote' => $type === 'poll'
                 && $status === 'active'
+                && !empty($settings['votingEnabled'])
                 && (empty($settings['requireAuthToVote']) || $isAuthed)
                 && (!empty($settings['allowGuests']) || $isAuthed),
             'canReact' => !empty($settings['allowReactions'])
@@ -404,6 +407,9 @@ final class InboxService
             throw new RuntimeException('Poll is closed');
         }
         $settings = self::normalizeSettings($row['settings_json'] ?? null, 'poll');
+        if (empty($settings['votingEnabled'])) {
+            throw new RuntimeException('Voting is disabled for this poll');
+        }
         if (!$isAuthed && (empty($settings['allowGuests']) || !empty($settings['requireAuthToVote']))) {
             throw new RuntimeException('Sign in to vote');
         }
