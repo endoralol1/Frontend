@@ -115,49 +115,59 @@ $adminUser = $adminUser ?? Auth::user();
   color: rgba(255,255,255,.5);
 }
 .cf-ia-btn-sm { min-height: 1.85rem !important; padding: .3rem .65rem !important; font-size: .75rem !important; }
-.cf-ia-list { display: grid; gap: .55rem; }
+.cf-ia-list { display: grid; gap: .45rem; }
 .cf-ia-card {
-  border-radius: .9rem; border: 1px solid rgba(255,255,255,.1);
-  background: rgba(255,255,255,.03); padding: .65rem .7rem; display: grid; gap: .45rem;
+  border-radius: .85rem; border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.03); overflow: hidden;
 }
-.cf-ia-top { display: flex; gap: .45rem; align-items: flex-start; justify-content: space-between; }
+.cf-ia-sum {
+  list-style: none; cursor: pointer; display: flex; align-items: center; gap: .55rem;
+  padding: .65rem .75rem; user-select: none;
+}
+.cf-ia-sum::-webkit-details-marker { display: none; }
 .cf-ia-title { min-width: 0; flex: 1; }
-.cf-ia-title strong { display: block; color: #fff; font-size: .9rem; font-weight: 700; line-height: 1.25; }
+.cf-ia-title strong { display: block; color: #fff; font-size: .88rem; font-weight: 700; line-height: 1.25; }
 .cf-ia-title em {
-  display: block; margin-top: .12rem; font-style: normal; font-size: .68rem;
+  display: block; margin-top: .12rem; font-style: normal; font-size: .66rem;
   color: rgba(255,255,255,.45); letter-spacing: .04em; text-transform: uppercase;
 }
-.cf-ia-top-actions { display: flex; flex-wrap: wrap; gap: .3rem; justify-content: flex-end; flex: 0 0 auto; }
+.cf-ia-sum-hint {
+  flex: 0 0 auto; width: 1.35rem; height: 1.35rem; border-radius: .4rem;
+  border: 1px solid rgba(255,255,255,.12); background: rgba(0,0,0,.2);
+  display: grid; place-items: center; color: rgba(255,255,255,.45); font-size: .85rem; font-weight: 600;
+}
+.cf-ia-sum-hint::before { content: "+"; }
+.cf-ia-card[open] > .cf-ia-sum { border-bottom: 1px solid rgba(255,255,255,.08); }
+.cf-ia-card[open] > .cf-ia-sum .cf-ia-sum-hint::before { content: "–"; }
+.cf-ia-body-wrap { display: grid; gap: .45rem; padding: .65rem .75rem .75rem; }
+.cf-ia-top-actions { display: flex; flex-wrap: wrap; gap: .3rem; }
+.cf-ia-top-actions .cf-ia-sel { flex: 1 1 8rem; max-width: 100%; }
 .cf-ia-body { margin: 0; font-size: .8rem; color: rgba(255,255,255,.68); line-height: 1.35; }
 .cf-ia-opts { display: grid; gap: .3rem; }
 .cf-ia-opt {
-  display: grid; gap: .35rem;
-  padding: .5rem .55rem; border-radius: .55rem; background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.06);
+  display: grid; grid-template-columns: 1fr auto auto; gap: .35rem .45rem; align-items: center;
+  padding: .45rem .5rem; border-radius: .55rem; background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.06);
 }
-.cf-ia-opt-main { min-width: 0; }
+.cf-ia-opt-main { min-width: 0; grid-column: 1 / -1; }
 .cf-ia-opt-l { font-size: .8rem; font-weight: 650; color: #fff; }
 .cf-ia-opt-m { font-size: .68rem; color: rgba(255,255,255,.45); margin-top: .1rem; }
-.cf-ia-opt-inputs { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.cf-ia-opt > .cf-ia-mini { flex-direction: column; align-items: stretch; gap: .15rem; font-size: .62rem; }
 .cf-ia-plus-votes { color: #ffd2b8 !important; font-weight: 700; }
-.cf-ia-bar { height: .28rem; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
-.cf-ia-vote-drip-fields { display: grid; gap: .35rem; }
-.cf-ia-vote-drip-field {
-  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
-  padding: .35rem .45rem; border-radius: .5rem; background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.08); font-size: .8rem; color: #fff;
-}
-.cf-ia-vote-drip-field span { flex: 1; min-width: 0; font-weight: 650; }
-.cf-ia-vote-drip-field .cf-ia-num { width: 5rem; flex: 0 0 auto; }
+.cf-ia-bar { height: .28rem; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; margin-top: .25rem; }
 .cf-ia-bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--cf-orange,#db6937), var(--cf-orange-deep,#c43c2e)); }
 .cf-ia-meta { font-size: .72rem; color: rgba(255,255,255,.45); }
 .cf-ia-panel {
-  display: none; grid-gap: .4rem; padding-top: .35rem; border-top: 1px solid rgba(255,255,255,.08);
+  display: none; grid-gap: .4rem; padding-top: .45rem; border-top: 1px solid rgba(255,255,255,.08);
 }
 .cf-ia-card.is-edit .cf-ia-panel-edit,
 .cf-ia-card.is-counts .cf-ia-panel-counts,
-.cf-ia-card.is-ramp .cf-ia-panel-ramp { display: grid; }
+.cf-ia-card.is-drip .cf-ia-panel-drip { display: grid; }
 .cf-ia-panel label.cf-ia-field {
   display: grid; gap: .2rem; font-size: .68rem; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .04em;
+}
+.cf-ia-ramp-h {
+  font-size: .65rem; letter-spacing: .06em; text-transform: uppercase;
+  color: rgba(255,255,255,.5); font-weight: 700;
 }
 .cf-ia-ramp-live {
   display: grid; gap: .2rem; padding: .45rem .55rem; border-radius: .55rem;
@@ -166,33 +176,11 @@ $adminUser = $adminUser ?? Auth::user();
   font-size: .72rem; color: rgba(255,255,255,.78); line-height: 1.35;
 }
 .cf-ia-ramp-live strong { color: #ffd2b8; font-weight: 700; }
-.cf-ia-ramp-live .cf-ia-ramp-h {
-  font-size: .65rem; letter-spacing: .06em; text-transform: uppercase;
-  color: rgba(255,255,255,.5); font-weight: 700;
-}
-.cf-ia-opt-heads {
-  display: grid; grid-template-columns: 1fr auto auto; gap: .25rem .4rem;
-  font-size: .62rem; color: rgba(255,255,255,.4); letter-spacing: .04em; text-transform: uppercase;
-  padding: 0 .15rem;
-}
-.cf-ia-opt-heads span:nth-child(2),
-.cf-ia-opt-heads span:nth-child(3) { text-align: center; width: 3.6rem; }
-.cf-ia-drip-bar {
-  display: grid; gap: .35rem; padding: .5rem .55rem; border-radius: .55rem;
-  border: 1px dashed rgba(255,255,255,.14); background: rgba(0,0,0,.16);
-}
-.cf-ia-drip-bar .cf-ia-ramp-h {
-  font-size: .65rem; letter-spacing: .06em; text-transform: uppercase;
-  color: rgba(255,255,255,.5); font-weight: 700;
-}
-.cf-ia-ramp-status { font-size: .72rem; color: rgba(255,255,255,.5); line-height: 1.35; }
-.cf-ia-ramp-status strong { color: #ffd2b8; }
 @media (max-width: 640px) {
-  .cf-ia-top { flex-direction: column; }
   .cf-ia-top-actions { width: 100%; }
   .cf-ia-top-actions .cf-ia-sel { flex: 1 1 calc(50% - .3rem); }
-  .cf-ia-vote-drip-field { flex-wrap: wrap; }
-  .cf-ia-vote-drip-field .cf-ia-num { width: 100%; max-width: none; min-height: 2.4rem; font-size: 1rem; }
+  .cf-ia-opt { grid-template-columns: 1fr 1fr; }
+  .cf-ia-opt > .cf-ia-mini .cf-ia-num { width: 100%; min-height: 2.2rem; }
 }
 </style>
 
@@ -259,6 +247,15 @@ $adminUser = $adminUser ?? Auth::user();
       list.innerHTML = '<p class="cf-ia-meta">No inbox items yet.</p>';
       return;
     }
+    var openIds = {};
+    var panelState = {};
+    list.querySelectorAll('.cf-ia-card[open]').forEach(function (el) {
+      var oid = el.getAttribute('data-id');
+      if (oid) openIds[oid] = true;
+      if (el.classList.contains('is-edit')) panelState[oid] = 'is-edit';
+      else if (el.classList.contains('is-counts')) panelState[oid] = 'is-counts';
+      else if (el.classList.contains('is-drip')) panelState[oid] = 'is-drip';
+    });
     list.innerHTML = items.map(function (it) {
       var s = it.settings || {};
       var totalVotes = 0;
@@ -269,21 +266,12 @@ $adminUser = $adminUser ?? Auth::user();
         return '<div class="cf-ia-opt" data-opt="' + esc(o.id) + '">' +
           '<div class="cf-ia-opt-main">' +
             '<div class="cf-ia-opt-l">' + esc(o.label) + '</div>' +
-            '<div class="cf-ia-opt-m">' + vc + ' votes · ' + pct + '%</div>' +
+            '<div class="cf-ia-opt-m">' + vc + ' · ' + pct + '%</div>' +
+            '<div class="cf-ia-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div>' +
           '</div>' +
-          '<div class="cf-ia-opt-inputs">' +
-            '<label class="cf-ia-mini">Now <input class="cf-ia-num" type="number" min="0" value="' + vc + '" data-vote-input inputmode="numeric"></label>' +
-            '<label class="cf-ia-mini cf-ia-plus-votes">+Votes <input class="cf-ia-num" type="number" min="0" value="0" data-ramp-add inputmode="numeric" placeholder="0"></label>' +
-          '</div>' +
-          '<div class="cf-ia-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div>' +
+          '<label class="cf-ia-mini">Now<input class="cf-ia-num" type="number" min="0" value="' + vc + '" data-vote-input inputmode="numeric"></label>' +
+          '<label class="cf-ia-mini cf-ia-plus-votes">+Votes<input class="cf-ia-num" type="number" min="0" value="0" data-ramp-add inputmode="numeric"></label>' +
         '</div>';
-      }).join('');
-
-      var voteDripFields = (it.options || []).map(function (o) {
-        return '<label class="cf-ia-vote-drip-field">' +
-          '<span>' + esc(o.label) + '</span>' +
-          '<input class="cf-ia-num" type="number" min="0" value="0" data-vote-drip-for="' + esc(o.id) + '" inputmode="numeric" placeholder="+ votes">' +
-        '</label>';
       }).join('');
 
       var ramps = it.ramps || [];
@@ -303,14 +291,8 @@ $adminUser = $adminUser ?? Auth::user();
           ' · ' + Math.round((r.progress || 0) * 100) + '%' +
           ' · ' + fmtRemain(r.remainingSec) + ' left</div>';
       }
-      var rampStatus = ramps.length
-        ? ramps.map(rampLine).join('')
-        : '<div>No active ramps</div>';
       var rampLive = ramps.length
-        ? '<div class="cf-ia-ramp-live"><div class="cf-ia-ramp-h">Gradual drip running</div>' +
-          ramps.map(rampLine).join('') +
-          '<div style="opacity:.75">Poll option votes stay separate from likes. Current likes: <strong>' +
-          (it.likeCount || 0) + '</strong></div></div>'
+        ? '<div class="cf-ia-ramp-live">' + ramps.map(rampLine).join('') + '</div>'
         : '';
 
       var voteOff = s.votingEnabled === false || s.votingEnabled === 0;
@@ -318,14 +300,23 @@ $adminUser = $adminUser ?? Auth::user();
       if (it.type === 'poll') flags.push(voteOff ? 'votes off' : 'votes on');
       flags.push(s.allowReactions ? 'react on' : 'react off');
       if (s.pin) flags.push('pinned');
-      if (!s.allowGuests) flags.push('auth only');
+      if (ramps.length) flags.push('drip');
 
-      return '<article class="cf-ia-card" data-id="' + esc(it.id) + '" data-type="' + esc(it.type) + '">' +
-        '<div class="cf-ia-top">' +
-          '<div class="cf-ia-title">' +
+      return '<details class="cf-ia-card' + (panelState[it.id] ? ' ' + panelState[it.id] : '') + '"' +
+        (openIds[it.id] ? ' open' : '') +
+        ' data-id="' + esc(it.id) + '" data-type="' + esc(it.type) + '">' +
+        '<summary class="cf-ia-sum">' +
+          '<span class="cf-ia-title">' +
             '<strong>' + esc(it.title) + '</strong>' +
-            '<em>' + esc(it.type) + ' · ' + esc(it.status) + (flags.length ? ' · ' + flags.join(' · ') : '') + '</em>' +
-          '</div>' +
+            '<em>' + esc(it.type) + ' · ' + esc(it.status) +
+              (flags.length ? ' · ' + flags.join(' · ') : '') +
+              ' · likes ' + (it.likeCount || 0) +
+              (it.type === 'poll' ? ' · votes ' + (it.totalVotes != null ? it.totalVotes : totalVotes) : '') +
+            '</em>' +
+          '</span>' +
+          '<span class="cf-ia-sum-hint" aria-hidden="true"></span>' +
+        '</summary>' +
+        '<div class="cf-ia-body-wrap">' +
           '<div class="cf-ia-top-actions">' +
             '<select class="cf-ia-sel" data-quick-status aria-label="Status">' +
               '<option value="active"' + optSelected('active', it.status) + '>Active</option>' +
@@ -336,118 +327,108 @@ $adminUser = $adminUser ?? Auth::user();
             '<select class="cf-ia-sel" data-panel aria-label="Manage">' +
               '<option value="">Manage…</option>' +
               '<option value="edit">Edit settings</option>' +
-              '<option value="counts">Set counts now</option>' +
+              '<option value="counts">Set counts</option>' +
+              '<option value="drip">Gradual drip</option>' +
               '<option value="delete">Delete</option>' +
             '</select>' +
           '</div>' +
-        '</div>' +
-        (it.body ? '<p class="cf-ia-body">' + esc(it.body) + '</p>' : '') +
-        rampLive +
-        (opts ? '<div class="cf-ia-opts">' + opts + '</div><div class="cf-ia-meta">Total votes: ' + (it.totalVotes != null ? it.totalVotes : totalVotes) +
-          ' · Likes ' + (it.likeCount || 0) + ' · Dislikes ' + (it.dislikeCount || 0) + '</div>' : 
-          '<div class="cf-ia-meta">Likes ' + (it.likeCount || 0) + ' · Dislikes ' + (it.dislikeCount || 0) + '</div>') +
+          (it.body ? '<p class="cf-ia-body">' + esc(it.body) + '</p>' : '') +
+          rampLive +
+          (opts ? '<div class="cf-ia-opts">' + opts + '</div>' : '') +
+          '<div class="cf-ia-meta">Likes ' + (it.likeCount || 0) + ' · Dislikes ' + (it.dislikeCount || 0) +
+            (it.type === 'poll' ? ' · Total votes ' + (it.totalVotes != null ? it.totalVotes : totalVotes) : '') + '</div>' +
 
-        '<div class="cf-ia-drip-bar">' +
-          (it.type === 'poll'
-            ? '<div class="cf-ia-ramp-h">Poll vote drip</div>' +
-              '<div class="cf-ia-vote-drip-fields">' + voteDripFields + '</div>' +
-              '<div class="cf-ia-row">' +
-                '<select class="cf-ia-sel" data-vote-duration aria-label="Vote duration">' +
-                  '<option value="900">Over 15 min</option>' +
-                  '<option value="1800">Over 30 min</option>' +
-                  '<option value="3600" selected>Over 1 hour</option>' +
-                  '<option value="10800">Over 3 hours</option>' +
-                  '<option value="21600">Over 6 hours</option>' +
-                  '<option value="43200">Over 12 hours</option>' +
-                  '<option value="86400">Over 24 hours</option>' +
-                '</select>' +
-                '<select class="cf-ia-sel" data-vote-curve aria-label="Vote style">' +
-                  '<option value="bursty" selected>Bursty</option>' +
-                  '<option value="linear">Linear</option>' +
-                  '<option value="ease_out">Fast→slow</option>' +
-                  '<option value="ease_in">Slow→fast</option>' +
-                '</select>' +
-                '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="start-vote-ramp">Start votes</button>' +
-                '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="cancel-vote-ramp">Cancel votes</button>' +
-              '</div>' +
-              '<p class="cf-ia-meta" style="margin:0">Type how many votes to add for each option, then Start votes.</p>'
-            : '') +
-          '<div class="cf-ia-ramp-h"' + (it.type === 'poll' ? ' style="margin-top:.25rem"' : '') + '>Likes / dislikes drip</div>' +
-          '<div class="cf-ia-row">' +
-            '<select class="cf-ia-sel" data-react-duration aria-label="Reaction duration">' +
-              '<option value="900">Over 15 min</option>' +
-              '<option value="1800">Over 30 min</option>' +
-              '<option value="3600" selected>Over 1 hour</option>' +
-              '<option value="10800">Over 3 hours</option>' +
-              '<option value="21600">Over 6 hours</option>' +
-              '<option value="43200">Over 12 hours</option>' +
-              '<option value="86400">Over 24 hours</option>' +
-            '</select>' +
-            '<select class="cf-ia-sel" data-react-curve aria-label="Reaction style">' +
-              '<option value="bursty" selected>Bursty</option>' +
-              '<option value="linear">Linear</option>' +
-              '<option value="ease_out">Fast→slow</option>' +
-              '<option value="ease_in">Slow→fast</option>' +
-            '</select>' +
+          '<div class="cf-ia-panel cf-ia-panel-edit">' +
+            '<label class="cf-ia-field">Title<input class="cf-ia-inp" data-edit-title value="' + esc(it.title) + '"></label>' +
+            '<label class="cf-ia-field">Body<textarea class="cf-ia-inp" rows="2" data-edit-body>' + esc(it.body || '') + '</textarea></label>' +
+            '<div class="cf-ia-row">' +
+              (it.type === 'poll' ? '<select class="cf-ia-sel" data-edit-voting aria-label="Voting">' +
+                '<option value="1"' + optSelected(1, voteOff ? 0 : 1) + '>Voting on</option>' +
+                '<option value="0"' + optSelected(0, voteOff ? 0 : 1) + '>Voting off</option>' +
+              '</select>' : '') +
+              '<select class="cf-ia-sel" data-edit-react aria-label="Reactions">' +
+                '<option value="1"' + optSelected(1, s.allowReactions ? 1 : 0) + '>Reactions on</option>' +
+                '<option value="0"' + optSelected(0, s.allowReactions ? 1 : 0) + '>Reactions off</option>' +
+              '</select>' +
+              '<select class="cf-ia-sel" data-edit-guests aria-label="Guests">' +
+                '<option value="1"' + optSelected(1, s.allowGuests ? 1 : 0) + '>Guests allowed</option>' +
+                '<option value="0"' + optSelected(0, s.allowGuests ? 1 : 0) + '>Signed-in only</option>' +
+              '</select>' +
+            '</div>' +
+            '<div class="cf-ia-row">' +
+              '<select class="cf-ia-sel" data-edit-results aria-label="Results">' +
+                '<option value="after_vote"' + optSelected('after_vote', s.showResults) + '>Results: after vote</option>' +
+                '<option value="always"' + optSelected('always', s.showResults) + '>Results: always</option>' +
+                '<option value="after_close"' + optSelected('after_close', s.showResults) + '>Results: after close</option>' +
+                '<option value="never"' + optSelected('never', s.showResults) + '>Results: never</option>' +
+              '</select>' +
+              '<select class="cf-ia-sel" data-edit-pin aria-label="Pin">' +
+                '<option value="0"' + optSelected(0, s.pin ? 1 : 0) + '>Not pinned</option>' +
+                '<option value="1"' + optSelected(1, s.pin ? 1 : 0) + '>Pinned</option>' +
+              '</select>' +
+              (it.type === 'poll' ? '<select class="cf-ia-sel" data-edit-multi aria-label="Choices">' +
+                '<option value="0"' + optSelected(0, s.allowMultiple ? 1 : 0) + '>Single choice</option>' +
+                '<option value="1"' + optSelected(1, s.allowMultiple ? 1 : 0) + '>Multi choice</option>' +
+              '</select>' : '') +
+            '</div>' +
+            '<div class="cf-ia-actions">' +
+              '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="save-edit">Save settings</button>' +
+              '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="close-panel">Close</button>' +
+            '</div>' +
           '</div>' +
-          '<div class="cf-ia-row">' +
-            '<label class="cf-ia-mini">+Likes <input class="cf-ia-num" type="number" min="0" value="0" data-ramp-likes></label>' +
-            '<label class="cf-ia-mini">+Dislikes <input class="cf-ia-num" type="number" min="0" value="0" data-ramp-dislikes></label>' +
-            '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="start-react-ramp">Start likes</button>' +
-            '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="cancel-react-ramp">Cancel likes</button>' +
-          '</div>' +
-          '<p class="cf-ia-meta" style="margin:0">Only likes/dislikes. Does not change poll votes.</p>' +
-        '</div>' +
 
-        '<div class="cf-ia-panel cf-ia-panel-edit">' +
-          '<label class="cf-ia-field">Title<input class="cf-ia-inp" data-edit-title value="' + esc(it.title) + '"></label>' +
-          '<label class="cf-ia-field">Body<textarea class="cf-ia-inp" rows="2" data-edit-body>' + esc(it.body || '') + '</textarea></label>' +
-          '<div class="cf-ia-row">' +
-            (it.type === 'poll' ? '<select class="cf-ia-sel" data-edit-voting aria-label="Voting">' +
-              '<option value="1"' + optSelected(1, voteOff ? 0 : 1) + '>Voting on</option>' +
-              '<option value="0"' + optSelected(0, voteOff ? 0 : 1) + '>Voting off</option>' +
-            '</select>' : '') +
-            '<select class="cf-ia-sel" data-edit-react aria-label="Reactions">' +
-              '<option value="1"' + optSelected(1, s.allowReactions ? 1 : 0) + '>Reactions on</option>' +
-              '<option value="0"' + optSelected(0, s.allowReactions ? 1 : 0) + '>Reactions off</option>' +
-            '</select>' +
-            '<select class="cf-ia-sel" data-edit-guests aria-label="Guests">' +
-              '<option value="1"' + optSelected(1, s.allowGuests ? 1 : 0) + '>Guests allowed</option>' +
-              '<option value="0"' + optSelected(0, s.allowGuests ? 1 : 0) + '>Signed-in only</option>' +
-            '</select>' +
+          '<div class="cf-ia-panel cf-ia-panel-counts">' +
+            '<div class="cf-ia-row">' +
+              '<label class="cf-ia-mini">Likes <input class="cf-ia-num" type="number" min="0" value="' + (it.likeCount || 0) + '" data-like-input></label>' +
+              '<label class="cf-ia-mini">Dislikes <input class="cf-ia-num" type="number" min="0" value="' + (it.dislikeCount || 0) + '" data-dislike-input></label>' +
+              '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="save-counts">Save counts</button>' +
+              '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="close-panel">Close</button>' +
+            '</div>' +
+            '<p class="cf-ia-meta">Edit option Now numbers above, then save.</p>' +
           '</div>' +
-          '<div class="cf-ia-row">' +
-            '<select class="cf-ia-sel" data-edit-results aria-label="Results">' +
-              '<option value="after_vote"' + optSelected('after_vote', s.showResults) + '>Results: after vote</option>' +
-              '<option value="always"' + optSelected('always', s.showResults) + '>Results: always</option>' +
-              '<option value="after_close"' + optSelected('after_close', s.showResults) + '>Results: after close</option>' +
-              '<option value="never"' + optSelected('never', s.showResults) + '>Results: never</option>' +
-            '</select>' +
-            '<select class="cf-ia-sel" data-edit-pin aria-label="Pin">' +
-              '<option value="0"' + optSelected(0, s.pin ? 1 : 0) + '>Not pinned</option>' +
-              '<option value="1"' + optSelected(1, s.pin ? 1 : 0) + '>Pinned</option>' +
-            '</select>' +
-            (it.type === 'poll' ? '<select class="cf-ia-sel" data-edit-multi aria-label="Choices">' +
-              '<option value="0"' + optSelected(0, s.allowMultiple ? 1 : 0) + '>Single choice</option>' +
-              '<option value="1"' + optSelected(1, s.allowMultiple ? 1 : 0) + '>Multi choice</option>' +
-            '</select>' : '') +
-          '</div>' +
-          '<div class="cf-ia-actions">' +
-            '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="save-edit">Save settings</button>' +
-            '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="close-panel">Close</button>' +
-          '</div>' +
-        '</div>' +
 
-        '<div class="cf-ia-panel cf-ia-panel-counts">' +
-          '<div class="cf-ia-row">' +
-            '<label class="cf-ia-mini">Likes <input class="cf-ia-num" type="number" min="0" value="' + (it.likeCount || 0) + '" data-like-input></label>' +
-            '<label class="cf-ia-mini">Dislikes <input class="cf-ia-num" type="number" min="0" value="' + (it.dislikeCount || 0) + '" data-dislike-input></label>' +
-            '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="save-counts">Save counts</button>' +
-            '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="close-panel">Close</button>' +
+          '<div class="cf-ia-panel cf-ia-panel-drip">' +
+            (it.type === 'poll'
+              ? '<div class="cf-ia-ramp-h">Poll votes</div>' +
+                '<p class="cf-ia-meta" style="margin:0">Set <strong>+Votes</strong> on options above, then start.</p>' +
+                '<div class="cf-ia-row">' +
+                  '<select class="cf-ia-sel" data-vote-duration>' +
+                    '<option value="900">15 min</option><option value="1800">30 min</option>' +
+                    '<option value="3600" selected>1 hour</option><option value="10800">3 hours</option>' +
+                    '<option value="21600">6 hours</option><option value="43200">12 hours</option>' +
+                    '<option value="86400">24 hours</option>' +
+                  '</select>' +
+                  '<select class="cf-ia-sel" data-vote-curve>' +
+                    '<option value="bursty" selected>Bursty</option><option value="linear">Linear</option>' +
+                    '<option value="ease_out">Fast→slow</option><option value="ease_in">Slow→fast</option>' +
+                  '</select>' +
+                  '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="start-vote-ramp">Start votes</button>' +
+                  '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="cancel-vote-ramp">Cancel</button>' +
+                '</div>'
+              : '') +
+            '<div class="cf-ia-ramp-h"' + (it.type === 'poll' ? ' style="margin-top:.35rem"' : '') + '>Likes</div>' +
+            '<div class="cf-ia-row">' +
+              '<select class="cf-ia-sel" data-react-duration>' +
+                '<option value="900">15 min</option><option value="1800">30 min</option>' +
+                '<option value="3600" selected>1 hour</option><option value="10800">3 hours</option>' +
+                '<option value="21600">6 hours</option><option value="43200">12 hours</option>' +
+                '<option value="86400">24 hours</option>' +
+              '</select>' +
+              '<select class="cf-ia-sel" data-react-curve>' +
+                '<option value="bursty" selected>Bursty</option><option value="linear">Linear</option>' +
+                '<option value="ease_out">Fast→slow</option><option value="ease_in">Slow→fast</option>' +
+              '</select>' +
+            '</div>' +
+            '<div class="cf-ia-row">' +
+              '<label class="cf-ia-mini">+Likes <input class="cf-ia-num" type="number" min="0" value="0" data-ramp-likes></label>' +
+              '<label class="cf-ia-mini">+Dislikes <input class="cf-ia-num" type="number" min="0" value="0" data-ramp-dislikes></label>' +
+              '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="start-react-ramp">Start likes</button>' +
+              '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="cancel-react-ramp">Cancel</button>' +
+              '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="close-panel">Close</button>' +
+            '</div>' +
           '</div>' +
-          '<p class="cf-ia-meta">Edit option “Now” numbers above, then save. For gradual increases use +Votes / Start drip.</p>' +
         '</div>' +
-      '</article>';
+      '</details>';
     }).join('');
   }
 
@@ -531,7 +512,7 @@ $adminUser = $adminUser ?? Auth::user();
     if (e.target.matches('[data-panel]')) {
       var panel = e.target.value;
       e.target.value = '';
-      card.classList.remove('is-edit', 'is-counts', 'is-ramp');
+      card.classList.remove('is-edit', 'is-counts', 'is-drip');
       if (panel === 'delete') {
         if (!confirm('Delete this item?')) return;
         fetch(API + '/' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin' })
@@ -544,6 +525,7 @@ $adminUser = $adminUser ?? Auth::user();
       }
       if (panel === 'edit') card.classList.add('is-edit');
       if (panel === 'counts') card.classList.add('is-counts');
+      if (panel === 'drip') card.classList.add('is-drip');
     }
   });
 
@@ -556,7 +538,7 @@ $adminUser = $adminUser ?? Auth::user();
     var act = btn.getAttribute('data-act');
 
     if (act === 'close-panel') {
-      card.classList.remove('is-edit', 'is-counts', 'is-ramp');
+      card.classList.remove('is-edit', 'is-counts', 'is-drip');
       return;
     }
 
@@ -609,21 +591,13 @@ $adminUser = $adminUser ?? Auth::user();
 
     if (act === 'start-vote-ramp') {
       var options = [];
-      card.querySelectorAll('[data-vote-drip-for]').forEach(function (inp) {
-        var oid = inp.getAttribute('data-vote-drip-for');
-        var add = parseInt(inp.value, 10) || 0;
+      card.querySelectorAll('.cf-ia-opt').forEach(function (opt) {
+        var oid = opt.getAttribute('data-opt');
+        var add = parseInt((opt.querySelector('[data-ramp-add]') || {}).value, 10) || 0;
         if (oid && add > 0) options.push({ id: oid, add: add });
       });
-      // Fallback: option row +Votes inputs
       if (!options.length) {
-        card.querySelectorAll('.cf-ia-opt').forEach(function (opt) {
-          var oid = opt.getAttribute('data-opt');
-          var add = parseInt((opt.querySelector('[data-ramp-add]') || {}).value, 10) || 0;
-          if (oid && add > 0) options.push({ id: oid, add: add });
-        });
-      }
-      if (!options.length) {
-        show('Type + votes for at least one option');
+        show('Set +Votes on at least one option, then start');
         return;
       }
       var votePayload = {
