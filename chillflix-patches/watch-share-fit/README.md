@@ -1,7 +1,7 @@
 # Mobile watch managers
 
-- Buttons spread evenly across the full row on phones/tablets
-- Share stays icon-only but still gets an equal column
-- Other buttons keep labels
+- Spread across full row
+- Full button labels (no ellipsis / clipping)
+- Share icon-only
 
-Live CSS `?v=20260814-mgr-spread1`.
+Live CSS `?v=20260814-mgr-spread2`.
