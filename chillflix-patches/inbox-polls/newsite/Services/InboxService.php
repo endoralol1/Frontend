@@ -79,6 +79,26 @@ final class InboxService
                 CONSTRAINT fk_inbox_read_item FOREIGN KEY (item_id) REFERENCES inbox_items(id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
         );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS inbox_ramps (
+                id CHAR(36) NOT NULL PRIMARY KEY,
+                item_id CHAR(36) NOT NULL,
+                kind ENUM('option','like','dislike') NOT NULL,
+                option_id CHAR(36) NULL,
+                start_count INT NOT NULL DEFAULT 0,
+                add_count INT NOT NULL DEFAULT 0,
+                duration_sec INT NOT NULL,
+                curve VARCHAR(20) NOT NULL DEFAULT 'bursty',
+                started_at BIGINT NOT NULL,
+                ends_at BIGINT NOT NULL,
+                status ENUM('active','done','cancelled') NOT NULL DEFAULT 'active',
+                last_applied INT NOT NULL DEFAULT 0,
+                created_at BIGINT NOT NULL,
+                KEY idx_inbox_ramp_active (status, ends_at),
+                KEY idx_inbox_ramp_item (item_id),
+                CONSTRAINT fk_inbox_ramp_item FOREIGN KEY (item_id) REFERENCES inbox_items(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
     }
 
     /** Session cookie guest id (no long-lived tracking). */
@@ -165,6 +185,7 @@ final class InboxService
     {
         self::ensureTables();
         self::closeExpired();
+        self::tickRamps();
         $viewer = self::viewerKey($user);
         $isAuthed = $user !== null || (Auth::user() !== null);
         $pdo = Database::pdo();
@@ -527,12 +548,15 @@ final class InboxService
     {
         self::ensureTables();
         self::closeExpired();
+        self::tickRamps();
         $stmt = Database::pdo()->query(
             'SELECT * FROM inbox_items ORDER BY created_at DESC LIMIT 200'
         );
         $out = [];
         foreach ($stmt->fetchAll() ?: [] as $row) {
-            $out[] = self::mapItem($row, 'admin', true, true);
+            $mapped = self::mapItem($row, 'admin', true, true);
+            $mapped['ramps'] = self::listRampsForItem((string) $row['id']);
+            $out[] = $mapped;
         }
         return $out;
     }
@@ -808,5 +832,321 @@ final class InboxService
     {
         self::ensureTables();
         Database::pdo()->prepare('DELETE FROM inbox_items WHERE id = ?')->execute([$id]);
+    }
+
+    // -------- Gradual ramps (realistic vote/reaction drip) --------
+
+    /** @return list<array<string,mixed>> */
+    public static function listRampsForItem(string $itemId): array
+    {
+        self::ensureTables();
+        $stmt = Database::pdo()->prepare(
+            "SELECT * FROM inbox_ramps WHERE item_id = ? AND status = 'active' ORDER BY created_at ASC"
+        );
+        $stmt->execute([$itemId]);
+        $now = Auth::now();
+        $out = [];
+        foreach ($stmt->fetchAll() ?: [] as $r) {
+            $out[] = self::mapRamp($r, $now);
+        }
+        return $out;
+    }
+
+    /** @param array<string,mixed> $row */
+    private static function mapRamp(array $row, int $now): array
+    {
+        $start = (int) $row['started_at'];
+        $end = (int) $row['ends_at'];
+        $dur = max(1, (int) $row['duration_sec']);
+        $elapsed = max(0, min($dur, $now - $start));
+        $add = max(0, (int) $row['add_count']);
+        $expected = self::rampExpectedAdd(
+            (int) $row['start_count'],
+            $add,
+            $elapsed,
+            $dur,
+            (string) $row['curve']
+        );
+        return [
+            'id' => (string) $row['id'],
+            'kind' => (string) $row['kind'],
+            'optionId' => $row['option_id'] !== null ? (string) $row['option_id'] : null,
+            'startCount' => (int) $row['start_count'],
+            'addCount' => $add,
+            'targetCount' => (int) $row['start_count'] + $add,
+            'durationSec' => $dur,
+            'curve' => (string) $row['curve'],
+            'startedAt' => $start,
+            'endsAt' => $end,
+            'status' => (string) $row['status'],
+            'lastApplied' => (int) $row['last_applied'],
+            'expectedNow' => $expected,
+            'remainingSec' => max(0, $end - $now),
+            'progress' => min(1, $elapsed / $dur),
+        ];
+    }
+
+    /**
+     * Start gradual adds. Example: add 15 votes to an option over 1 hour.
+     *
+     * @param array<string,mixed> $payload
+     * @return list<array<string,mixed>>
+     */
+    public static function adminStartRamps(string $itemId, array $payload): array
+    {
+        self::ensureTables();
+        $row = self::fetchRow($itemId);
+        if (!$row) {
+            throw new RuntimeException('Not found');
+        }
+        $duration = (int) ($payload['durationSec'] ?? $payload['duration'] ?? 3600);
+        if ($duration < 60) {
+            throw new RuntimeException('Duration must be at least 60 seconds');
+        }
+        if ($duration > 86400 * 14) {
+            throw new RuntimeException('Duration too long (max 14 days)');
+        }
+        $curve = (string) ($payload['curve'] ?? 'bursty');
+        if (!in_array($curve, ['linear', 'ease_in', 'ease_out', 'bursty'], true)) {
+            $curve = 'bursty';
+        }
+        $now = Auth::now();
+        $ends = $now + $duration;
+        $pdo = Database::pdo();
+        $created = [];
+
+        $optAdds = $payload['options'] ?? $payload['optionAdds'] ?? [];
+        if (is_array($optAdds) && (string) $row['type'] === 'poll') {
+            foreach ($optAdds as $oa) {
+                if (!is_array($oa)) {
+                    continue;
+                }
+                $oid = (string) ($oa['id'] ?? $oa['optionId'] ?? '');
+                $add = (int) ($oa['add'] ?? $oa['addCount'] ?? $oa['votes'] ?? 0);
+                if ($oid === '' || $add <= 0) {
+                    continue;
+                }
+                $chk = $pdo->prepare('SELECT vote_count FROM inbox_options WHERE id = ? AND item_id = ? LIMIT 1');
+                $chk->execute([$oid, $itemId]);
+                $cur = $chk->fetch();
+                if (!$cur) {
+                    continue;
+                }
+                $created[] = self::insertRamp(
+                    $itemId,
+                    'option',
+                    $oid,
+                    (int) $cur['vote_count'],
+                    $add,
+                    $duration,
+                    $curve,
+                    $now,
+                    $ends
+                );
+            }
+        }
+
+        $likeAdd = (int) ($payload['likes'] ?? $payload['likeAdd'] ?? 0);
+        if ($likeAdd > 0) {
+            $created[] = self::insertRamp(
+                $itemId,
+                'like',
+                null,
+                (int) ($row['like_count'] ?? 0),
+                $likeAdd,
+                $duration,
+                $curve,
+                $now,
+                $ends
+            );
+        }
+        $dislikeAdd = (int) ($payload['dislikes'] ?? $payload['dislikeAdd'] ?? 0);
+        if ($dislikeAdd > 0) {
+            $created[] = self::insertRamp(
+                $itemId,
+                'dislike',
+                null,
+                (int) ($row['dislike_count'] ?? 0),
+                $dislikeAdd,
+                $duration,
+                $curve,
+                $now,
+                $ends
+            );
+        }
+
+        if ($created === []) {
+            throw new RuntimeException('Nothing to ramp — set option adds and/or likes/dislikes');
+        }
+        self::tickRamps();
+        return self::listRampsForItem($itemId);
+    }
+
+    private static function insertRamp(
+        string $itemId,
+        string $kind,
+        ?string $optionId,
+        int $startCount,
+        int $addCount,
+        int $duration,
+        string $curve,
+        int $now,
+        int $ends
+    ): array {
+        $id = Auth::uuid();
+        Database::pdo()->prepare(
+            'INSERT INTO inbox_ramps
+              (id, item_id, kind, option_id, start_count, add_count, duration_sec, curve, started_at, ends_at, status, last_applied, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, \'active\', ?, ?)'
+        )->execute([
+            $id,
+            $itemId,
+            $kind,
+            $optionId,
+            max(0, $startCount),
+            max(0, $addCount),
+            $duration,
+            $curve,
+            $now,
+            $ends,
+            max(0, $startCount),
+            $now,
+        ]);
+        return self::mapRamp(
+            [
+                'id' => $id,
+                'kind' => $kind,
+                'option_id' => $optionId,
+                'start_count' => $startCount,
+                'add_count' => $addCount,
+                'duration_sec' => $duration,
+                'curve' => $curve,
+                'started_at' => $now,
+                'ends_at' => $ends,
+                'status' => 'active',
+                'last_applied' => $startCount,
+            ],
+            $now
+        );
+    }
+
+    public static function adminCancelRamps(string $itemId): int
+    {
+        self::ensureTables();
+        $stmt = Database::pdo()->prepare(
+            "UPDATE inbox_ramps SET status = 'cancelled' WHERE item_id = ? AND status = 'active'"
+        );
+        $stmt->execute([$itemId]);
+        return $stmt->rowCount();
+    }
+
+    /** Advance active ramps toward their targets. Safe to call often. */
+    public static function tickRamps(): int
+    {
+        self::ensureTables();
+        static $ticked = false;
+        // Once per PHP request is enough.
+        if ($ticked) {
+            return 0;
+        }
+        $ticked = true;
+
+        $pdo = Database::pdo();
+        $now = Auth::now();
+        $stmt = $pdo->query(
+            "SELECT * FROM inbox_ramps WHERE status = 'active' ORDER BY started_at ASC LIMIT 200"
+        );
+        $rows = $stmt->fetchAll() ?: [];
+        if ($rows === []) {
+            return 0;
+        }
+
+        $n = 0;
+        foreach ($rows as $r) {
+            $id = (string) $r['id'];
+            $itemId = (string) $r['item_id'];
+            $kind = (string) $r['kind'];
+            $start = (int) $r['start_count'];
+            $add = max(0, (int) $r['add_count']);
+            $target = $start + $add;
+            $dur = max(1, (int) $r['duration_sec']);
+            $started = (int) $r['started_at'];
+            $curve = (string) $r['curve'];
+            $last = (int) $r['last_applied'];
+            $elapsed = max(0, $now - $started);
+
+            $expected = self::rampExpectedAdd($start, $add, min($elapsed, $dur), $dur, $curve);
+
+            // Bursty: sprinkle a little noise, still never past the ideal ceiling for this moment
+            // (and never past final target). Keeps motion looking human instead of a straight line.
+            if ($curve === 'bursty' && $elapsed < $dur) {
+                $noise = random_int(0, 2);
+                // Occasionally lag one tick behind for realism.
+                if (random_int(0, 4) === 0) {
+                    $noise = -1;
+                }
+                $expected = max($start, min($target, $expected + $noise));
+                // Never jump more than ~8% of the total add in one tick (or 3, whichever larger).
+                $maxStep = max(3, (int) ceil($add * 0.08));
+                if ($expected > $last + $maxStep) {
+                    $expected = $last + $maxStep;
+                }
+            }
+
+            if ($elapsed >= $dur) {
+                $expected = $target;
+            }
+
+            if ($expected <= $last && $elapsed < $dur) {
+                continue;
+            }
+            if ($expected < $last) {
+                $expected = $last; // never decrease from ramp
+            }
+            if ($expected > $target) {
+                $expected = $target;
+            }
+
+            if ($expected !== $last) {
+                if ($kind === 'option' && !empty($r['option_id'])) {
+                    // Only raise count — don't clobber if real votes already surpassed the ramp.
+                    $pdo->prepare(
+                        'UPDATE inbox_options SET vote_count = GREATEST(vote_count, ?) WHERE id = ? AND item_id = ?'
+                    )->execute([$expected, (string) $r['option_id'], $itemId]);
+                } elseif ($kind === 'like') {
+                    $pdo->prepare(
+                        'UPDATE inbox_items SET like_count = GREATEST(like_count, ?), updated_at = ? WHERE id = ?'
+                    )->execute([$expected, $now, $itemId]);
+                } elseif ($kind === 'dislike') {
+                    $pdo->prepare(
+                        'UPDATE inbox_items SET dislike_count = GREATEST(dislike_count, ?), updated_at = ? WHERE id = ?'
+                    )->execute([$expected, $now, $itemId]);
+                }
+                $pdo->prepare('UPDATE inbox_ramps SET last_applied = ? WHERE id = ?')
+                    ->execute([$expected, $id]);
+                $n++;
+            }
+
+            if ($elapsed >= $dur || $expected >= $target) {
+                $pdo->prepare("UPDATE inbox_ramps SET status = 'done', last_applied = ? WHERE id = ?")
+                    ->execute([$target, $id]);
+            }
+        }
+        return $n;
+    }
+
+    private static function rampExpectedAdd(int $start, int $add, int $elapsed, int $duration, string $curve): int
+    {
+        if ($add <= 0) {
+            return $start;
+        }
+        $t = max(0.0, min(1.0, $elapsed / max(1, $duration)));
+        $p = match ($curve) {
+            'ease_in' => $t * $t,
+            'ease_out' => 1 - (1 - $t) * (1 - $t),
+            'bursty', 'linear' => $t,
+            default => $t,
+        };
+        return $start + (int) floor($add * $p + 1e-9);
     }
 }

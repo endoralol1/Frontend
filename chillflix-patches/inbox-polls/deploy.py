@@ -232,6 +232,23 @@ $router->map(['DELETE'], '/api/admin/inbox/{id}', function (array $p) {
     json_response(['ok' => true]);
 });
 
+$router->post('/api/admin/inbox/{id}/ramp', function (array $p) {
+    Auth::requireRole('admin', 'moderator');
+    $body = json_body();
+    try {
+        $ramps = InboxService::adminStartRamps((string) $p['id'], is_array($body) ? $body : []);
+        json_response(['ok' => true, 'ramps' => $ramps]);
+    } catch (Throwable $e) {
+        json_response(['ok' => false, 'error' => $e->getMessage()], 400);
+    }
+});
+
+$router->post('/api/admin/inbox/{id}/ramp/cancel', function (array $p) {
+    Auth::requireRole('admin', 'moderator');
+    $n = InboxService::adminCancelRamps((string) $p['id']);
+    json_response(['ok' => true, 'cancelled' => $n]);
+});
+
 $router->get('/api/inbox', function () {
     if (!class_exists('InboxService')) {
         json_response(['ok' => false, 'error' => 'Inbox unavailable'], 500);

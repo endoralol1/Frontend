@@ -25,7 +25,19 @@ Header bell (top-right) for **polls** and **notifications**.
 - `POST /api/inbox/{id}/read`
 - `POST /api/inbox/read-all`
 
-## Deploy
+## Gradual ramps
+
+Admin can drip votes/likes over time (e.g. +15 over 1 hour) instead of jumping instantly.
+
+- Curves: `bursty` (default, most realistic), `linear`, `ease_in`, `ease_out`
+- Durations: 15m → 24h
+- Cron: `* * * * * php /var/www/chillflix-newsite/scripts/inbox-ramp-tick.php`
+- Also ticks on public `/api/inbox` and admin list requests
+
+APIs:
+- `POST /api/admin/inbox/{id}/ramp` `{ durationSec, curve, options:[{id,add}], likes, dislikes }`
+- `POST /api/admin/inbox/{id}/ramp/cancel`
+
 
 Copy patch files to the VPS (or run `deploy.py` on the server with sources under `/tmp/inbox-polls`):
 

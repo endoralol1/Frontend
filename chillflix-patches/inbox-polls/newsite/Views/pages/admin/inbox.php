@@ -90,7 +90,7 @@ $adminUser = $adminUser ?? Auth::user();
 <style>
   .cf-inbox-admin-opts { display:grid; gap:.45rem; margin-top:.55rem; }
   .cf-inbox-admin-opt {
-    display:grid; grid-template-columns:1fr auto; gap:.45rem .65rem; align-items:center;
+    display:grid; grid-template-columns:1fr auto auto; gap:.45rem .55rem; align-items:center;
     padding:.55rem .65rem; border-radius:.75rem; border:1px solid rgba(255,255,255,.08);
     background:rgba(0,0,0,.18);
   }
@@ -113,6 +113,22 @@ $adminUser = $adminUser ?? Auth::user();
   .cf-inbox-admin-total {
     margin-top:.35rem; font-size:.78rem; color:rgba(255,255,255,.48);
   }
+  .cf-inbox-admin-ramp {
+    margin-top:.55rem; padding:.7rem .75rem; border-radius:.85rem;
+    border:1px dashed rgba(255,255,255,.14); background:rgba(255,255,255,.02);
+    display:grid; gap:.55rem;
+  }
+  .cf-inbox-admin-ramp h3 {
+    margin:0; font-size:.82rem; font-weight:750; color:rgba(255,255,255,.85);
+    letter-spacing:.04em; text-transform:uppercase;
+  }
+  .cf-inbox-admin-ramp-row {
+    display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; font-size:.84rem;
+  }
+  .cf-inbox-admin-ramp-status {
+    font-size:.78rem; color:rgba(255,255,255,.55); line-height:1.35;
+  }
+  .cf-inbox-admin-ramp-status strong { color:#ffd2b8; font-weight:700; }
 </style>
 <script>
 (function(){
@@ -121,6 +137,13 @@ $adminUser = $adminUser ?? Auth::user();
   var list = document.getElementById('inbox-list');
   function show(t, ok){ msg.hidden=false; msg.textContent=t; msg.className='cf-admin-msg'+(ok?' ok':''); }
   function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+  function fmtRemain(sec){
+    sec = Math.max(0, sec|0);
+    if(sec < 60) return sec+'s';
+    if(sec < 3600) return Math.round(sec/60)+'m';
+    var h = Math.floor(sec/3600), m = Math.round((sec%3600)/60);
+    return h+'h'+(m?(' '+m+'m'):'');
+  }
   function settingsFromForm(){
     return {
       allowGuests: document.getElementById('in-allow-guests').checked,
@@ -161,10 +184,23 @@ $adminUser = $adminUser ?? Auth::user();
         return '<div class="cf-inbox-admin-opt" data-opt="'+esc(o.id)+'">'+
           '<div><div class="cf-inbox-admin-opt-label">'+esc(o.label)+'</div>'+
           '<div class="cf-inbox-admin-opt-meta">'+vc+' vote'+(vc===1?'':'s')+' · '+pct+'%</div></div>'+
-          '<input class="cf-inbox-admin-num" type="number" min="0" value="'+vc+'" data-vote-input aria-label="Votes for '+esc(o.label)+'">'+
-          '<div class="cf-inbox-admin-bar" aria-hidden="true"><i style="width:'+pct+'%"></i></div>'+
+          '<label style="font-size:.7rem;color:rgba(255,255,255,.45);display:grid;gap:.15rem;justify-items:center">Now<input class="cf-inbox-admin-num" type="number" min="0" value="'+vc+'" data-vote-input aria-label="Votes for '+esc(o.label)+'"></label>'+
+          '<label style="font-size:.7rem;color:rgba(255,255,255,.45);display:grid;gap:.15rem;justify-items:center">Add+<input class="cf-inbox-admin-num" type="number" min="0" value="0" data-ramp-add aria-label="Gradual add for '+esc(o.label)+'"></label>'+
+          '<div class="cf-inbox-admin-bar" aria-hidden="true" style="grid-column:1/-1"><i style="width:'+pct+'%"></i></div>'+
         '</div>';
       }).join('');
+      var ramps = it.ramps || [];
+      var rampStatus = ramps.length
+        ? ramps.map(function(r){
+            var label = r.kind === 'option' ? 'option' : r.kind;
+            if(r.kind==='option' && r.optionId){
+              var match = (it.options||[]).find(function(o){ return o.id===r.optionId; });
+              if(match) label = match.label;
+            }
+            return '<div>· <strong>'+esc(label)+'</strong>: '+r.lastApplied+' → '+r.targetCount+
+              ' ('+Math.round((r.progress||0)*100)+'%, '+fmtRemain(r.remainingSec)+' left, '+esc(r.curve)+')</div>';
+          }).join('')
+        : '<div>No active gradual ramps.</div>';
       var ends = it.endsAt ? new Date(it.endsAt*1000).toLocaleString() : '—';
       return '<div class="cf-admin-source" data-id="'+esc(it.id)+'" style="flex-direction:column;align-items:stretch;gap:.45rem">'+
         '<div style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:space-between">'+
@@ -184,7 +220,39 @@ $adminUser = $adminUser ?? Auth::user();
         '<div class="cf-inbox-admin-reacts">'+
           '<label>Likes <input class="cf-inbox-admin-num" type="number" min="0" value="'+(it.likeCount||0)+'" data-like-input></label>'+
           '<label>Dislikes <input class="cf-inbox-admin-num" type="number" min="0" value="'+(it.dislikeCount||0)+'" data-dislike-input></label>'+
-          '<button type="button" class="cf-admin-btn" data-act="save-counts">Save counts</button>'+
+          '<button type="button" class="cf-admin-btn" data-act="save-counts">Save counts now</button>'+
+        '</div>'+
+        '<div class="cf-inbox-admin-ramp">'+
+          '<h3>Gradual add (looks realistic)</h3>'+
+          '<div class="cf-inbox-admin-ramp-row">'+
+            '<label>Over '+
+              '<select data-ramp-duration style="min-height:2.1rem;border-radius:.55rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.28);color:#fff;padding:.25rem .4rem;margin-left:.25rem">'+
+                '<option value="900">15 minutes</option>'+
+                '<option value="1800">30 minutes</option>'+
+                '<option value="3600" selected>1 hour</option>'+
+                '<option value="10800">3 hours</option>'+
+                '<option value="21600">6 hours</option>'+
+                '<option value="43200">12 hours</option>'+
+                '<option value="86400">24 hours</option>'+
+              '</select>'+
+            '</label>'+
+            '<label>Style '+
+              '<select data-ramp-curve style="min-height:2.1rem;border-radius:.55rem;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.28);color:#fff;padding:.25rem .4rem;margin-left:.25rem">'+
+                '<option value="bursty" selected>Bursty (most realistic)</option>'+
+                '<option value="linear">Linear</option>'+
+                '<option value="ease_out">Fast then slow</option>'+
+                '<option value="ease_in">Slow then fast</option>'+
+              '</select>'+
+            '</label>'+
+          '</div>'+
+          '<div class="cf-inbox-admin-ramp-row">'+
+            '<label>Add likes <input class="cf-inbox-admin-num" type="number" min="0" value="0" data-ramp-likes></label>'+
+            '<label>Add dislikes <input class="cf-inbox-admin-num" type="number" min="0" value="0" data-ramp-dislikes></label>'+
+            '<button type="button" class="cf-admin-btn" data-act="start-ramp">Start gradual</button>'+
+            '<button type="button" class="cf-admin-btn ghost" data-act="cancel-ramp">Cancel ramps</button>'+
+          '</div>'+
+          '<p style="margin:0;font-size:.75rem;color:rgba(255,255,255,.45)">Use <em>Add+</em> on each poll option (e.g. 15) plus duration (e.g. 1 hour). Votes drip in over time instead of jumping at once.</p>'+
+          '<div class="cf-inbox-admin-ramp-status">'+rampStatus+'</div>'+
         '</div>'+
       '</div>';
     }).join('');
@@ -269,6 +337,54 @@ $adminUser = $adminUser ?? Auth::user();
       }).catch(function(){ btn.disabled=false; show('Save failed'); });
       return;
     }
+    if(act==='start-ramp'){
+      var options = [];
+      row.querySelectorAll('.cf-inbox-admin-opt').forEach(function(opt){
+        var oid = opt.getAttribute('data-opt');
+        var addInp = opt.querySelector('[data-ramp-add]');
+        var add = addInp ? (parseInt(addInp.value,10)||0) : 0;
+        if(oid && add > 0) options.push({ id: oid, add: add });
+      });
+      var durEl = row.querySelector('[data-ramp-duration]');
+      var curveEl = row.querySelector('[data-ramp-curve]');
+      var likesEl = row.querySelector('[data-ramp-likes]');
+      var dislikesEl = row.querySelector('[data-ramp-dislikes]');
+      var payload = {
+        durationSec: durEl ? (parseInt(durEl.value,10)||3600) : 3600,
+        curve: curveEl ? curveEl.value : 'bursty',
+        options: options,
+        likes: likesEl ? (parseInt(likesEl.value,10)||0) : 0,
+        dislikes: dislikesEl ? (parseInt(dislikesEl.value,10)||0) : 0
+      };
+      if(!payload.options.length && !payload.likes && !payload.dislikes){
+        show('Set Add+ on options and/or likes/dislikes first');
+        return;
+      }
+      btn.disabled = true;
+      fetch(API+'/'+encodeURIComponent(id)+'/ramp',{
+        method:'POST', credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      }).then(r=>r.json()).then(function(d){
+        btn.disabled = false;
+        if(d&&d.ok){ show('Gradual ramp started', true); load(); }
+        else show((d&&d.error)||'Ramp failed');
+      }).catch(function(){ btn.disabled=false; show('Ramp failed'); });
+      return;
+    }
+    if(act==='cancel-ramp'){
+      btn.disabled = true;
+      fetch(API+'/'+encodeURIComponent(id)+'/ramp/cancel',{
+        method:'POST', credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body: '{}'
+      }).then(r=>r.json()).then(function(d){
+        btn.disabled = false;
+        if(d&&d.ok){ show('Ramps cancelled', true); load(); }
+        else show('Cancel failed');
+      }).catch(function(){ btn.disabled=false; show('Cancel failed'); });
+      return;
+    }
     var status = act==='publish' ? 'active' : (act==='close' ? 'closed' : 'archived');
     fetch(API+'/'+encodeURIComponent(id),{
       method:'POST', credentials:'same-origin',
@@ -278,5 +394,7 @@ $adminUser = $adminUser ?? Auth::user();
   });
 
   load();
+  // Keep ramp progress fresh while admin page is open.
+  setInterval(load, 30000);
 })();
 </script>
