@@ -417,7 +417,15 @@ final class PlayerSources
                     if (isset($merged[$key])) {
                         continue;
                     }
+                    // Real quality only (1080p/Auto). Server/edge names stay out of the Quality tab —
+                    // CinePro already raced edges and returns the single fastest healthy stream.
                     $quality = (string) ($src['quality'] ?? 'Auto');
+                    if (preg_match('/vega|orion|raven|falcon|marlin|helios|ember/i', $quality)) {
+                        $quality = 'Auto';
+                    }
+                    if ($quality === '') {
+                        $quality = 'Auto';
+                    }
                     $lang = trim((string) ($src['language'] ?? ''));
                     if ($lang === '') {
                         $lang = 'en';
@@ -426,10 +434,10 @@ final class PlayerSources
                         'id' => substr(sha1($key), 0, 12),
                         'url' => $playUrl,
                         'type' => (string) ($src['type'] ?? ($isHls ? 'hls' : 'mp4')),
-                        'quality' => $quality !== '' ? $quality : 'Auto',
+                        'quality' => $quality,
                         'provider' => 'novahd',
                         'providerName' => (string) ($src['providerName'] ?? 'NovaHD'),
-                        'label' => (string) ($src['label'] ?? ('NovaHD' . ($quality !== '' ? (' · ' . $quality) : ''))),
+                        'label' => 'NovaHD',
                         'language' => $lang,
                         'hasEnglish' => true,
                         'audioTracks' => [],

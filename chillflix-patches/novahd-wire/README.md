@@ -11,9 +11,12 @@ Adds **NovaHD** (`novahd.cc`) as a CinePro provider and Vuflix player source.
 ## Fix / wiring
 1. CinePro provider `src/providers/novahd/novahd.ts` (+ dist transpile)
 2. Allowlist: add `novahd`
-3. `PlayerSources.php`: local probe + media-proxy **playlist rewrite** + `Referer: https://novahd.cc/`
-4. `SourcesService` catalog entry + DB `enabled=1`
-5. Optional: `yoru-relay.js` allowlist `novahd.cc` + `workers.dev` (direct Node fetch already works)
+3. Provider **races CDN edges** and returns the **single fastest healthy** stream (quality = `1080p`/`Auto`, never Vega/Falcon names)
+4. `PlayerSources.php`: local probe + media-proxy **playlist rewrite** + `Referer: https://novahd.cc/`
+5. `SourcesService` catalog entry + DB `enabled=1`
+6. Optional: `yoru-relay.js` allowlist `novahd.cc` + `workers.dev` (direct Node fetch already works)
+
+Quality tab then uses HLS ladder levels from that stream — not Nova server names.
 
 ## Verify
 ```bash
