@@ -1036,9 +1036,25 @@ final class InboxService
         );
     }
 
-    public static function adminCancelRamps(string $itemId): int
+    public static function adminCancelRamps(string $itemId, ?string $kindGroup = null): int
     {
         self::ensureTables();
+        if ($kindGroup === 'votes' || $kindGroup === 'option') {
+            $stmt = Database::pdo()->prepare(
+                "UPDATE inbox_ramps SET status = 'cancelled'
+                 WHERE item_id = ? AND status = 'active' AND kind = 'option'"
+            );
+            $stmt->execute([$itemId]);
+            return $stmt->rowCount();
+        }
+        if ($kindGroup === 'reactions' || $kindGroup === 'likes' || $kindGroup === 'react') {
+            $stmt = Database::pdo()->prepare(
+                "UPDATE inbox_ramps SET status = 'cancelled'
+                 WHERE item_id = ? AND status = 'active' AND kind IN ('like','dislike')"
+            );
+            $stmt->execute([$itemId]);
+            return $stmt->rowCount();
+        }
         $stmt = Database::pdo()->prepare(
             "UPDATE inbox_ramps SET status = 'cancelled' WHERE item_id = ? AND status = 'active'"
         );

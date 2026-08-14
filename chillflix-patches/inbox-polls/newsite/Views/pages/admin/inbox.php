@@ -326,9 +326,32 @@ $adminUser = $adminUser ?? Auth::user();
           '<div class="cf-ia-meta">Likes ' + (it.likeCount || 0) + ' · Dislikes ' + (it.dislikeCount || 0) + '</div>') +
 
         '<div class="cf-ia-drip-bar">' +
-          '<div class="cf-ia-ramp-h">Gradual drip (poll votes + likes)</div>' +
+          (it.type === 'poll'
+            ? '<div class="cf-ia-ramp-h">Poll vote drip</div>' +
+              '<div class="cf-ia-row">' +
+                '<select class="cf-ia-sel" data-vote-duration aria-label="Vote duration">' +
+                  '<option value="900">Over 15 min</option>' +
+                  '<option value="1800">Over 30 min</option>' +
+                  '<option value="3600" selected>Over 1 hour</option>' +
+                  '<option value="10800">Over 3 hours</option>' +
+                  '<option value="21600">Over 6 hours</option>' +
+                  '<option value="43200">Over 12 hours</option>' +
+                  '<option value="86400">Over 24 hours</option>' +
+                '</select>' +
+                '<select class="cf-ia-sel" data-vote-curve aria-label="Vote style">' +
+                  '<option value="bursty" selected>Bursty</option>' +
+                  '<option value="linear">Linear</option>' +
+                  '<option value="ease_out">Fast→slow</option>' +
+                  '<option value="ease_in">Slow→fast</option>' +
+                '</select>' +
+                '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="start-vote-ramp">Start votes</button>' +
+                '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="cancel-vote-ramp">Cancel votes</button>' +
+              '</div>' +
+              '<p class="cf-ia-meta" style="margin:0">Fill each option’s <strong>+Votes</strong> box, then Start votes. Does not touch likes.</p>'
+            : '') +
+          '<div class="cf-ia-ramp-h"' + (it.type === 'poll' ? ' style="margin-top:.25rem"' : '') + '>Likes / dislikes drip</div>' +
           '<div class="cf-ia-row">' +
-            '<select class="cf-ia-sel" data-ramp-duration aria-label="Duration">' +
+            '<select class="cf-ia-sel" data-react-duration aria-label="Reaction duration">' +
               '<option value="900">Over 15 min</option>' +
               '<option value="1800">Over 30 min</option>' +
               '<option value="3600" selected>Over 1 hour</option>' +
@@ -337,7 +360,7 @@ $adminUser = $adminUser ?? Auth::user();
               '<option value="43200">Over 12 hours</option>' +
               '<option value="86400">Over 24 hours</option>' +
             '</select>' +
-            '<select class="cf-ia-sel" data-ramp-curve aria-label="Style">' +
+            '<select class="cf-ia-sel" data-react-curve aria-label="Reaction style">' +
               '<option value="bursty" selected>Bursty</option>' +
               '<option value="linear">Linear</option>' +
               '<option value="ease_out">Fast→slow</option>' +
@@ -347,10 +370,10 @@ $adminUser = $adminUser ?? Auth::user();
           '<div class="cf-ia-row">' +
             '<label class="cf-ia-mini">+Likes <input class="cf-ia-num" type="number" min="0" value="0" data-ramp-likes></label>' +
             '<label class="cf-ia-mini">+Dislikes <input class="cf-ia-num" type="number" min="0" value="0" data-ramp-dislikes></label>' +
-            '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="start-ramp">Start drip</button>' +
-            '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="cancel-ramp">Cancel</button>' +
+            '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="start-react-ramp">Start likes</button>' +
+            '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="cancel-react-ramp">Cancel likes</button>' +
           '</div>' +
-          '<p class="cf-ia-meta" style="margin:0">For <strong>poll votes</strong>: type how many to add in each option’s <strong>+Votes</strong> box, then Start drip. For likes only, use +Likes.</p>' +
+          '<p class="cf-ia-meta" style="margin:0">Only likes/dislikes. Does not change poll votes.</p>' +
         '</div>' +
 
         '<div class="cf-ia-panel cf-ia-panel-edit">' +
@@ -561,48 +584,74 @@ $adminUser = $adminUser ?? Auth::user();
       return;
     }
 
-    if (act === 'start-ramp') {
+    if (act === 'start-vote-ramp') {
       var options = [];
       card.querySelectorAll('.cf-ia-opt').forEach(function (opt) {
         var oid = opt.getAttribute('data-opt');
         var add = parseInt((opt.querySelector('[data-ramp-add]') || {}).value, 10) || 0;
         if (oid && add > 0) options.push({ id: oid, add: add });
       });
-      var payload = {
-        durationSec: parseInt((card.querySelector('[data-ramp-duration]') || {}).value, 10) || 3600,
-        curve: (card.querySelector('[data-ramp-curve]') || {}).value || 'bursty',
-        options: options,
-        likes: parseInt((card.querySelector('[data-ramp-likes]') || {}).value, 10) || 0,
-        dislikes: parseInt((card.querySelector('[data-ramp-dislikes]') || {}).value, 10) || 0
-      };
-      if (!payload.options.length && !payload.likes && !payload.dislikes) {
-        show('Set Add numbers and/or +likes first');
+      if (!options.length) {
+        show('Fill +Votes on at least one option');
         return;
       }
+      var votePayload = {
+        durationSec: parseInt((card.querySelector('[data-vote-duration]') || {}).value, 10) || 3600,
+        curve: (card.querySelector('[data-vote-curve]') || {}).value || 'bursty',
+        options: options
+      };
       btn.disabled = true;
       fetch(API + '/' + encodeURIComponent(id) + '/ramp', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(votePayload)
       }).then(function (r) { return r.json(); }).then(function (d) {
         btn.disabled = false;
-        if (d && d.ok) { show('Ramp started', true); load(); }
-        else show((d && d.error) || 'Ramp failed');
-      }).catch(function () { btn.disabled = false; show('Ramp failed'); });
+        if (d && d.ok) { show('Vote drip started', true); load(); }
+        else show((d && d.error) || 'Vote drip failed');
+      }).catch(function () { btn.disabled = false; show('Vote drip failed'); });
       return;
     }
 
-    if (act === 'cancel-ramp') {
+    if (act === 'start-react-ramp') {
+      var likes = parseInt((card.querySelector('[data-ramp-likes]') || {}).value, 10) || 0;
+      var dislikes = parseInt((card.querySelector('[data-ramp-dislikes]') || {}).value, 10) || 0;
+      if (!likes && !dislikes) {
+        show('Set +Likes and/or +Dislikes first');
+        return;
+      }
+      var reactPayload = {
+        durationSec: parseInt((card.querySelector('[data-react-duration]') || {}).value, 10) || 3600,
+        curve: (card.querySelector('[data-react-curve]') || {}).value || 'bursty',
+        likes: likes,
+        dislikes: dislikes
+      };
+      btn.disabled = true;
+      fetch(API + '/' + encodeURIComponent(id) + '/ramp', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reactPayload)
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        btn.disabled = false;
+        if (d && d.ok) { show('Likes drip started', true); load(); }
+        else show((d && d.error) || 'Likes drip failed');
+      }).catch(function () { btn.disabled = false; show('Likes drip failed'); });
+      return;
+    }
+
+    if (act === 'cancel-vote-ramp' || act === 'cancel-react-ramp') {
+      var group = act === 'cancel-vote-ramp' ? 'votes' : 'reactions';
       btn.disabled = true;
       fetch(API + '/' + encodeURIComponent(id) + '/ramp/cancel', {
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: '{}'
+        body: JSON.stringify({ group: group })
       }).then(function (r) { return r.json(); }).then(function (d) {
         btn.disabled = false;
-        if (d && d.ok) { show('Ramps cancelled', true); load(); }
+        if (d && d.ok) { show(group === 'votes' ? 'Vote drips cancelled' : 'Likes drips cancelled', true); load(); }
         else show('Cancel failed');
       }).catch(function () { btn.disabled = false; show('Cancel failed'); });
     }
