@@ -1,0 +1,2 @@
+CINEPRO_PROVIDER_ALLOWLIST=onlyflix,cinesu,vaplayer,moviebox
+CINEPRO_PROVIDER_ALLOWLIST: onlyflix,cinesu,vaplayer,moviebox
