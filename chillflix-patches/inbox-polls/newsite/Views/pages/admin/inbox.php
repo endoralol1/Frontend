@@ -131,12 +131,23 @@ $adminUser = $adminUser ?? Auth::user();
 .cf-ia-body { margin: 0; font-size: .8rem; color: rgba(255,255,255,.68); line-height: 1.35; }
 .cf-ia-opts { display: grid; gap: .3rem; }
 .cf-ia-opt {
-  display: grid; grid-template-columns: 1fr auto auto; gap: .25rem .4rem; align-items: center;
-  padding: .4rem .5rem; border-radius: .55rem; background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.06);
+  display: grid; gap: .35rem;
+  padding: .5rem .55rem; border-radius: .55rem; background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.06);
 }
-.cf-ia-opt-l { font-size: .8rem; font-weight: 650; color: #fff; min-width: 0; }
-.cf-ia-opt-m { font-size: .68rem; color: rgba(255,255,255,.45); }
-.cf-ia-bar { grid-column: 1 / -1; height: .28rem; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
+.cf-ia-opt-main { min-width: 0; }
+.cf-ia-opt-l { font-size: .8rem; font-weight: 650; color: #fff; }
+.cf-ia-opt-m { font-size: .68rem; color: rgba(255,255,255,.45); margin-top: .1rem; }
+.cf-ia-opt-inputs { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.cf-ia-plus-votes { color: #ffd2b8 !important; font-weight: 700; }
+.cf-ia-bar { height: .28rem; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
+.cf-ia-vote-drip-fields { display: grid; gap: .35rem; }
+.cf-ia-vote-drip-field {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  padding: .35rem .45rem; border-radius: .5rem; background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08); font-size: .8rem; color: #fff;
+}
+.cf-ia-vote-drip-field span { flex: 1; min-width: 0; font-weight: 650; }
+.cf-ia-vote-drip-field .cf-ia-num { width: 5rem; flex: 0 0 auto; }
 .cf-ia-bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--cf-orange,#db6937), var(--cf-orange-deep,#c43c2e)); }
 .cf-ia-meta { font-size: .72rem; color: rgba(255,255,255,.45); }
 .cf-ia-panel {
@@ -180,8 +191,8 @@ $adminUser = $adminUser ?? Auth::user();
   .cf-ia-top { flex-direction: column; }
   .cf-ia-top-actions { width: 100%; }
   .cf-ia-top-actions .cf-ia-sel { flex: 1 1 calc(50% - .3rem); }
-  .cf-ia-opt { grid-template-columns: 1fr auto; }
-  .cf-ia-opt .cf-ia-num:last-of-type { grid-column: 2; }
+  .cf-ia-vote-drip-field { flex-wrap: wrap; }
+  .cf-ia-vote-drip-field .cf-ia-num { width: 100%; max-width: none; min-height: 2.4rem; font-size: 1rem; }
 }
 </style>
 
@@ -256,12 +267,23 @@ $adminUser = $adminUser ?? Auth::user();
         var vc = o.voteCount || 0;
         var pct = totalVotes > 0 ? Math.round((vc / totalVotes) * 100) : 0;
         return '<div class="cf-ia-opt" data-opt="' + esc(o.id) + '">' +
-          '<div><div class="cf-ia-opt-l">' + esc(o.label) + '</div>' +
-          '<div class="cf-ia-opt-m">' + vc + ' · ' + pct + '%</div></div>' +
-          '<input class="cf-ia-num" type="number" min="0" value="' + vc + '" data-vote-input title="Current votes">' +
-          '<input class="cf-ia-num" type="number" min="0" value="0" data-ramp-add title="Gradual add">' +
+          '<div class="cf-ia-opt-main">' +
+            '<div class="cf-ia-opt-l">' + esc(o.label) + '</div>' +
+            '<div class="cf-ia-opt-m">' + vc + ' votes · ' + pct + '%</div>' +
+          '</div>' +
+          '<div class="cf-ia-opt-inputs">' +
+            '<label class="cf-ia-mini">Now <input class="cf-ia-num" type="number" min="0" value="' + vc + '" data-vote-input inputmode="numeric"></label>' +
+            '<label class="cf-ia-mini cf-ia-plus-votes">+Votes <input class="cf-ia-num" type="number" min="0" value="0" data-ramp-add inputmode="numeric" placeholder="0"></label>' +
+          '</div>' +
           '<div class="cf-ia-bar" aria-hidden="true"><i style="width:' + pct + '%"></i></div>' +
         '</div>';
+      }).join('');
+
+      var voteDripFields = (it.options || []).map(function (o) {
+        return '<label class="cf-ia-vote-drip-field">' +
+          '<span>' + esc(o.label) + '</span>' +
+          '<input class="cf-ia-num" type="number" min="0" value="0" data-vote-drip-for="' + esc(o.id) + '" inputmode="numeric" placeholder="+ votes">' +
+        '</label>';
       }).join('');
 
       var ramps = it.ramps || [];
@@ -321,13 +343,14 @@ $adminUser = $adminUser ?? Auth::user();
         '</div>' +
         (it.body ? '<p class="cf-ia-body">' + esc(it.body) + '</p>' : '') +
         rampLive +
-        (opts ? '<div class="cf-ia-opt-heads"><span>Option</span><span>Now</span><span>+Votes</span></div><div class="cf-ia-opts">' + opts + '</div><div class="cf-ia-meta">Total votes: ' + (it.totalVotes != null ? it.totalVotes : totalVotes) +
+        (opts ? '<div class="cf-ia-opts">' + opts + '</div><div class="cf-ia-meta">Total votes: ' + (it.totalVotes != null ? it.totalVotes : totalVotes) +
           ' · Likes ' + (it.likeCount || 0) + ' · Dislikes ' + (it.dislikeCount || 0) + '</div>' : 
           '<div class="cf-ia-meta">Likes ' + (it.likeCount || 0) + ' · Dislikes ' + (it.dislikeCount || 0) + '</div>') +
 
         '<div class="cf-ia-drip-bar">' +
           (it.type === 'poll'
             ? '<div class="cf-ia-ramp-h">Poll vote drip</div>' +
+              '<div class="cf-ia-vote-drip-fields">' + voteDripFields + '</div>' +
               '<div class="cf-ia-row">' +
                 '<select class="cf-ia-sel" data-vote-duration aria-label="Vote duration">' +
                   '<option value="900">Over 15 min</option>' +
@@ -347,7 +370,7 @@ $adminUser = $adminUser ?? Auth::user();
                 '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="start-vote-ramp">Start votes</button>' +
                 '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="cancel-vote-ramp">Cancel votes</button>' +
               '</div>' +
-              '<p class="cf-ia-meta" style="margin:0">Fill each option’s <strong>+Votes</strong> box, then Start votes. Does not touch likes.</p>'
+              '<p class="cf-ia-meta" style="margin:0">Type how many votes to add for each option, then Start votes.</p>'
             : '') +
           '<div class="cf-ia-ramp-h"' + (it.type === 'poll' ? ' style="margin-top:.25rem"' : '') + '>Likes / dislikes drip</div>' +
           '<div class="cf-ia-row">' +
@@ -586,13 +609,21 @@ $adminUser = $adminUser ?? Auth::user();
 
     if (act === 'start-vote-ramp') {
       var options = [];
-      card.querySelectorAll('.cf-ia-opt').forEach(function (opt) {
-        var oid = opt.getAttribute('data-opt');
-        var add = parseInt((opt.querySelector('[data-ramp-add]') || {}).value, 10) || 0;
+      card.querySelectorAll('[data-vote-drip-for]').forEach(function (inp) {
+        var oid = inp.getAttribute('data-vote-drip-for');
+        var add = parseInt(inp.value, 10) || 0;
         if (oid && add > 0) options.push({ id: oid, add: add });
       });
+      // Fallback: option row +Votes inputs
       if (!options.length) {
-        show('Fill +Votes on at least one option');
+        card.querySelectorAll('.cf-ia-opt').forEach(function (opt) {
+          var oid = opt.getAttribute('data-opt');
+          var add = parseInt((opt.querySelector('[data-ramp-add]') || {}).value, 10) || 0;
+          if (oid && add > 0) options.push({ id: oid, add: add });
+        });
+      }
+      if (!options.length) {
+        show('Type + votes for at least one option');
         return;
       }
       var votePayload = {
