@@ -84,8 +84,6 @@ $extraJs = $extraJs ?? [];
     })();
     </script>
     <meta name="monetag" content="7b8e4d838889a09220772438b25fb29d">
-    <!-- AdCash -->
-    <script id="aclib" type="text/javascript" src="https://acscdn.com/script/aclib.js"></script>
     <meta name="referrer" content="origin">
     <link rel="canonical" href="<?= e($canonical) ?>">
 
@@ -309,7 +307,9 @@ $extraJs = $extraJs ?? [];
 <div class="wrapper">
     <?php require __DIR__ . '/../partials/header.php'; ?>
     <?php require $content; ?>
-    <div class="container cf-adcash-banner" id="cf-adcash-banner" style="margin:1rem auto 1.25rem;min-height:2rem;text-align:center;overflow:hidden;">
+    <!-- AdCash confirmation + native banner (above footer) -->
+    <script id="aclib" type="text/javascript" src="//acscdn.com/script/aclib.js"></script>
+    <div class="container" id="cf-adcash-banner">
         <script type="text/javascript">
             aclib.runBanner({
                 zoneId: '11970470',
