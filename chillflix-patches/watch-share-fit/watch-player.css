@@ -1107,72 +1107,75 @@ body.page-watch .watch-similar .movie-sidebar.items {
   overflow: visible !important;
 }
 
-/* Mobile managers: spread full-width, keep full labels */
+/* Mobile managers: true L→R spread, full labels (no clipping) */
 @media (max-width: 991.98px) {
   body.page-watch #movie-managers {
-    padding: 0.4rem 0.4rem !important;
+    padding: 0.4rem 0.45rem !important;
+    width: 100% !important;
   }
   body.page-watch #movie-managers .movie-managers-wrap {
     display: flex !important;
-    flex-wrap: nowrap;
-    align-items: center;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
     justify-content: space-between !important;
-    gap: 0.3rem !important;
+    gap: 0.35rem !important;
     width: 100% !important;
-    min-width: 0;
-    overflow: visible;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: visible !important;
   }
-  body.page-watch #movie-managers .movie-managers-wrap .movie-manager,
-  body.page-watch #movie-managers .movie-manager {
-    /* Grow to fill leftover space, never shrink below the label */
-    flex: 1 0 auto !important;
+  /* Natural-size chips; leftover width becomes equal gaps between them */
+  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager {
+    flex: 0 0 auto !important;
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+    width: auto !important;
     min-width: fit-content !important;
     max-width: none !important;
-    width: auto !important;
+    margin: 0 !important;
     font-size: 0.7rem !important;
-    padding: 0.42rem 0.45rem !important;
+    padding: 0.42rem 0.55rem !important;
     border-radius: 0.65rem !important;
-    gap: 0.2rem;
+    gap: 0.22rem !important;
     justify-content: center !important;
     white-space: nowrap !important;
   }
-  body.page-watch #movie-managers .watch-now-btn,
-  body.page-watch #btn-watch-now.movie-manager {
-    flex: 1 0 auto !important;
-    padding: 0.42rem 0.5rem !important;
+  body.page-watch #movie-managers .movie-managers-wrap > .watch-now-btn,
+  body.page-watch #movie-managers .movie-managers-wrap > #btn-watch-now {
+    padding: 0.42rem 0.6rem !important;
   }
-  body.page-watch #movie-managers .movie-managers-wrap .movie-manager i {
+  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager i {
     font-size: 0.92rem;
     flex-shrink: 0;
   }
-  /* NEVER clip / ellipsis button names */
-  body.page-watch #movie-managers .movie-managers-wrap .movie-manager span.ml-1,
-  body.page-watch #movie-managers .movie-manager span.ml-1,
-  body.page-watch #movie-managers .user-bookmark-toggle .fav-label {
+  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager span.ml-1,
+  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager .fav-label {
     display: inline !important;
     overflow: visible !important;
-    text-overflow: unset !important;
+    text-overflow: clip !important;
     white-space: nowrap !important;
-    min-width: 0;
     max-width: none !important;
   }
-  /* Share icon-only — takes a compact slot on the right */
-  body.page-watch #movie-managers .movie-manager.share-btn,
-  body.page-watch #btn-share {
+  /* Share: compact icon, NO margin-left:auto (that bunched everyone left) */
+  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager.share-btn,
+  body.page-watch #movie-managers .movie-managers-wrap > #btn-share,
+  body.page-watch #movie-managers #btn-share {
     margin-left: 0 !important;
-    flex: 0 0 auto !important;
-    width: 2.3rem !important;
-    min-width: 2.3rem !important;
-    max-width: 2.3rem !important;
+    margin-right: 0 !important;
+    flex: 0 0 2.35rem !important;
+    width: 2.35rem !important;
+    min-width: 2.35rem !important;
+    max-width: 2.35rem !important;
     padding: 0.42rem 0 !important;
-    justify-content: center !important;
   }
-  body.page-watch #movie-managers .movie-manager.share-btn span.ml-1,
-  body.page-watch #btn-share span.ml-1 {
+  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager.share-btn span.ml-1,
+  body.page-watch #movie-managers #btn-share span.ml-1 {
     display: none !important;
   }
 }
 /* /Mobile managers */
+
 
 
 
