@@ -245,7 +245,9 @@ $router->post('/api/admin/inbox/{id}/ramp', function (array $p) {
 
 $router->post('/api/admin/inbox/{id}/ramp/cancel', function (array $p) {
     Auth::requireRole('admin', 'moderator');
-    $n = InboxService::adminCancelRamps((string) $p['id']);
+    $body = json_body();
+    $group = is_array($body) ? ($body['group'] ?? $body['kind'] ?? null) : null;
+    $n = InboxService::adminCancelRamps((string) $p['id'], is_string($group) ? $group : null);
     json_response(['ok' => true, 'cancelled' => $n]);
 });
 
