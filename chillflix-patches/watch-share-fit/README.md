@@ -1,5 +1,7 @@
-# Mobile Share button fit
+# Mobile watch managers
 
-On phones, only **Share** becomes icon-only (pinned right). Trailer / Watch / Auto Next / Watchlist keep their labels.
+- Buttons spread evenly across the full row on phones/tablets
+- Share stays icon-only but still gets an equal column
+- Other buttons keep labels
 
-Live CSS `?v=20260814-share-fit2`.
+Live CSS `?v=20260814-mgr-spread1`.

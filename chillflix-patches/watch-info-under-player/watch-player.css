@@ -1107,46 +1107,55 @@ body.page-watch .watch-similar .movie-sidebar.items {
   overflow: visible !important;
 }
 
-/* Mobile managers: fit Share on narrow screens */
-@media (max-width: 767.98px) {
+/* Mobile managers: spread actions across full width */
+@media (max-width: 991.98px) {
   body.page-watch #movie-managers {
     padding: 0.4rem 0.45rem !important;
   }
   body.page-watch #movie-managers .movie-managers-wrap {
     display: flex !important;
     flex-wrap: nowrap;
-    align-items: center;
-    gap: 0.28rem !important;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 0.35rem !important;
     width: 100%;
     min-width: 0;
     overflow: visible;
   }
   body.page-watch #movie-managers .movie-managers-wrap .movie-manager,
   body.page-watch #movie-managers .movie-manager {
-    flex: 0 1 auto;
-    min-width: 0;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    width: auto !important;
     font-size: 0.72rem !important;
-    padding: 0.38rem 0.55rem !important;
+    padding: 0.42rem 0.35rem !important;
     border-radius: 0.65rem !important;
     gap: 0.22rem;
+    justify-content: center !important;
+    text-align: center;
   }
   body.page-watch #movie-managers .watch-now-btn,
   body.page-watch #btn-watch-now.movie-manager {
-    flex: 0 0 auto;
-    padding: 0.4rem 0.65rem !important;
+    flex: 1 1 0 !important;
+    padding: 0.42rem 0.35rem !important;
   }
   body.page-watch #movie-managers .movie-managers-wrap .movie-manager i {
     font-size: 0.95rem;
+    flex-shrink: 0;
   }
-  /* Only Share is icon-only — other buttons keep their labels */
+  body.page-watch #movie-managers .movie-managers-wrap .movie-manager span.ml-1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+  /* Share stays icon-only but still takes an equal column */
   body.page-watch #movie-managers .movie-manager.share-btn,
   body.page-watch #btn-share {
-    margin-left: auto !important;
-    flex: 0 0 auto !important;
-    width: 2.35rem !important;
-    min-width: 2.35rem !important;
-    max-width: 2.35rem !important;
-    padding: 0.38rem 0 !important;
+    margin-left: 0 !important;
+    flex: 1 1 0 !important;
+    padding: 0.42rem 0.25rem !important;
     justify-content: center !important;
   }
   body.page-watch #movie-managers .movie-manager.share-btn span.ml-1,
@@ -1154,6 +1163,18 @@ body.page-watch .watch-similar .movie-sidebar.items {
     display: none !important;
   }
 }
+
+@media (max-width: 380px) {
+  body.page-watch #movie-managers .movie-managers-wrap {
+    gap: 0.28rem !important;
+  }
+  body.page-watch #movie-managers .movie-managers-wrap .movie-manager,
+  body.page-watch #movie-managers .movie-manager {
+    font-size: 0.66rem !important;
+    padding: 0.4rem 0.22rem !important;
+  }
+}
 /* /Mobile managers */
+
 
 
