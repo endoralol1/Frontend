@@ -166,6 +166,14 @@ $adminUser = $adminUser ?? Auth::user();
 }
 .cf-ia-opt-heads span:nth-child(2),
 .cf-ia-opt-heads span:nth-child(3) { text-align: center; width: 3.6rem; }
+.cf-ia-drip-bar {
+  display: grid; gap: .35rem; padding: .5rem .55rem; border-radius: .55rem;
+  border: 1px dashed rgba(255,255,255,.14); background: rgba(0,0,0,.16);
+}
+.cf-ia-drip-bar .cf-ia-ramp-h {
+  font-size: .65rem; letter-spacing: .06em; text-transform: uppercase;
+  color: rgba(255,255,255,.5); font-weight: 700;
+}
 .cf-ia-ramp-status { font-size: .72rem; color: rgba(255,255,255,.5); line-height: 1.35; }
 .cf-ia-ramp-status strong { color: #ffd2b8; }
 @media (max-width: 640px) {
@@ -306,17 +314,44 @@ $adminUser = $adminUser ?? Auth::user();
             '<select class="cf-ia-sel" data-panel aria-label="Manage">' +
               '<option value="">Manage…</option>' +
               '<option value="edit">Edit settings</option>' +
-              '<option value="counts">Votes &amp; reactions</option>' +
-              '<option value="ramp">Gradual add</option>' +
+              '<option value="counts">Set counts now</option>' +
               '<option value="delete">Delete</option>' +
             '</select>' +
           '</div>' +
         '</div>' +
         (it.body ? '<p class="cf-ia-body">' + esc(it.body) + '</p>' : '') +
         rampLive +
-        (opts ? '<div class="cf-ia-opt-heads"><span>Option</span><span>Now</span><span>+Drip</span></div><div class="cf-ia-opts">' + opts + '</div><div class="cf-ia-meta">Total votes: ' + (it.totalVotes != null ? it.totalVotes : totalVotes) +
+        (opts ? '<div class="cf-ia-opt-heads"><span>Option</span><span>Now</span><span>+Votes</span></div><div class="cf-ia-opts">' + opts + '</div><div class="cf-ia-meta">Total votes: ' + (it.totalVotes != null ? it.totalVotes : totalVotes) +
           ' · Likes ' + (it.likeCount || 0) + ' · Dislikes ' + (it.dislikeCount || 0) + '</div>' : 
           '<div class="cf-ia-meta">Likes ' + (it.likeCount || 0) + ' · Dislikes ' + (it.dislikeCount || 0) + '</div>') +
+
+        '<div class="cf-ia-drip-bar">' +
+          '<div class="cf-ia-ramp-h">Gradual drip (poll votes + likes)</div>' +
+          '<div class="cf-ia-row">' +
+            '<select class="cf-ia-sel" data-ramp-duration aria-label="Duration">' +
+              '<option value="900">Over 15 min</option>' +
+              '<option value="1800">Over 30 min</option>' +
+              '<option value="3600" selected>Over 1 hour</option>' +
+              '<option value="10800">Over 3 hours</option>' +
+              '<option value="21600">Over 6 hours</option>' +
+              '<option value="43200">Over 12 hours</option>' +
+              '<option value="86400">Over 24 hours</option>' +
+            '</select>' +
+            '<select class="cf-ia-sel" data-ramp-curve aria-label="Style">' +
+              '<option value="bursty" selected>Bursty</option>' +
+              '<option value="linear">Linear</option>' +
+              '<option value="ease_out">Fast→slow</option>' +
+              '<option value="ease_in">Slow→fast</option>' +
+            '</select>' +
+          '</div>' +
+          '<div class="cf-ia-row">' +
+            '<label class="cf-ia-mini">+Likes <input class="cf-ia-num" type="number" min="0" value="0" data-ramp-likes></label>' +
+            '<label class="cf-ia-mini">+Dislikes <input class="cf-ia-num" type="number" min="0" value="0" data-ramp-dislikes></label>' +
+            '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="start-ramp">Start drip</button>' +
+            '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="cancel-ramp">Cancel</button>' +
+          '</div>' +
+          '<p class="cf-ia-meta" style="margin:0">For <strong>poll votes</strong>: type how many to add in each option’s <strong>+Votes</strong> box, then Start drip. For likes only, use +Likes.</p>' +
+        '</div>' +
 
         '<div class="cf-ia-panel cf-ia-panel-edit">' +
           '<label class="cf-ia-field">Title<input class="cf-ia-inp" data-edit-title value="' + esc(it.title) + '"></label>' +
@@ -364,36 +399,7 @@ $adminUser = $adminUser ?? Auth::user();
             '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="save-counts">Save counts</button>' +
             '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="close-panel">Close</button>' +
           '</div>' +
-          '<p class="cf-ia-meta">Edit option “current” numbers above, then save. Use Gradual add for drip.</p>' +
-        '</div>' +
-
-        '<div class="cf-ia-panel cf-ia-panel-ramp">' +
-          '<div class="cf-ia-row">' +
-            '<select class="cf-ia-sel" data-ramp-duration>' +
-              '<option value="900">15 min</option>' +
-              '<option value="1800">30 min</option>' +
-              '<option value="3600" selected>1 hour</option>' +
-              '<option value="10800">3 hours</option>' +
-              '<option value="21600">6 hours</option>' +
-              '<option value="43200">12 hours</option>' +
-              '<option value="86400">24 hours</option>' +
-            '</select>' +
-            '<select class="cf-ia-sel" data-ramp-curve>' +
-              '<option value="bursty" selected>Bursty</option>' +
-              '<option value="linear">Linear</option>' +
-              '<option value="ease_out">Fast→slow</option>' +
-              '<option value="ease_in">Slow→fast</option>' +
-            '</select>' +
-          '</div>' +
-          '<div class="cf-ia-row">' +
-            '<label class="cf-ia-mini">+Likes <input class="cf-ia-num" type="number" min="0" value="0" data-ramp-likes></label>' +
-            '<label class="cf-ia-mini">+Dislikes <input class="cf-ia-num" type="number" min="0" value="0" data-ramp-dislikes></label>' +
-            '<button type="button" class="cf-admin-btn cf-ia-btn-sm" data-act="start-ramp">Start</button>' +
-            '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="cancel-ramp">Cancel</button>' +
-            '<button type="button" class="cf-admin-btn ghost cf-ia-btn-sm" data-act="close-panel">Close</button>' +
-          '</div>' +
-          '<p class="cf-ia-meta">Put amounts in each option’s <strong>+Drip</strong> column and/or +Likes / +Dislikes, then Start.</p>' +
-          '<div class="cf-ia-ramp-status">' + rampStatus + '</div>' +
+          '<p class="cf-ia-meta">Edit option “Now” numbers above, then save. For gradual increases use +Votes / Start drip.</p>' +
         '</div>' +
       '</article>';
     }).join('');
@@ -492,7 +498,6 @@ $adminUser = $adminUser ?? Auth::user();
       }
       if (panel === 'edit') card.classList.add('is-edit');
       if (panel === 'counts') card.classList.add('is-counts');
-      if (panel === 'ramp') card.classList.add('is-ramp');
     }
   });
 
