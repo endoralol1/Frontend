@@ -1107,67 +1107,65 @@ body.page-watch .watch-similar .movie-sidebar.items {
   overflow: visible !important;
 }
 
-/* Mobile managers: true L→R spread, full labels (no clipping) */
+/* Mobile managers: equal-width fill, no empty gaps, full labels */
 @media (max-width: 991.98px) {
   body.page-watch #movie-managers {
-    padding: 0.4rem 0.45rem !important;
+    padding: 0.4rem 0.4rem !important;
     width: 100% !important;
   }
   body.page-watch #movie-managers .movie-managers-wrap {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 0.35rem !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    gap: 0.3rem !important;
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
     overflow: visible !important;
   }
-  /* Natural-size chips; leftover width becomes equal gaps between them */
+  /* Each action grows equally — fills the row, no dead space */
   body.page-watch #movie-managers .movie-managers-wrap > .movie-manager {
-    flex: 0 0 auto !important;
-    flex-grow: 0 !important;
-    flex-shrink: 0 !important;
-    width: auto !important;
-    min-width: fit-content !important;
+    flex: 1 1 0 !important;
+    width: 0 !important; /* equal columns with flex-grow */
+    min-width: 0 !important;
     max-width: none !important;
     margin: 0 !important;
-    font-size: 0.7rem !important;
-    padding: 0.42rem 0.55rem !important;
+    font-size: 0.68rem !important;
+    padding: 0.48rem 0.28rem !important;
     border-radius: 0.65rem !important;
-    gap: 0.22rem !important;
+    gap: 0.18rem !important;
     justify-content: center !important;
-    white-space: nowrap !important;
-  }
-  body.page-watch #movie-managers .movie-managers-wrap > .watch-now-btn,
-  body.page-watch #movie-managers .movie-managers-wrap > #btn-watch-now {
-    padding: 0.42rem 0.6rem !important;
+    align-items: center !important;
+    text-align: center !important;
+    white-space: normal !important; /* wrap label instead of clipping */
+    line-height: 1.15 !important;
   }
   body.page-watch #movie-managers .movie-managers-wrap > .movie-manager i {
-    font-size: 0.92rem;
+    font-size: 0.95rem;
     flex-shrink: 0;
   }
   body.page-watch #movie-managers .movie-managers-wrap > .movie-manager span.ml-1,
   body.page-watch #movie-managers .movie-managers-wrap > .movie-manager .fav-label {
     display: inline !important;
     overflow: visible !important;
-    text-overflow: clip !important;
-    white-space: nowrap !important;
+    text-overflow: unset !important;
+    white-space: normal !important;
     max-width: none !important;
+    text-align: center;
   }
-  /* Share: compact icon, NO margin-left:auto (that bunched everyone left) */
+  /* Share icon-only but same equal column width — fills its slot */
   body.page-watch #movie-managers .movie-managers-wrap > .movie-manager.share-btn,
   body.page-watch #movie-managers .movie-managers-wrap > #btn-share,
   body.page-watch #movie-managers #btn-share {
     margin-left: 0 !important;
     margin-right: 0 !important;
-    flex: 0 0 2.35rem !important;
-    width: 2.35rem !important;
-    min-width: 2.35rem !important;
-    max-width: 2.35rem !important;
-    padding: 0.42rem 0 !important;
+    flex: 1 1 0 !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    padding: 0.48rem 0.2rem !important;
   }
   body.page-watch #movie-managers .movie-managers-wrap > .movie-manager.share-btn span.ml-1,
   body.page-watch #movie-managers #btn-share span.ml-1 {
@@ -1175,6 +1173,7 @@ body.page-watch .watch-similar .movie-sidebar.items {
   }
 }
 /* /Mobile managers */
+
 
 
 

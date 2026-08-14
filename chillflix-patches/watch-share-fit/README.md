@@ -1,7 +1,7 @@
 # Mobile watch managers
 
-- `justify-content: space-between` so Trailer…Share span full width
-- Removed Share `margin-left: auto` (that kept others bunched left)
-- Full labels, no ellipsis
+- Equal-width buttons fill the full row (no empty gaps)
+- Labels can wrap instead of clipping
+- Share icon-only in its equal column
 
-Live `?v=20260814-mgr-spread3`.
+Live `?v=20260814-mgr-fill1`.
