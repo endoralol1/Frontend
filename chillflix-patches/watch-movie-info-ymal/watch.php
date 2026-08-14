@@ -331,14 +331,14 @@ $starFill = $rating !== null ? min(5, max(0, (int) round($rating / 2))) : 0;
                     <div id="movie-managers">
                         <div class="movie-managers-wrap">
                             <?php if (!empty($trailer)): ?>
-                            <button type="button" class="movie-manager trailer no-tooltip" id="btn-trailer">
+                            <button type="button" class="movie-manager trailer no-tooltip" id="btn-trailer" aria-label="<?= e(t(\'detail.trailer\')) ?>" title="<?= e(t(\'detail.trailer\')) ?>">
                                 <i class="uil uil-youtube" aria-hidden="true"></i><span class="ml-1"><?= e(t('detail.trailer')) ?></span>
                             </button>
                             <?php endif; ?>
                             <button type="button" class="movie-manager watch-now-btn" id="btn-watch-now">
                                 <i class="uil uil-play"></i><span class="ml-1"><?= e(t('detail.watch_now')) ?></span>
                             </button>
-                            <button type="button" class="movie-manager auto-play no-tooltip no-progress" id="btn-autoplay" aria-pressed="false">
+                            <button type="button" class="movie-manager auto-play no-tooltip no-progress" id="btn-autoplay" aria-pressed="false" aria-label="<?= $type === \'tv\' ? e(t(\'detail.auto_next\')) : e(t(\'detail.auto_play_label\')) ?>" title="<?= $type === \'tv\' ? e(t(\'detail.auto_next\')) : e(t(\'detail.auto_play_label\')) ?>">
                                 <i class="uil uil-circle" aria-hidden="true"></i><span class="ml-1"><?= $type === 'tv' ? e(t('detail.auto_next')) : e(t('detail.auto_play_label')) ?></span>
                             </button>
                             <button type="button" class="bookmark movie-manager user-bookmark-toggle"
@@ -347,7 +347,7 @@ $starFill = $rating !== null ? min(5, max(0, (int) round($rating / 2))) : 0;
                                  data-year="<?= e($year) ?>" aria-pressed="false" aria-label="<?= e(t('detail.add_favorite')) ?>">
                                 <i class="uil uil-plus-circle" aria-hidden="true"></i><span class="ml-1 fav-label"><?= e(t('detail.favorite')) ?></span>
                             </button>
-                            <button type="button" class="movie-manager share-btn no-tooltip" id="btn-share">
+                            <button type="button" class="movie-manager share-btn no-tooltip" id="btn-share" aria-label="<?= e(t('detail.share')) ?>" title="<?= e(t('detail.share')) ?>">
                                 <i class="uil uil-share-alt" aria-hidden="true"></i><span class="ml-1"><?= e(t('detail.share')) ?></span>
                             </button>
                         </div>

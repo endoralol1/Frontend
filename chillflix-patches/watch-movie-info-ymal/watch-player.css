@@ -1107,3 +1107,75 @@ body.page-watch .watch-similar .movie-sidebar.items {
   overflow: visible !important;
 }
 
+/* Mobile managers: fit Share on narrow screens */
+@media (max-width: 767.98px) {
+  body.page-watch #movie-managers {
+    padding: 0.4rem 0.45rem !important;
+  }
+  body.page-watch #movie-managers .movie-managers-wrap {
+    display: flex !important;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.28rem !important;
+    width: 100%;
+    min-width: 0;
+    overflow: visible;
+  }
+  body.page-watch #movie-managers .movie-managers-wrap .movie-manager,
+  body.page-watch #movie-managers .movie-manager {
+    flex: 0 1 auto;
+    min-width: 0;
+    font-size: 0.72rem !important;
+    padding: 0.38rem 0.55rem !important;
+    border-radius: 0.65rem !important;
+    gap: 0.22rem;
+  }
+  body.page-watch #movie-managers .watch-now-btn,
+  body.page-watch #btn-watch-now.movie-manager {
+    flex: 0 0 auto;
+    padding: 0.4rem 0.65rem !important;
+  }
+  body.page-watch #movie-managers .movie-managers-wrap .movie-manager i {
+    font-size: 0.95rem;
+  }
+  /* Share: icon-only, pinned right so it always fits */
+  body.page-watch #movie-managers .movie-manager.share-btn,
+  body.page-watch #btn-share {
+    margin-left: auto !important;
+    flex: 0 0 auto !important;
+    width: 2.35rem !important;
+    min-width: 2.35rem !important;
+    max-width: 2.35rem !important;
+    padding: 0.38rem 0 !important;
+    justify-content: center !important;
+  }
+  body.page-watch #movie-managers .movie-manager.share-btn span.ml-1,
+  body.page-watch #btn-share span.ml-1 {
+    display: none !important;
+  }
+}
+
+@media (max-width: 420px) {
+  /* Drop secondary labels so Trailer/Watch/Auto/Watchlist + Share fit one row */
+  body.page-watch #movie-managers .movie-manager.trailer span.ml-1,
+  body.page-watch #movie-managers .movie-manager.auto-play span.ml-1,
+  body.page-watch #movie-managers .user-bookmark-toggle span.ml-1,
+  body.page-watch #movie-managers .user-bookmark-toggle .fav-label {
+    display: none !important;
+  }
+  body.page-watch #movie-managers .movie-manager.trailer,
+  body.page-watch #movie-managers .movie-manager.auto-play,
+  body.page-watch #movie-managers .user-bookmark-toggle {
+    width: 2.35rem !important;
+    min-width: 2.35rem !important;
+    padding: 0.38rem 0 !important;
+    justify-content: center !important;
+  }
+  /* Keep Watch label — primary CTA */
+  body.page-watch #movie-managers .watch-now-btn span.ml-1,
+  body.page-watch #btn-watch-now.movie-manager span.ml-1 {
+    display: inline !important;
+  }
+}
+/* /Mobile managers */
+
