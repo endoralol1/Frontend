@@ -381,7 +381,7 @@ final class PlayerSources
 
             // FileSuN — embed API → embedsun/vidmoly-family HLS.
 
-            // Bingr — api.bingr.one/stream → HLS (Sirius/Apollo/…).
+            // Bingr — Sirius/HDGHAR-family demuxed HLS needs lang-proxy (not Vidmoly media-proxy).
             if ($provider === 'bingr') {
                 $bg = self::fetchCineproProbeProvider('bingr', $type, $tmdbId, $season, $episode);
                 foreach ($bg['diagnostics'] ?? [] as $d) {
@@ -421,7 +421,11 @@ final class PlayerSources
                     $playUrl = $streamUrl;
                     $isHls = str_contains(strtolower((string) ($src['type'] ?? '')), 'hls')
                         || preg_match('/\.m3u8(\?|$)/i', $streamUrl);
-                    if (class_exists('VidmolySources') && preg_match('#^https?://#i', $streamUrl)) {
+                    // Same path as HDGHAR: lang-proxy rewrites masters, forces video/mp2t,
+                    // and player.js enables tolerant HLS buffers for /lang-proxy URLs.
+                    if ($isHls && class_exists('StreamLangProxy') && preg_match('#^https?://#i', $streamUrl)) {
+                        $playUrl = StreamLangProxy::mintHlsHeaders($streamUrl, $cdnHeaders, 'eng');
+                    } elseif (class_exists('VidmolySources') && preg_match('#^https?://#i', $streamUrl)) {
                         $playUrl = VidmolySources::signedProxyUrl($streamUrl, $cdnHeaders, (bool) $isHls);
                     } elseif (class_exists('CineplaySources') && preg_match('#^https?://#i', $streamUrl)) {
                         $playUrl = CineplaySources::mintProxy($streamUrl, $cdnHeaders, (bool) $isHls);
@@ -444,7 +448,11 @@ final class PlayerSources
                         'label' => 'Bingr',
                         'language' => 'en',
                         'hasEnglish' => true,
-                        'audioTracks' => [],
+                        'preferAudio' => 'en',
+                        'audioTracks' => [
+                            ['id' => 'en', 'label' => 'English', 'name' => 'English', 'language' => 'en', 'lang' => 'en'],
+                            ['id' => 'hi', 'label' => 'Hindi', 'name' => 'Hindi', 'language' => 'hi', 'lang' => 'hi'],
+                        ],
                     ];
                 }
                 if (empty($bg['ok']) && empty($bg['sources'])) {

@@ -1,29 +1,22 @@
 # Bingr wire
 
 ## What
-Adds **Bingr** (`bingr.one` / `api.bingr.one`) as a CinePro/player source (**Upsilon**).
+Adds **Bingr** (`api.bingr.one`) as a CinePro/player source (**Upsilon**).
 
-## Flow (no Chromium)
-1. `POST https://api.bingr.one/api/stream` with `{ srv, t: movie|tv, id: tmdbId, query }`
-2. Try scrapers in order: Sirius → Apollo → Edmunds → … (stop at first hit)
-3. Prefer English/multi + higher quality; unwrap `wormhole.filmu.in` when present
-4. `createProxyUrl` with CDN Referer headers → PlayerSources media-proxy
+## Flow
+1. CinePro `POST https://api.bingr.one/api/stream` (Apollo → Edmunds → Sirius…)
+2. PlayerSources unwraps CinePro proxy → **`StreamLangProxy` (lang-proxy)** (same path as HDGHAR)
+3. lang-proxy rewrites HLS, forces `video/mp2t` for disguised TS, prefers English
+
+## Playback fixes
+- Sirius demuxed masters referenced missing `SUBTITLES="subs"` and served TS as `image/jpeg`
+- Huge media playlists (1.6k segments × fat tokens) stalled HLS.js after duration loaded
+- Prefer Apollo (muxed ladder); cache CDN headers server-side for short lang-proxy tokens
+- `player.js` treats `bingr` as a slow provider
 
 ## Verify
 ```bash
-curl -sS 'http://127.0.0.1:3001/v1/movies/27205/provider/bingr?probe=true' | head -c 400
-curl -sS 'https://vuflix.co/api/player/sources?type=movie&tmdbId=27205&provider=bingr'
-```
-
-## Notes
-- Do not hammer — provider caches 10m and only probes until one server works.
-- Turnstile on bingr.one is for auth only; stream API is open.
-
-## Playback fix (media-proxy)
-Sirius segments are MPEG-TS disguised as `.jpg` with `Content-Type: image/jpeg`.
-`VidmolySources` now forces `video/mp2t` (same idea as HDGHAR/`StreamLangProxy`) and
-strips dangling `SUBTITLES="subs"` so HLS.js can play.
-
-```bash
-python3 chillflix-patches/bingr-wire/patch_vidmoly_ts_mime.py
+curl -sS 'http://127.0.0.1:3001/v1/movies/1368337/provider/bingr?probe=true&fresh=true'
+curl -sS 'https://vuflix.co/api/player/sources?type=movie&tmdbId=1368337&provider=bingr'
+# expect lang-proxy URL + Apollo in diagnostics
 ```

@@ -4,9 +4,10 @@ const SITE = 'https://bingr.one';
 const RESULT_TTL_MS = 10 * 60 * 1000;
 /** Prefer reliable scrapers first; stop at first hit to avoid rate limits. */
 const SERVERS = [
-    { id: 's11', name: 'Sirius' },
+    // Apollo first: muxed quality ladder (avoids Sirius demuxed 1.6k-seg monsters).
     { id: 's30', name: 'Apollo' },
     { id: 's3', name: 'Edmunds' },
+    { id: 's11', name: 'Sirius' },
     { id: 's12', name: 'Quasar' },
     { id: 's40', name: 'DarkMatter' },
     { id: 's1', name: 'Miller' },
