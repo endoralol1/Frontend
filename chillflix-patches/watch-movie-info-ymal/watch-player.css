@@ -371,10 +371,25 @@ body.page-watch #btn-share {
     border-radius: 0 0 0.85rem 0.85rem;
   }
 
+  /* Mobile info: keep cinema art behind, but match desktop blackish glass (not silver wash) */
   body.page-watch #w-info {
-    background: var(--cf-watch-glass-strong) !important;
-    border: 1px solid var(--cf-watch-line);
-    border-radius: 1rem;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(8, 10, 15, 0.72) 0%,
+        rgba(8, 10, 15, 0.82) 55%,
+        rgba(8, 10, 15, 0.88) 100%
+      ) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 1.05rem;
+    backdrop-filter: blur(16px) saturate(1.15);
+    -webkit-backdrop-filter: blur(16px) saturate(1.15);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+    overflow: hidden;
+  }
+  body.page-watch #w-info .rating-box {
+    background: rgba(8, 10, 15, 0.78) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
   }
