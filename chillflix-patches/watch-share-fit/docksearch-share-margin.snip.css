@@ -4,10 +4,10 @@
   color: #ff5c6a;
 }
 
-/* Share pinned right, icon-forward */
+/* Share — no auto margin; watch-player grows siblings to fill */
 #movie-managers .movie-manager.share-btn,
 #btn-share {
-  margin-left: auto !important;
+  margin-left: 0 !important;
   background: transparent;
   border-color: rgba(255, 255, 255, 0.1);
   color: #d5d9e2;

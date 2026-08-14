@@ -1,6 +1,6 @@
-# Share button fit only
+# Share fit + fill gap
 
-Reverted Trailer/Watch/Auto/Watchlist to original layout.
-Only Share is icon-only + pinned right so it is not clipped on mobile.
+- Trailer/Watch/Auto/Watchlist keep original chip look, grow to fill width
+- Share icon-only at end (no empty margin-left:auto gap)
 
-Live `?v=20260814-share-only1`.
+Live `?v=20260814-share-fillgap1`.

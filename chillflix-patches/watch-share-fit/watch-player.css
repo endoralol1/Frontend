@@ -1107,16 +1107,33 @@ body.page-watch .watch-similar .movie-sidebar.items {
   overflow: visible !important;
 }
 
-/* Share-only mobile fit — leave other manager buttons unchanged */
+/* Share fits; other buttons keep original look but grow to fill the gap */
 @media (max-width: 767.98px) {
   body.page-watch #movie-managers .movie-managers-wrap {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    width: 100% !important;
+    gap: 0.3rem !important;
     overflow: visible;
   }
-  /* Pin Share right as icon-only so it isn't clipped; Trailer/Watch/etc stay as before */
+  /* Trailer / Watch / Auto / Watchlist — same chip style, grow to fill leftover width */
+  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager:not(.share-btn) {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    justify-content: center !important;
+  }
+  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager:not(.share-btn) span.ml-1,
+  body.page-watch #movie-managers .movie-managers-wrap > .movie-manager:not(.share-btn) .fav-label {
+    overflow: visible !important;
+    text-overflow: unset !important;
+    white-space: nowrap !important;
+  }
+  /* Share icon-only at the end — no margin-left:auto gap */
   body.page-watch #movie-managers .movie-manager.share-btn,
   body.page-watch #movie-managers #btn-share {
-    margin-left: auto !important;
-    flex: 0 0 auto !important;
+    margin-left: 0 !important;
+    flex: 0 0 2.35rem !important;
     flex-shrink: 0 !important;
     width: 2.35rem !important;
     min-width: 2.35rem !important;
@@ -1130,6 +1147,7 @@ body.page-watch .watch-similar .movie-sidebar.items {
   }
 }
 /* /Mobile managers */
+
 
 
 
