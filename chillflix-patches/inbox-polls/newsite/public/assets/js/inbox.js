@@ -191,7 +191,7 @@
                 "</button>"
               : it.hasVoted
                 ? '<div class="cf-inbox-voted">You voted</div>'
-                : "") +
+                : '<div class="cf-inbox-voted">Voting closed</div>') +
             "</div>";
         }
 
