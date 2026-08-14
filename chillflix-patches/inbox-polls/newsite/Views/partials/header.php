@@ -44,10 +44,28 @@ $uiLangLabel = class_exists('Locale') ? Locale::label($uiLang) : 'English';
                                 <span class="header-admin-copy"><strong><?= e(t('admin.sources')) ?></strong><small><?= e(t('admin.sources_help')) ?></small></span>
                                 <i class="uil uil-angle-right" aria-hidden="true"></i>
                             </a>
+                            <a role="menuitem" href="<?= e(url('/admin/inbox')) ?>" class="<?= str_contains($adminPath, '/admin/inbox') ? 'is-active' : '' ?>">
+                                <span class="header-admin-ico"><i class="uil uil-bell" aria-hidden="true"></i></span>
+                                <span class="header-admin-copy"><strong>Inbox</strong><small>Polls &amp; notifications</small></span>
+                                <i class="uil uil-angle-right" aria-hidden="true"></i>
+                            </a>
                         </div>
                         <a role="menuitem" class="header-admin-back" href="<?= e(url('/home')) ?>">
                             <i class="uil uil-arrow-left" aria-hidden="true"></i><span><?= e(t('admin.back_to_site')) ?></span>
                         </a>
+                    </div>
+                </div>
+                <div class="cf-inbox" id="cf-inbox" hidden>
+                    <button type="button" id="cf-inbox-btn" class="cf-inbox-btn" aria-label="Polls & notifications" aria-haspopup="menu" aria-expanded="false" aria-controls="cf-inbox-dropdown">
+                        <i class="uil uil-bell" aria-hidden="true"></i>
+                        <span id="cf-inbox-badge" class="cf-inbox-badge" hidden>0</span>
+                    </button>
+                    <div id="cf-inbox-dropdown" class="cf-inbox-dropdown" role="menu" hidden>
+                        <div class="cf-inbox-top">
+                            <strong>Inbox</strong>
+                            <em>Polls &amp; notifications</em>
+                        </div>
+                        <div id="cf-inbox-list" class="cf-inbox-list"></div>
                     </div>
                 </div>
                 <div id="language-menu" style="display:none">

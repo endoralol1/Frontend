@@ -69,10 +69,10 @@
     var width = narrow
       ? Math.max(0, vw - pad * 2)
       : Math.min(352, vw - pad * 2);
-    // Align to button when possible; on phones pin to screen edges.
+    // Prefer align to button left (icon is in header .start); keep fully on-screen.
     var left = narrow
       ? pad
-      : Math.min(Math.max(pad, r.right - width), vw - width - pad);
+      : Math.min(Math.max(pad, r.left), vw - width - pad);
     var below = r.bottom + 8;
     var maxH = Math.min(vh * 0.72, narrow ? vh - below - pad - 8 : 512);
     var top = below + vOffY;

@@ -1,9 +1,13 @@
-/* Header inbox (polls + notifications) */
+/* Header inbox (polls + notifications) — sits in .start next to language/admin */
 .cf-inbox {
   position: relative;
   display: inline-flex;
   align-items: center;
-  margin-left: 0.15rem;
+  margin-left: 0.25rem;
+  flex: 0 0 auto;
+}
+header .wrapper .start .cf-inbox {
+  order: 0;
 }
 .cf-inbox[hidden] { display: none !important; }
 .cf-inbox-btn {
@@ -11,11 +15,11 @@
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  width: 2.4rem;
-  height: 2.4rem;
+  width: 2.05rem;
+  height: 2.05rem;
   margin: 0;
   padding: 0;
-  border-radius: 0.85rem;
+  border-radius: 0.7rem;
   border: 1px solid rgba(255,255,255,.12);
   background: rgba(255,255,255,.04);
   color: rgba(255,255,255,.88) !important;
