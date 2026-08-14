@@ -1,6 +1,6 @@
-# Share fit + fill gap
+# Watch managers full-width fix
 
-- Trailer/Watch/Auto/Watchlist keep original chip look, grow to fill width
-- Share icon-only at end (no empty margin-left:auto gap)
+Root cause: `#movie-managers` is flex; `.movie-managers-wrap` was content-sized so buttons stayed left.
+Fix: wrap `flex: 1 1 auto; width: 100%` then children grow to fill; Share icon-only at end.
 
-Live `?v=20260814-share-fillgap1`.
+Live `?v=20260814-mgr-fullwidth1`.
