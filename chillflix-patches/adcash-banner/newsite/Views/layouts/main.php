@@ -84,6 +84,7 @@ $extraJs = $extraJs ?? [];
     })();
     </script>
     <meta name="monetag" content="7b8e4d838889a09220772438b25fb29d">
+    <meta name="profiton-domain-verification" content="744821f32cb5611c30e984b243b1147aef6fc0f159a980d27bbe5c317ca0a9cf" />
     <meta name="referrer" content="origin">
     <link rel="canonical" href="<?= e($canonical) ?>">
 
