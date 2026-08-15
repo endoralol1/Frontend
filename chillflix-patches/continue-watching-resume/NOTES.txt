@@ -1,0 +1,8 @@
+Fix: Continue Watching resume on Vuflix/Chillflix newsite player.
+
+Bug: onReady set resumeApplied=true even when v.duration was NaN/Infinity (common at HLS MANIFEST_PARSED), so the seek never ran and never retried.
+
+Deployed live:
+- /var/www/chillflix-newsite/public/assets/js/player.js (applyResumeIfNeeded + duration retry)
+- layouts/player.php cache buster ?v=20260815-cw-resume1
+- app.docksearch-1228.js + app.js soft-nav player.js?v= bumped
