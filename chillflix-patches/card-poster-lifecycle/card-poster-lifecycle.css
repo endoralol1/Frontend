@@ -1,0 +1,9 @@
+/* Skip paint for off-screen rails (keep cards interactive when visible) */
+.section-rail,
+.section-top10,
+.home-section.section-rail {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 22rem;
+}
+
+/* Do NOT set content-visibility on individual cards — breaks hover/trailer on Safari/Mac */

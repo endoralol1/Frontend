@@ -1,0 +1,261 @@
+/* Header inbox (polls + notifications) — sits in .start next to language/admin */
+.cf-inbox {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.25rem;
+  flex: 0 0 auto;
+}
+header .wrapper .start .cf-inbox {
+  order: 0;
+}
+.cf-inbox[hidden] { display: none !important; }
+.cf-inbox-btn {
+  position: relative;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 2.05rem;
+  height: 2.05rem;
+  margin: 0;
+  padding: 0;
+  border-radius: 0.7rem;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.88) !important;
+  cursor: pointer;
+  appearance: none;
+}
+.cf-inbox-btn i { font-size: 1.2rem; line-height: 1; }
+.cf-inbox-btn:hover,
+.cf-inbox.is-open .cf-inbox-btn {
+  color: #fff !important;
+  border-color: rgba(var(--cf-orange-rgb), .55);
+  background: linear-gradient(160deg, rgba(var(--cf-orange-rgb), .22), rgba(255,255,255,.04));
+}
+.cf-inbox-badge {
+  position: absolute;
+  top: -0.2rem;
+  right: -0.2rem;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.28rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--cf-orange), var(--cf-orange-deep));
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.05rem;
+  text-align: center;
+  box-shadow: 0 0 0 2px #0f1218;
+}
+.cf-inbox-badge[hidden] { display: none !important; }
+
+.cf-inbox-dropdown {
+  position: fixed;
+  top: calc(100% + 0.55rem);
+  right: 0;
+  width: min(22rem, calc(100vw - 1.25rem));
+  max-height: min(70vh, 32rem);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border-radius: 1.05rem;
+  border: 1px solid rgba(255,255,255,.1);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.03), transparent 34%),
+    #161a22;
+  box-shadow:
+    0 18px 40px rgba(0,0,0,.5),
+    0 0 0 1px rgba(var(--cf-orange-rgb), .08);
+  z-index: 10050;
+  overflow: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  animation: headerAdminDrop .18s ease;
+}
+.cf-inbox-dropdown[hidden] { display: none !important; }
+.cf-inbox-top {
+  padding: 0.85rem 1rem 0.75rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(135deg, rgba(var(--cf-orange-rgb), .16), rgba(255,255,255,.02));
+}
+.cf-inbox-top strong {
+  display: block;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 750;
+}
+.cf-inbox-top em {
+  display: block;
+  margin-top: 0.1rem;
+  color: rgba(255,255,255,.5);
+  font-style: normal;
+  font-size: 0.75rem;
+}
+.cf-inbox-list {
+  overflow: auto;
+  padding: 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.cf-inbox-empty {
+  padding: 1.1rem 0.75rem;
+  text-align: center;
+  color: rgba(255,255,255,.45);
+  font-size: 0.84rem;
+}
+.cf-inbox-item {
+  border-radius: 0.85rem;
+  border: 1px solid rgba(255,255,255,.06);
+  background: rgba(255,255,255,.03);
+  padding: 0.7rem 0.7rem 0.65rem;
+}
+.cf-inbox-item.is-unread {
+  border-color: rgba(var(--cf-orange-rgb), .35);
+  background: rgba(var(--cf-orange-rgb), .08);
+}
+.cf-inbox-item-top {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+}
+.cf-inbox-item-ico {
+  width: 2rem; height: 2rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 0.65rem;
+  background: rgba(255,255,255,.05);
+  color: var(--cf-orange-soft, #ffd2b8);
+  flex-shrink: 0;
+}
+.cf-inbox-item-copy { flex: 1; min-width: 0; }
+.cf-inbox-item-copy strong {
+  display: block;
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.cf-inbox-item-copy em {
+  display: block;
+  margin-top: 0.08rem;
+  color: rgba(255,255,255,.45);
+  font-style: normal;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cf-inbox-body {
+  margin: 0.45rem 0 0;
+  color: rgba(255,255,255,.72);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+.cf-inbox-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+.cf-inbox-opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 2.15rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.65rem;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(0,0,0,.22);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+.cf-inbox-opt:disabled { cursor: default; opacity: 0.92; }
+.cf-inbox-opt.is-selected {
+  border-color: rgba(var(--cf-orange-rgb), .65);
+  background: rgba(var(--cf-orange-rgb), .16);
+}
+.cf-inbox-opt-label { position: relative; z-index: 1; font-size: 0.84rem; font-weight: 600; }
+.cf-inbox-pct { position: relative; z-index: 1; font-size: 0.75rem; color: rgba(255,255,255,.55); }
+.cf-inbox-bar {
+  position: absolute; inset: 0;
+  pointer-events: none;
+}
+.cf-inbox-bar i {
+  display: block;
+  height: 100%;
+  background: rgba(var(--cf-orange-rgb), .18);
+}
+.cf-inbox-vote-btn {
+  margin-top: 0.15rem;
+  min-height: 2rem;
+  border-radius: 0.65rem;
+  border: 0;
+  background: linear-gradient(135deg, var(--cf-orange), var(--cf-orange-deep));
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.cf-inbox-voted {
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: rgba(255,255,255,.45);
+}
+.cf-inbox-react {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+.cf-inbox-react-btn {
+  min-height: 1.85rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.8);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.cf-inbox-react-btn.is-on {
+  border-color: rgba(var(--cf-orange-rgb), .55);
+  background: rgba(var(--cf-orange-rgb), .16);
+  color: #fff;
+}
+.cf-inbox-react-btn:disabled { opacity: 0.6; cursor: default; }
+.cf-inbox-react-btn i { font-size: 0.95rem; line-height: 1; }
+
+/* JS places with position:fixed; keep ancestors from clipping */
+header:has(.cf-inbox.is-open),
+header .wrapper:has(.cf-inbox.is-open),
+header .wrapper .end:has(.cf-inbox.is-open),
+header .container:has(.cf-inbox.is-open) {
+  overflow: visible !important;
+}
+html.cf-inbox-open header {
+  z-index: 120 !important;
+  overflow: visible !important;
+}
+
+@media (max-width: 720px) {
+  .cf-inbox-dropdown {
+    left: max(0.625rem, env(safe-area-inset-left, 0px));
+    right: max(0.625rem, env(safe-area-inset-right, 0px));
+    width: auto;
+    max-width: none;
+    max-height: min(72vh, calc(100dvh - 4.5rem - env(safe-area-inset-bottom, 0px)));
+    border-radius: 1rem;
+  }
+  .cf-inbox-list {
+    padding: 0.4rem;
+  }
+  .cf-inbox-btn {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+}

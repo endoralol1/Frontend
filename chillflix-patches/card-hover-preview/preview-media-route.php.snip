@@ -1,0 +1,161 @@
+$router->get('/api/preview-media/{type}/{id}', function (array $p) use ($tmdb) {
+    $type = ($p['type'] ?? '') === 'tv' ? 'tv' : 'movie';
+    $id = (int) ($p['id'] ?? 0);
+    if ($id < 1) {
+        http_response_code(400);
+        exit;
+    }
+
+    // Drop any prior output so we can stream clean binary
+    while (ob_get_level() > 0) {
+        @ob_end_clean();
+    }
+
+    $cacheDir = '/var/www/chillflix-newsite/storage/cache/previews';
+    if (!is_dir($cacheDir)) {
+        @mkdir($cacheDir, 0775, true);
+    }
+    $upFile = $cacheDir . '/' . $type . '_' . $id . '.upstream';
+
+    $item = $tmdb->details($type, $id);
+    $trailer = $item ? $tmdb->trailerKey($item) : null;
+    $stream = null;
+    if (is_string($trailer) && $trailer !== '') {
+        // Always resolve fresh — googlevideo URLs are IP/time bound
+        $stream = cf_resolve_youtube_preview_stream($trailer);
+        if ($stream) {
+            @file_put_contents($upFile, $stream);
+        }
+    }
+    if (!$stream && is_file($upFile)) {
+        $stream = trim((string) file_get_contents($upFile));
+    }
+    if (!$stream || !preg_match('#^https?://#i', $stream)) {
+        http_response_code(404);
+        header('Content-Type: text/plain; charset=utf-8');
+        exit('not found');
+    }
+
+    $ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    $headers = [
+        'User-Agent: ' . $ua,
+        'Accept: */*',
+        'Accept-Language: en-US,en;q=0.9',
+        'Origin: https://www.youtube.com',
+        'Referer: https://www.youtube.com/',
+    ];
+    $range = $_SERVER['HTTP_RANGE'] ?? '';
+    if (is_string($range) && $range !== '') {
+        $headers[] = 'Range: ' . $range;
+    }
+
+    $statusCode = 200;
+    $ch = curl_init($stream);
+    curl_setopt_array($ch, [
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_TIMEOUT => 0,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_HEADERFUNCTION => static function ($ch, $header) use (&$statusCode) {
+            $len = strlen($header);
+            if (preg_match('#^HTTP/\S+\s+(\d+)#', $header, $m)) {
+                $statusCode = (int) $m[1];
+                return $len;
+            }
+            $h = trim($header);
+            if ($h === '' || stripos($h, 'Transfer-Encoding:') === 0 || stripos($h, 'HTTP/') === 0) {
+                return $len;
+            }
+            foreach (['content-type', 'content-length', 'accept-ranges', 'content-range'] as $p) {
+                if (stripos($h, $p . ':') === 0) {
+                    header($h, true);
+                    break;
+                }
+            }
+            return $len;
+        },
+        CURLOPT_WRITEFUNCTION => static function ($ch, $data) {
+            echo $data;
+            return strlen($data);
+        },
+    ]);
+
+    header('Cache-Control: private, max-age=30');
+    header('X-Content-Type-Options: nosniff');
+    header('Content-Type: video/mp4');
+
+    // If upstream rejects stale URL, refresh once via yt-dlp and retry
+    $ok = curl_exec($ch);
+    $http = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    if ((!$ok || $http >= 400 || $statusCode >= 400) && is_string($trailer) && $trailer !== '') {
+        curl_close($ch);
+        $stream2 = cf_resolve_youtube_preview_stream($trailer);
+        if ($stream2 && $stream2 !== $stream) {
+            @file_put_contents($upFile, $stream2);
+            $statusCode = 200;
+            $ch = curl_init($stream2);
+            curl_setopt_array($ch, [
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_CONNECTTIMEOUT => 8,
+                CURLOPT_TIMEOUT => 0,
+                CURLOPT_HTTPHEADER => $headers,
+                CURLOPT_HEADERFUNCTION => static function ($ch, $header) use (&$statusCode) {
+                    $len = strlen($header);
+                    if (preg_match('#^HTTP/\S+\s+(\d+)#', $header, $m)) {
+                        $statusCode = (int) $m[1];
+                        return $len;
+                    }
+                    $h = trim($header);
+                    if ($h === '' || stripos($h, 'Transfer-Encoding:') === 0 || stripos($h, 'HTTP/') === 0) {
+                        return $len;
+                    }
+                    foreach (['content-type', 'content-length', 'accept-ranges', 'content-range'] as $p) {
+                        if (stripos($h, $p . ':') === 0) {
+                            header($h, true);
+                            break;
+                        }
+                    }
+                    return $len;
+                },
+                CURLOPT_WRITEFUNCTION => static function ($ch, $data) {
+                    echo $data;
+                    return strlen($data);
+                },
+            ]);
+            $ok = curl_exec($ch);
+            $http = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        }
+    }
+
+    if (is_resource($ch) || (is_object($ch) && $ch instanceof CurlHandle)) {
+        $err = curl_error($ch);
+        curl_close($ch);
+    } else {
+        $err = 'upstream failed';
+    }
+    if (!$ok && !headers_sent()) {
+        http_response_code(502);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo $err !== '' ? $err : 'upstream failed';
+    }
+    exit;
+});
+
+$router->get('/robots.txt', function () {
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: " . url('/sitemap.xml') . "\n";
+    exit;
+});
+
+$router->get('/sitemap.xml', function () use ($tmdb) {
+    header('Content-Type: application/xml; charset=utf-8');
+    $urls = [
+        url('/'),
+        url('/movies'),
+        url('/tv-series'),
+        url('/anime'),
+        url('/top-imdb'),
+        url('/favorites'),
+        url('/contact'),
+        url('/request'),
+    ];

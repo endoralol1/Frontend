@@ -1,0 +1,122 @@
+/* Performance mode — opt-in via Browse Settings (cf_pref_performance) */
+
+/* Always-on: static sky companion — no moon pulse / ambient glow orbs */
+.cf-bgfx-moon {
+  animation: none !important;
+  filter: none !important;
+  box-shadow:
+    0 0 18px 6px rgba(200, 215, 255, 0.08),
+    0 0 40px 12px rgba(180, 200, 255, 0.04) !important;
+  will-change: auto !important;
+}
+.cf-bgfx-aurora,
+.cf-bgfx-wave,
+.cf-bgfx-glow {
+  animation: none !important;
+  display: none !important;
+}
+
+
+
+/* Always-on: no film grain, no frosted-glass (backdrop-filter) */
+.cf-bgfx-grain {
+  animation: none !important;
+  opacity: 0 !important;
+  display: none !important;
+}
+.browse-sheet,
+.browse-sheet-panel,
+.browse-settings-panel,
+.browse-auth-panel,
+.site-header,
+.bottom-nav,
+.bottom-nav-inner,
+.movies.items .movie-item.media-card .inner .quality,
+.search-sheet-panel,
+.tooltipster-base,
+.tooltipster-box {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+
+
+/* Always-on: kill shiny card-title animation (main idle FPS killer) */
+.movies.items .movie-item.media-card .card-title {
+  animation: none !important;
+  background-image: none !important;
+  -webkit-text-fill-color: #cfd6de !important;
+  color: #cfd6de !important;
+  filter: none !important;
+  background-clip: border-box !important;
+  -webkit-background-clip: border-box !important;
+}
+
+html.cf-perf-mode .cf-bgfx-moon {
+  animation: none !important;
+  filter: none !important;
+  box-shadow: none !important;
+  opacity: 0.72 !important;
+  will-change: auto !important;
+}
+
+html.cf-perf-mode .cf-bgfx-aurora,
+html.cf-perf-mode .cf-bgfx-wave,
+html.cf-perf-mode .cf-bgfx-glow {
+  animation: none !important;
+  display: none !important;
+}
+
+
+
+html.cf-perf-mode .cf-card-preview-ui,
+html.cf-perf-mode .cf-card-video,
+html.cf-perf-mode video.cf-card-video {
+  display: none !important;
+}
+
+
+/* Settings panel must scroll when Performance + other blocks exceed dropdown height */
+@media (min-width: 992px) {
+  .browse-sheet.settings-open .browse-sheet-panel {
+    max-height: min(88vh, 46rem) !important;
+    height: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .browse-sheet.settings-open .browse-sheet-body {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .browse-sheet.settings-open .browse-settings-panel {
+    padding-bottom: 0.85rem;
+  }
+}
+
+.browse-sheet.settings-open .browse-sheet-panel {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+
+/* Force-disable frosted glass everywhere (beats most !important blurs) */
+html body,
+html body *,
+html body *::before,
+html body *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+
+/* Baked starfield host — static CSS background, no canvas redraw */
+.cf-bgfx-stars {
+  background-color: transparent;
+  will-change: auto !important;
+}
+.cf-bgfx-stars-canvas {
+  will-change: auto !important;
+}

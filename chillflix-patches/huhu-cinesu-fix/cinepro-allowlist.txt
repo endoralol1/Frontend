@@ -1,0 +1,1 @@
+CINEPRO_PROVIDER_ALLOWLIST=onlyflix,vaplayer,moviebox,flixhqz

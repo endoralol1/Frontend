@@ -1,0 +1,3 @@
+/var/www/chillflix-newsite/app/Views/layouts/main.php:133:<link rel="stylesheet" href="<?= e(asset('css/card-hover-preview.css')) ?>?v=20260813-touch-preview1">
+/var/www/chillflix-newsite/app/Views/layouts/main.php:325:<script src="<?= e(asset('js/card-hover-preview.js')) ?>?v=20260813-touch-preview1" defer></script>
+/var/www/chillflix-newsite/app/Views/partials/bottom-nav.php:419:                                <em>Turns off card trailers (hover on desktop, long-press on phone).</em>
