@@ -1,0 +1,15 @@
+IPTV Live TV improvements (Vuflix /live)
+
+1) Catalog completeness
+- HuhuLiveTv MAX_PAGES 10 -> 50 (stop on nextCursor)
+- Was ~2.9k channels; full huhu catalog ~10.3k
+
+2) Region UI
+- Replaced horizontal scroll pills with professional region <select> dropdown
+- Desktop: search + region side-by-side
+
+3) Channel list
+- Removed hard 200-item cap; infinite scroll pages of 120
+
+Deployed to /var/www/chillflix-newsite with asset v=20260815-iptv2
+Refreshed catalog via /api/live/refresh (~10353 channels)
