@@ -137,23 +137,9 @@ final class AdCashReporting
             $totals['unique_users'] += (int) ($row['unique_users'] ?? 0);
         }
 
-        $zoneLabels = self::zoneLabels();
-        $zonesOut = [];
-        foreach ($zoneRows as $row) {
-            if (!is_array($row)) {
-                continue;
-            }
-            $zid = (string) ($row['zone'] ?? '');
-            $zonesOut[] = [
-                'zone' => $zid,
-                'label' => $zoneLabels[$zid] ?? ('Zone ' . $zid),
-                'parent_zone' => $row['parent_zone'] ?? null,
-                'earnings' => (float) ($row['earnings'] ?? 0),
-                'clicks' => (int) ($row['clicks'] ?? 0),
-                'unique_users' => (int) ($row['unique_users'] ?? 0),
-                'unique_users_ecpm' => (float) ($row['unique_users_ecpm'] ?? 0),
-            ];
-        }
+        // AdCash returns parent zones + child/sub-zones. Roll children into parents
+        // and keep only the site's configured units (Banner / Pop / …).
+        $zonesOut = self::rollupZones($zoneRows);
 
         $daysOut = [];
         foreach ($dateRows as $row) {
@@ -245,6 +231,100 @@ final class AdCashReporting
             }
         }
         return $labels;
+    }
+
+    /**
+     * Collapse AdCash child/sub-zones into configured parent units.
+     *
+     * @param list<array<string,mixed>> $zoneRows
+     * @return list<array<string,mixed>>
+     */
+    public static function rollupZones(array $zoneRows): array
+    {
+        $labels = self::zoneLabels();
+        $known = array_fill_keys(array_keys($labels), true);
+        /** @var array<string,array{zone:string,label:string,earnings:float,clicks:int,unique_users:int,children:int}> $buckets */
+        $buckets = [];
+
+        // Seed configured units so empty units still appear.
+        foreach ($labels as $zid => $label) {
+            $buckets[$zid] = [
+                'zone' => $zid,
+                'label' => $label,
+                'earnings' => 0.0,
+                'clicks' => 0,
+                'unique_users' => 0,
+                'children' => 0,
+            ];
+        }
+
+        foreach ($zoneRows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $zid = trim((string) ($row['zone'] ?? ''));
+            if ($zid === '') {
+                continue;
+            }
+            $parent = trim((string) ($row['parent_zone'] ?? ''));
+            $bucketId = null;
+            if (isset($known[$zid])) {
+                $bucketId = $zid;
+            } elseif ($parent !== '' && isset($known[$parent])) {
+                $bucketId = $parent;
+            } elseif ($parent !== '') {
+                // Unknown parent chain — still group under parent id.
+                $bucketId = $parent;
+            } else {
+                $bucketId = $zid;
+            }
+
+            if (!isset($buckets[$bucketId])) {
+                $buckets[$bucketId] = [
+                    'zone' => $bucketId,
+                    'label' => $labels[$bucketId] ?? ('Zone ' . $bucketId),
+                    'earnings' => 0.0,
+                    'clicks' => 0,
+                    'unique_users' => 0,
+                    'children' => 0,
+                ];
+            }
+            $buckets[$bucketId]['earnings'] += (float) ($row['earnings'] ?? 0);
+            $buckets[$bucketId]['clicks'] += (int) ($row['clicks'] ?? 0);
+            $buckets[$bucketId]['unique_users'] += (int) ($row['unique_users'] ?? 0);
+            if ($zid !== $bucketId) {
+                $buckets[$bucketId]['children']++;
+            }
+        }
+
+        // Prefer only configured units in the admin table.
+        if ($known !== []) {
+            $buckets = array_filter(
+                $buckets,
+                static fn(array $b): bool => isset($known[$b['zone']])
+            );
+        }
+
+        $out = [];
+        foreach ($buckets as $b) {
+            $users = (int) $b['unique_users'];
+            $earn = round((float) $b['earnings'], 2);
+            $out[] = [
+                'zone' => $b['zone'],
+                'label' => $b['label'],
+                'parent_zone' => null,
+                'earnings' => $earn,
+                'clicks' => (int) $b['clicks'],
+                'unique_users' => $users,
+                'unique_users_ecpm' => $users > 0 ? round(($earn / $users) * 1000, 2) : 0.0,
+                'sub_zones' => (int) $b['children'],
+            ];
+        }
+
+        usort($out, static function (array $a, array $b): int {
+            return ($b['earnings'] <=> $a['earnings']) ?: strcmp($a['label'], $b['label']);
+        });
+        return array_values($out);
     }
 
     private static function normalizeDate(?string $d): ?string

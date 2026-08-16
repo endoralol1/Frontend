@@ -76,10 +76,11 @@ $selected = $ads['placements'] ?? ['everywhere'];
           </div>
         </div>
         <div class="cf-ads-earn-block">
-          <h3 class="cf-ads-subhead">By zone</h3>
+          <h3 class="cf-ads-subhead">By unit</h3>
+          <p class="muted" style="margin:0 0 .45rem;font-size:.72rem;color:rgba(255,255,255,.42)">AdCash sub-zones are combined into Banner / Pop / Interstitial / Video slider</p>
           <div class="cf-ads-earn-table-wrap">
             <table class="cf-ads-earn-table" id="ads-earn-zones">
-              <thead><tr><th>Zone</th><th>Earnings</th><th>Clicks</th><th>Users</th><th>eCPM</th></tr></thead>
+              <thead><tr><th>Unit</th><th>Earnings</th><th>Clicks</th><th>Users</th><th>eCPM</th></tr></thead>
               <tbody></tbody>
             </table>
           </div>
@@ -405,7 +406,8 @@ $selected = $ads['placements'] ?? ['everywhere'];
       return '<td>' + (r.date || '') + '</td><td>' + money(r.earnings, cur) + '</td><td>' + (r.clicks || 0) + '</td><td>' + (r.unique_users || 0) + '</td><td>' + Number(r.unique_users_ecpm || 0).toFixed(2) + '</td>';
     });
     fillTable('ads-earn-zones', d.by_zone || [], function (r) {
-      var label = (r.label || ('Zone ' + r.zone)) + (r.zone ? ' <span style="color:rgba(255,255,255,.4)">#' + r.zone + '</span>' : '');
+      var sub = r.sub_zones ? (' <span style="color:rgba(255,255,255,.35)">(+'+r.sub_zones+' sub)</span>') : '';
+      var label = (r.label || ('Zone ' + r.zone)) + sub;
       return '<td>' + label + '</td><td>' + money(r.earnings, cur) + '</td><td>' + (r.clicks || 0) + '</td><td>' + (r.unique_users || 0) + '</td><td>' + Number(r.unique_users_ecpm || 0).toFixed(2) + '</td>';
     });
     var tz = d.timezone ? (' · ' + d.timezone) : '';
