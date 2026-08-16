@@ -1,0 +1,17 @@
+AdCash Pop (11979882) with anti-adblock + placement controls
+
+Installed on VPS:
+- /opt/adcash/anti-adblock.sh
+- Library: /var/www/chillflix-newsite/public/assets/js/k7m2qx9p.js
+- Cron: every 5 minutes
+
+Site:
+- Head loads anti-adblock lib when ads match placement
+- aclib.runPop({zoneId:'11979882'})
+- Admin /admin/ads: Pop toggle + Show ads on (everywhere/home/watch/player/movies/tv/live/games)
+
+Notes for publisher checklist:
+- Place lib in <head> (done)
+- Random filename + rotate if blocked (done; reinstall with new name if needed)
+- curl + crontab required (present)
+- Linux scheduled job path used (PHP language tab not required for this method)
