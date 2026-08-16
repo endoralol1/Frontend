@@ -1,0 +1,9 @@
+Ads audience + user Pop opt-out + admin bypass
+
+- Staff (admin/moderator) never see ads; guests + regular users do
+- Browse Settings → "Pop ads" (cf_pref_ads) disables Pop only
+- Admin → "Bypass user disable Pop" forces Pop even when user opted out
+- Banner / interstitial / video slider ignore user settings; each has admin toggle
+- Banner (above footer) toggle highlighted + gated via SiteAds::unitOn('banner')
+- API saves popBypassUserOptOut
+- JS bump: app.docksearch-1236.js?v=20260816-ads-pref1
