@@ -1,0 +1,10 @@
+# Cinejoy gate + watch footer
+
+## Root cause
+1. **Cinejoy / 4K**: shegu removed `GET /challenge` (404). Live site now uses `crush.wasm` + `POST /g` (lumen-gate-v2 AES-GCM). Playlists host on `info.movieboxnoob.cc`.
+2. **Watch footer**: `.cf-watch-cinema` is `position:fixed; z-index:0`, which paints above the in-flow footer. Only the logo read as visible; panel/legal sat under the backdrop.
+
+## Fix
+- New Bun gate client (`scripts/cinejoy-gate.mjs`); `lumen-client.ts` spawns Bun (Node cannot load stringref WASM).
+- Worker allowlist: `movieboxnoob.cc`, `info.movieboxnoob.cc`, `subtitles.shegu.st`, `trailer.shegu.st`.
+- Watch footer `z-index:2` + stronger panel contrast; cache `watch-player.css?v=20260816-watch-footer1`.
