@@ -1,1 +1,5 @@
-Login/Register + Sign in buttons now use theme accent vars (--cf-orange*) instead of hardcoded red.
+Browse auth theme + sheet bleed fix
+
+- Login/Register tabs + Sign in button use theme accent
+- Create account (.browse-auth-cta-card.is-accent) uses theme accent (was hardcoded red)
+- Browse sheet panel made fully opaque so Live TV/content no longer bleeds through
