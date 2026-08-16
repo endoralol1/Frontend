@@ -1,0 +1,6 @@
+Home rail arrows missing on Because you watched / Only on Netflix.
+
+Cause: syncAllRails() runs on page load before personalized rails finish AJAX fill,
+so arrows stay disabled (content appeared to fit). Disabled arrows are opacity:0.
+
+Fix: expose window.cfSyncHomeRails and call it after personalize renderItems (+ delayed).
