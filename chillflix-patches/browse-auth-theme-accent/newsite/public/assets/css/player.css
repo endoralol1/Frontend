@@ -1,0 +1,1930 @@
+:root {
+  --np-bg: #07080c;
+  --np-panel: rgba(14, 16, 22, 0.97);
+  --np-line: rgba(255,255,255,.12);
+  --np-text: #f4f4f5;
+  --np-muted: rgba(255,255,255,.55);
+  --np-accent: var(--cf-orange, #db6937);
+  --np-accent-2: var(--cf-orange-deep, #c43c2e);
+  --np-track: #1c1e26;
+  --np-progress: 0%;
+}
+
+.np-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  color: var(--np-text);
+  font-family: Outfit, Poppins, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  overflow: hidden;
+  user-select: none;
+}
+
+html.page-player, body.page-player {
+  margin: 0;
+  height: 100%;
+  background: var(--np-bg);
+  overflow: hidden;
+}
+body.page-player .np-shell { height: 100vh; height: 100dvh; }
+
+#movie-player.np-active .movie-player-wrap { background: #000; }
+#movie-player.np-active .player-bg,
+#movie-player.np-active .btn-play,
+#movie-player.np-active .player-trailer-label { display: none !important; }
+#movie-player.np-active #player-frame { display: none !important; }
+#movie-player .np-shell.np-embed {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+
+.np-stage { position: relative; width: 100%; height: 100%; background: #000; overflow: hidden; touch-action: manipulation; }
+.np-video-transform {
+  position: absolute;
+  top: calc(-1 * env(safe-area-inset-top, 0px));
+  right: calc(-1 * env(safe-area-inset-right, 0px));
+  bottom: calc(-1 * env(safe-area-inset-bottom, 0px));
+  left: calc(-1 * env(safe-area-inset-left, 0px));
+  z-index: 1;
+  transform-origin: center center;
+  will-change: transform;
+  touch-action: manipulation;
+}
+.np-video, .np-poster, .np-iframe {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+}
+.np-video { object-fit: contain; background: #000; z-index: 1; }
+.np-shell.np-zoomed .np-video-transform { touch-action: none; }
+.np-iframe {
+  border: 0;
+  background: #000;
+  z-index: 2;
+  pointer-events: auto;
+}
+.np-iframe[hidden] { display: none !important; }
+.np-shell.np-iframe-mode .np-iframe {
+  display: block !important;
+  z-index: 4;
+}
+.np-shell.np-iframe-mode .np-video-transform,
+.np-shell.np-iframe-mode .np-video,
+.np-shell.np-iframe-mode .np-poster,
+.np-shell.np-iframe-mode .np-subs,
+.np-shell.np-iframe-mode .np-center,
+.np-shell.np-iframe-mode .np-bottom {
+  display: none !important;
+}
+.np-shell.np-iframe-mode .np-top {
+  z-index: 6;
+  background: linear-gradient(to bottom, rgba(0,0,0,.65), transparent);
+  /* Let clicks reach the embed except back/settings controls */
+  pointer-events: none;
+}
+.np-shell.np-iframe-mode .np-top .np-back,
+.np-shell.np-iframe-mode .np-top .np-chip,
+.np-shell.np-iframe-mode .np-top .np-top-actions {
+  pointer-events: auto;
+}
+.np-poster {
+  background-size: cover; background-position: center;
+  filter: brightness(.35);
+  z-index: 0;
+  transition: opacity .25s ease;
+}
+.np-shell.is-playing .np-poster { opacity: 0; pointer-events: none; }
+
+.np-subs {
+  position: absolute; left: 0; right: 0; bottom: 16%;
+  z-index: 5; display: flex; justify-content: center; pointer-events: none;
+  padding: 0 .75rem;
+}
+.np-subs span {
+  max-width: 92%;
+  padding: .28rem .55rem;
+  border-radius: .4rem;
+  background: rgba(0,0,0,.7);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.3;
+  text-shadow: 0 1px 2px rgba(0,0,0,.6);
+}
+
+.np-top, .np-bottom, .np-center { z-index: 6; }
+
+/* Top chrome: back | NOW PLAYING + title | actions */
+.np-top {
+  position: absolute; left: 0; right: 0; top: 0;
+  display: grid;
+  grid-template-columns: 2.4rem 1fr auto;
+  align-items: start;
+  gap: .4rem;
+  padding: max(.65rem, env(safe-area-inset-top)) .7rem 1.25rem;
+  background: linear-gradient(to bottom, rgba(0,0,0,.78), transparent);
+}
+.np-back {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.2rem; height: 2.2rem;
+  color: #fff; text-decoration: none; background: transparent; border: 0;
+  cursor: pointer; padding: 0;
+}
+.np-back svg { width: 1.3rem; height: 1.3rem; display: block; }
+.np-shell.np-embed .np-back { display: inline-flex; }
+
+.np-titleblock {
+  min-width: 0;
+  text-align: center;
+  padding-top: .12rem;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity .45s ease, transform .45s ease;
+}
+.np-shell.np-title-in .np-titleblock {
+  opacity: 1;
+  transform: translateY(0);
+}
+.np-now {
+  margin: 0;
+  font-size: .62rem;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.5);
+  line-height: 1.2;
+}
+.np-title {
+  margin: .18rem 0 0;
+  font-size: .98rem;
+  font-weight: 700;
+  letter-spacing: -.015em;
+  color: #fff;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.np-meta {
+  margin: .12rem 0 0;
+  color: rgba(255,255,255,.45);
+  font-size: .68rem;
+  font-weight: 500;
+}
+
+.np-top-actions { display: flex; gap: .3rem; flex-shrink: 0; padding-top: .15rem; }
+.np-chip {
+  border: 1px solid var(--np-line);
+  background: rgba(255,255,255,.08);
+  color: #fff; border-radius: 4px;
+  padding: .32rem .55rem; font: inherit; font-size: .68rem; font-weight: 800;
+  cursor: pointer;
+}
+.np-chip[aria-pressed="true"] {
+  background: linear-gradient(180deg, var(--np-accent), var(--np-accent-2));
+  border-color: transparent;
+}
+
+.np-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: .55rem;
+  pointer-events: none;
+}
+.np-playbig {
+  pointer-events: auto;
+  width: 3.6rem; height: 3.6rem; border-radius: 999px; border: 0;
+  background: rgba(255,255,255,.92); color: #111;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 10px 28px rgba(0,0,0,.45);
+}
+.np-playbig svg { width: 1.25rem; height: 1.25rem; display: block; }
+.np-status {
+  margin: 0; color: rgba(255,255,255,.8); font-size: .78rem; font-weight: 600;
+  text-shadow: 0 1px 8px rgba(0,0,0,.8);
+}
+.np-shell.is-playing .np-center { opacity: 0; pointer-events: none; }
+
+.np-bottom {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: .35rem .7rem .55rem;
+  background: linear-gradient(to top, rgba(0,0,0,.82), transparent);
+  opacity: 1; transition: opacity .2s ease;
+}
+.np-shell.is-playing:not(.show-controls) .np-bottom,
+.np-shell.is-playing:not(.show-controls) .np-top { opacity: 0; pointer-events: none; }
+
+/* Dark timeline */
+.np-progress-wrap {
+  position: relative;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  margin-bottom: .15rem;
+}
+.np-progress {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 5px;
+  margin: 0;
+  cursor: pointer;
+  background: transparent;
+  outline: none;
+}
+.np-progress::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--np-accent) 0%,
+    var(--np-accent) var(--np-progress),
+    var(--np-track) var(--np-progress),
+    var(--np-track) 100%
+  );
+  border: 1px solid rgba(255,255,255,.06);
+}
+.np-progress::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: #d8d9de;
+  border: 2px solid #0e1016;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.12);
+}
+.np-progress::-moz-range-track {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--np-track);
+  border: 1px solid rgba(255,255,255,.06);
+}
+.np-progress::-moz-range-progress {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--np-accent);
+}
+.np-progress::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #d8d9de;
+  border: 2px solid #0e1016;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.12);
+}
+
+.np-bar { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.np-bar-left, .np-bar-right { display: flex; align-items: center; gap: .15rem; }
+.np-btn {
+  border: 0; background: transparent; color: #fff; cursor: pointer;
+  font: inherit; font-size: .82rem; font-weight: 700;
+  padding: .35rem .45rem; border-radius: .45rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 2rem; min-height: 2rem; text-decoration: none;
+}
+.np-btn:hover { background: rgba(255,255,255,.1); }
+.np-btn svg { display: block; width: 1.15rem; height: 1.15rem; }
+.np-btn.np-mute-btn svg { width: 1.25rem; height: 1.25rem; }
+.np-time {
+  font-size: .72rem; font-weight: 600; color: rgba(255,255,255,.85);
+  font-variant-numeric: tabular-nums; padding: 0 .25rem; white-space: nowrap;
+}
+
+/* Settings — square, sharp, denser */
+.np-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  background: rgba(0, 0, 0, 0.52);
+  animation: npFade .14s ease;
+}
+.np-scrim[hidden] { display: none !important; }
+@keyframes npFade { from { opacity: 0; } to { opacity: 1; } }
+
+.np-panel {
+  --np-r: 4px;
+  position: absolute;
+  right: .55rem;
+  bottom: max(3.7rem, calc(env(safe-area-inset-bottom) + 3.2rem));
+  width: min(20.5rem, calc(100% - 1.1rem));
+  max-height: min(72%, 30rem);
+  z-index: 20;
+  background: #12141a;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: var(--np-r);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 18px 40px rgba(0,0,0,.55);
+  animation: npSheet .15s ease;
+  overflow: hidden;
+}
+.np-panel[hidden] { display: none !important; }
+@keyframes npSheet {
+  from { opacity: .35; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+.np-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .7rem .75rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: #171922;
+  flex-shrink: 0;
+}
+.np-panel-kicker {
+  margin: 0 0 .1rem;
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.38);
+}
+.np-panel-head h2 {
+  margin: 0;
+  font-size: .95rem;
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+.np-panel-x {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: var(--np-r);
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.1);
+  color: rgba(255,255,255,.8);
+  font-size: .78rem;
+}
+.np-panel-x:hover { background: rgba(255,255,255,.12); color: #fff; }
+
+/* Square tab bar */
+.np-seg {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: #0e1016;
+  flex-shrink: 0;
+}
+.np-seg button {
+  border: 0;
+  border-right: 1px solid rgba(255,255,255,.06);
+  background: transparent;
+  color: rgba(255,255,255,.48);
+  font: inherit;
+  font-size: .64rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  padding: .62rem .15rem;
+  border-radius: 0;
+  cursor: pointer;
+  white-space: nowrap;
+  position: relative;
+}
+.np-seg button:last-child { border-right: 0; }
+.np-seg button.is-active {
+  background: #1a1d27;
+  color: #fff;
+}
+.np-seg button.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: var(--np-accent);
+}
+
+.np-panel-body {
+  overflow: auto;
+  padding: .7rem .7rem .85rem;
+  flex: 1;
+  background: #12141a;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.18) transparent;
+}
+.np-panel-body section { display: none; }
+.np-panel-body section.is-active { display: block; }
+.np-panel-hint {
+  margin: 0 0 .45rem;
+  font-size: .62rem;
+  color: rgba(255,255,255,.4);
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.np-empty {
+  padding: 1rem .7rem;
+  text-align: center;
+  color: rgba(255,255,255,.38);
+  font-size: .76rem;
+  font-weight: 600;
+  border: 1px dashed rgba(255,255,255,.12);
+  border-radius: var(--np-r);
+  background: rgba(255,255,255,.02);
+}
+
+.np-list {
+  display: flex;
+  flex-direction: column;
+  gap: .3rem;
+}
+.np-list--grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .3rem;
+}
+.np-option {
+  text-align: left;
+  border: 1px solid rgba(255,255,255,.08);
+  background: #181b24;
+  color: #fff;
+  border-radius: var(--np-r);
+  padding: .65rem .7rem;
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .55rem;
+  transition: background .12s ease, border-color .12s ease;
+  position: relative;
+}
+.np-option:hover {
+  background: #1e2230;
+  border-color: rgba(255,255,255,.16);
+}
+.np-option-main {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  min-width: 0;
+}
+.np-option-title {
+  font-size: .82rem;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.np-option-sub {
+  font-size: .64rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.38);
+}
+.np-option-check {
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 2px;
+  border: 1.5px solid rgba(255,255,255,.22);
+  background: transparent;
+  flex-shrink: 0;
+  position: relative;
+}
+.np-option.is-active {
+  background: rgba(var(--cf-orange-rgb),.12);
+  border-color: rgba(var(--cf-orange-rgb),.65);
+  box-shadow: inset 3px 0 0 var(--np-accent);
+}
+.np-option.is-active .np-option-check {
+  background: var(--np-accent);
+  border-color: var(--np-accent);
+}
+.np-option.is-active .np-option-check::after {
+  content: "";
+  position: absolute;
+  left: .28rem;
+  top: .1rem;
+  width: .26rem;
+  height: .5rem;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.np-option.is-active .np-option-sub { color: rgba(255,255,255,.62); }
+
+.np-style-cards {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+.np-style-card {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  padding: .7rem .7rem .75rem;
+  border-radius: var(--np-r);
+  background: #181b24;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.np-style-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.7);
+}
+.np-slider-val {
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  font-size: .74rem;
+  letter-spacing: 0;
+  text-transform: none;
+  min-width: 2.5rem;
+  text-align: right;
+  background: #0e1016;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 2px;
+  padding: .15rem .35rem;
+}
+.np-style-card input[type=range] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  border-radius: 0;
+  background: rgba(255,255,255,.14);
+  outline: none;
+}
+.np-style-card input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #fff;
+  border: 0;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.35);
+  cursor: pointer;
+}
+.np-style-card input[type=range]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #fff;
+  border: 0;
+  cursor: pointer;
+}
+.np-style-card input[type=range]::-moz-range-progress {
+  height: 3px;
+  border-radius: 0;
+  background: var(--np-accent);
+}
+
+.np-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-top: .4rem;
+  padding: .7rem;
+  border-radius: var(--np-r);
+  background: #181b24;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.np-toggle-copy {
+  display: flex;
+  flex-direction: column;
+  gap: .12rem;
+  min-width: 0;
+}
+.np-toggle-copy span {
+  font-size: .8rem;
+  font-weight: 800;
+}
+.np-toggle-copy small {
+  font-size: .66rem;
+  color: rgba(255,255,255,.4);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.np-switch {
+  position: relative;
+  width: 2.4rem;
+  height: 1.25rem;
+  border-radius: 2px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: #0e1016;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background .12s ease, border-color .12s ease;
+}
+.np-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: .95rem;
+  height: .95rem;
+  border-radius: 2px;
+  background: #fff;
+  transition: transform .14s ease;
+}
+.np-switch[aria-checked="true"] {
+  background: var(--np-accent);
+  border-color: var(--np-accent);
+}
+.np-switch[aria-checked="true"]::after { transform: translateX(1.05rem); }
+
+@media (min-width: 900px) {
+  .np-title { font-size: 1.12rem; }
+  .np-now { font-size: .68rem; }
+  .np-subs span { font-size: 1.3rem; }
+  .np-panel { width: min(21.5rem, calc(100% - 1.2rem)); }
+}
+
+.np-party-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .22rem .3rem .22rem .55rem;
+  border-radius: .45rem;
+  background: rgba(220, 53, 69, .18);
+  border: 1px solid rgba(220, 53, 69, .4);
+  color: #ffc3c9;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.np-party-chip-label {
+  white-space: nowrap;
+}
+.np-party-leave {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: .22rem .45rem;
+  border-radius: .35rem;
+  background: rgba(0, 0, 0, .35);
+  color: #fff;
+  font: inherit;
+  font-size: .62rem;
+  font-weight: 750;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.np-party-leave:hover {
+  background: rgba(255, 255, 255, .14);
+}
+
+/* Stuck-playback nudge under Settings */
+.np-top-actions {
+  position: relative;
+}
+.np-source-hint {
+  position: absolute;
+  top: calc(100% + .45rem);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .08rem;
+  max-width: 11.5rem;
+  padding: .55rem .75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.16);
+  background: rgba(8,10,16,.88);
+  color: #fff;
+  box-shadow: 0 10px 28px rgba(0,0,0,.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  cursor: pointer;
+  text-align: left;
+}
+.np-source-hint[hidden] { display: none !important; }
+.np-source-hint::after {
+  content: "";
+  position: absolute;
+  right: 1.1rem;
+  bottom: 100%;
+  border: 6px solid transparent;
+  border-bottom-color: rgba(8,10,16,.88);
+}
+.np-source-hint-title {
+  font-size: .72rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+.np-source-hint-text {
+  font-size: .62rem;
+  font-weight: 600;
+  color: rgba(255,255,255,.7);
+  line-height: 1.2;
+}
+.np-source-hint:active {
+  transform: scale(.98);
+}
+
+/* ——— Skip Intro / Credits (TheIntroDB) ——— */
+.np-skip {
+  position: absolute;
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  bottom: calc(5.6rem + env(safe-area-inset-bottom, 0px));
+  z-index: 9;
+  min-width: 8.5rem;
+  padding: 0.7rem 1.15rem;
+  border-radius: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(20, 20, 20, 0.72);
+  color: #fff;
+  font-family: Outfit, Poppins, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  transition: transform 0.16s ease, background 0.16s ease, opacity 0.18s ease, bottom 0.18s ease;
+}
+.np-skip[hidden] { display: none !important; }
+.np-skip:hover {
+  background: rgba(255, 255, 255, 0.16);
+  transform: scale(1.03);
+}
+.np-skip:active { transform: scale(0.98); }
+.np-shell.is-playing:not(.show-controls) .np-skip:not(.is-pinned) {
+  opacity: 0;
+  pointer-events: none;
+}
+.np-shell.is-playing:not(.show-controls) .np-skip.is-pinned {
+  bottom: calc(2.4rem + env(safe-area-inset-bottom, 0px));
+}
+@media (max-width: 640px) {
+  .np-skip {
+    min-width: 7.4rem;
+    font-size: 0.88rem;
+    padding: 0.62rem 0.95rem;
+    bottom: calc(5.1rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ===== Subtitle CC button + bottom-right drawer ===== */
+.np-cc-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  min-width: 0 !important;
+  min-height: 2rem !important;
+  padding: 0.3rem 0.45rem !important;
+  margin-left: 0.1rem;
+  border: 0 !important;
+  border-radius: 0.45rem !important;
+  background: transparent !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.np-cc-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+.np-cc-btn .np-cc-ico {
+  display: none;
+}
+.np-cc-btn .np-cc-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  font-family: Outfit, Poppins, system-ui, sans-serif;
+  border: 1.5px solid rgba(255, 255, 255, 0.88);
+  border-radius: 0.28rem;
+  padding: 0.14rem 0.28rem 0.12rem;
+}
+.np-cc-btn.is-on {
+  color: #ffd2b8 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.np-cc-btn.is-on .np-cc-label {
+  border-color: #ffb089;
+  color: #ffd2b8;
+}
+.np-cc-btn.is-on:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  filter: none;
+}
+
+.np-subs-drawer {
+  position: absolute;
+  top: auto;
+  left: auto;
+  right: max(0.7rem, env(safe-area-inset-right, 0px));
+  bottom: max(4.35rem, calc(env(safe-area-inset-bottom, 0px) + 3.85rem));
+  z-index: 40;
+  width: min(15.25rem, calc(100% - 1.4rem));
+  max-height: min(46vh, 20.5rem);
+  background: rgba(14, 16, 22, 0.96);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 1rem;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 18px 40px rgba(0,0,0,.55);
+  overflow: hidden;
+  animation: npSubsIn .16s ease;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.np-subs-drawer[hidden] { display: none !important; }
+
+@keyframes npSubsIn {
+  from { opacity: .2; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.np-subs-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .55rem .65rem;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(180deg, #1b1e28, #151821);
+  flex-shrink: 0;
+}
+.np-subs-drawer-head h2 {
+  margin: 0;
+  font-size: .84rem;
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+.np-subs-drawer-head .np-panel-kicker {
+  font-size: .52rem;
+  margin-bottom: 0;
+}
+.np-subs-drawer-head .np-panel-x {
+  width: 1.55rem;
+  height: 1.55rem;
+  font-size: .7rem;
+}
+.np-subs-drawer > .np-panel-hint {
+  margin: .45rem .65rem .2rem;
+  font-size: .56rem;
+}
+.np-subs-drawer > .np-list {
+  overflow: auto;
+  padding: 0 .45rem .55rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: .16rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.18) transparent;
+}
+
+.np-subs-drawer .np-option {
+  padding: .36rem .5rem;
+  border-radius: .55rem;
+  gap: .4rem;
+}
+.np-subs-drawer .np-option-title {
+  font-size: .72rem;
+}
+.np-subs-drawer .np-option-sub {
+  font-size: .55rem;
+}
+.np-subs-drawer .np-option-check {
+  width: .88rem;
+  height: .88rem;
+}
+.np-subs-drawer .np-option.is-active .np-option-check::after {
+  left: .2rem;
+  top: .06rem;
+  width: .2rem;
+  height: .4rem;
+}
+.np-subs-drawer .np-empty {
+  padding: .7rem .45rem;
+  font-size: .7rem;
+}
+
+.np-shell.np-subs-open .np-scrim {
+  display: block;
+}
+
+.np-shell.is-fullscreen .np-subs-drawer,
+.np-shell:fullscreen .np-subs-drawer,
+.np-shell:-webkit-full-screen .np-subs-drawer {
+  right: max(0.85rem, env(safe-area-inset-right, 0px));
+  bottom: max(4.6rem, calc(env(safe-area-inset-bottom, 0px) + 4.1rem));
+  max-height: min(48vh, 22rem);
+}
+
+/* ===== CLEAN SETTINGS/SUBS OVERHAUL watch5 ===== */
+/* Flat, quiet chrome. Settings live in the bottom bar. No shiny glass/glow. */
+
+.np-shell {
+  --np-panel: #12141a;
+  --np-panel-2: #0e1015;
+  --np-line: rgba(255, 255, 255, 0.1);
+  --np-muted: rgba(255, 255, 255, 0.48);
+}
+
+/* Top: no Settings chip — only title + optional source hint */
+.np-top-actions .np-chip {
+  display: none !important;
+}
+
+.np-stage > .np-source-hint,
+.np-source-hint {
+  position: absolute !important;
+  top: auto !important;
+  right: 0.7rem !important;
+  bottom: max(4.6rem, calc(env(safe-area-inset-bottom, 0px) + 4.1rem)) !important;
+  left: auto !important;
+  z-index: 16;
+  max-width: 11rem;
+  padding: 0.45rem 0.7rem !important;
+  border-radius: 0.45rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: rgba(10, 12, 16, 0.92) !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.np-source-hint::after {
+  display: none !important;
+}
+
+/* Scrim: light dim, not heavy theater overlay */
+.np-scrim {
+  background: rgba(0, 0, 0, 0.35) !important;
+  animation: none !important;
+}
+
+/* Settings panel — flat, anchored to bar (gear) */
+.np-panel {
+  --np-r: 0.5rem;
+  right: 0.55rem !important;
+  bottom: max(3.55rem, calc(env(safe-area-inset-bottom, 0px) + 3.15rem)) !important;
+  width: min(18.5rem, calc(100% - 1.1rem)) !important;
+  max-height: min(68%, 26rem) !important;
+  background: var(--np-panel) !important;
+  border: 1px solid var(--np-line) !important;
+  border-radius: var(--np-r) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation: none !important;
+  overflow: hidden;
+}
+
+.np-panel-head {
+  padding: 0.55rem 0.65rem !important;
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.np-panel-head h2 {
+  margin: 0 !important;
+  font-family: Outfit, Poppins, system-ui, sans-serif !important;
+  font-size: 0.82rem !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.01em !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.np-panel-kicker {
+  display: none !important;
+}
+
+.np-panel-x {
+  width: 1.7rem !important;
+  height: 1.7rem !important;
+  border-radius: 0.35rem !important;
+  background: transparent !important;
+  border: 0 !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  font-size: 0.85rem !important;
+}
+.np-panel-x:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #fff !important;
+}
+
+/* Quiet text tabs */
+.np-seg {
+  display: flex !important;
+  grid-template-columns: none !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 0 0.35rem !important;
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.np-seg::-webkit-scrollbar { display: none; }
+
+.np-seg button {
+  flex: 1 0 auto;
+  border: 0 !important;
+  border-right: 0 !important;
+  background: transparent !important;
+  color: var(--np-muted) !important;
+  font-family: Outfit, Poppins, system-ui, sans-serif !important;
+  font-size: 0.68rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+  text-transform: none !important;
+  padding: 0.5rem 0.45rem !important;
+  border-radius: 0 !important;
+  white-space: nowrap;
+}
+.np-seg button.is-active {
+  background: transparent !important;
+  color: #fff !important;
+}
+.np-seg button.is-active::after {
+  height: 1.5px !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-radius: 0 !important;
+}
+
+.np-panel-body {
+  padding: 0.35rem 0.35rem 0.5rem !important;
+  background: transparent !important;
+}
+
+.np-panel-hint {
+  display: none !important;
+}
+
+/* Flat list rows — no cards, no glow pills */
+.np-list {
+  gap: 0 !important;
+}
+.np-list--grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+}
+
+.np-option,
+.np-list button,
+.np-source,
+.np-opt {
+  border: 0 !important;
+  border-radius: 0.35rem !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0.55rem 0.55rem !important;
+  margin: 0 !important;
+}
+.np-option:hover,
+.np-list button:hover,
+.np-source:hover,
+.np-opt:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: transparent !important;
+}
+
+.np-option-title {
+  font-family: Outfit, Poppins, system-ui, sans-serif !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+}
+.np-option-sub {
+  font-size: 0.62rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+  color: rgba(255, 255, 255, 0.38) !important;
+}
+
+.np-option-check {
+  width: 0.95rem !important;
+  height: 0.95rem !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  background: transparent !important;
+}
+.np-option.is-active,
+.np-list button.is-active,
+.np-opt.is-active,
+.np-source.is-active {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.np-option.is-active .np-option-check {
+  background: var(--np-accent, #db6937) !important;
+  border-color: var(--np-accent, #db6937) !important;
+}
+.np-option.is-active .np-option-check::after {
+  left: 0.26rem !important;
+  top: 0.1rem !important;
+  width: 0.22rem !important;
+  height: 0.42rem !important;
+}
+.np-option.is-active .np-option-sub {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Caption style controls — flat */
+.np-style-card,
+.np-toggle-row {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0.55rem 0.45rem !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+.np-style-cards {
+  gap: 0 !important;
+}
+.np-style-top {
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+.np-slider-val {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 0 !important;
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.55) !important;
+  min-width: 0 !important;
+}
+.np-style-card input[type=range] {
+  height: 2px !important;
+  background: rgba(255, 255, 255, 0.16) !important;
+}
+.np-style-card input[type=range]::-webkit-slider-thumb {
+  width: 11px !important;
+  height: 11px !important;
+  border-radius: 50% !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+.np-style-card input[type=range]::-moz-range-thumb {
+  width: 11px !important;
+  height: 11px !important;
+  border-radius: 50% !important;
+  background: #fff !important;
+}
+.np-switch {
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+}
+.np-switch::after {
+  border-radius: 50% !important;
+}
+.np-empty {
+  border: 0 !important;
+  background: transparent !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  padding: 1rem 0.5rem !important;
+}
+
+/* Settings gear in bar */
+.np-settings-btn {
+  color: #fff !important;
+}
+.np-shell.np-settings-open .np-settings-btn {
+  color: var(--cf-orange-soft, #ffd2b8) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ——— Subtitles button + drawer ——— */
+.np-cc-btn {
+  gap: 0 !important;
+  padding: 0.3rem 0.4rem !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.np-cc-btn:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: none !important;
+  transform: none !important;
+  filter: none !important;
+}
+.np-cc-btn .np-cc-ico {
+  display: inline-flex !important;
+  width: 1.15rem;
+  height: 1.15rem;
+}
+.np-cc-btn .np-cc-ico svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  display: block;
+}
+.np-cc-btn .np-cc-meta {
+  display: none;
+}
+.np-cc-btn.is-on .np-cc-meta {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-left: 0.2rem;
+  line-height: 1;
+}
+.np-cc-btn .np-cc-label {
+  border: 0 !important;
+  padding: 0 !important;
+  font-size: 0.62rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  color: inherit !important;
+  border-radius: 0 !important;
+}
+.np-cc-btn .np-cc-lang {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--cf-orange-soft, #ffd2b8);
+}
+.np-cc-btn.is-on {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+}
+.np-cc-btn.is-on .np-cc-ico {
+  color: var(--cf-orange-soft, #ffd2b8);
+}
+.np-shell.np-subs-open .np-cc-btn {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.np-subs-drawer {
+  right: max(2.85rem, calc(env(safe-area-inset-right, 0px) + 2.55rem)) !important;
+  bottom: max(3.55rem, calc(env(safe-area-inset-bottom, 0px) + 3.15rem)) !important;
+  width: min(15rem, calc(100% - 1.2rem)) !important;
+  max-height: min(42vh, 18rem) !important;
+  background: #12141a !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation: none !important;
+}
+.np-subs-drawer-head {
+  padding: 0.5rem 0.55rem 0.45rem !important;
+  background: transparent !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+.np-subs-drawer-head h2 {
+  margin: 0 !important;
+  font-family: Outfit, Poppins, system-ui, sans-serif !important;
+  font-size: 0.8rem !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.01em !important;
+}
+.np-subs-drawer > .np-panel-hint {
+  display: none !important;
+}
+.np-subs-drawer > .np-list {
+  padding: 0.25rem 0.3rem 0.4rem !important;
+  gap: 0 !important;
+}
+.np-subs-drawer .np-option {
+  padding: 0.48rem 0.5rem !important;
+  border-radius: 0.35rem !important;
+}
+.np-subs-drawer .np-option-title {
+  font-size: 0.76rem !important;
+  font-weight: 600 !important;
+}
+.np-subs-drawer .np-option-sub {
+  font-size: 0.58rem !important;
+  text-transform: none !important;
+}
+
+.np-shell.is-fullscreen .np-subs-drawer,
+.np-shell:fullscreen .np-subs-drawer,
+.np-shell:-webkit-full-screen .np-subs-drawer {
+  right: max(3rem, calc(env(safe-area-inset-right, 0px) + 2.7rem)) !important;
+  bottom: max(3.8rem, calc(env(safe-area-inset-bottom, 0px) + 3.4rem)) !important;
+}
+
+@media (max-width: 640px) {
+  .np-panel {
+    width: min(17.5rem, calc(100% - 0.9rem)) !important;
+    right: 0.45rem !important;
+  }
+  .np-subs-drawer {
+    right: 0.45rem !important;
+    width: min(14.5rem, calc(100% - 0.9rem)) !important;
+  }
+}
+
+/* ===== ICONS + SEEK + CLEAR CHECK watch6 ===== */
+
+/* Clearer bar icons */
+.np-btn svg {
+  width: 1.28rem !important;
+  height: 1.28rem !important;
+}
+.np-btn.np-mute-btn svg {
+  width: 1.32rem !important;
+  height: 1.32rem !important;
+}
+.np-settings-btn svg,
+.np-cc-btn .np-cc-ico svg {
+  width: 1.34rem !important;
+  height: 1.34rem !important;
+}
+
+/* Seek ±10s */
+.np-seek-btn {
+  min-width: 2.15rem !important;
+  padding: 0.28rem 0.3rem !important;
+  color: #fff !important;
+}
+.np-seek-btn svg {
+  width: 1.45rem !important;
+  height: 1.45rem !important;
+}
+.np-bar-left {
+  gap: 0.05rem !important;
+}
+
+/* Settings / CC: solid readable glyphs */
+.np-settings-btn,
+.np-cc-btn {
+  color: #fff !important;
+}
+.np-shell.np-settings-open .np-settings-btn,
+.np-shell.np-subs-open .np-cc-btn,
+.np-cc-btn.is-on {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+.np-cc-btn .np-cc-ico {
+  display: inline-flex !important;
+  line-height: 0;
+}
+.np-cc-btn .np-cc-meta,
+.np-cc-btn .np-cc-label,
+.np-cc-btn .np-cc-lang {
+  display: none !important;
+}
+
+/* Selected row: solid accent badge + white check — easy to see */
+.np-option-check {
+  width: 1.35rem !important;
+  height: 1.35rem !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0;
+  color: #fff !important;
+}
+.np-option-check svg {
+  width: 0.95rem !important;
+  height: 0.95rem !important;
+  display: block;
+  filter: none !important;
+}
+.np-option-check::after {
+  content: none !important;
+  display: none !important;
+}
+.np-option.is-active .np-option-check,
+.np-list button.is-active .np-option-check,
+.np-subs-drawer .np-option.is-active .np-option-check {
+  opacity: 1 !important;
+  background: var(--np-accent, #db6937) !important;
+  border: 0 !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+.np-option.is-active,
+.np-list button.is-active,
+.np-opt.is-active,
+.np-source.is-active {
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+.np-option.is-active .np-option-title {
+  color: #fff !important;
+  font-weight: 700 !important;
+}
+
+/* Slightly roomier rows so the check breathes */
+.np-option,
+.np-list button {
+  padding: 0.62rem 0.6rem !important;
+  min-height: 2.35rem;
+}
+.np-subs-drawer .np-option {
+  padding: 0.55rem 0.55rem !important;
+}
+.np-subs-drawer .np-option-check {
+  width: 1.2rem !important;
+  height: 1.2rem !important;
+}
+.np-subs-drawer .np-option-check svg {
+  width: 1.1rem !important;
+  height: 1.1rem !important;
+}
+
+/* Use accent only as a thin left mark — high contrast without shiny pills */
+.np-option.is-active {
+  box-shadow: inset 2px 0 0 var(--np-accent, #db6937) !important;
+}
+
+/* ===== THIN ICONS + TALLER PLAYER watch7 ===== */
+/* Match thin white outline control style */
+
+.np-bar-right {
+  gap: 0.12rem !important;
+}
+
+.np-btn {
+  color: rgba(255, 255, 255, 0.96) !important;
+}
+.np-btn svg {
+  width: 1.28rem !important;
+  height: 1.28rem !important;
+  stroke-width: 1.55;
+}
+
+.np-source-btn,
+.np-settings-btn,
+.np-pip-btn,
+.np-cc-btn,
+.np-seek-btn {
+  min-width: 2.15rem !important;
+  min-height: 2.2rem !important;
+  padding: 0.28rem 0.34rem !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.np-source-btn:hover,
+.np-settings-btn:hover,
+.np-pip-btn:hover,
+.np-cc-btn:hover,
+.np-seek-btn:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.np-source-btn svg,
+.np-settings-btn svg,
+.np-pip-btn svg {
+  width: 1.3rem !important;
+  height: 1.3rem !important;
+}
+
+/* Clean thin seek icons */
+.np-seek-btn svg {
+  width: 1.42rem !important;
+  height: 1.42rem !important;
+}
+.np-seek-btn text {
+  font-size: 6.4px !important;
+  font-weight: 650 !important;
+}
+
+/* CC with EN under icon (like reference) */
+.np-cc-btn {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.05rem !important;
+  min-width: 2.2rem !important;
+  padding: 0.18rem 0.3rem 0.12rem !important;
+  line-height: 1 !important;
+}
+.np-cc-btn .np-cc-ico {
+  display: inline-flex !important;
+  line-height: 0;
+}
+.np-cc-btn .np-cc-ico svg {
+  width: 1.34rem !important;
+  height: 1.34rem !important;
+}
+.np-cc-btn .np-cc-lang {
+  display: none;
+  font-family: Outfit, Poppins, system-ui, sans-serif !important;
+  font-size: 0.52rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+  line-height: 1 !important;
+}
+.np-cc-btn.is-on .np-cc-lang:not([hidden]) {
+  display: block !important;
+}
+.np-cc-btn .np-cc-meta,
+.np-cc-btn .np-cc-label {
+  display: none !important;
+}
+.np-cc-btn.is-on,
+.np-shell.np-subs-open .np-cc-btn {
+  background: transparent !important;
+  color: #fff !important;
+}
+.np-shell.np-settings-open .np-settings-btn,
+.np-shell.np-settings-open .np-source-btn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+}
+
+/* Progress hairline feel a bit cleaner */
+.np-progress-wrap {
+  height: 12px !important;
+}
+.np-progress::-webkit-slider-runnable-track {
+  height: 3px !important;
+}
+.np-progress::-moz-range-track {
+  height: 3px !important;
+}
+
+/* ===== CC SIZE + GEAR FIX watch7b ===== */
+.np-cc-btn .np-cc-ico svg {
+  width: 1.48rem !important;
+  height: 1.48rem !important;
+}
+.np-cc-btn .np-cc-ico svg text {
+  font-size: 9.6px !important;
+  font-weight: 750 !important;
+}
+.np-settings-btn svg {
+  width: 1.38rem !important;
+  height: 1.38rem !important;
+}
+
+/* ===== CLEAR SEEK + CC SETTINGS watch8 ===== */
+.np-seek-btn {
+  min-width: 2.45rem !important;
+  min-height: 2.35rem !important;
+  padding: 0.2rem 0.28rem !important;
+}
+.np-seek-btn svg {
+  width: 1.75rem !important;
+  height: 1.5rem !important;
+  display: block;
+}
+.np-seek-btn svg text {
+  font-size: 8.8px !important;
+  font-weight: 750 !important;
+}
+
+/* When settings opened via CC: no button fill (theme on CC glyph only; see watch9b) */
+.np-shell.np-settings-open .np-cc-btn {
+  background: transparent !important;
+}
+
+/* ===== CC THEME COLOR watch9b: letters + border only, no fill ===== */
+
+/* Kill button fill when CC is on / settings opened via CC */
+.np-cc-btn.is-on,
+.np-cc-btn.is-on:hover,
+.np-cc-btn.is-on:focus-visible,
+.np-shell.np-settings-open .np-cc-btn,
+.np-shell.np-subs-open .np-cc-btn {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  color: #fff !important;
+}
+
+/* Only the CC box stroke + CC letters take theme accent */
+.np-cc-btn.is-on .np-cc-ico,
+.np-cc-btn.is-on .np-cc-ico svg,
+.np-shell.np-settings-open .np-cc-btn .np-cc-ico,
+.np-shell.np-settings-open .np-cc-btn .np-cc-ico svg {
+  color: var(--cf-orange, #db6937) !important;
+}
+.np-cc-btn.is-on .np-cc-ico svg rect,
+.np-cc-btn.is-on .np-cc-ico svg path,
+.np-shell.np-settings-open .np-cc-btn .np-cc-ico svg rect,
+.np-shell.np-settings-open .np-cc-btn .np-cc-ico svg path {
+  stroke: var(--cf-orange, #db6937) !important;
+  fill: none !important;
+}
+.np-cc-btn.is-on .np-cc-ico svg text,
+.np-shell.np-settings-open .np-cc-btn .np-cc-ico svg text {
+  fill: var(--cf-orange, #db6937) !important;
+  stroke: none !important;
+  color: var(--cf-orange, #db6937) !important;
+}
+
+/* EN label stays neutral white */
+.np-cc-btn.is-on .np-cc-lang,
+.np-cc-btn.is-on .np-cc-lang:not([hidden]),
+.np-shell.np-settings-open .np-cc-btn .np-cc-lang,
+.np-shell.np-settings-open .np-cc-btn .np-cc-lang:not([hidden]) {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+.np-cc-btn.is-on .np-cc-lang:not([hidden]) {
+  display: block !important;
+}
+
+
+/* ===== Subtitle language groups (collapsed by default, check on tracks only) ===== */
+.np-sub-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+.np-sub-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.np-sub-group-head {
+  gap: 0.6rem !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+.np-sub-group-head:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+.np-sub-group-head .np-option-check {
+  display: none !important; /* never show group-level check */
+}
+.np-sub-group-flag {
+  font-size: 1.2rem;
+  line-height: 1;
+  width: 1.45rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+.np-sub-group-chevron {
+  color: rgba(255, 255, 255, 0.4);
+  width: 1rem;
+  height: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 0.15rem;
+}
+.np-sub-group.is-open .np-sub-group-head {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+.np-sub-group.has-active .np-sub-group-head .np-option-title {
+  color: #fff;
+}
+.np-sub-group.has-active .np-option-sub.is-selected {
+  color: var(--cf-orange, #db6937) !important;
+  text-transform: none !important;
+  letter-spacing: 0.01em !important;
+  font-weight: 600 !important;
+}
+.np-sub-group-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.04rem;
+  padding: 0.15rem 0 0.3rem 0.35rem;
+  margin: 0 0 0.2rem 1.85rem;
+  border-left: 2px solid color-mix(in srgb, var(--cf-orange, #db6937) 35%, rgba(255,255,255,0.12));
+}
+.np-sub-track {
+  padding: 0.45rem 0.55rem !important;
+}
+.np-sub-track .np-option-title {
+  font-weight: 550 !important;
+  font-size: 0.76rem !important;
+}
+.np-sub-off {
+  margin-bottom: 0.28rem !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0 !important;
+  padding-bottom: 0.65rem !important;
+}
+
+/* ===== CC hard: letters + box border only (no fill) ===== */
+.now-player .np-cc-btn.is-on,
+.now-player .np-cc-btn.is-on:hover,
+.now-player .np-cc-btn[aria-pressed="true"],
+.now-player .np-shell.np-settings-open .np-cc-btn,
+.now-player .np-shell.np-subs-open .np-cc-btn,
+.np-cc-btn.is-on,
+.np-cc-btn.is-on:hover,
+.np-cc-btn[aria-pressed="true"],
+.np-shell.np-settings-open .np-cc-btn,
+.np-shell.np-subs-open .np-cc-btn {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+  border-color: transparent !important;
+  color: #fff !important;
+}
+.np-cc-btn.is-on .np-cc-ico,
+.np-cc-btn.is-on .np-cc-ico svg,
+.np-cc-btn[aria-pressed="true"] .np-cc-ico,
+.np-cc-btn[aria-pressed="true"] .np-cc-ico svg {
+  color: var(--cf-orange, #db6937) !important;
+  background: transparent !important;
+}
+.np-cc-btn.is-on .np-cc-ico svg rect,
+.np-cc-btn[aria-pressed="true"] .np-cc-ico svg rect {
+  fill: none !important;
+  stroke: var(--cf-orange, #db6937) !important;
+}
+.np-cc-btn.is-on .np-cc-ico svg text,
+.np-cc-btn[aria-pressed="true"] .np-cc-ico svg text {
+  fill: var(--cf-orange, #db6937) !important;
+  stroke: none !important;
+}
+.np-cc-btn.is-on .np-cc-lang,
+.np-cc-btn.is-on .np-cc-lang:not([hidden]) {
+  color: rgba(255, 255, 255, 0.9) !important;
+  background: transparent !important;
+}
+
+
+/* ===== Settings: left-aligned text + fade separators ===== */
+.np-panel .np-option,
+.np-panel .np-list button,
+.np-panel .np-source,
+.np-panel .np-opt,
+.np-subs-drawer .np-option,
+.np-subs-drawer .np-list button {
+  justify-content: flex-start !important;
+  text-align: left !important;
+  align-items: center !important;
+}
+
+.np-panel .np-option-main,
+.np-subs-drawer .np-option-main {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  text-align: left !important;
+  align-items: flex-start !important;
+}
+
+.np-panel .np-option-title,
+.np-panel .np-option-sub,
+.np-subs-drawer .np-option-title,
+.np-subs-drawer .np-option-sub {
+  text-align: left !important;
+  width: 100%;
+}
+
+.np-panel .np-option-check,
+.np-panel .np-sub-group-chevron,
+.np-subs-drawer .np-option-check {
+  margin-left: auto !important;
+  flex-shrink: 0 !important;
+}
+
+.np-panel .np-sub-group-head {
+  justify-content: flex-start !important;
+}
+
+.np-panel .np-seg {
+  justify-content: flex-start !important;
+}
+.np-panel .np-seg button {
+  flex: 0 0 auto !important;
+  text-align: left !important;
+  padding-left: 0.55rem !important;
+  padding-right: 0.55rem !important;
+}
+.np-panel .np-seg button.is-active::after {
+  left: 0.55rem !important;
+  right: 0.55rem !important;
+}
+
+.np-panel .np-panel-head,
+.np-panel .np-panel-head h2 {
+  text-align: left !important;
+  justify-content: space-between !important;
+}
+
+.np-panel .np-style-top {
+  display: flex !important;
+  justify-content: space-between !important;
+  text-align: left !important;
+  width: 100%;
+}
+.np-panel .np-toggle-copy {
+  text-align: left !important;
+  align-items: flex-start !important;
+}
+
+/* Soft fade hairlines between rows (settings + FS subs drawer) */
+.np-panel .np-list > * + *,
+.np-panel .np-sub-groups > * + *,
+.np-panel .np-style-cards > * + *,
+.np-panel .np-style-cards + .np-toggle-row,
+.np-panel .np-sub-group-tracks > * + *,
+.np-subs-drawer .np-list > * + *,
+.np-subs-drawer .np-sub-groups > * + *,
+.np-subs-drawer .np-sub-group-tracks > * + * {
+  position: relative !important;
+}
+.np-panel .np-list > * + *::before,
+.np-panel .np-sub-groups > * + *::before,
+.np-panel .np-style-cards > * + *::before,
+.np-panel .np-style-cards + .np-toggle-row::before,
+.np-panel .np-sub-group-tracks > * + *::before,
+.np-subs-drawer .np-list > * + *::before,
+.np-subs-drawer .np-sub-groups > * + *::before,
+.np-subs-drawer .np-sub-group-tracks > * + *::before {
+  content: "" !important;
+  position: absolute !important;
+  left: 0.45rem !important;
+  right: 0.45rem !important;
+  top: 0 !important;
+  height: 1px !important;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.03) 18%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 82%,
+    transparent 100%
+  ) !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+
+/* Stronger fade under Off / between major blocks */
+.np-panel .np-sub-off,
+.np-subs-drawer .np-sub-off {
+  border-bottom: 0 !important;
+  margin-bottom: 0.15rem !important;
+  padding-bottom: 0.7rem !important;
+}
+.np-panel .np-sub-off::after,
+.np-subs-drawer .np-sub-off::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 0.35rem !important;
+  right: 0.35rem !important;
+  bottom: 0 !important;
+  height: 1px !important;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.04) 14%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.04) 86%,
+    transparent 100%
+  ) !important;
+  pointer-events: none !important;
+}
+
+/* Keep group open tracks indented without double-centering */
+.np-panel .np-sub-track,
+.np-subs-drawer .np-sub-track {
+  justify-content: flex-start !important;
+  text-align: left !important;
+}
+
+
+/* Captions tab: no fade separators */
+.np-panel section[data-panel="style"] .np-style-cards > * + *::before,
+.np-panel section[data-panel="style"] .np-style-cards + .np-toggle-row::before,
+.np-panel section[data-panel="style"] .np-style-card::before,
+.np-panel section[data-panel="style"] .np-toggle-row::before {
+  display: none !important;
+  content: none !important;
+}
+.np-panel section[data-panel="style"] .np-style-card,
+.np-panel section[data-panel="style"] .np-toggle-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+.np-panel section[data-panel="style"] .np-style-card:last-child {
+  border-bottom: 0 !important;
+}

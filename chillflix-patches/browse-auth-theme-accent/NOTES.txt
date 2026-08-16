@@ -9,3 +9,4 @@ Browse auth theme + sheet bleed fix
 - IPTV/Games browse tiles: override a:hover/visited red so labels stay white
 - Watch Party modal: accent theme vars + dark Turnstile shell/render (visible pane only)
 - IPTV/Games labels: stronger #browse-sheet white overrides
+- Global theme pass: Live TV, Games, filters badge, Auto Play, party chip/Leave/chat/login/resume border all use --cf-orange*

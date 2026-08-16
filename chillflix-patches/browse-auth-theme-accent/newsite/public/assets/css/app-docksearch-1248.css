@@ -4402,7 +4402,7 @@ header.absolute {
   height: 1.15rem;
   padding: 0 0.3rem;
   border-radius: 999px;
-  background: #dc3545;
+  background: var(--cf-orange, #db6937);
   color: #fff;
   font-size: 0.68rem;
   font-weight: 700;
@@ -4444,8 +4444,8 @@ header.absolute {
 }
 
 .filters-chip:hover {
-  background: rgba(220, 53, 69, 0.22);
-  border-color: rgba(220, 53, 69, 0.45);
+  background: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.22);
+  border-color: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.45);
   color: #fff;
   text-decoration: none;
 }
@@ -5914,29 +5914,29 @@ body.filters-open {
 /* Primary CTA */
 #movie-managers .watch-now-btn,
 #btn-watch-now.movie-manager {
-  background: linear-gradient(180deg, #ef5b45 0%, #dc3545 100%) !important;
+  background: linear-gradient(180deg, var(--cf-orange, #db6937) 0%, var(--cf-orange-deep, #c43c2e) 100%) !important;
   border-color: transparent !important;
   color: #fff !important;
   font-weight: 800;
   padding: 0.5rem 1rem;
-  box-shadow: 0 4px 14px rgba(220, 53, 69, 0.35);
+  box-shadow: 0 4px 14px rgba(var(--cf-orange-deep-rgb, 196, 60, 46), 0.35);
 }
 #movie-managers .watch-now-btn:hover,
 #btn-watch-now.movie-manager:hover {
   filter: brightness(1.06);
-  background: linear-gradient(180deg, #f06650 0%, #e03d4d 100%) !important;
+  background: linear-gradient(180deg, var(--cf-orange, #db6937) 0%, var(--cf-orange-deep, #c43c2e) 100%) !important;
 }
 
 /* Trailer secondary */
 #movie-managers .movie-manager.trailer {
   display: inline-flex !important;
-  background: rgba(220, 53, 69, 0.12);
-  border-color: rgba(220, 53, 69, 0.35);
+  background: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.12);
+  border-color: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.35);
   color: var(--cf-orange-soft, #ffd2b8);
 }
 #movie-managers .movie-manager.trailer:hover {
-  background: rgba(220, 53, 69, 0.2);
-  border-color: rgba(220, 53, 69, 0.5);
+  background: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.2);
+  border-color: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.5);
   color: #fff;
 }
 
@@ -5948,12 +5948,12 @@ body.filters-open {
 #btn-autoplay.is-on,
 #btn-autoplay[aria-pressed="true"] {
   color: #fff;
-  background: rgba(220, 53, 69, 0.18);
-  border-color: rgba(220, 53, 69, 0.45);
+  background: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.18);
+  border-color: rgba(var(--cf-orange-rgb, 219, 105, 55), 0.45);
 }
 #btn-autoplay.is-on i,
 #btn-autoplay[aria-pressed="true"] i {
-  color: #ff5c6a;
+  color: var(--cf-orange-soft, #ffd2b8);
 }
 
 /* Share pinned right, icon-forward */

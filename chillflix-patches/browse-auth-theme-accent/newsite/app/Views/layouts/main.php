@@ -130,7 +130,7 @@ $extraJs = $extraJs ?? [];
     <link rel="stylesheet" href="<?= e(asset('vendor/tooltipster.bundle.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/swiper.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/episode-carousel.css')) ?>?v=20260813-teal-default1">
-    <link rel="stylesheet" href="<?= e(asset('css/app-docksearch-1248.css')) ?>?v=20260816-auth-theme5">
+    <link rel="stylesheet" href="<?= e(asset('css/app-docksearch-1248.css')) ?>?v=20260816-auth-theme6">
 <link rel="stylesheet" href="<?= e(asset('css/card-hover-preview.css')) ?>?v=20260813-touch-expand2">
 <link rel="stylesheet" href="<?= e(asset('css/perf-mode.css')) ?>?v=20260813-teal-default1">
 <link rel="stylesheet" href="<?= e(asset('css/card-poster-lifecycle.css')) ?>?v=20260813-teal-default1">
@@ -441,9 +441,9 @@ $extraJs = $extraJs ?? [];
 <script src="<?= e(asset('vendor/bootstrap.bundle.min.js')) ?>" defer></script>
 <script src="<?= e(asset('vendor/tooltipster.bundle.min.js')) ?>" defer></script>
 <script src="<?= e(asset('vendor/swiper.min.js')) ?>" defer></script>
-<link rel="stylesheet" href="<?= e(asset('css/continue-party.css')) ?>?v=20260816-party-theme1">
+<link rel="stylesheet" href="<?= e(asset('css/continue-party.css')) ?>?v=20260816-party-theme2">
 <link rel="stylesheet" href="<?= e(asset('css/home-personalize.css')) ?>?v=20260811-restore14">
-<script src="<?= e(asset('js/continue-party.js')) ?>?v=20260816-party-theme1" defer></script>
+<script src="<?= e(asset('js/continue-party.js')) ?>?v=20260816-party-theme2" defer></script>
 <link rel="stylesheet" href="<?= e(asset('css/inbox.css')) ?>?v=20260814-inbox6">
 <script src="<?= e(asset('js/inbox.js')) ?>?v=20260814-inbox6" defer></script>
 <script src="<?= e(asset('js/home-personalize.js')) ?>?v=20260813-teal-default1" defer></script>
