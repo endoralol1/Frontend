@@ -1,0 +1,4 @@
+Admin Ads UX fix:
+- Banner (above footer) toggle clearly labeled + visible switch CSS
+- Pop toggle stays disableable
+- "Show Pop on" placements nested under Pop only (not global)
