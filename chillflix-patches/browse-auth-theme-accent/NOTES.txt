@@ -5,3 +5,5 @@ Browse auth theme + sheet bleed fix
 - Browse sheet panel made fully opaque so Live TV/content no longer bleeds through
 
 - Watchlist hover: override global a:hover #dc3545 so cards stay theme/white
+
+- IPTV/Games browse tiles: override a:hover/visited red so labels stay white

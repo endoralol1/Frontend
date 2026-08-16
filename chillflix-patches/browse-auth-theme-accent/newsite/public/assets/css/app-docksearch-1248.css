@@ -11332,3 +11332,33 @@ body.browse-open [class*="live-"] {
 .browse-sheet a.browse-card:focus .browse-card-copy em {
   color: rgba(255, 255, 255, 0.55) !important;
 }
+
+
+/* ——— Browse tiles: IPTV/Games links stay white (no Bootstrap a:hover/visited red) ——— */
+.browse-sheet a.browse-tile,
+.browse-sheet a.browse-tile:link,
+.browse-sheet a.browse-tile:visited {
+  color: #fff !important;
+  text-decoration: none !important;
+}
+.browse-sheet a.browse-tile:hover,
+.browse-sheet a.browse-tile:focus,
+.browse-sheet a.browse-tile:focus-visible,
+.browse-sheet a.browse-tile:active {
+  color: #fff !important;
+  border-color: rgba(var(--cf-orange-rgb), 0.45) !important;
+  background: rgba(var(--cf-orange-rgb), 0.10) !important;
+  text-decoration: none !important;
+}
+.browse-sheet a.browse-tile .browse-tile-label,
+.browse-sheet a.browse-tile:hover .browse-tile-label,
+.browse-sheet a.browse-tile:focus .browse-tile-label,
+.browse-sheet a.browse-tile:visited .browse-tile-label {
+  color: #fff !important;
+}
+.browse-sheet a.browse-tile:hover .browse-tile-icon.tone-blue,
+.browse-sheet a.browse-tile:focus .browse-tile-icon.tone-blue { color: #60a5fa !important; }
+.browse-sheet a.browse-tile:hover .browse-tile-icon.tone-purple,
+.browse-sheet a.browse-tile:focus .browse-tile-icon.tone-purple { color: #a78bfa !important; }
+.browse-sheet a.browse-tile:hover .browse-tile-icon.tone-yellow,
+.browse-sheet a.browse-tile:focus .browse-tile-icon.tone-yellow { color: #fbbf24 !important; }
