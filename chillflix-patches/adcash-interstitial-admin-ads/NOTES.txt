@@ -1,0 +1,12 @@
+Ads: AdCash interstitial + admin enable/disable
+
+- SiteAds service (storage/cache/site-ads.json)
+- Admin page /admin/ads with master / banner / interstitial toggles
+- Layout loads aclib only when ads are on; interstitial zone 11979762; banner 11970470
+- Admin pages never render ads
+
+Deploy:
+1. Copy SiteAds.php, ads.php, main.php
+2. require SiteAds in bootstrap-services.php
+3. Add /admin/ads + /api/admin/ads routes
+4. Add Ads nav link on admin pages
