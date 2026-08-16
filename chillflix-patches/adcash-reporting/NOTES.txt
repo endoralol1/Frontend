@@ -1,0 +1,15 @@
+AdCash Publisher Reporting API v2 in Admin → Ads.
+
+- Service: app/Services/AdCashReporting.php
+- UI: earnings cards + by-day / by-zone tables on /admin/ads
+- APIs:
+  - GET  /api/admin/ads/earnings?start_date=&end_date=
+  - POST /api/admin/ads/reporting-token  { "apiToken": "..." }  (admin only)
+- Token stored in storage/cache/adcash-reporting.json (chmod 600), never committed.
+- Access tokens cached ~14 minutes in storage/cache/adcash-access-token.json
+
+Deploy notes:
+1. Copy AdCashReporting.php + updated ads.php
+2. require_once AdCashReporting in bootstrap-services.php
+3. Insert earnings routes after /api/admin/ads POST
+4. Write API token to storage (or paste in admin UI)
