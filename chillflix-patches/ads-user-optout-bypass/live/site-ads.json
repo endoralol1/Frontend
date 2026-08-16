@@ -1,0 +1,16 @@
+{
+    "enabled": true,
+    "banner": true,
+    "interstitial": false,
+    "videoSlider": false,
+    "pop": true,
+    "bannerZone": "11970470",
+    "interstitialZone": "11979762",
+    "videoSliderZone": "11979774",
+    "popZone": "11979882",
+    "antiAdblockSrc": "/assets/js/k7m2qx9p.js",
+    "placements": [
+        "everywhere"
+    ],
+    "updated": 1786864490
+}
