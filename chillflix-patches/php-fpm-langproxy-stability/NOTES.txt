@@ -1,0 +1,9 @@
+# PHP-FPM + lang-proxy stability
+
+## Problems
+- PHP-FPM `pm.max_children=25` saturated → nginx `Resource temporarily unavailable` → 502
+- `StreamLangProxy::httpGetBinary` buffered 80–100MB segments in RAM → Fatal OOM at 128M
+
+## Fixes
+1. StreamLangProxy: download/stream segments via disk/passthrough (no giant PHP strings)
+2. PHP-FPM pool: raise children + recycle workers + terminate hung requests
