@@ -412,22 +412,18 @@ $navTv = is_active('/tv-series') || (bool) preg_match('#^/tv(/|$)#', $path);
                     </section>
 
                     <section class="browse-settings-block">
-                        <h4 class="browse-settings-label">Performance</h4>
+                        <h4 class="browse-settings-label">Options</h4>
                         <div class="browse-settings-toggle-row">
                             <div class="browse-settings-toggle-copy">
                                 <strong>Performance mode</strong>
-                                <em>Turns off card trailers (hover on desktop, long-press on phone).</em>
+                                <em>Turns off card trailers (hover / long-press).</em>
                             </div>
                             <button type="button" class="browse-settings-switch" id="browse-settings-performance" role="switch" aria-checked="false" aria-label="Performance mode"></button>
                         </div>
-                    </section>
-
-                    <section class="browse-settings-block">
-                        <h4 class="browse-settings-label">Ads</h4>
                         <div class="browse-settings-toggle-row">
                             <div class="browse-settings-toggle-copy">
                                 <strong>Pop ads</strong>
-                                <em>Turn off pop-ups. Banner and other ads still follow site settings.</em>
+                                <em>Turn off pop-ups. Other ads still follow site settings.</em>
                             </div>
                             <button type="button" class="browse-settings-switch" id="browse-settings-ads" role="switch" aria-checked="true" aria-label="Pop ads"></button>
                         </div>

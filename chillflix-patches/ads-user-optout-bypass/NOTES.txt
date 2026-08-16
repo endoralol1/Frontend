@@ -7,3 +7,5 @@ Ads audience + user Pop opt-out + admin bypass
 - Banner (above footer) toggle highlighted + gated via SiteAds::unitOn('banner')
 - API saves popBypassUserOptOut
 - JS bump: app.docksearch-1236.js?v=20260816-ads-pref1
+
+- Settings panel compacted (CSS densify + merge Performance/Ads into Options)
