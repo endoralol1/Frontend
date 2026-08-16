@@ -1,0 +1,6 @@
+Add AdCash Video Slider (zone 11979774) with admin toggle.
+
+- SiteAds: videoSlider + videoSliderZone
+- Layout: aclib.runVideoSlider when enabled
+- Admin Ads page: Video slider switch
+- API save includes videoSlider
