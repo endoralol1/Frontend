@@ -1,0 +1,9 @@
+; Applied on VPS /etc/php/8.1/fpm/pool.d/www.conf
+pm = dynamic
+pm.max_children = 50
+pm.start_servers = 10
+pm.min_spare_servers = 5
+pm.max_spare_servers = 20
+pm.max_requests = 500
+request_terminate_timeout = 120
+listen.backlog = 1024
