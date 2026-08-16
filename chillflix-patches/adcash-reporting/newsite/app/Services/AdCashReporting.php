@@ -418,7 +418,16 @@ final class AdCashReporting
         $tmp = $path . '.tmp';
         if (@file_put_contents($tmp, $json, LOCK_EX) !== false) {
             @rename($tmp, $path);
-            @chmod($path, 0600);
+            // Readable/writable by the web user (php-fpm), not root-only.
+            @chmod($path, 0660);
+            $webUser = 'www-data';
+            if (function_exists('posix_getpwnam')) {
+                $pw = @posix_getpwnam($webUser);
+                if (is_array($pw) && isset($pw['uid'], $pw['gid'])) {
+                    @chown($path, (int) $pw['uid']);
+                    @chgrp($path, (int) $pw['gid']);
+                }
+            }
         }
     }
 }
