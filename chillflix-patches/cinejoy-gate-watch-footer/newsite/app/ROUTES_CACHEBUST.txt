@@ -1,0 +1,1 @@
+sed replace watch-player.css ?v=20260816-theme1 -> ?v=20260816-watch-footer1
