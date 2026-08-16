@@ -11301,3 +11301,34 @@ body.browse-open .live-shell,
 body.browse-open [class*="live-"] {
   /* keep page visible under dimmed backdrop only */
 }
+
+
+/* ——— Browse cards: stop global a:hover Bootstrap red ——— */
+.browse-sheet a.browse-card,
+.browse-sheet a.browse-card:visited {
+  color: #fff;
+}
+.browse-sheet a.browse-card:hover,
+.browse-sheet a.browse-card:focus,
+.browse-sheet a.browse-card:focus-visible,
+.browse-sheet a.browse-card:active {
+  color: #fff !important;
+  border-color: rgba(var(--cf-orange-rgb), 0.45) !important;
+  background: rgba(var(--cf-orange-rgb), 0.12) !important;
+  text-decoration: none !important;
+}
+.browse-sheet a.browse-card:hover strong,
+.browse-sheet a.browse-card:focus strong,
+.browse-sheet a.browse-card:hover .browse-card-copy,
+.browse-sheet a.browse-card:focus .browse-card-copy {
+  color: #fff !important;
+}
+.browse-sheet a.browse-card:hover .browse-card-icon,
+.browse-sheet a.browse-card:focus .browse-card-icon {
+  color: var(--cf-orange-soft, #fff) !important;
+  background: rgba(var(--cf-orange-rgb), 0.22) !important;
+}
+.browse-sheet a.browse-card:hover .browse-card-copy em,
+.browse-sheet a.browse-card:focus .browse-card-copy em {
+  color: rgba(255, 255, 255, 0.55) !important;
+}

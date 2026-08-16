@@ -3,3 +3,5 @@ Browse auth theme + sheet bleed fix
 - Login/Register tabs + Sign in button use theme accent
 - Create account (.browse-auth-cta-card.is-accent) uses theme accent (was hardcoded red)
 - Browse sheet panel made fully opaque so Live TV/content no longer bleeds through
+
+- Watchlist hover: override global a:hover #dc3545 so cards stay theme/white
