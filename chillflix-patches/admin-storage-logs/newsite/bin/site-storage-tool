@@ -1,0 +1,97 @@
+#!/bin/bash
+# Privileged helper for Vuflix admin storage cleans (invoked via sudo from PHP-FPM).
+set -euo pipefail
+
+cmd="${1:-}"
+id="${2:-}"
+
+fmt_bytes() {
+  local b="${1:-0}"
+  if (( b < 1024 )); then echo "${b} B"
+  elif (( b < 1048576 )); then echo "$(awk -v x="$b" 'BEGIN{printf "%.1f KB", x/1024}')"
+  elif (( b < 1073741824 )); then echo "$(awk -v x="$b" 'BEGIN{printf "%.1f MB", x/1048576}')"
+  else echo "$(awk -v x="$b" 'BEGIN{printf "%.2f GB", x/1073741824}')"
+  fi
+}
+
+dir_bytes() {
+  local d="$1"
+  if [[ ! -d "$d" ]]; then echo 0; return; fi
+  du -sb "$d" 2>/dev/null | awk '{print $1}'
+}
+
+clean_pm2() {
+  local freed=0 n=0
+  local dir="/root/.pm2/logs"
+  [[ -d "$dir" ]] || { echo "{\"ok\":true,\"message\":\"PM2 logs missing\",\"freedBytes\":0}"; return; }
+  shopt -s nullglob
+  for f in "$dir"/*; do
+    [[ -f "$f" ]] || continue
+    local sz
+    sz=$(stat -c%s "$f" 2>/dev/null || echo 0)
+    : > "$f"
+    freed=$((freed + sz))
+    n=$((n + 1))
+  done
+  echo "{\"ok\":true,\"message\":\"Truncated ${n} PM2 log file(s).\",\"freedBytes\":${freed}}"
+}
+
+clean_npm() {
+  local before after
+  before=$(dir_bytes /root/.npm)
+  if command -v npm >/dev/null 2>&1; then
+    npm cache clean --force >/dev/null 2>&1 || true
+  fi
+  rm -rf /root/.npm/_cacache /root/.npm/_logs /root/.npm/_npx 2>/dev/null || true
+  after=$(dir_bytes /root/.npm)
+  local freed=$(( before > after ? before - after : 0 ))
+  echo "{\"ok\":true,\"message\":\"Cleared npm cache.\",\"freedBytes\":${freed}}"
+}
+
+clean_root_cache() {
+  local before after
+  before=$(dir_bytes /root/.cache)
+  # Keep structure; wipe contents safely
+  if [[ -d /root/.cache ]]; then
+    find /root/.cache -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
+  fi
+  after=$(dir_bytes /root/.cache)
+  local freed=$(( before > after ? before - after : 0 ))
+  echo "{\"ok\":true,\"message\":\"Cleared root user cache.\",\"freedBytes\":${freed}}"
+}
+
+size_one() {
+  local path="$1"
+  local bytes count
+  if [[ -d "$path" ]]; then
+    bytes=$(du -sb "$path" 2>/dev/null | awk '{print $1}')
+    count=$(find "$path" -type f 2>/dev/null | wc -l | tr -d ' ')
+  else
+    bytes=0
+    count=0
+  fi
+  echo "{\"bytes\":${bytes:-0},\"count\":${count:-0}}"
+}
+
+case "$cmd" in
+  size)
+    case "$id" in
+      pm2_logs) size_one /root/.pm2/logs ;;
+      npm_cache) size_one /root/.npm ;;
+      root_cache) size_one /root/.cache ;;
+      *) echo "{\"bytes\":0,\"count\":0}" ;;
+    esac
+    ;;
+  clean)
+    case "$id" in
+      pm2_logs) clean_pm2 ;;
+      npm_cache) clean_npm ;;
+      root_cache) clean_root_cache ;;
+      *) echo "{\"ok\":false,\"message\":\"Unknown privileged id\",\"error\":\"unknown\"}"; exit 1 ;;
+    esac
+    ;;
+  *)
+    echo "{\"ok\":false,\"message\":\"Usage: site-storage-tool size|clean <id>\",\"error\":\"usage\"}"
+    exit 1
+    ;;
+esac
