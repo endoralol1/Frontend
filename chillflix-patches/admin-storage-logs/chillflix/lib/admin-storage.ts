@@ -1,0 +1,229 @@
+import "server-only"
+
+import { execSync } from "child_process"
+import * as fs from "fs"
+import * as path from "path"
+
+export type AdminStorageItem = {
+    id: string
+    label: string
+    path: string
+    bytes: number
+    count: number
+    safe: boolean
+    note: string
+}
+
+function dirBytes(dir: string): { bytes: number; count: number } {
+    if (!fs.existsSync(dir)) return { bytes: 0, count: 0 }
+    let bytes = 0
+    let count = 0
+    const walk = (d: string) => {
+        let entries: fs.Dirent[]
+        try {
+            entries = fs.readdirSync(d, { withFileTypes: true })
+        } catch {
+            return
+        }
+        for (const entry of entries) {
+            const full = path.join(d, entry.name)
+            try {
+                if (entry.isDirectory()) walk(full)
+                else if (entry.isFile()) {
+                    count += 1
+                    bytes += fs.statSync(full).size
+                }
+            } catch {
+                // skip unreadable
+            }
+        }
+    }
+    walk(dir)
+    return { bytes, count }
+}
+
+function globBytes(pattern: string): { bytes: number; count: number } {
+    try {
+        const out = execSync(`bash -lc 'shopt -s nullglob; files=(${pattern}); echo \${#files[@]}; du -cb \${files[@]} 2>/dev/null | tail -1'`, {
+            encoding: "utf8",
+            maxBuffer: 8 * 1024 * 1024,
+        })
+        const lines = out.trim().split(/\n/)
+        const count = Number(lines[0] || 0)
+        const bytes = Number((lines[1] || "0").split(/\s+/)[0] || 0)
+        return { bytes: Number.isFinite(bytes) ? bytes : 0, count: Number.isFinite(count) ? count : 0 }
+    } catch {
+        return { bytes: 0, count: 0 }
+    }
+}
+
+export function getDiskStats() {
+    try {
+        const out = execSync("df -B1 / | tail -1", { encoding: "utf8" })
+        const parts = out.trim().split(/\s+/)
+        const total = Number(parts[1] || 0)
+        const used = Number(parts[2] || 0)
+        const available = Number(parts[3] || 0)
+        const usedPercent = total > 0 ? Math.round((used / total) * 1000) / 10 : 0
+        return { totalBytes: total, usedBytes: used, availableBytes: available, usedPercent, mount: "/" }
+    } catch {
+        return { totalBytes: 0, usedBytes: 0, availableBytes: 0, usedPercent: 0, mount: "/" }
+    }
+}
+
+export function getAdminStorageInventory(): {
+    disk: ReturnType<typeof getDiskStats>
+    items: AdminStorageItem[]
+    skipped: Array<{ label: string; reason: string }>
+} {
+    const nginxGz = globBytes("/var/log/nginx/{vuflix.access,chillflix.cf,access,error}.log.*.gz")
+    const pm2 = dirBytes("/root/.pm2/logs")
+    const npm = dirBytes("/root/.npm")
+    const rootCache = dirBytes("/root/.cache")
+
+    return {
+        disk: getDiskStats(),
+        items: [
+            {
+                id: "nginx_gz",
+                label: "Old nginx logs (.gz)",
+                path: "/var/log/nginx/*.log.*.gz",
+                bytes: nginxGz.bytes,
+                count: nginxGz.count,
+                safe: true,
+                note: "Compressed rotations. Always OK to delete.",
+            },
+            {
+                id: "pm2_logs",
+                label: "PM2 process logs",
+                path: "/root/.pm2/logs",
+                bytes: pm2.bytes,
+                count: pm2.count,
+                safe: true,
+                note: "Truncates stdout/stderr logs. Apps keep running.",
+            },
+            {
+                id: "npm_cache",
+                label: "npm cache",
+                path: "/root/.npm",
+                bytes: npm.bytes,
+                count: npm.count,
+                safe: true,
+                note: "Safe. Next install may re-download packages.",
+            },
+            {
+                id: "root_cache",
+                label: "Root user cache",
+                path: "/root/.cache",
+                bytes: rootCache.bytes,
+                count: rootCache.count,
+                safe: true,
+                note: "Generic caches. Does not touch live site builds.",
+            },
+        ],
+        skipped: [
+            {
+                label: "Live Chillflix .next build",
+                reason: "Left alone on purpose — clearing cache slows the site; wiping needs a full rebuild.",
+            },
+            {
+                label: "Vuflix stream temp (cfhls)",
+                reason: "Created by Vuflix only — clean it from Vuflix Admin → Storage.",
+            },
+            {
+                label: "Vuflix API / TMDB JSON cache",
+                reason: "Vuflix-only. Button is there on Vuflix; leave it if you have space.",
+            },
+        ],
+    }
+}
+
+export function cleanAdminStorageTarget(id: string): { ok: true; message: string; freedBytes: number } | { error: string; status: number } {
+    if (id === "nginx_gz") {
+        const before = globBytes("/var/log/nginx/{vuflix.access,chillflix.cf,access,error}.log.*.gz").bytes
+        try {
+            execSync(
+                "find /var/log/nginx -maxdepth 1 -type f \\( -name 'vuflix.access.log.*.gz' -o -name 'chillflix.cf.log.*.gz' -o -name 'access.log.*.gz' -o -name 'error.log.*.gz' \\) -delete",
+                { stdio: "ignore", timeout: 60_000 }
+            )
+        } catch {
+            // ignore
+        }
+        const after = globBytes("/var/log/nginx/{vuflix.access,chillflix.cf,access,error}.log.*.gz").bytes
+        return {
+            ok: true,
+            message: "Deleted old nginx .gz logs.",
+            freedBytes: Math.max(0, before - after),
+        }
+    }
+
+    if (id === "pm2_logs") {
+        const dir = "/root/.pm2/logs"
+        const before = dirBytes(dir).bytes
+        try {
+            execSync(`find ${dir} -type f -exec truncate -s 0 {} +`, {
+                stdio: "ignore",
+                timeout: 60_000,
+            })
+        } catch {
+            if (fs.existsSync(dir)) {
+                for (const name of fs.readdirSync(dir)) {
+                    const full = path.join(dir, name)
+                    try {
+                        if (fs.statSync(full).isFile()) fs.writeFileSync(full, "")
+                    } catch {
+                        // skip
+                    }
+                }
+            }
+        }
+        const after = dirBytes(dir).bytes
+        return {
+            ok: true,
+            message: "Truncated PM2 log files.",
+            freedBytes: Math.max(0, before - after),
+        }
+    }
+
+    if (id === "npm_cache") {
+        const before = dirBytes("/root/.npm").bytes
+        try {
+            execSync("npm cache clean --force", { stdio: "ignore", timeout: 120_000 })
+        } catch {
+            // continue
+        }
+        try {
+            execSync("rm -rf /root/.npm/_cacache /root/.npm/_logs /root/.npm/_npx", {
+                stdio: "ignore",
+                timeout: 120_000,
+            })
+        } catch {
+            // ignore
+        }
+        const after = dirBytes("/root/.npm").bytes
+        return { ok: true, message: "Cleared npm cache.", freedBytes: Math.max(0, before - after) }
+    }
+
+    if (id === "root_cache") {
+        const before = dirBytes("/root/.cache").bytes
+        try {
+            execSync("find /root/.cache -mindepth 1 -maxdepth 1 -exec rm -rf {} +", {
+                stdio: "ignore",
+                timeout: 180_000,
+            })
+        } catch {
+            // ignore
+        }
+        const after = dirBytes("/root/.cache").bytes
+        return { ok: true, message: "Cleared root user cache.", freedBytes: Math.max(0, before - after) }
+    }
+
+    return { error: "Unknown storage target.", status: 404 }
+}
+
+export function formatStorageBytes(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`
+}
