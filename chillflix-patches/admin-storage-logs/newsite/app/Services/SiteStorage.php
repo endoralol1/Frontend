@@ -23,7 +23,7 @@ final class SiteStorage
             'note' => 'Leftover Vuflix stream proxy temps. Safe to delete anytime.',
         ];
 
-        $cacheDir = base_path('storage/cache');
+        $cacheDir = self::cacheDir();
         $cache = self::scanDir($cacheDir);
         $items[] = [
             'id' => 'tmdb_cache',
@@ -108,6 +108,14 @@ final class SiteStorage
         return $items;
     }
 
+    private static function cacheDir(): string
+    {
+        if (function_exists('config')) {
+            return (string) config('cache_dir', dirname(__DIR__, 2) . '/storage/cache');
+        }
+        return dirname(__DIR__, 2) . '/storage/cache';
+    }
+
     /** @return array{bytes:int,count:int} */
     private static function privilegedSize(string $id): array
     {
@@ -151,7 +159,7 @@ final class SiteStorage
     {
         return match ($id) {
             'cfhls' => self::cleanGlob('/tmp/cfhls_*', 'Stream temp files'),
-            'tmdb_cache' => self::cleanDirFiles(base_path('storage/cache'), 'Vuflix API cache'),
+            'tmdb_cache' => self::cleanDirFiles(self::cacheDir(), 'Vuflix API cache'),
             'nginx_gz' => self::cleanNginxGz(),
             'pm2_logs', 'npm_cache', 'root_cache' => self::cleanPrivileged($id),
             default => str_starts_with($id, 'log:')

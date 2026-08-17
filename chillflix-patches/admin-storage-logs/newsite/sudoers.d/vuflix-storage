@@ -1,1 +1,1 @@
-www-data ALL=(root) NOPASSWD: /usr/local/sbin/site-storage-tool
+www-data ALL=(root) NOPASSWD: /usr/local/sbin/site-storage-tool *
