@@ -69,7 +69,7 @@ export function AdminStorage() {
     }, [load])
 
     const clean = async (id: string, label: string) => {
-        if (!confirm(`Clean "${label}"? Safe leftovers / caches only.`)) return
+        if (!confirm(`Clean "${label}"?\n\nSafe leftovers / caches only.`)) return
         setBusyId(id)
         try {
             const res = await fetch("/api/admin/storage", {
@@ -77,18 +77,17 @@ export function AdminStorage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id }),
             })
-            const json = await res.json()
-            if (!res.ok) throw new Error(json.error || "Clean failed")
-            toast({
-                title: json.message || "Cleaned",
-                description: json.freedBytes ? `Freed ${formatBytes(json.freedBytes)}` : undefined,
-            })
+            const json = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(json.error || `Clean failed (HTTP ${res.status})`)
+            const title = json.message || "Cleaned"
+            const desc = json.freedBytes ? `Freed ${formatBytes(json.freedBytes)}` : undefined
+            toast({ title, description: desc })
+            window.alert(desc ? `${title}\n${desc}` : title)
             await load()
         } catch (error) {
-            toast({
-                title: error instanceof Error ? error.message : "Clean failed",
-                variant: "destructive",
-            })
+            const message = error instanceof Error ? error.message : "Clean failed"
+            toast({ title: message, variant: "destructive" })
+            window.alert(`Clean failed:\n${message}`)
         } finally {
             setBusyId(null)
         }

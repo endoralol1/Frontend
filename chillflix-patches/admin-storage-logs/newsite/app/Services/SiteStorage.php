@@ -157,9 +157,12 @@ final class SiteStorage
      */
     public static function clean(string $id): array
     {
+        @set_time_limit(600);
+        @ini_set('max_execution_time', '600');
+
         return match ($id) {
-            'cfhls' => self::cleanGlob('/tmp/cfhls_*', 'Stream temp files'),
-            'tmdb_cache' => self::cleanDirFiles(self::cacheDir(), 'Vuflix API cache'),
+            'cfhls' => self::cleanCfhls(),
+            'tmdb_cache' => self::cleanDirFast(self::cacheDir(), 'Vuflix API cache'),
             'nginx_gz' => self::cleanNginxGz(),
             'pm2_logs', 'npm_cache', 'root_cache' => self::cleanPrivileged($id),
             default => str_starts_with($id, 'log:')
@@ -293,18 +296,17 @@ final class SiteStorage
         if (!is_dir($dir)) {
             return ['bytes' => 0, 'count' => 0];
         }
+        // Fast path via du/find (PHP iterators choke on huge caches)
         $bytes = 0;
         $count = 0;
-        $it = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS)
-        );
-        foreach ($it as $file) {
-            /** @var SplFileInfo $file */
-            if ($file->isFile()) {
-                $count++;
-                $bytes += (int) $file->getSize();
-            }
+        $out = [];
+        @exec('du -sb ' . escapeshellarg($dir) . ' 2>/dev/null', $out);
+        if (!empty($out[0])) {
+            $bytes = (int) preg_replace('/\D.*$/', '', $out[0]);
         }
+        $cout = [];
+        @exec('find ' . escapeshellarg($dir) . ' -type f 2>/dev/null | wc -l', $cout);
+        $count = (int) trim($cout[0] ?? '0');
         return ['bytes' => $bytes, 'count' => $count];
     }
 
@@ -324,50 +326,52 @@ final class SiteStorage
     }
 
     /** @return array{ok:bool,message:string,freedBytes:int} */
-    private static function cleanGlob(string $pattern, string $label): array
+    private static function cleanCfhls(): array
     {
-        $freed = 0;
-        $n = 0;
-        foreach (glob($pattern) ?: [] as $f) {
-            if (!is_file($f)) {
-                continue;
-            }
-            $sz = (int) (@filesize($f) ?: 0);
-            if (@unlink($f)) {
-                $freed += $sz;
-                $n++;
-            }
-        }
+        $before = self::scanGlob('/tmp/cfhls_*')['bytes'];
+        $out = [];
+        $code = 0;
+        @exec('find /tmp -maxdepth 1 -type f -name \'cfhls_*\' -delete 2>/dev/null; echo done', $out, $code);
+        $after = self::scanGlob('/tmp/cfhls_*')['bytes'];
+        $freed = max(0, $before - $after);
         return [
             'ok' => true,
-            'message' => "Removed {$n} {$label} file(s).",
+            'message' => $freed > 0
+                ? 'Removed stream temp (cfhls) files.'
+                : 'No stream temp (cfhls) files left.',
             'freedBytes' => $freed,
         ];
     }
 
     /** @return array{ok:bool,message:string,freedBytes:int} */
-    private static function cleanDirFiles(string $dir, string $label): array
+    private static function cleanDirFast(string $dir, string $label): array
     {
         if (!is_dir($dir)) {
             return ['ok' => true, 'message' => "{$label} already empty.", 'freedBytes' => 0];
         }
-        $freed = 0;
-        $n = 0;
-        foreach (glob(rtrim($dir, '/') . '/*') ?: [] as $f) {
-            if (!is_file($f)) {
-                continue;
-            }
-            $sz = (int) (@filesize($f) ?: 0);
-            if (@unlink($f)) {
-                $freed += $sz;
-                $n++;
-            }
-        }
+        $before = self::scanDir($dir)['bytes'];
+        // Delete contents only — keep the directory itself
+        $cmd = 'find ' . escapeshellarg($dir) . ' -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null';
+        @exec($cmd);
+        clearstatcache();
+        $after = self::scanDir($dir)['bytes'];
         return [
             'ok' => true,
-            'message' => "Cleared {$n} {$label} file(s).",
-            'freedBytes' => $freed,
+            'message' => "Cleared {$label}.",
+            'freedBytes' => max(0, $before - $after),
         ];
+    }
+
+    /** @return array{ok:bool,message:string,freedBytes:int} */
+    private static function cleanGlob(string $pattern, string $label): array
+    {
+        return self::cleanCfhls();
+    }
+
+    /** @return array{ok:bool,message:string,freedBytes:int} */
+    private static function cleanDirFiles(string $dir, string $label): array
+    {
+        return self::cleanDirFast($dir, $label);
     }
 
     /** @return array{ok:bool,message:string,freedBytes:int} */

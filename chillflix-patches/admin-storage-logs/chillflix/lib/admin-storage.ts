@@ -140,57 +140,65 @@ export function getAdminStorageInventory(): {
 
 export function cleanAdminStorageTarget(id: string): { ok: true; message: string; freedBytes: number } | { error: string; status: number } {
     if (id === "nginx_gz") {
-        let freed = 0
-        let n = 0
-        for (const f of fs.readdirSync("/var/log/nginx")) {
-            if (!/\.(log)\.\d+\.gz$/.test(f)) continue
-            if (!/^(vuflix\.access|chillflix\.cf|access|error)\.log\.\d+\.gz$/.test(f)) continue
-            const full = path.join("/var/log/nginx", f)
-            try {
-                const sz = fs.statSync(full).size
-                fs.unlinkSync(full)
-                freed += sz
-                n += 1
-            } catch {
-                // skip
-            }
+        const before = globBytes("/var/log/nginx/{vuflix.access,chillflix.cf,access,error}.log.*.gz").bytes
+        try {
+            execSync(
+                "find /var/log/nginx -maxdepth 1 -type f \\( -name 'vuflix.access.log.*.gz' -o -name 'chillflix.cf.log.*.gz' -o -name 'access.log.*.gz' -o -name 'error.log.*.gz' \\) -delete",
+                { stdio: "ignore", timeout: 60_000 }
+            )
+        } catch {
+            // ignore
         }
-        return { ok: true, message: `Deleted ${n} old nginx .gz log(s).`, freedBytes: freed }
+        const after = globBytes("/var/log/nginx/{vuflix.access,chillflix.cf,access,error}.log.*.gz").bytes
+        return {
+            ok: true,
+            message: "Deleted old nginx .gz logs.",
+            freedBytes: Math.max(0, before - after),
+        }
     }
 
     if (id === "pm2_logs") {
         const dir = "/root/.pm2/logs"
-        if (!fs.existsSync(dir)) return { ok: true, message: "PM2 logs missing.", freedBytes: 0 }
-        let freed = 0
-        let n = 0
-        for (const name of fs.readdirSync(dir)) {
-            const full = path.join(dir, name)
-            try {
-                if (!fs.statSync(full).isFile()) continue
-                const sz = fs.statSync(full).size
-                fs.writeFileSync(full, "")
-                freed += sz
-                n += 1
-            } catch {
-                // skip
+        const before = dirBytes(dir).bytes
+        try {
+            execSync(`find ${dir} -type f -exec truncate -s 0 {} +`, {
+                stdio: "ignore",
+                timeout: 60_000,
+            })
+        } catch {
+            if (fs.existsSync(dir)) {
+                for (const name of fs.readdirSync(dir)) {
+                    const full = path.join(dir, name)
+                    try {
+                        if (fs.statSync(full).isFile()) fs.writeFileSync(full, "")
+                    } catch {
+                        // skip
+                    }
+                }
             }
         }
-        return { ok: true, message: `Truncated ${n} PM2 log file(s).`, freedBytes: freed }
+        const after = dirBytes(dir).bytes
+        return {
+            ok: true,
+            message: "Truncated PM2 log files.",
+            freedBytes: Math.max(0, before - after),
+        }
     }
 
     if (id === "npm_cache") {
         const before = dirBytes("/root/.npm").bytes
         try {
-            execSync("npm cache clean --force", { stdio: "ignore" })
+            execSync("npm cache clean --force", { stdio: "ignore", timeout: 120_000 })
         } catch {
-            // continue with rm
+            // continue
         }
-        for (const part of ["_cacache", "_logs", "_npx"]) {
-            try {
-                fs.rmSync(path.join("/root/.npm", part), { recursive: true, force: true })
-            } catch {
-                // skip
-            }
+        try {
+            execSync("rm -rf /root/.npm/_cacache /root/.npm/_logs /root/.npm/_npx", {
+                stdio: "ignore",
+                timeout: 120_000,
+            })
+        } catch {
+            // ignore
         }
         const after = dirBytes("/root/.npm").bytes
         return { ok: true, message: "Cleared npm cache.", freedBytes: Math.max(0, before - after) }
@@ -198,14 +206,13 @@ export function cleanAdminStorageTarget(id: string): { ok: true; message: string
 
     if (id === "root_cache") {
         const before = dirBytes("/root/.cache").bytes
-        if (fs.existsSync("/root/.cache")) {
-            for (const name of fs.readdirSync("/root/.cache")) {
-                try {
-                    fs.rmSync(path.join("/root/.cache", name), { recursive: true, force: true })
-                } catch {
-                    // skip
-                }
-            }
+        try {
+            execSync("find /root/.cache -mindepth 1 -maxdepth 1 -exec rm -rf {} +", {
+                stdio: "ignore",
+                timeout: 180_000,
+            })
+        } catch {
+            // ignore
         }
         const after = dirBytes("/root/.cache").bytes
         return { ok: true, message: "Cleared root user cache.", freedBytes: Math.max(0, before - after) }
