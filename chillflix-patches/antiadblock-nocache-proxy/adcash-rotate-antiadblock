@@ -1,0 +1,103 @@
+#!/bin/bash
+set -euo pipefail
+CDN_DIR="/var/www/chillflix-newsite/public/cdn"
+JS_DIR="/var/www/chillflix-newsite/public/assets/js"
+JSON="/var/www/chillflix-newsite/storage/cache/site-ads.json"
+TOOL="/opt/adcash/anti-adblock.sh"
+ALPH='abcdefghjkmnpqrstuvwxyz23456789'
+NAME=''
+for i in 1 2 3 4 5 6 7 8; do
+  NAME+=${ALPH:RANDOM%${#ALPH}:1}
+done
+NAME="${NAME}.js"
+mkdir -p "$JS_DIR" "$CDN_DIR"
+NEWPATH="$JS_DIR/$NAME"
+NEWSRC="/assets/js/$NAME"
+
+OLDSRC=$(python3 - <<'PY'
+import json
+print(json.load(open("/var/www/chillflix-newsite/storage/cache/site-ads.json")).get("antiAdblockSrc",""))
+PY
+)
+
+uninstall_one() {
+  local src="$1"
+  local base path
+  base="$(basename "$src")"
+  case "$src" in
+    /cdn/*.js|/n/*.js)
+      path="$CDN_DIR/$base"
+      ;;
+    /assets/js/*.js)
+      path="$JS_DIR/$base"
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+  if [[ -f "$path" ]]; then
+    bash "$TOOL" --uninstall "$path" >/dev/null || true
+    rm -f "$path"
+  fi
+}
+
+if [[ -n "$OLDSRC" ]]; then
+  uninstall_one "$OLDSRC"
+fi
+
+bash "$TOOL" --install "$NEWPATH" 5 >/dev/null
+chown www-data:www-data "$NEWPATH"
+chmod 644 "$NEWPATH"
+if [[ ! -s "$NEWPATH" ]] || [[ $(stat -c%s "$NEWPATH") -lt 1000 ]]; then
+  echo '{"ok":false,"message":"Download too small","error":"size"}'
+  exit 1
+fi
+
+# Keep only content-refresh cron for the active newsite lib; drop orphan newsite crons.
+python3 - <<PY
+import subprocess, re
+from pathlib import Path
+keep_marker = "# added-by-adblock $NAME"
+out = subprocess.check_output(["crontab", "-l"], text=True, stderr=subprocess.DEVNULL)
+lines = out.splitlines()
+kept = []
+for line in lines:
+    if "added-by-adblock" in line and (
+        "/var/www/chillflix-newsite/" in line
+        or "/chillflix-newsite/" in line
+    ):
+        # drop unless this is exactly the new file marker
+        if keep_marker not in line:
+            continue
+    kept.append(line)
+text = "\n".join(kept) + ("\n" if kept else "")
+subprocess.run(["crontab", "-"], input=text, text=True, check=True)
+print(f"crontab pruned; keep marker={keep_marker}")
+PY
+
+python3 - <<PY
+import json, time
+from pathlib import Path
+p = Path("$JSON")
+d = json.loads(p.read_text())
+now = int(time.time())
+d["antiAdblockSrc"] = "$NEWSRC"
+d["antiAdblockFile"] = "$NEWPATH"
+d["antiAdblockRotatedAt"] = now
+d["updated"] = now
+mins = int(d.get("antiAdblockAutoRotateMinutes") or 0)
+if mins <= 0:
+    mins = max(10, int(d.get("antiAdblockAutoRotateHours") or 24) * 60)
+d["antiAdblockAutoRotateMinutes"] = mins
+d["antiAdblockAutoRotateHours"] = max(1, int(round(mins / 60)) or 1)
+p.write_text(json.dumps(d, indent=4, ensure_ascii=False) + "\n")
+print(json.dumps({
+    "ok": True,
+    "message": "Rotated anti-adblock library to $NAME (assets/js, no-cache)",
+    "antiAdblockSrc": "$NEWSRC",
+    "antiAdblockRotatedAt": now,
+    "antiAdblockAutoRotate": bool(d.get("antiAdblockAutoRotate", False)),
+    "antiAdblockAutoRotateHours": int(d.get("antiAdblockAutoRotateHours") or 24),
+    "antiAdblockAutoRotateMinutes": int(d.get("antiAdblockAutoRotateMinutes") or 1440),
+}))
+PY
