@@ -10,10 +10,10 @@ for i in 1 2 3 4 5 6 7 8; do
   NAME+=${ALPH:RANDOM%${#ALPH}:1}
 done
 NAME="${NAME}.js"
-mkdir -p "$CDN_DIR"
-NEWPATH="$CDN_DIR/$NAME"
-# Public URL goes through PHP no-cache proxy (/n/) so Cloudflare cannot HIT for 4h.
-NEWSRC="/n/$NAME"
+mkdir -p "$JS_DIR" "$CDN_DIR"
+# Use /assets/js/ — this path worked on Brave earlier today; /cdn and /n were more block-list prone.
+NEWPATH="$JS_DIR/$NAME"
+NEWSRC="/assets/js/$NAME"
 
 OLDSRC=$(python3 - <<'PY'
 import json
@@ -64,7 +64,6 @@ d["antiAdblockSrc"] = "$NEWSRC"
 d["antiAdblockFile"] = "$NEWPATH"
 d["antiAdblockRotatedAt"] = now
 d["updated"] = now
-# keep user's timer; only ensure minutes present
 mins = int(d.get("antiAdblockAutoRotateMinutes") or 0)
 if mins <= 0:
     mins = max(10, int(d.get("antiAdblockAutoRotateHours") or 24) * 60)
@@ -73,7 +72,7 @@ d["antiAdblockAutoRotateHours"] = max(1, int(round(mins / 60)) or 1)
 p.write_text(json.dumps(d, indent=4, ensure_ascii=False) + "\n")
 print(json.dumps({
     "ok": True,
-    "message": "Rotated anti-adblock library to $NAME (no-cache /n/)",
+    "message": "Rotated anti-adblock library to $NAME (assets/js, no-cache)",
     "antiAdblockSrc": "$NEWSRC",
     "antiAdblockRotatedAt": now,
     "antiAdblockAutoRotate": bool(d.get("antiAdblockAutoRotate", False)),
