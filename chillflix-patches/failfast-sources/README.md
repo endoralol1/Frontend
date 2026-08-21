@@ -12,3 +12,10 @@ HLS previously had **no load timeout**, so the player stuck on that source.
 Now `armLoadWatchdog()` abandons a source if it never becomes playable within Auto-wait (clamped 8–20s), marks it failed in the Source menu, and moves on immediately.
 
 Live: `player.js?v=20260821-watchdog1`
+
+## watchdog2
+Do **not** clear the load watchdog on MANIFEST_PARSED / onReady alone.
+Only clear when media is actually playable (`readyState >= 2` and real duration).
+Otherwise Bingr-style hung streams stay selected at 0:00/0:00 forever.
+Timeout tightened to 6–12s; Source menu marks the slot failed.
+Live: `player.js?v=20260821-watchdog2`
