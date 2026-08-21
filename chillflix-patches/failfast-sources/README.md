@@ -19,3 +19,8 @@ Only clear when media is actually playable (`readyState >= 2` and real duration)
 Otherwise Bingr-style hung streams stay selected at 0:00/0:00 forever.
 Timeout tightened to 6–12s; Source menu marks the slot failed.
 Live: `player.js?v=20260821-watchdog2`
+
+## Huhu cold start
+`/api/huhu/stream` measured ~38s cold, ~4s warm. Short Bingr-style watchdog (6–12s) aborted the first click; second click worked warm.
+Fix: Huhu gets 45–90s load budget + background EN prefetch after scrape + status "Resolving Huhu…".
+Live: `player.js?v=20260821-huhu-cold1`
