@@ -1,0 +1,48 @@
+#!/bin/bash
+set -euo pipefail
+JSON="/var/www/chillflix-newsite/storage/cache/site-ads.json"
+LOG="/var/log/adcash-auto-rotate.log"
+ROTATE="/usr/local/sbin/adcash-rotate-antiadblock"
+
+decision="$(python3 - <<'PY'
+import json, time
+from pathlib import Path
+p = Path("/var/www/chillflix-newsite/storage/cache/site-ads.json")
+d = json.loads(p.read_text()) if p.exists() else {}
+if not d.get("antiAdblockAutoRotate"):
+    print("skip-off")
+    raise SystemExit(0)
+minutes = int(d.get("antiAdblockAutoRotateMinutes") or 0)
+if minutes <= 0:
+    hours = int(d.get("antiAdblockAutoRotateHours") or 24)
+    minutes = max(10, hours * 60)
+minutes = max(10, min(10080, minutes))
+last = int(d.get("antiAdblockRotatedAt") or 0)
+if last <= 0:
+    last = int(d.get("updated") or 0)
+due = last + minutes * 60
+now = int(time.time())
+if now < due:
+    print(f"skip-wait:{due - now}:{minutes}")
+    raise SystemExit(0)
+print(f"rotate:{minutes}:{now - last}")
+PY
+)"
+
+case "$decision" in
+  rotate:*)
+    {
+      echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) auto-rotate start ($decision)"
+      "$ROTATE"
+      echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) auto-rotate done"
+    } >>"$LOG" 2>&1
+    ;;
+  skip-off|skip-wait:*)
+    # quiet success when not due / disabled
+    exit 0
+    ;;
+  *)
+    echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) unexpected decision: $decision" >>"$LOG"
+    exit 1
+    ;;
+esac
