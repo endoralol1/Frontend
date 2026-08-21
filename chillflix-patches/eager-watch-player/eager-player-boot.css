@@ -1,0 +1,40 @@
+.browse-sheet a.browse-tile:focus .browse-tile-icon.tone-purple { color: #a78bfa !important; -webkit-text-fill-color: #a78bfa !important; }
+.browse-sheet a.browse-tile:hover .browse-tile-icon.tone-yellow,
+.browse-sheet a.browse-tile:focus .browse-tile-icon.tone-yellow { color: #fbbf24 !important; -webkit-text-fill-color: #fbbf24 !important; }
+
+
+/* ——— Mobile page end: less empty scroll under footer ——— */
+@media (max-width: 991.98px) {
+  body {
+    padding-bottom: calc(5.15rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .footer.footer--v3 .footer-v3-clearance {
+    height: 0.85rem !important;
+  }
+}
+
+
+/* eager-player-boot — show player shell ASAP on watch page */
+#movie-player.cf-eager-player:not(.np-active):not(.playing) .btn-play,
+#movie-player.cf-eager-player:not(.np-active):not(.playing) .player-trailer-label {
+  display: none !important;
+}
+#movie-player .cf-player-boot {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  color: rgba(255,255,255,.88);
+  font-size: .95rem;
+  font-weight: 600;
+  letter-spacing: .01em;
+  text-shadow: 0 1px 8px rgba(0,0,0,.55);
+  background: rgba(0,0,0,.28);
+}
+#movie-player.np-active .cf-player-boot,
+#movie-player.playing .cf-player-boot {
+  display: none !important;
+}
