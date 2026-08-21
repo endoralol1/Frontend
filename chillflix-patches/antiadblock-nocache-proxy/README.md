@@ -12,11 +12,14 @@ Same file bytes; Brave is often path/list sensitive. Restoring **`/assets/js/`**
 
 ## Live setup (VPS)
 
-1. **Rotate** installs under `public/assets/js/{8char}.js`, sets `antiAdblockSrc` to `/assets/js/…`
-2. **Nginx** `assets-antiadblock-nocache.conf` — quoted regex so 8‑char libs get `Cache-Control: no-store` (not the `/assets/` 7d immutable rule). Regex must be quoted because nginx treats bare `{8}` as a block.
-3. **CDN** `/cdn/` still has no-store (fallback). PHP `/n/` route remains but is **not** published by rotate.
+Per AdCash docs (`adbpage.com/adblock?v=3&format=js`):
 
-Verified: public `/assets/js/….js` → `cf-cache-status: BYPASS`, `cache-control: no-store`.
+1. **Cron** refreshes the cached lib every 5 min on disk.
+2. **Inject SOURCE in `<head>`** — `SiteAds::antiAdblockInlineJs()` inlines the file into a `<script>` tag (not `<script src>`). External src is fallback only.
+3. **Rotate** still renames the on-disk file under `/assets/js/` (helps older URL blockers / ops); page no longer depends on that URL loading.
+4. **Nginx** no-store for 8‑char `/assets/js/` and `/cdn/` libs.
+
+Verified: guest HTML head ~640KB with ~620KB inline `aclib` payload; no external 8‑char script src.
 
 ## Files
 

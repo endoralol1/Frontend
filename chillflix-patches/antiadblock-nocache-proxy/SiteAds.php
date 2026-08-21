@@ -325,6 +325,54 @@ final class SiteAds
      * Serve anti-adblock JS with Cache-Control: no-store so Cloudflare/browsers
      * cannot keep a stale copy for hours (direct /cdn/*.js was CF HIT max-age=14400).
      */
+
+    /** Absolute filesystem path for the cached anti-adblock library, or "". */
+    public static function antiAdblockFilePath(?array $ads = null): string
+    {
+        $ads = is_array($ads) ? $ads : self::get();
+        $file = trim((string) ($ads['antiAdblockFile'] ?? ''));
+        if ($file !== '' && is_file($file)) {
+            return $file;
+        }
+        $src = trim((string) ($ads['antiAdblockSrc'] ?? ''));
+        if ($src === '' || !str_starts_with($src, '/')) {
+            return '';
+        }
+        // /n/NAME.js and /cdn/NAME.js and /assets/js/NAME.js
+        $base = basename(parse_url($src, PHP_URL_PATH) ?: $src);
+        if (!preg_match('/^[a-z0-9]{6,32}\.js$/i', $base)) {
+            return '';
+        }
+        $root = dirname(__DIR__, 2) . '/public';
+        foreach ([
+            $root . '/assets/js/' . $base,
+            $root . '/cdn/' . $base,
+        ] as $cand) {
+            if (is_file($cand)) {
+                return $cand;
+            }
+        }
+        return '';
+    }
+
+    /**
+     * AdCash docs: inject library SOURCE into the page (not only script src).
+     * Cached on disk via cron; safe for <script> embedding.
+     */
+    public static function antiAdblockInlineJs(?array $ads = null): string
+    {
+        $path = self::antiAdblockFilePath($ads);
+        if ($path === '') {
+            return '';
+        }
+        $js = @file_get_contents($path);
+        if (!is_string($js) || strlen($js) < 1000) {
+            return '';
+        }
+        // Prevent early </script> breakout if present in payload.
+        return str_replace(['</script>', '</Script>', '</SCRIPT>'], ['<\\/script>', '<\\/script>', '<\\/script>'], $js);
+    }
+
     public static function serveAntiAdblockNocache(string $name): void
     {
         $name = strtolower(trim($name));
