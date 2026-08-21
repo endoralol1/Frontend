@@ -1,0 +1,143 @@
+/* home-sidebar-readability-20260821 */
+/* Bigger, higher-contrast type for Most Commented + Recently Added.
+   Same layout (rank → poster → title/meta); easier to read on phones. */
+aside.sidebar.home-sidebar .section .head .start .title {
+  font-size: 0.92rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  color: #d7e0ea !important;
+  -webkit-text-fill-color: #d7e0ea !important;
+}
+
+aside.sidebar.home-sidebar .section .head .start .tabs {
+  height: 1.75rem;
+}
+
+aside.sidebar.home-sidebar .section .head .start .tabs .tab {
+  padding: 0.28rem 0.42rem !important;
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  color: rgba(214, 222, 232, 0.72) !important;
+}
+
+aside.sidebar.home-sidebar .section .head .start .tabs .tab.active,
+aside.sidebar.home-sidebar .section .head .start .tabs .tab:hover {
+  color: #f2f5f8 !important;
+}
+
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item {
+  padding: 0.82rem 0.15rem 0.82rem 0 !important;
+  gap: 0.78rem !important;
+}
+
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .sidebar-rank {
+  flex: 0 0 1.55rem;
+  width: 1.55rem;
+  min-width: 1.55rem;
+  font-size: 1.2rem !important;
+  font-weight: 700 !important;
+  color: rgba(214, 222, 232, 0.55) !important;
+}
+
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item:nth-child(1) .sidebar-rank,
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item:hover .sidebar-rank,
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item:nth-child(1):hover .sidebar-rank {
+  color: rgba(232, 238, 245, 0.78) !important;
+}
+
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .item-poster {
+  width: 3.15rem !important;
+  min-width: 3.15rem !important;
+  max-width: 3.15rem !important;
+  border-radius: 0.4rem;
+}
+
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info {
+  gap: 0.36rem !important;
+}
+
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info .name {
+  font-size: 1.05rem !important;
+  font-weight: 650 !important;
+  line-height: 1.35 !important;
+  color: #eef2f7 !important;
+  letter-spacing: -0.005em;
+}
+
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item:hover .info .name {
+  color: #ffffff !important;
+}
+
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .sidebar-meta,
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta {
+  gap: 0.55rem !important;
+}
+
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .sidebar-meta > span,
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .sidebar-meta > span.rating,
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .sidebar-meta > span.hero-chip,
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta > span,
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta > span.rating,
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta > span.hero-chip {
+  font-size: 0.86rem !important;
+  font-weight: 550 !important;
+  color: rgba(214, 222, 232, 0.88) !important;
+  gap: 0.28rem !important;
+  line-height: 1.2 !important;
+}
+
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .sidebar-meta > span.rating,
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta > span.rating {
+  color: #e08a55 !important;
+  font-weight: 700 !important;
+  font-size: 0.8rem !important;
+  letter-spacing: 0.045em;
+}
+
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .sidebar-meta .uil-star,
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta .uil-star {
+  color: #ffc107 !important;
+  font-size: 0.86rem !important;
+}
+
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .sidebar-meta .uil-calender,
+aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta .uil-calender {
+  color: rgba(214, 222, 232, 0.7) !important;
+  font-size: 0.86rem !important;
+}
+
+@media (max-width: 991.98px) {
+  aside.sidebar.home-sidebar .section .head .start .title {
+    font-size: 0.98rem !important;
+  }
+  aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info .name {
+    font-size: 1.1rem !important;
+  }
+  aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .sidebar-meta > span,
+  aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .sidebar-meta > span.rating,
+  aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .sidebar-meta > span.hero-chip,
+  aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta > span,
+  aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta > span.rating,
+  aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta > span.hero-chip {
+    font-size: 0.9rem !important;
+  }
+  aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .sidebar-meta > span.rating,
+  aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info > .meta > span.rating {
+    font-size: 0.84rem !important;
+  }
+  aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .sidebar-rank {
+    font-size: 1.28rem !important;
+  }
+  aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .item-poster {
+    width: 3.35rem !important;
+    min-width: 3.35rem !important;
+    max-width: 3.35rem !important;
+  }
+}
+
+@media (min-width: 1200px) {
+  aside.sidebar.home-sidebar .movie-sidebar.items .movie-item .info .name {
+    font-size: 1.08rem !important;
+  }
+}
+/* home-sidebar-readability-end */
