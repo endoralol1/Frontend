@@ -180,23 +180,9 @@ $selected = $ads['placements'] ?? ['everywhere'];
             </div>
             <div style="margin-top:.35rem;font-size:.82rem;color:rgba(255,255,255,.72)">
               Last rotated:
-              <strong id="ads-anti-rotated" style="font-weight:600;color:#fff"><?php
+              <strong id="ads-anti-rotated" style="font-weight:600;color:#fff" data-ts="<?= (int) ($ads['antiAdblockRotatedAt'] ?? 0) ?>"><?php
                 $rotAt = (int) ($ads['antiAdblockRotatedAt'] ?? 0);
-                if ($rotAt > 0) {
-                    $ago = max(0, time() - $rotAt);
-                    if ($ago < 60) {
-                        $rel = $ago . 's ago';
-                    } elseif ($ago < 3600) {
-                        $rel = (int) floor($ago / 60) . 'm ago';
-                    } elseif ($ago < 86400) {
-                        $rel = (int) floor($ago / 3600) . 'h ago';
-                    } else {
-                        $rel = (int) floor($ago / 86400) . 'd ago';
-                    }
-                    echo e(date('Y-m-d H:i:s', $rotAt) . ' UTC · ' . $rel);
-                } else {
-                    echo 'never';
-                }
+                echo $rotAt > 0 ? '…' : 'never';
               ?></strong>
             </div>
             <div id="ads-anti-next" style="margin-top:.2rem;font-size:.78rem;color:rgba(255,255,255,.55)"><?php
@@ -561,8 +547,20 @@ $selected = $ads['placements'] ?? ['everywhere'];
         : ago < 3600 ? (Math.floor(ago / 60) + 'm ago')
         : ago < 86400 ? (Math.floor(ago / 3600) + 'h ago')
         : (Math.floor(ago / 86400) + 'd ago');
-      var utc = d.toISOString().replace('T', ' ').replace(/\.\d+Z$/, ' UTC');
-      return utc + ' · ' + rel;
+      // Device local time (CET/CEST in DE/HR, EET/EEST in RO, etc.)
+      var local = d.toLocaleString(undefined, {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false
+      });
+      var tz = '';
+      try {
+        var parts = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(d);
+        for (var i = 0; i < parts.length; i++) {
+          if (parts[i].type === 'timeZoneName') { tz = parts[i].value; break; }
+        }
+      } catch (e2) {}
+      return local + (tz ? ' ' + tz : '') + ' · ' + rel;
     } catch (e) { return String(ts); }
   }
   function fmtNext(d) {
@@ -589,6 +587,7 @@ $selected = $ads['placements'] ?? ['everywhere'];
     var hours = document.getElementById('ads-anti-hours');
     if (src && d.antiAdblockSrc) src.textContent = d.antiAdblockSrc;
     if (rot && d.antiAdblockRotatedAt !== undefined && d.antiAdblockRotatedAt !== null) {
+      rot.setAttribute('data-ts', String(Number(d.antiAdblockRotatedAt) || 0));
       rot.textContent = fmtRotated(d.antiAdblockRotatedAt);
     }
     if (next) next.textContent = fmtNext(d);
@@ -597,6 +596,18 @@ $selected = $ads['placements'] ?? ['everywhere'];
       hours.value = String(d.antiAdblockAutoRotateMinutes || (d.antiAdblockAutoRotateHours * 60));
     }
   }
+  (function paintAntiOnLoad() {
+    var rotEl = document.getElementById('ads-anti-rotated');
+    var ts = rotEl ? Number(rotEl.getAttribute('data-ts') || 0) : 0;
+    var autoEl = document.getElementById('ads-anti-auto');
+    var hoursEl = document.getElementById('ads-anti-hours');
+    paintAnti({
+      antiAdblockSrc: (document.getElementById('ads-anti-src') || {}).textContent || '',
+      antiAdblockRotatedAt: ts,
+      antiAdblockAutoRotate: !!(autoEl && autoEl.checked),
+      antiAdblockAutoRotateMinutes: hoursEl ? Number(hoursEl.value || 1440) : 1440
+    });
+  })();
   var rotateBtn = document.getElementById('ads-rotate-anti');
   if (rotateBtn) {
     rotateBtn.addEventListener('click', function () {

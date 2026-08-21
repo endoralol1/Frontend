@@ -6,6 +6,8 @@ Live on VPS (`vuflix.co`):
 - `/usr/local/sbin/adcash-rotate-antiadblock` — renames lib + updates `site-ads.json`
 - Admin UI: `/admin/ads` Anti-adblock library (last rotated + next due)
 
-## Fix (2026-08-20)
+## Notes
 
-Auto-rotate skip messages used `echo ... (10m timer)` piped to bash, so parentheses caused a syntax error on every non-due cron tick. Check script now decides in Python and only invokes rotate when due. Admin last-rotated line made brighter and shows relative time + next auto run.
+- Timers always use Unix time (timezone-independent).
+- Admin "Last rotated" shows the **device local timezone** (CET/CEST in DE/HR, EET/EEST in RO, etc.), not server UTC.
+- Auto-rotate skip path no longer pipes `(…)` echo text into bash.
