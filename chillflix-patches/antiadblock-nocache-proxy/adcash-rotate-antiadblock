@@ -11,7 +11,6 @@ for i in 1 2 3 4 5 6 7 8; do
 done
 NAME="${NAME}.js"
 mkdir -p "$JS_DIR" "$CDN_DIR"
-# Use /assets/js/ — this path worked on Brave earlier today; /cdn and /n were more block-list prone.
 NEWPATH="$JS_DIR/$NAME"
 NEWSRC="/assets/js/$NAME"
 
@@ -53,6 +52,28 @@ if [[ ! -s "$NEWPATH" ]] || [[ $(stat -c%s "$NEWPATH") -lt 1000 ]]; then
   echo '{"ok":false,"message":"Download too small","error":"size"}'
   exit 1
 fi
+
+# Keep only content-refresh cron for the active newsite lib; drop orphan newsite crons.
+python3 - <<PY
+import subprocess, re
+from pathlib import Path
+keep_marker = "# added-by-adblock $NAME"
+out = subprocess.check_output(["crontab", "-l"], text=True, stderr=subprocess.DEVNULL)
+lines = out.splitlines()
+kept = []
+for line in lines:
+    if "added-by-adblock" in line and (
+        "/var/www/chillflix-newsite/" in line
+        or "/chillflix-newsite/" in line
+    ):
+        # drop unless this is exactly the new file marker
+        if keep_marker not in line:
+            continue
+    kept.append(line)
+text = "\n".join(kept) + ("\n" if kept else "")
+subprocess.run(["crontab", "-"], input=text, text=True, check=True)
+print(f"crontab pruned; keep marker={keep_marker}")
+PY
 
 python3 - <<PY
 import json, time
