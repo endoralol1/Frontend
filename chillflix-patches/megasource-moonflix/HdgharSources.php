@@ -432,19 +432,19 @@ final class HdgharSources
 
     public static function qualityRank(string $q): int
     {
-        if (preg_match('/\b(2160|4k|uhd)\b/i', $q)) {
+        if (preg_match('/(2160|4k|uhd)/i', $q)) {
             return 2160;
         }
-        if (preg_match('/\b1080\b/i', $q)) {
+        if (preg_match('/1080/', $q)) {
             return 1080;
         }
-        if (preg_match('/\b720\b/i', $q)) {
+        if (preg_match('/720/', $q)) {
             return 720;
         }
-        if (preg_match('/\b480\b/i', $q)) {
+        if (preg_match('/480/', $q)) {
             return 480;
         }
-        if (preg_match('/\b360\b/i', $q)) {
+        if (preg_match('/360/', $q)) {
             return 360;
         }
         return 0;
