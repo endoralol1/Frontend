@@ -55,6 +55,7 @@ final class SourcesService
         'megasource' => 'MegaSource',
         'moonflix' => 'Moonflix',
         'opstream' => 'OpStream', // SpeedRace API → peakstorm (same as opstream.fun)
+        'torrentio' => 'Torrentio', // stream.torrentio.to cache → Byse (VidPlay fast path)
         'ridomovies' => 'RidoMovies',
         'filesun' => 'FileSuN',
         'bingr' => 'Bingr',

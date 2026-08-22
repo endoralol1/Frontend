@@ -110,7 +110,7 @@ final class PlayerSources
 
         // Kick off cinepro remotes (VAPlayer, etc.) on local loopback immediately so they
         // overlap with slower local scrapers (Vidmoly / Cineplay) instead of waiting in line.
-        $localProviderIds = ['stremify', 'nxsha', 'castle', 'awsind', 'nitro', 'riveprime', 'hdghar', 'moonflix', 'hollybox', 'moviebox', 'flixhqz', 'cinejoy', 'novahd', 'netmirror', 'megasource', 'opstream', 'ridomovies', 'filesun', 'bingr', 'moviesonlinehd', 'vsembed', 'cineplay', 'vidking', 'vidmoly', 'upcloud', 'byse'];
+        $localProviderIds = ['stremify', 'nxsha', 'castle', 'awsind', 'nitro', 'riveprime', 'hdghar', 'moonflix', 'hollybox', 'moviebox', 'flixhqz', 'cinejoy', 'novahd', 'netmirror', 'megasource', 'opstream', 'torrentio', 'ridomovies', 'filesun', 'bingr', 'moviesonlinehd', 'vsembed', 'cineplay', 'vidking', 'vidmoly', 'upcloud', 'byse'];
         $remotePrefetch = self::startCineproPrefetch($providers, $localProviderIds, $type, $tmdbId, $season, $episode, $origin);
 
         // Overlap Vidmoly (often 0.5–0.8s) with Cineplay / remotes via a CLI child process.
@@ -915,6 +915,58 @@ final class PlayerSources
                         'message' => (string) ($os['error'] ?? 'No OpStream streams'),
                         'severity' => 'warning',
                         'provider' => 'opstream',
+                    ];
+                }
+                continue;
+            }
+
+            // Torrentio cache = stream.torrentio.to pre-uploaded Byse embeds (VidPlay fast path).
+            if ($provider === 'torrentio') {
+                if (!class_exists('TorrentioCacheSources')) {
+                    $diagnostics[] = [
+                        'code' => 'TORRENTIO_MISSING',
+                        'message' => 'TorrentioCacheSources class not loaded',
+                        'severity' => 'warning',
+                        'provider' => 'torrentio',
+                    ];
+                    continue;
+                }
+                $tc = TorrentioCacheSources::fetch($type, $tmdbId, $season, $episode);
+                foreach ($tc['diagnostics'] ?? [] as $d) {
+                    if (is_array($d)) {
+                        $diagnostics[] = $d;
+                    }
+                }
+                foreach ($tc['sources'] ?? [] as $src) {
+                    if (!is_array($src) || empty($src['url'])) {
+                        continue;
+                    }
+                    $streamUrl = (string) $src['url'];
+                    $quality = (string) ($src['quality'] ?? 'Auto');
+                    $key = 'torrentio|' . $streamUrl;
+                    if (isset($merged[$key])) {
+                        continue;
+                    }
+                    $merged[$key] = [
+                        'id' => substr(sha1($key), 0, 12),
+                        'url' => $streamUrl,
+                        'type' => (string) ($src['type'] ?? 'hls'),
+                        'quality' => $quality !== '' ? $quality : 'Auto',
+                        'provider' => 'torrentio',
+                        'providerName' => (string) ($src['providerName'] ?? 'Torrentio'),
+                        'label' => (string) ($src['label'] ?? ('Torrentio · ' . $quality)),
+                        'language' => (string) ($src['language'] ?? 'en'),
+                        'hasEnglish' => !empty($src['hasEnglish']),
+                        'audioTracks' => [],
+                        'meta' => is_array($src['meta'] ?? null) ? $src['meta'] : [],
+                    ];
+                }
+                if (empty($tc['ok']) && empty($tc['sources'])) {
+                    $diagnostics[] = [
+                        'code' => 'TORRENTIO_EMPTY',
+                        'message' => (string) ($tc['error'] ?? 'No Torrentio cache streams'),
+                        'severity' => 'warning',
+                        'provider' => 'torrentio',
                     ];
                 }
                 continue;

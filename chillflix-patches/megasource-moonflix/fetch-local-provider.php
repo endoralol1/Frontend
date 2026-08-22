@@ -58,6 +58,9 @@ $result = match ($provider) {
     'opstream' => class_exists('OpStreamSources')
         ? OpStreamSources::fetch($type, $tmdbId, $season, $episode)
         : ['ok' => false, 'error' => 'OpStreamSources missing', 'sources' => [], 'diagnostics' => []],
+    'torrentio' => class_exists('TorrentioCacheSources')
+        ? TorrentioCacheSources::fetch($type, $tmdbId, $season, $episode)
+        : ['ok' => false, 'error' => 'TorrentioCacheSources missing', 'sources' => [], 'diagnostics' => []],
     'hollybox' => class_exists('HollyBoxSources')
         ? HollyBoxSources::fetch($type, $tmdbId, $season, $episode)
         : ['ok' => false, 'error' => 'HollyBoxSources missing', 'sources' => [], 'diagnostics' => []],

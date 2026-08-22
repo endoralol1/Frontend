@@ -8,13 +8,19 @@ Scrape can succeed then play fail, or look empty even when the title exists:
 2. **IP-bound CDN** — streams must go through our `v-relay`; binding 403s if the session cookie is missing and the client IP looks like a Cloudflare colo (fixed in ProxyGuard).
 3. **Probe timeout / PHP-FPM kill** under load — request dies mid-scrape (nginx `recv failed`).
 
+### Torrentio / Rapid (VidPlay fast path)
+`stream.torrentio.to` cache API returns torrents **already uploaded** to Byse/Lulu/VOE:
+`GET /api/v1/torrent/cache?imdbId=tt…` (+ season/episode for TV).
+We pick the best **Byse** embed and resolve HLS via `ByseSources::resolveFromEmbed`.
+Only works for titles they have cached (uncached → empty, not Failed).
+
 ### OpStream / Flash
 1. **SpeedRace rate-limit** — `api.speedracelight.com` 429s our VPS when many viewers hit Flash.
    **Fix:** scrape via the shared **6 CF Yoru workers** (`/resolve`, same as Cineplay), cache ~5 min, VPS direct only as fallback.
 2. **One-shot seeds** — seed expires / invalid between seed and decrypt; we retry on direct path.
 3. **v-relay binding** — same ProxyGuard issue as above (peakstorm requires proxy, no browser Origin).
 
-UI: soft/transient errors stay **pending** (not Failed) for vsembed + opstream.
+UI: soft/transient errors stay **pending** (not Failed) for vsembed + opstream + torrentio.
 Cinemove “Mega” → WatchPlay (`v1.watchplay.shop`). Direct scrape; CDN `*.hclod.qzz.io` works from VPS.
 
 ## Moonflix / HDGHAR
