@@ -2506,8 +2506,9 @@ final class PlayerSources
     }
 
     /**
-     * Mint HDGharTV / streamraiwind play URL in the current web request so ProxyGuard
-     * binds the viewer's IP/session (not a CLI child).
+     * HDGharTV / streamraiwind play URL.
+     * streamraiwind already CORS-allows vuflix.co — return the CDN URL direct (same as
+     * hdghartv). Proxying every chunk through a-relay made Moonflix stall/Fail on phones.
      *
      * @param array<string,string> $headers
      */
@@ -2519,6 +2520,10 @@ final class PlayerSources
         }
         // Already proxied.
         if (str_contains($url, '/api/player/a-relay') || str_contains($url, '/api/player/v-relay') || str_contains($url, 'lang-proxy')) {
+            return $url;
+        }
+        // Direct CDN — player.js overrideMimeType fixes image/jpeg TS segments.
+        if (preg_match('/streamraiwind\.stream/i', $url)) {
             return $url;
         }
         if (class_exists('StreamLangProxy') && preg_match('/\.m3u8(\?|$)/i', $url)) {

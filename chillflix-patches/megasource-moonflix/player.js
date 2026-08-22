@@ -2352,20 +2352,28 @@
 
       if (isHls && window.Hls && window.Hls.isSupported()) {
         const viaLangProxy = /\/api\/player\/(a-relay|lang-proxy)\b/i.test(String(abs || source?.url || ""));
+        const viaHdgharCdn = /streamraiwind\.stream/i.test(String(abs || source?.url || ""));
+        const fatHls = viaLangProxy || viaHdgharCdn;
         const hls = new window.Hls({
-          enableWorker: true,
+          // Worker XHR often ignores overrideMimeType — needed for HDGHAR .jpg→TS.
+          enableWorker: !viaHdgharCdn,
           lowLatencyMode: false,
-          backBufferLength: viaLangProxy ? 60 : 30,
-          maxBufferLength: viaLangProxy ? 60 : 30,
-          maxMaxBufferLength: viaLangProxy ? 120 : 60,
-          maxBufferSize: viaLangProxy ? 120 * 1000 * 1000 : 60 * 1000 * 1000,
-          maxBufferHole: viaLangProxy ? 1.0 : 0.5,
-          nudgeMaxRetry: viaLangProxy ? 10 : 3,
-          // Same-origin a-relay/v-relay need the vf_ps session cookie for ProxyGuard.
-          // CDN hosts (streamraiwind) are cross-origin — credentials break some CORS paths.
+          backBufferLength: fatHls ? 60 : 30,
+          maxBufferLength: fatHls ? 60 : 30,
+          maxMaxBufferLength: fatHls ? 120 : 60,
+          maxBufferSize: fatHls ? 120 * 1000 * 1000 : 60 * 1000 * 1000,
+          maxBufferHole: fatHls ? 1.0 : 0.5,
+          nudgeMaxRetry: fatHls ? 10 : 3,
+          // Same-origin a-relay/v-relay need vf_ps. CDN is cross-origin.
+          // streamraiwind serves MPEG-TS as image/jpeg — force TS MIME or demux fails.
           xhrSetup: (xhr, url) => {
             try {
               const u = String(url || "");
+              if (/streamraiwind\.stream/i.test(u) && /\.(jpe?g|png|bin|ts|m4s)(\?|$)/i.test(u)) {
+                try {
+                  xhr.overrideMimeType("video/mp2t");
+                } catch (_) {}
+              }
               xhr.withCredentials = /\/api\/player\/(a-relay|v-relay|lang-proxy|media-proxy)\b/i.test(u);
             } catch (_) {}
           },
@@ -2560,12 +2568,7 @@
         const stallTimer = setTimeout(() => {
           if (!v || v.readyState >= 2) return;
           clearLoadWatchdog();
-          const slot = state.sources[state.sourceIndex];
-          if (slot) {
-            slot.status = "error";
-            slot.error = "Stream stalled";
-            try { refreshMenus(); } catch (_) {}
-          }
+          markSourceDead("Stream stalled");
           setStatus("Stream stalled — next source…");
           tryNextSource({ immediate: true });
         }, stallMs);
@@ -3005,9 +3008,18 @@
         return true;
       } catch (err) {
         const emptyish = !!(err && err.definitiveEmpty) || isDefinitiveEmpty(err);
-        slot.status = emptyish ? "empty" : "error";
-        slot.error = err?.message || t('common.failed', 'Failed');
-        slot.retryable = !emptyish || !!(err && err.retryable);
+        // Soft blips (timeout / binding / network) must NOT show "Failed — tap retry"
+        // for Moonflix/HDGHAR — that label made it look like the scrape was dead.
+        const softPid = pid === "moonflix" || pid === "hdghar" || pid === "bingr";
+        if (!emptyish && softPid) {
+          slot.status = "pending";
+          slot.error = err?.message || "";
+          slot.retryable = true;
+        } else {
+          slot.status = emptyish ? "empty" : "error";
+          slot.error = err?.message || t('common.failed', 'Failed');
+          slot.retryable = !emptyish || !!(err && err.retryable);
+        }
         refreshMenus();
         if (isAuto || play) {
           // Auto / failure path: try next admin-ordered source.

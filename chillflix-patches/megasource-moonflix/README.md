@@ -36,3 +36,9 @@ Moonflix was finding streams then Auto-switched after a few seconds: HDGHAR **10
 hdghartv plays **CDN segments directly**. We were piping every `.jpg` TS chunk through PHP `a-relay` (double hop) so Moonflix “wanted to play” then Auto gave up.
 
 Fix: a-relay only rewrites **playlists** (English default); **segments stay on streamraiwind** (CORS already allows `vuflix.co`). Seg fetch ~0.3s vs ~60s via PHP.
+
+### moon7
+Failed again: CDN `.jpg` TS + Content-Type `image/jpeg` broke demux after direct segments; soft errors also stamped **Failed**.
+- Return **raw streamraiwind** URLs (no a-relay) — same path as hdghartv
+- hls.js `overrideMimeType('video/mp2t')`, `enableWorker:false` for that CDN
+- Moonflix soft errors → `pending` (not Failed)
