@@ -1,4 +1,11 @@
-# MegaSource + Moonflix / HDGHAR
+# MegaSource + Moonflix / HDGHAR + OpStream
+
+## OpStream (Flash)
+Opstream.fun does **not** scrape embeds. It calls **SpeedRace**:
+1. `GET https://api.speedracelight.com/seed?mediaId={tmdb}`
+2. `GET …/cdn/sources-with-title?…&enc=2&seed=…` (title double-encoded)
+3. XOR-decrypt (`mvm1`) → `{sources:[{quality,url}]}`
+CDN: `moon.peakstorm.top/(vd|r2)/…m3u8`. Browser Origin is 403’d — we mint **v-relay** without Origin (same idea as their `/api/stream/direct`). Public label: **Flash**.
 
 ## MegaSource
 Cinemove “Mega” → WatchPlay (`v1.watchplay.shop`). Direct scrape; CDN `*.hclod.qzz.io` works from VPS.

@@ -54,6 +54,7 @@ final class SourcesService
         'netmirror' => 'NetMirror',
         'megasource' => 'MegaSource',
         'moonflix' => 'Moonflix',
+        'opstream' => 'OpStream', // SpeedRace API → peakstorm (same as opstream.fun)
         'ridomovies' => 'RidoMovies',
         'filesun' => 'FileSuN',
         'bingr' => 'Bingr',

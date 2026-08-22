@@ -110,7 +110,7 @@ final class PlayerSources
 
         // Kick off cinepro remotes (VAPlayer, etc.) on local loopback immediately so they
         // overlap with slower local scrapers (Vidmoly / Cineplay) instead of waiting in line.
-        $localProviderIds = ['stremify', 'nxsha', 'castle', 'awsind', 'nitro', 'riveprime', 'hdghar', 'moonflix', 'hollybox', 'moviebox', 'flixhqz', 'cinejoy', 'novahd', 'netmirror', 'megasource', 'ridomovies', 'filesun', 'bingr', 'moviesonlinehd', 'vsembed', 'cineplay', 'vidking', 'vidmoly', 'upcloud', 'byse'];
+        $localProviderIds = ['stremify', 'nxsha', 'castle', 'awsind', 'nitro', 'riveprime', 'hdghar', 'moonflix', 'hollybox', 'moviebox', 'flixhqz', 'cinejoy', 'novahd', 'netmirror', 'megasource', 'opstream', 'ridomovies', 'filesun', 'bingr', 'moviesonlinehd', 'vsembed', 'cineplay', 'vidking', 'vidmoly', 'upcloud', 'byse'];
         $remotePrefetch = self::startCineproPrefetch($providers, $localProviderIds, $type, $tmdbId, $season, $episode, $origin);
 
         // Overlap Vidmoly (often 0.5–0.8s) with Cineplay / remotes via a CLI child process.
@@ -822,6 +822,99 @@ final class PlayerSources
                         'message' => (string) ($ms['error'] ?? 'No MegaSource streams'),
                         'severity' => 'warning',
                         'provider' => 'megasource',
+                    ];
+                }
+                continue;
+            }
+
+            // OpStream = SpeedRace API (api.speedracelight.com) → peakstorm CDN.
+            // Same backend as opstream.fun. Peakstorm 403s browser Origin — mint v-relay without Origin.
+            if ($provider === 'opstream') {
+                if (!class_exists('OpStreamSources')) {
+                    $diagnostics[] = [
+                        'code' => 'OPSTREAM_MISSING',
+                        'message' => 'OpStreamSources class not loaded',
+                        'severity' => 'warning',
+                        'provider' => 'opstream',
+                    ];
+                    continue;
+                }
+                $os = OpStreamSources::fetch($type, $tmdbId, $season, $episode);
+                foreach ($os['diagnostics'] ?? [] as $d) {
+                    if (is_array($d)) {
+                        $diagnostics[] = $d;
+                    }
+                }
+                foreach ($os['sources'] ?? [] as $src) {
+                    if (!is_array($src) || empty($src['url'])) {
+                        continue;
+                    }
+                    $cdnHeaders = [
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept' => '*/*',
+                    ];
+                    if (is_array($src['headers'] ?? null)) {
+                        foreach ($src['headers'] as $hk => $hv) {
+                            $hk = trim((string) $hk);
+                            $hv = trim((string) $hv);
+                            if ($hk === '' || $hv === '') {
+                                continue;
+                            }
+                            // Peakstorm returns 403 when Origin is present (any site).
+                            if (strcasecmp($hk, 'Origin') === 0) {
+                                continue;
+                            }
+                            $cdnHeaders[$hk] = $hv;
+                        }
+                    }
+                    unset($cdnHeaders['Origin'], $cdnHeaders['origin']);
+                    $streamUrl = (string) $src['url'];
+                    $playUrl = $streamUrl;
+                    if (class_exists('VidmolySources') && preg_match('#^https?://#i', $streamUrl)) {
+                        $playUrl = VidmolySources::signedProxyUrl($streamUrl, $cdnHeaders, true);
+                    }
+                    $qualities = [];
+                    foreach ($src['qualities'] ?? [] as $q) {
+                        if (!is_array($q) || empty($q['url'])) {
+                            continue;
+                        }
+                        $qUrl = (string) $q['url'];
+                        $qPlay = $qUrl;
+                        if (class_exists('VidmolySources') && preg_match('#^https?://#i', $qUrl)) {
+                            $qPlay = VidmolySources::signedProxyUrl($qUrl, $cdnHeaders, true);
+                        }
+                        $qualities[] = [
+                            'quality' => (string) ($q['quality'] ?? 'Auto'),
+                            'url' => $qPlay,
+                            'type' => (string) ($q['type'] ?? 'hls'),
+                        ];
+                    }
+                    $quality = (string) ($src['quality'] ?? 'Auto');
+                    $key = 'opstream|' . ($qualities !== [] ? 'pack' : $streamUrl);
+                    if (isset($merged[$key])) {
+                        continue;
+                    }
+                    $merged[$key] = [
+                        'id' => substr(sha1($key), 0, 12),
+                        'url' => $playUrl,
+                        'type' => (string) ($src['type'] ?? 'hls'),
+                        'quality' => $quality !== '' ? $quality : 'Auto',
+                        'provider' => 'opstream',
+                        'providerName' => (string) ($src['providerName'] ?? 'OpStream'),
+                        'label' => (string) ($src['label'] ?? ('OpStream · ' . $quality)),
+                        'language' => (string) ($src['language'] ?? 'en'),
+                        'hasEnglish' => !empty($src['hasEnglish']),
+                        'audioTracks' => [],
+                        'qualities' => $qualities,
+                        'meta' => is_array($src['meta'] ?? null) ? $src['meta'] : [],
+                    ];
+                }
+                if (empty($os['ok']) && empty($os['sources'])) {
+                    $diagnostics[] = [
+                        'code' => 'OPSTREAM_EMPTY',
+                        'message' => (string) ($os['error'] ?? 'No OpStream streams'),
+                        'severity' => 'warning',
+                        'provider' => 'opstream',
                     ];
                 }
                 continue;

@@ -55,6 +55,9 @@ $result = match ($provider) {
     'megasource' => class_exists('MegaSourceSources')
         ? MegaSourceSources::fetch($type, $tmdbId, $season, $episode)
         : ['ok' => false, 'error' => 'MegaSourceSources missing', 'sources' => [], 'diagnostics' => []],
+    'opstream' => class_exists('OpStreamSources')
+        ? OpStreamSources::fetch($type, $tmdbId, $season, $episode)
+        : ['ok' => false, 'error' => 'OpStreamSources missing', 'sources' => [], 'diagnostics' => []],
     'hollybox' => class_exists('HollyBoxSources')
         ? HollyBoxSources::fetch($type, $tmdbId, $season, $episode)
         : ['ok' => false, 'error' => 'HollyBoxSources missing', 'sources' => [], 'diagnostics' => []],

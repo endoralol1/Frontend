@@ -53,6 +53,7 @@ require_once __DIR__ . '/Services/VidmolySources.php';
 require_once __DIR__ . '/Services/NetMirrorSources.php';
 require_once __DIR__ . '/Services/MegaSourceSources.php';
 require_once __DIR__ . '/Services/MoonflixSources.php';
+require_once __DIR__ . '/Services/OpStreamSources.php';
 require_once __DIR__ . '/Services/ByseSources.php';
 require_once __DIR__ . '/Services/CineplaySources.php';
 require_once __DIR__ . '/Services/WorkerRelayService.php';
