@@ -31,3 +31,8 @@ Fixes:
 
 ### moon5
 Moonflix was finding streams then Auto-switched after a few seconds: HDGHAR **1080p** first segments are ~10MB via a-relay (phones can’t buffer before the 15s wait). Prefer **720p** default for a-relay/moonflix/hdghar; fat-proxy wait ~45s; dedupe duplicate subtitle rows.
+
+### moon6 — why their site felt fast and ours didn’t
+hdghartv plays **CDN segments directly**. We were piping every `.jpg` TS chunk through PHP `a-relay` (double hop) so Moonflix “wanted to play” then Auto gave up.
+
+Fix: a-relay only rewrites **playlists** (English default); **segments stay on streamraiwind** (CORS already allows `vuflix.co`). Seg fetch ~0.3s vs ~60s via PHP.

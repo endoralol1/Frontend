@@ -2362,9 +2362,11 @@
           maxBufferHole: viaLangProxy ? 1.0 : 0.5,
           nudgeMaxRetry: viaLangProxy ? 10 : 3,
           // Same-origin a-relay/v-relay need the vf_ps session cookie for ProxyGuard.
-          xhrSetup: (xhr) => {
+          // CDN hosts (streamraiwind) are cross-origin — credentials break some CORS paths.
+          xhrSetup: (xhr, url) => {
             try {
-              xhr.withCredentials = true;
+              const u = String(url || "");
+              xhr.withCredentials = /\/api\/player\/(a-relay|v-relay|lang-proxy|media-proxy)\b/i.test(u);
             } catch (_) {}
           },
         });

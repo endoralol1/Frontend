@@ -314,7 +314,7 @@ final class StreamLangProxy
                 $flags = $isWant ? 'AUTOSELECT=YES,DEFAULT=YES' : 'AUTOSELECT=YES,DEFAULT=NO';
                 if (preg_match('/URI="([^"]+)"/i', $line, $m)) {
                     $abs = self::absolutize($m[1], $base);
-                    $prox = self::mint($abs, 'hls_edge', $lang, $headers);
+                    $prox = self::edgeUrl($abs, $lang, $headers);
                     // Keep AUTOSELECT/DEFAULT before URI — trailing attrs break some HLS.js builds.
                     $line = preg_replace('/,?\s*URI="[^"]*"/i', '', $line) ?? $line;
                     $line = rtrim($line, ',') . ',' . $flags . ',URI="' . $prox . '"';
@@ -327,7 +327,7 @@ final class StreamLangProxy
             if (str_starts_with($trim, '#EXT-X-MEDIA:')) {
                 if (preg_match('/URI="([^"]+)"/i', $trim, $m)) {
                     $abs = self::absolutize($m[1], $base);
-                    $prox = self::mint($abs, 'hls_edge', $lang, $headers);
+                    $prox = self::edgeUrl($abs, $lang, $headers);
                     $trim = str_replace($m[0], 'URI="' . $prox . '"', $trim);
                 }
                 // HDGHAR often lists duplicate English subtitle rows — HLS.js can choke.
@@ -353,13 +353,30 @@ final class StreamLangProxy
             if ($pending !== null) {
                 $abs = self::absolutize($trim, $base);
                 $streams[] = $pending;
-                $streams[] = self::mint($abs, 'hls_edge', $lang, $headers);
+                $streams[] = self::edgeUrl($abs, $lang, $headers);
                 $pending = null;
                 continue;
             }
         }
         if ($headersOut === []) $headersOut = ['#EXTM3U'];
         return implode("\n", array_merge($headersOut, $audioWant, $audioOther, array_values($subs), $streams)) . "\n";
+    }
+
+    /**
+     * Playlists stay on a-relay (English rewrite + relative→absolute).
+     * Media segments go straight to the CDN — streamraiwind already CORS-allows vuflix.co,
+     * so proxying every .jpg/.ts chunk through PHP made Moonflix feel broken vs hdghartv.
+     */
+    private static function edgeUrl(string $abs, string $lang, array $headers = []): string
+    {
+        $abs = trim($abs);
+        if ($abs === '') {
+            return $abs;
+        }
+        if (preg_match('/\.m3u8(\?|$)/i', $abs)) {
+            return self::mint($abs, 'hls_edge', $lang, $headers);
+        }
+        return $abs;
     }
 
     /** @param array<string,string> $reqHeaders */
@@ -373,14 +390,13 @@ final class StreamLangProxy
             if (str_starts_with($trim, '#')) {
                 if (preg_match('/URI="([^"]+)"/i', $line, $m)) {
                     $abs = self::absolutize($m[1], $base);
-                    $prox = self::mint($abs, 'hls_edge', $lang, $reqHeaders);
-                    $line = str_replace($m[0], 'URI="' . $prox . '"', $line);
+                    $line = str_replace($m[0], 'URI="' . self::edgeUrl($abs, $lang, $reqHeaders) . '"', $line);
                 }
                 $out[] = $line;
                 continue;
             }
             $abs = self::absolutize($trim, $base);
-            $out[] = self::mint($abs, 'hls_edge', $lang, $reqHeaders);
+            $out[] = self::edgeUrl($abs, $lang, $reqHeaders);
         }
         return implode("\n", $out) . "\n";
     }
