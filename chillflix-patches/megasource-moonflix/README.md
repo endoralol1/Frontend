@@ -9,8 +9,9 @@ Scrape can succeed then play fail, or look empty even when the title exists:
 3. **Probe timeout / PHP-FPM kill** under load — request dies mid-scrape (nginx `recv failed`).
 
 ### OpStream / Flash
-1. **SpeedRace rate-limit** — `api.speedracelight.com` 429s our VPS when many viewers hit Flash; we cache successful scrapes ~3 min and back off harder on 429.
-2. **One-shot seeds** — seed expires / invalid between seed and decrypt; we retry.
+1. **SpeedRace rate-limit** — `api.speedracelight.com` 429s our VPS when many viewers hit Flash.
+   **Fix:** scrape via the shared **6 CF Yoru workers** (`/resolve`, same as Cineplay), cache ~5 min, VPS direct only as fallback.
+2. **One-shot seeds** — seed expires / invalid between seed and decrypt; we retry on direct path.
 3. **v-relay binding** — same ProxyGuard issue as above (peakstorm requires proxy, no browser Origin).
 
 UI: soft/transient errors stay **pending** (not Failed) for vsembed + opstream.
