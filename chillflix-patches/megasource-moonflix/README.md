@@ -23,3 +23,8 @@ Fixes:
 - Sticky sid per IP with **flock** so parallel `/sources` share one sid
 - `assertTokenBinding`: allow **sidOk OR ipOk** (Safari/HLS may omit cookie on same IP)
 - `player.js`: `xhrSetup.withCredentials`, remint once on binding 403; cache `?v=20260822-moon3`
+
+### moon4
+- Do not mark Source as Failed when scrape succeeded but playback blipped
+- Treat HDGHAR `.jpg` segments as binary in a-relay
+- Public labels: Moon / Mega (avoid Castle “Source 40” clash)

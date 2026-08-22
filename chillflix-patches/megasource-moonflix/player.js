@@ -2461,13 +2461,12 @@
               return;
             }
           }
-          // Manifest/key hard-miss: title not on this CDN — don't burn Auto-wait retries.
+          // Hard-miss only for definitive CDN misses (404/410). Bare manifestLoadError is often
+          // a transient proxy/session blip — do not stamp the Source row as Failed.
           const hardMiss =
             !bindingFail &&
             (httpCode === 404 ||
               httpCode === 410 ||
-              details === "manifestLoadError" ||
-              details === "manifestParsingError" ||
               ((httpCode === 403 || /not found|404/i.test(respText)) &&
                 /manifestLoadError|levelLoadError|keyLoadError/i.test(details)));
 
@@ -2475,8 +2474,14 @@
             clearLoadWatchdog();
             const slot = state.sources[state.sourceIndex];
             if (slot) {
-              slot.status = "error";
-              slot.error = "Not found";
+              // Keep URL so the menu doesn't show "Failed — tap retry" for a play blip.
+              if (slot.url || streamQualitiesFromSource(slot).length || candidateUrls(slot).length) {
+                slot.status = "ready";
+                slot.error = "Not found";
+              } else {
+                slot.status = "error";
+                slot.error = "Not found";
+              }
               try { refreshMenus(); } catch (_) {}
             }
             setStatus("Not found — next source…");
@@ -3173,10 +3178,16 @@
     function markSourceDead(reason) {
       const slot = state.sources[state.sourceIndex];
       if (slot) {
-        slot.status = "error";
-        slot.error = reason || "Stream not loading";
-        slot.retryable = true;
-        // Drop fake "ready" subtitle (English · 1080p) in the Source menu.
+        // Scraped URL still usable — don't show "Failed — tap retry" (that means scrape miss).
+        // Keep ready so the user can re-tap; cascade still moves Auto-play along.
+        if (slot.url || streamQualitiesFromSource(slot).length || candidateUrls(slot).length) {
+          slot.status = "ready";
+          slot.error = reason || "Stream not loading";
+        } else {
+          slot.status = "error";
+          slot.error = reason || "Stream not loading";
+          slot.retryable = true;
+        }
         try { refreshMenus(); } catch (_) {}
       }
     }
