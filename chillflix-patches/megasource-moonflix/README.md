@@ -1,21 +1,15 @@
-# MegaSource + Moonflix
+# MegaSource + Moonflix / HDGHAR
 
 ## MegaSource
-Cinemove label for the Stremio MegaSource addon. Default scraper = **WatchPlay** (`https://v1.watchplay.shop`).
-We scrape WatchPlay directly (IMDb → `/api` getPlayer → HLS on `*.hclod.qzz.io`).
-CDN is reachable from the VPS → mint via `VidmolySources::signedProxyUrl` (no Worker required).
+Cinemove “Mega” → WatchPlay (`v1.watchplay.shop`). Direct scrape; CDN `*.hclod.qzz.io` works from VPS.
 
-- Source id: `megasource`
-- Class: `MegaSourceSources.php`
+## Moonflix / HDGHAR
+Cinemove “Moon” family. Live upstream is **`https://hdghartv.cc`** public API (no auth):
 
-## Moonflix
-Cinemove aliases: `moonflix` / `hdghar` / `vixsrc` / `vixcloud` / `streamingcommunity` / `scws` / `unity`.
-We try Worker `/vixsrc`, then `HdgharSources` (`HDGHAR_API_BASE` env override for Railway).
+- `GET /api/search?q=…` → match `tmdbId` → `_id`
+- `GET /api/movies/public/{id}` → `streamingLinks[]`
+- `GET /api/series/public/{id}` → `seasons[].episodes[].streamingLinks[]`
+- CDN: `*.streamraiwind.stream` (Referer `hdghartv.cc`)
 
-**Current status:** VixSrc returns CF 403 via Worker; Railway HDGHAR app is gone. Provider is wired so a fixed Worker or new `HDGHAR_API_BASE` lights up without another code change.
-
-- Source id: `moonflix`
-- Class: `MoonflixSources.php`
-
-## Deploy
-Copy PHP files onto VPS under `/var/www/chillflix-newsite/`, seed catalog, enable auto_load.
+`HdgharSources` scrapes that. `MoonflixSources` tries Worker VixSrc first, then HDGHAR.
+Optional legacy: set `HDGHAR_API_BASE` for Railway-style `/movie/{tmdb}` JSON.
