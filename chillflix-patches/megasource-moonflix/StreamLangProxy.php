@@ -330,7 +330,20 @@ final class StreamLangProxy
                     $prox = self::mint($abs, 'hls_edge', $lang, $headers);
                     $trim = str_replace($m[0], 'URI="' . $prox . '"', $trim);
                 }
-                $subs[] = $trim;
+                // HDGHAR often lists duplicate English subtitle rows — HLS.js can choke.
+                $subKey = '';
+                if (preg_match('/NAME="([^"]+)"/i', $trim, $m)) {
+                    $subKey .= strtolower($m[1]);
+                }
+                if (preg_match('/LANGUAGE="([^"]+)"/i', $trim, $m)) {
+                    $subKey .= '|' . strtolower($m[1]);
+                }
+                if ($subKey === '') {
+                    $subKey = 'row-' . count($subs);
+                }
+                if (!isset($subs[$subKey])) {
+                    $subs[$subKey] = $trim;
+                }
                 continue;
             }
             if (str_starts_with($trim, '#EXT-X-STREAM-INF:')) {
@@ -346,7 +359,7 @@ final class StreamLangProxy
             }
         }
         if ($headersOut === []) $headersOut = ['#EXTM3U'];
-        return implode("\n", array_merge($headersOut, $audioWant, $audioOther, $subs, $streams)) . "\n";
+        return implode("\n", array_merge($headersOut, $audioWant, $audioOther, array_values($subs), $streams)) . "\n";
     }
 
     /** @param array<string,string> $reqHeaders */

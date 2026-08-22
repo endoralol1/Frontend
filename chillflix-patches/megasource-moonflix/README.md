@@ -28,3 +28,6 @@ Fixes:
 - Do not mark Source as Failed when scrape succeeded but playback blipped
 - Treat HDGHAR `.jpg` segments as binary in a-relay
 - Public labels: Moon / Mega (avoid Castle “Source 40” clash)
+
+### moon5
+Moonflix was finding streams then Auto-switched after a few seconds: HDGHAR **1080p** first segments are ~10MB via a-relay (phones can’t buffer before the 15s wait). Prefer **720p** default for a-relay/moonflix/hdghar; fat-proxy wait ~45s; dedupe duplicate subtitle rows.

@@ -919,8 +919,24 @@
         }));
     }
 
-    function defaultStreamQualityIndex(variants) {
+    function defaultStreamQualityIndex(variants, source) {
       if (!variants.length) return 0;
+      const pid = String(source?.provider || "").toLowerCase();
+      const abs = absoluteUrl(source?.url || variants[0]?.url || "");
+      // HDGHAR/Moonflix 1080p segments are often 5–10MB via a-relay — phones time out and
+      // Auto cascades to MegaSource. Prefer 720p (≈1–2MB) for a-relay family.
+      const prefer720 =
+        pid === "moonflix" ||
+        pid === "hdghar" ||
+        pid === "bingr" ||
+        /\/api\/player\/(a-relay|lang-proxy)\b/i.test(abs) ||
+        variants.some((v) => /\/api\/player\/(a-relay|lang-proxy)\b/i.test(String(v.url || "")));
+      if (prefer720) {
+        const hit720 = variants.findIndex((v) => /720/.test(String(v.label || "")));
+        if (hit720 >= 0) return hit720;
+        const hit480 = variants.findIndex((v) => /480/.test(String(v.label || "")));
+        if (hit480 >= 0) return hit480;
+      }
       const hit1080 = variants.findIndex((v) => /1080/.test(String(v.label || "")));
       if (hit1080 >= 0) return hit1080;
       const hit720 = variants.findIndex((v) => /720/.test(String(v.label || "")));
@@ -934,7 +950,7 @@
       state.qualityOptions = variants;
       let idx = state.levelIndex;
       if (idx < 0 || idx >= variants.length) {
-        idx = defaultStreamQualityIndex(variants);
+        idx = defaultStreamQualityIndex(variants, source);
       }
       // Keep selected variant URL on the source entry
       const pick = variants[idx];
@@ -3206,12 +3222,20 @@
       const base = sourceAutoWaitMs(source);
       const scrapeMs = Math.max(15, Math.min(180, Number(source?.scrapeTimeoutSec) || 45)) * 1000;
       const viaProxy = /\/api\/player\/(v-relay|a-relay|media-proxy|lang-proxy)\b/i.test(abs);
+      const fatProxy =
+        pid === "moonflix" ||
+        pid === "hdghar" ||
+        pid === "bingr" ||
+        /\/api\/player\/(a-relay|lang-proxy)\b/i.test(abs);
       // Honor Admin auto_wait_sec. Previous 6–12s clamp skipped real HLS (VSEmbed/MovieBox)
       // before the CDN had a chance — second click then "worked" because it was warm.
       let waitMs;
       if (coldResolve) {
         waitMs = Math.max(45000, Math.min(90000, Math.max(base, scrapeMs)));
-      } else if (viaProxy || pid === "vsembed" || pid === "bingr" || pid === "onlyflix" || pid === "moviebox") {
+      } else if (fatProxy) {
+        // HDGHAR demuxed 1080p first segment can be multi‑MB through a-relay.
+        waitMs = Math.max(35000, Math.min(90000, Math.max(base, 45000)));
+      } else if (viaProxy || pid === "vsembed" || pid === "onlyflix" || pid === "moviebox") {
         waitMs = Math.max(12000, Math.min(60000, Math.max(base, 15000)));
       } else {
         waitMs = Math.max(8000, Math.min(45000, base));
