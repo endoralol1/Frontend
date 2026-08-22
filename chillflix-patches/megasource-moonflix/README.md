@@ -11,5 +11,15 @@ Cinemove “Moon” family. Live upstream is **`https://hdghartv.cc`** public AP
 - `GET /api/series/public/{id}` → `seasons[].episodes[].streamingLinks[]`
 - CDN: `*.streamraiwind.stream` (Referer `hdghartv.cc`)
 
-`HdgharSources` scrapes that. `MoonflixSources` tries Worker VixSrc first, then HDGHAR.
+`HdgharSources` scrapes that. `MoonflixSources` prefers HDGharTV (VixSrc only if `MOONFLIX_TRY_VIXSRC=1`).
 Optional legacy: set `HDGHAR_API_BASE` for Railway-style `/movie/{tmdb}` JSON.
+
+## Playback / ProxyGuard (Moonflix “Failed — tap retry”)
+Root cause was **Proxy binding failed** on `a-relay` (session sid mismatch or HLS omitting cookie), not an empty scrape.
+
+Fixes:
+- Mint raw CDN in scrapers; mint `a-relay` in the web request (`PlayerSources::mintHdgharPlayUrl`)
+- `watch_page` + `/api/player/session` mint `vf_ps` before the race
+- Sticky sid per IP with **flock** so parallel `/sources` share one sid
+- `assertTokenBinding`: allow **sidOk OR ipOk** (Safari/HLS may omit cookie on same IP)
+- `player.js`: `xhrSetup.withCredentials`, remint once on binding 403; cache `?v=20260822-moon3`
