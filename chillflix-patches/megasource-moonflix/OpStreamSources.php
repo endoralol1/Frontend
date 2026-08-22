@@ -24,6 +24,8 @@ final class OpStreamSources
     /** @var list<string> */
     private const QUALITY_RANK = ['4k', '2160', '1080', '720', '480', '360'];
 
+    private const CACHE_TTL = 180; // share successful scrapes — SpeedRace rate-limits our VPS hard
+
     /**
      * @return array{ok:bool,sources?:list<array<string,mixed>>,diagnostics?:list<array<string,mixed>>,error?:string}
      */
@@ -33,6 +35,22 @@ final class OpStreamSources
         $diagnostics = [];
         if ($tmdbId < 1) {
             return ['ok' => false, 'error' => 'Invalid TMDB id', 'sources' => [], 'diagnostics' => []];
+        }
+
+        $cacheKey = self::cacheKey($type, $tmdbId, max(1, $season), max(1, $episode));
+        $cached = self::cacheGet($cacheKey);
+        if (is_array($cached) && !empty($cached['sources'])) {
+            $diagnostics[] = [
+                'code' => 'OPSTREAM_CACHE',
+                'message' => 'SpeedRace cache hit',
+                'severity' => 'info',
+                'provider' => self::PROVIDER_ID,
+            ];
+            return [
+                'ok' => true,
+                'sources' => $cached['sources'],
+                'diagnostics' => $diagnostics,
+            ];
         }
 
         $meta = self::meta($type, $tmdbId, max(1, $season), max(1, $episode), $diagnostics);
@@ -46,21 +64,25 @@ final class OpStreamSources
         }
 
         // SpeedRace rate-limits aggressively and seeds are single-use / short-TTL.
-        // Retry seed → encrypted fetch → decrypt a few times with backoff.
+        // Retry seed → encrypted fetch → decrypt with longer waits on 429.
         $plain = null;
         $lastErr = 'SpeedRace sources empty';
+        $hitRateLimit = false;
         for ($attempt = 0; $attempt < 5; $attempt++) {
             if ($attempt > 0) {
-                usleep(400000 * $attempt); // 0.4s, 0.8s, 1.2s, 1.6s
+                // 429 needs real breathing room; seed-invalid is usually immediate retry.
+                usleep($hitRateLimit ? (1500000 * $attempt) : (350000 * $attempt));
             }
             $seed = self::seed($tmdbId, $diagnostics, $attempt > 0);
             if ($seed === null || $seed === '') {
                 $lastErr = 'No SpeedRace seed';
+                $hitRateLimit = self::diagHas($diagnostics, 'OPSTREAM_RATE');
                 continue;
             }
             $enc = self::fetchEncrypted($type, $tmdbId, $meta, $seed, max(1, $season), max(1, $episode), $diagnostics);
             if ($enc === null || $enc === '') {
                 $lastErr = 'SpeedRace sources empty';
+                $hitRateLimit = self::diagHas($diagnostics, 'OPSTREAM_RATE');
                 continue;
             }
             try {
@@ -143,7 +165,7 @@ final class OpStreamSources
             'provider' => self::PROVIDER_ID,
         ];
 
-        return [
+        $result = [
             'ok' => true,
             'sources' => [[
                 'url' => $best['url'],
@@ -167,6 +189,51 @@ final class OpStreamSources
             ]],
             'diagnostics' => $diagnostics,
         ];
+        self::cacheSet($cacheKey, ['sources' => $result['sources']]);
+        return $result;
+    }
+
+    private static function cacheKey(string $type, int $tmdbId, int $season, int $episode): string
+    {
+        return 'opstream_' . $type . '_' . $tmdbId . '_' . $season . '_' . $episode;
+    }
+
+    /** @return array{sources?:list<array<string,mixed>>}|null */
+    private static function cacheGet(string $key): ?array
+    {
+        $path = sys_get_temp_dir() . '/vf_' . preg_replace('/[^a-z0-9_]/', '', $key) . '.json';
+        if (!is_readable($path)) {
+            return null;
+        }
+        $raw = (string) @file_get_contents($path);
+        $data = json_decode($raw, true);
+        if (!is_array($data) || (int) ($data['exp'] ?? 0) < time()) {
+            return null;
+        }
+        return is_array($data['payload'] ?? null) ? $data['payload'] : null;
+    }
+
+    /** @param array{sources?:list<array<string,mixed>>} $payload */
+    private static function cacheSet(string $key, array $payload): void
+    {
+        $path = sys_get_temp_dir() . '/vf_' . preg_replace('/[^a-z0-9_]/', '', $key) . '.json';
+        @file_put_contents(
+            $path,
+            json_encode(['exp' => time() + self::CACHE_TTL, 'payload' => $payload], JSON_UNESCAPED_SLASHES),
+            LOCK_EX
+        );
+        @chmod($path, 0666);
+    }
+
+    /** @param list<array<string,mixed>> $diagnostics */
+    private static function diagHas(array $diagnostics, string $code): bool
+    {
+        foreach ($diagnostics as $d) {
+            if (is_array($d) && (string) ($d['code'] ?? '') === $code) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static function qualityRank(string $q): int

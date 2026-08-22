@@ -2644,7 +2644,8 @@
       // Honor Admin → Sources scrape timeout. VSEmbed empty probes usually finish in
       // ~3–7s on their own; do not artificially shorten below the admin value.
       let timeoutSec = Math.max(15, Math.min(180, Number(slot?.scrapeTimeoutSec) || 45));
-      if (pid === "vsembed") timeoutSec = Math.max(18, Math.min(timeoutSec, 45));
+      if (pid === "vsembed") timeoutSec = Math.max(28, Math.min(timeoutSec, 60));
+      if (pid === "opstream") timeoutSec = Math.max(30, Math.min(timeoutSec, 75));
       const timeoutMs = timeoutSec * 1000;
       const ctrl = new AbortController();
       const timer = setTimeout(() => {
@@ -2677,11 +2678,11 @@
         const softDiag = diags.find((d) => {
           const blob = String(d?.code || "") + " " + String(d?.message || "");
           // Rate limits / timeouts / upstream 5xx — retry this or a later round.
-          if (/HTTP\s*429|HTTP\s*5\d\d|rate.?limit|timed?\s*out|upstream.?timeout|ECONN|abort|temporar(?:ily)? unavailable/i.test(blob)) {
+          if (/HTTP\s*429|HTTP\s*5\d\d|rate.?limit|timed?\s*out|upstream.?timeout|ECONN|abort|temporar(?:ily)? unavailable|OPSTREAM_RATE|521|522|523/i.test(blob)) {
             return true;
           }
           // PROVIDER_ERROR only counts as soft when the message looks transient.
-          if (/PROVIDER_ERROR/i.test(blob) && /429|5\d\d|rate.?limit|timeout|ECONN|temporar|unavailable|fetch failed|network|worker/i.test(blob)) {
+          if (/PROVIDER_ERROR/i.test(blob) && /429|5\d\d|521|522|523|rate.?limit|timeout|ECONN|temporar|unavailable|fetch failed|network|worker|stream_urls API failed/i.test(blob)) {
             return true;
           }
           return false;
@@ -3011,8 +3012,13 @@
         const emptyish = !!(err && err.definitiveEmpty) || isDefinitiveEmpty(err);
         // Soft blips (timeout / binding / network) must NOT show "Failed — tap retry"
         // for Moonflix/HDGHAR — that label made it look like the scrape was dead.
-        const softPid = pid === "moonflix" || pid === "hdghar" || pid === "bingr";
+        const softPid = pid === "moonflix" || pid === "hdghar" || pid === "bingr" || pid === "opstream" || pid === "vsembed";
         if (!emptyish && softPid) {
+          slot.status = "pending";
+          slot.error = err?.message || "";
+          slot.retryable = true;
+        } else if (emptyish && softPid && err && err.retryable) {
+          // Transient empty (rate-limit / 521) — don't stamp Failed.
           slot.status = "pending";
           slot.error = err?.message || "";
           slot.retryable = true;
@@ -3250,8 +3256,8 @@
       } else if (fatProxy) {
         // HDGHAR demuxed 1080p first segment can be multi‑MB through a-relay.
         waitMs = Math.max(35000, Math.min(90000, Math.max(base, 45000)));
-      } else if (viaProxy || pid === "vsembed" || pid === "onlyflix" || pid === "moviebox") {
-        waitMs = Math.max(12000, Math.min(60000, Math.max(base, 15000)));
+      } else if (viaProxy || pid === "vsembed" || pid === "opstream" || pid === "onlyflix" || pid === "moviebox") {
+        waitMs = Math.max(15000, Math.min(60000, Math.max(base, 20000)));
       } else {
         waitMs = Math.max(8000, Math.min(45000, base));
       }

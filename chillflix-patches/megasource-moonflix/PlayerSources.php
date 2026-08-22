@@ -2302,13 +2302,34 @@ final class PlayerSources
 
         // Keep probes snappy: empty VSEmbed answers in ~3–5s; don't block the player for 80s+.
         // Other local probes (bingr/hdghar/…) stay at the default httpGetJsonRaw timeout.
-        $probeTimeout = strtolower($providerId) === 'vsembed' ? 18 : 45;
+        // VSEmbed origin often returns Cloudflare 521 — one retry with a longer budget.
+        $probeTimeout = strtolower($providerId) === 'vsembed' ? 28 : 45;
         $payload = self::httpGetJsonRaw($url, [
             'Accept: application/json',
             'User-Agent: VuflixMoviesOnlineHD/1.0',
         ], null, $probeTimeout);
+
+        $isVsembed = strtolower($providerId) === 'vsembed';
+        if ($isVsembed && self::cineproProbeSoftFail($payload)) {
+            usleep(600000);
+            $payload = self::httpGetJsonRaw($url, [
+                'Accept: application/json',
+                'User-Agent: VuflixMoviesOnlineHD/1.0',
+            ], null, $probeTimeout);
+        }
+
         if (!is_array($payload)) {
-            return ['ok' => false, 'error' => 'CinePro probe fetch failed', 'sources' => [], 'diagnostics' => []];
+            return [
+                'ok' => false,
+                'error' => 'CinePro probe fetch failed',
+                'sources' => [],
+                'diagnostics' => [[
+                    'code' => 'PROVIDER_ERROR',
+                    'message' => strtoupper($providerId) . ': probe fetch failed / timed out',
+                    'severity' => 'warning',
+                    'provider' => $providerId,
+                ]],
+            ];
         }
         if (!empty($payload['error'])) {
             $err = $payload['error'];
@@ -2348,6 +2369,24 @@ final class PlayerSources
         ];
     }
 
+    /** @param mixed $payload */
+    private static function cineproProbeSoftFail($payload): bool
+    {
+        if (!is_array($payload)) {
+            return true;
+        }
+        $err = $payload['error'] ?? null;
+        $msg = is_array($err) ? (string) ($err['message'] ?? json_encode($err)) : (string) ($err ?? '');
+        $diagBlob = '';
+        foreach ($payload['diagnostics'] ?? [] as $d) {
+            if (is_array($d)) {
+                $diagBlob .= ' ' . ($d['code'] ?? '') . ' ' . ($d['message'] ?? '');
+            }
+        }
+        $blob = $msg . $diagBlob;
+        // Cloudflare 521/522/523 = origin down; 429/5xx = retryable.
+        return (bool) preg_match('/\b521\b|\b522\b|\b523\b|\b429\b|HTTP\s*5\d\d|timed?\s*out|rate.?limit|ECONN|fetch failed|unavailable/i', $blob);
+    }
 
     /** Keep Huhu stream URLs same-origin (vuflix proxies /api/huhu/ → chillflix). */
     private static function rewriteHuhuToRequestHost(string $url): string

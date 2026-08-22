@@ -1,13 +1,19 @@
 # MegaSource + Moonflix / HDGHAR + OpStream
 
-## OpStream (Flash)
-Opstream.fun does **not** scrape embeds. It calls **SpeedRace**:
-1. `GET https://api.speedracelight.com/seed?mediaId={tmdb}`
-2. `GET …/cdn/sources-with-title?…&enc=2&seed=…` (title double-encoded)
-3. XOR-decrypt (`mvm1`) → `{sources:[{quality,url}]}`
-CDN: `moon.peakstorm.top/(vd|r2)/…m3u8`. Browser Origin is 403’d — we mint **v-relay** without Origin (same idea as their `/api/stream/direct`). Public label: **Flash**.
+## Why VSEmbed / OpStream sometimes “fail”
 
-## MegaSource
+### VSEmbed (Sigma)
+Scrape can succeed then play fail, or look empty even when the title exists:
+1. **Upstream 521** — vsembed’s CDN/API behind Cloudflare is often down (`stream_urls API failed with 521`). We retry once.
+2. **IP-bound CDN** — streams must go through our `v-relay`; binding 403s if the session cookie is missing and the client IP looks like a Cloudflare colo (fixed in ProxyGuard).
+3. **Probe timeout / PHP-FPM kill** under load — request dies mid-scrape (nginx `recv failed`).
+
+### OpStream / Flash
+1. **SpeedRace rate-limit** — `api.speedracelight.com` 429s our VPS when many viewers hit Flash; we cache successful scrapes ~3 min and back off harder on 429.
+2. **One-shot seeds** — seed expires / invalid between seed and decrypt; we retry.
+3. **v-relay binding** — same ProxyGuard issue as above (peakstorm requires proxy, no browser Origin).
+
+UI: soft/transient errors stay **pending** (not Failed) for vsembed + opstream.
 Cinemove “Mega” → WatchPlay (`v1.watchplay.shop`). Direct scrape; CDN `*.hclod.qzz.io` works from VPS.
 
 ## Moonflix / HDGHAR

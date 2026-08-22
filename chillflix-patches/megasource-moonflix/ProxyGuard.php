@@ -60,19 +60,73 @@ final class ProxyGuard
 
     public static function clientIp(): string
     {
-        $cf = trim((string) ($_SERVER['HTTP_CF_CONNECTING_IP'] ?? ''));
-        if ($cf !== '' && filter_var($cf, FILTER_VALIDATE_IP)) {
-            return $cf;
-        }
-        $xff = trim((string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''));
-        if ($xff !== '') {
-            $first = trim(explode(',', $xff)[0] ?? '');
-            if ($first !== '' && filter_var($first, FILTER_VALIDATE_IP)) {
-                return $first;
+        // Prefer Cloudflare's visitor IP. Never fall back to a CF edge address —
+        // that minted tokens with colo IPs and caused intermittent "Proxy binding failed".
+        foreach ([
+            (string) ($_SERVER['HTTP_CF_CONNECTING_IP'] ?? ''),
+            (string) ($_SERVER['HTTP_TRUE_CLIENT_IP'] ?? ''),
+        ] as $cand) {
+            $cand = trim($cand);
+            if ($cand !== '' && filter_var($cand, FILTER_VALIDATE_IP) && !self::isCloudflareIp($cand)) {
+                return $cand;
             }
         }
+
+        $xff = trim((string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''));
+        if ($xff !== '') {
+            foreach (explode(',', $xff) as $part) {
+                $first = trim($part);
+                if ($first !== '' && filter_var($first, FILTER_VALIDATE_IP) && !self::isCloudflareIp($first)) {
+                    return $first;
+                }
+            }
+        }
+
         $ip = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+        if ($ip !== '' && filter_var($ip, FILTER_VALIDATE_IP) && !self::isCloudflareIp($ip)) {
+            return $ip;
+        }
+        // Last resort: still return something stable for rate keys (even if CF).
         return filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '0.0.0.0';
+    }
+
+    /** Rough Cloudflare IP check (common colo ranges seen in binding failures). */
+    private static function isCloudflareIp(string $ip): bool
+    {
+        if (str_starts_with($ip, '2a06:98c0:') || str_starts_with($ip, '2a06:98c1:')) {
+            return true;
+        }
+        // CF IPv4 published ranges (partial — enough to avoid colo-as-client).
+        $cidrs = [
+            '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22', '104.16.0.0/13',
+            '104.24.0.0/14', '108.162.192.0/18', '131.0.72.0/22', '141.101.64.0/18',
+            '162.158.0.0/15', '172.64.0.0/13', '173.245.48.0/20', '188.114.96.0/20',
+            '190.93.240.0/20', '197.234.240.0/22', '198.41.128.0/17',
+        ];
+        $ipLong = ip2long($ip);
+        if ($ipLong === false) {
+            // IPv6 CF-ish
+            return str_starts_with(strtolower($ip), '2400:cb00:')
+                || str_starts_with(strtolower($ip), '2606:4700:')
+                || str_starts_with(strtolower($ip), '2803:f800:')
+                || str_starts_with(strtolower($ip), '2405:b500:')
+                || str_starts_with(strtolower($ip), '2405:8100:')
+                || str_starts_with(strtolower($ip), '2a06:98c0:')
+                || str_starts_with(strtolower($ip), '2c0f:f248:');
+        }
+        foreach ($cidrs as $cidr) {
+            [$subnet, $mask] = explode('/', $cidr, 2);
+            $subnetLong = ip2long($subnet);
+            $mask = (int) $mask;
+            if ($subnetLong === false) {
+                continue;
+            }
+            $maskLong = -1 << (32 - $mask);
+            if (($ipLong & $maskLong) === ($subnetLong & $maskLong)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static function requestPath(): string
@@ -158,6 +212,7 @@ final class ProxyGuard
                         'samesite' => 'Lax',
                     ]);
                     $_COOKIE[self::COOKIE] = $cookie;
+                    self::writeStickySid((string) $sticky['sid'], $ip, (int) $sticky['exp']);
                     if ($lockFh !== false && $lockFh !== null) {
                         @flock($lockFh, LOCK_UN);
                         @fclose($lockFh);
@@ -191,16 +246,93 @@ final class ProxyGuard
         if ($existing === null) {
             @file_put_contents(
                 $stickyPath,
-                json_encode(['sid' => $sid, 'iat' => $iat, 'exp' => $exp, 'cookie' => $cookie], JSON_UNESCAPED_SLASHES),
+                json_encode(['sid' => $sid, 'iat' => $iat, 'exp' => $exp, 'cookie' => $cookie, 'ip' => $ip], JSON_UNESCAPED_SLASHES),
                 LOCK_EX
             );
             @chmod($stickyPath, 0666);
+            // Sid index so native HLS (no cookie) can still prove a recent mint.
+            self::writeStickySid($sid, $ip, $exp);
             if ($lockFh !== false && $lockFh !== null) {
                 @flock($lockFh, LOCK_UN);
                 @fclose($lockFh);
             }
+        } else {
+            self::writeStickySid($sid, $ip, $exp);
         }
         return ['sid' => $sid, 'iat' => $iat, 'exp' => $exp];
+    }
+
+    private static function stickySidPath(string $sid): string
+    {
+        return sys_get_temp_dir() . '/vf_ps_sid_' . preg_replace('/[^a-f0-9]/', '', $sid);
+    }
+
+    private static function writeStickySid(string $sid, string $ip, int $exp): void
+    {
+        $sid = preg_replace('/[^a-f0-9]/', '', $sid) ?? '';
+        if (strlen($sid) < 16) {
+            return;
+        }
+        $path = self::stickySidPath($sid);
+        $prev = [];
+        if (is_readable($path)) {
+            $decoded = json_decode((string) @file_get_contents($path), true);
+            if (is_array($decoded)) {
+                $prev = $decoded;
+            }
+        }
+        $ips = [];
+        foreach (($prev['ips'] ?? []) as $old) {
+            $old = trim((string) $old);
+            if ($old !== '' && filter_var($old, FILTER_VALIDATE_IP)) {
+                $ips[$old] = true;
+            }
+        }
+        if ($ip !== '' && filter_var($ip, FILTER_VALIDATE_IP)) {
+            $ips[$ip] = true;
+        }
+        @file_put_contents(
+            $path,
+            json_encode([
+                'sid' => $sid,
+                'exp' => $exp,
+                'ips' => array_keys($ips),
+                'updated' => time(),
+            ], JSON_UNESCAPED_SLASHES),
+            LOCK_EX
+        );
+        @chmod($path, 0666);
+    }
+
+    private static function stickySidAlive(string $sid): bool
+    {
+        $path = self::stickySidPath($sid);
+        if (!is_readable($path)) {
+            return false;
+        }
+        $data = json_decode((string) @file_get_contents($path), true);
+        if (!is_array($data)) {
+            return false;
+        }
+        return (int) ($data['exp'] ?? 0) > time();
+    }
+
+    private static function stickySidMatchesIp(string $sid, string $ip): bool
+    {
+        if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP)) {
+            return false;
+        }
+        $path = self::stickySidPath($sid);
+        if (!is_readable($path)) {
+            return false;
+        }
+        $data = json_decode((string) @file_get_contents($path), true);
+        if (!is_array($data) || (int) ($data['exp'] ?? 0) < time()) {
+            return false;
+        }
+        // Remember this IP under the sid (dual-stack viewer).
+        self::writeStickySid($sid, $ip, (int) $data['exp']);
+        return true;
     }
 
     public static function isStaffBypass(): bool
@@ -448,10 +580,19 @@ final class ProxyGuard
         $tokIp = (string) ($data['ip'] ?? '');
         $session = self::readSession();
         $sidOk = $session !== null && $tokSid !== '' && hash_equals($tokSid, $session['sid']);
+        // Native HLS (PS4/Safari) often omits cookies — also accept a live sticky sid mint.
+        if (!$sidOk && $tokSid !== '' && self::stickySidAlive($tokSid)) {
+            $sidOk = true;
+        }
         $ipOk = $tokIp !== '' && hash_equals($tokIp, $ip);
+        // Dual-stack: mint on v4, play on v6 (or vice versa) — accept if sticky file for tokIp
+        // was written for this sid (same browser session).
+        if (!$ipOk && $tokIp !== '' && $tokSid !== '' && self::stickySidMatchesIp($tokSid, $ip)) {
+            $ipOk = true;
+        }
 
         // Accept either bind:
-        // - sidOk: mobile IP can change; cookie proves the browser
+        // - sidOk: mobile IP can change; cookie/sticky proves the browser
         // - ipOk: same IP even if media/HLS omit the cookie (Safari native HLS, workers)
         // Reject only when BOTH fail (stolen token used from another IP without session).
         if ($sidOk || $ipOk) {
