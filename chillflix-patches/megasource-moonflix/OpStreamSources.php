@@ -4,12 +4,10 @@ declare(strict_types=1);
 /**
  * OpStream-style "instant" streams via api.speedracelight.com.
  *
- * Opstream.fun does not scrape embeds — it calls SpeedRace:
- *   1) GET /seed?mediaId={tmdb}
- *   2) GET /cdn/sources-with-title?...&enc=2&seed=...
- *   3) XOR-decrypt (magic mvm1) → {sources:[{quality,url}]}
- * CDN hosts: moon.peakstorm.top /vd/... m3u8 (CORS blocks browser Origin
- * from other sites — mint v-relay like OpStream's /api/stream/direct).
+ * Prefer the shared Yoru CF worker pool (6 edges) — SpeedRace rate-limits
+ * our VPS datacenter IP. Same /resolve path Cineplay already uses.
+ * Fallback: direct seed + enc=2 decrypt from the VPS.
+ * CDN: moon.peakstorm.top — mint v-relay without Origin.
  */
 final class OpStreamSources
 {
@@ -24,7 +22,7 @@ final class OpStreamSources
     /** @var list<string> */
     private const QUALITY_RANK = ['4k', '2160', '1080', '720', '480', '360'];
 
-    private const CACHE_TTL = 180; // share successful scrapes — SpeedRace rate-limits our VPS hard
+    private const CACHE_TTL = 300; // share successes across viewers (workers + direct)
 
     /**
      * @return array{ok:bool,sources?:list<array<string,mixed>>,diagnostics?:list<array<string,mixed>>,error?:string}
@@ -53,6 +51,13 @@ final class OpStreamSources
             ];
         }
 
+        // 1) CF workers (round-robin across 6) — avoids VPS IP 429s on SpeedRace.
+        $viaWorker = self::fetchViaWorkers($type, $tmdbId, max(1, $season), max(1, $episode), $diagnostics);
+        if ($viaWorker !== null) {
+            return self::finishFromLinks($viaWorker, $diagnostics, $cacheKey, 'worker');
+        }
+
+        // 2) Direct VPS fallback (same path OpStream.fun client uses).
         $meta = self::meta($type, $tmdbId, max(1, $season), max(1, $episode), $diagnostics);
         if ($meta === null) {
             return [
@@ -63,14 +68,11 @@ final class OpStreamSources
             ];
         }
 
-        // SpeedRace rate-limits aggressively and seeds are single-use / short-TTL.
-        // Retry seed → encrypted fetch → decrypt with longer waits on 429.
         $plain = null;
         $lastErr = 'SpeedRace sources empty';
         $hitRateLimit = false;
-        for ($attempt = 0; $attempt < 5; $attempt++) {
+        for ($attempt = 0; $attempt < 4; $attempt++) {
             if ($attempt > 0) {
-                // 429 needs real breathing room; seed-invalid is usually immediate retry.
                 usleep($hitRateLimit ? (1500000 * $attempt) : (350000 * $attempt));
             }
             $seed = self::seed($tmdbId, $diagnostics, $attempt > 0);
@@ -109,8 +111,123 @@ final class OpStreamSources
         }
 
         $data = json_decode($plain, true);
-
         $raw = is_array($data) ? ($data['sources'] ?? []) : [];
+        $links = self::normalizeLinks($raw);
+        if ($links === []) {
+            $diagnostics[] = [
+                'code' => 'OPSTREAM_EMPTY',
+                'message' => 'No playable m3u8 from SpeedRace',
+                'severity' => 'warning',
+                'provider' => self::PROVIDER_ID,
+            ];
+            return [
+                'ok' => false,
+                'sources' => [],
+                'diagnostics' => $diagnostics,
+                'error' => 'No OpStream streams',
+            ];
+        }
+        return self::finishFromLinks($links, $diagnostics, $cacheKey, 'direct');
+    }
+
+    /**
+     * Round-robin Yoru /resolve on the shared CF worker pool (same as Cineplay).
+     *
+     * @param list<array<string,mixed>> $diagnostics
+     * @return list<array{url:string,quality:string,type:string}>|null
+     */
+    private static function fetchViaWorkers(
+        string $type,
+        int $tmdbId,
+        int $season,
+        int $episode,
+        array &$diagnostics
+    ): ?array {
+        if (!class_exists('WorkerRelayService')) {
+            return null;
+        }
+        $cfg = WorkerRelayService::get();
+        if (empty($cfg['enabled'])) {
+            return null;
+        }
+
+        // Try up to 2 different workers if the first is cold/429.
+        for ($try = 0; $try < 2; $try++) {
+            $picked = WorkerRelayService::pickWorker();
+            if ($picked === null || empty($picked['url'])) {
+                return null;
+            }
+            $relay = rtrim((string) $picked['url'], '/');
+            $secret = (string) ($picked['secret'] ?? '');
+            $cacheTtl = max(60, (int) ($cfg['cacheTtlSeconds'] ?? 7200));
+            $qs = http_build_query([
+                'type' => $type,
+                'tmdb' => $tmdbId,
+                'season' => $season,
+                'episode' => $episode,
+                'cacheTtl' => $cacheTtl,
+            ]);
+            $url = $relay . '/resolve?' . $qs;
+            $headers = [
+                'Accept: application/json',
+                'User-Agent: VuflixOpStreamRelay/1.0',
+            ];
+            if ($secret !== '') {
+                $headers[] = 'X-Yoru-Key: ' . $secret;
+            }
+
+            $res = self::httpRaw($url, $headers);
+            if ($res === null) {
+                $diagnostics[] = [
+                    'code' => 'OPSTREAM_WORKER',
+                    'message' => 'worker request failed (' . ($picked['id'] ?? 'relay') . ')',
+                    'severity' => 'warning',
+                    'provider' => self::PROVIDER_ID,
+                ];
+                continue;
+            }
+            [$code, $body] = $res;
+            $json = json_decode($body, true);
+            if ($code === 429 || $code === 403) {
+                $diagnostics[] = [
+                    'code' => 'OPSTREAM_WORKER_RATE',
+                    'message' => 'worker HTTP ' . $code . ' (' . ($picked['id'] ?? '') . ')',
+                    'severity' => 'warning',
+                    'provider' => self::PROVIDER_ID,
+                ];
+                continue;
+            }
+            if (!is_array($json) || empty($json['ok']) || empty($json['sources']) || !is_array($json['sources'])) {
+                $diagnostics[] = [
+                    'code' => 'OPSTREAM_WORKER_EMPTY',
+                    'message' => (string) ($json['error'] ?? ('worker HTTP ' . $code)),
+                    'severity' => 'info',
+                    'provider' => self::PROVIDER_ID,
+                ];
+                continue;
+            }
+            $links = self::normalizeLinks($json['sources']);
+            if ($links === []) {
+                continue;
+            }
+            $diagnostics[] = [
+                'code' => 'OPSTREAM_WORKER_OK',
+                'message' => 'SpeedRace via worker ' . (string) ($picked['id'] ?? 'relay')
+                    . ' (' . count($links) . ' qualities)',
+                'severity' => 'info',
+                'provider' => self::PROVIDER_ID,
+            ];
+            return $links;
+        }
+        return null;
+    }
+
+    /**
+     * @param list<mixed> $raw
+     * @return list<array{url:string,quality:string,type:string}>
+     */
+    private static function normalizeLinks(array $raw): array
+    {
         $links = [];
         foreach ($raw as $row) {
             if (!is_array($row)) {
@@ -130,27 +247,19 @@ final class OpStreamSources
                 'type' => 'hls',
             ];
         }
-
         usort($links, static function (array $a, array $b): int {
             return OpStreamSources::qualityRank($b['quality']) <=> OpStreamSources::qualityRank($a['quality']);
         });
+        return $links;
+    }
 
-        if ($links === []) {
-            $diagnostics[] = [
-                'code' => 'OPSTREAM_EMPTY',
-                'message' => 'No playable m3u8 from SpeedRace',
-                'severity' => 'warning',
-                'provider' => self::PROVIDER_ID,
-            ];
-            return [
-                'ok' => false,
-                'sources' => [],
-                'diagnostics' => $diagnostics,
-                'error' => 'No OpStream streams',
-            ];
-        }
-
-        // Prefer 1080p for first play (4K segments can stall phones); keep all in qualities.
+    /**
+     * @param list<array{url:string,quality:string,type:string}> $links
+     * @param list<array<string,mixed>> $diagnostics
+     * @return array{ok:bool,sources:list<array<string,mixed>>,diagnostics:list<array<string,mixed>>}
+     */
+    private static function finishFromLinks(array $links, array $diagnostics, string $cacheKey, string $via): array
+    {
         $best = $links[0];
         foreach ($links as $link) {
             if (str_contains(strtolower($link['quality']), '1080')) {
@@ -160,11 +269,10 @@ final class OpStreamSources
         }
         $diagnostics[] = [
             'code' => 'OPSTREAM_OK',
-            'message' => 'SpeedRace ' . count($links) . ' qualities',
+            'message' => 'SpeedRace ' . count($links) . ' qualities via ' . $via,
             'severity' => 'info',
             'provider' => self::PROVIDER_ID,
         ];
-
         $result = [
             'ok' => true,
             'sources' => [[
@@ -178,12 +286,12 @@ final class OpStreamSources
                 'hasEnglish' => true,
                 'headers' => [
                     'User-Agent' => self::UA,
-                    // No Origin — peakstorm 403s browser Origin from other sites.
                     'Accept' => '*/*',
                 ],
                 'qualities' => $links,
                 'meta' => [
                     'backend' => 'speedracelight',
+                    'via' => $via,
                     'host' => (string) (parse_url($best['url'], PHP_URL_HOST) ?: ''),
                 ],
             ]],
@@ -568,7 +676,7 @@ final class OpStreamSources
     }
 
     /** @return array{0:int,1:string}|null */
-    private static function httpRaw(string $url): ?array
+    private static function httpRaw(string $url, ?array $extraHeaders = null): ?array
     {
         if (!function_exists('curl_init')) {
             return null;
@@ -577,18 +685,19 @@ final class OpStreamSources
         if ($ch === false) {
             return null;
         }
+        $headers = $extraHeaders ?? [
+            'User-Agent: ' . self::UA,
+            'Accept: */*',
+            'Origin: https://opstream.fun',
+            'Referer: https://opstream.fun/',
+        ];
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 3,
             CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT => 25,
-            CURLOPT_HTTPHEADER => [
-                'User-Agent: ' . self::UA,
-                'Accept: */*',
-                'Origin: https://opstream.fun',
-                'Referer: https://opstream.fun/',
-            ],
+            CURLOPT_TIMEOUT => 45,
+            CURLOPT_HTTPHEADER => $headers,
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
         ]);
