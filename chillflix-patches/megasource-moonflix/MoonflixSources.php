@@ -4,10 +4,9 @@ declare(strict_types=1);
 /**
  * Moonflix — Cinemove's "Moon" fast source.
  *
- * On Cinemove, moonflix aliases: hdghar, vixsrc, vixcloud, streamingcommunity, scws, unity.
- * We try (1) Worker /vixsrc resolve, then (2) our HDGHAR aggregator (env HDGHAR_API_BASE).
- * Both upstreams are currently fragile (CF 403 / dead Railway) — keep enabled so a fixed
- * Worker or new HDGHAR base lights up without another code deploy.
+ * Aliases on Cinemove: hdghar / vixsrc / vixcloud / streamingcommunity.
+ * Primary: HDGharTV via HdgharSources (fast, works).
+ * Optional: Worker /vixsrc when MOONFLIX_TRY_VIXSRC=1 (currently CF-blocked, slow).
  */
 final class MoonflixSources
 {
@@ -25,19 +24,8 @@ final class MoonflixSources
             return ['ok' => false, 'error' => 'Invalid TMDB id', 'sources' => [], 'diagnostics' => []];
         }
 
-        $vix = self::viaWorkerVixsrc($type, $tmdbId, max(1, $season), max(1, $episode), $diagnostics);
-        if ($vix !== null) {
-            return [
-                'ok' => true,
-                'sources' => [$vix],
-                'diagnostics' => $diagnostics,
-                'error' => null,
-                'meta' => ['backend' => 'vixsrc-worker'],
-            ];
-        }
-
+        // HDGharTV first — VixSrc via Worker is CF-blocked and only burns race time.
         if (class_exists('HdgharSources')) {
-            // Bypass hostAllowed for CLI probes; still Vuflix-gated in PlayerSources.
             $hg = HdgharSources::fetch($type, $tmdbId, $season, $episode);
             foreach ($hg['diagnostics'] ?? [] as $d) {
                 if (is_array($d)) {
@@ -64,7 +52,7 @@ final class MoonflixSources
                     'sources' => $sources,
                     'diagnostics' => $diagnostics,
                     'error' => null,
-                    'meta' => ['backend' => 'hdghar'],
+                    'meta' => ['backend' => 'hdghartv'],
                 ];
             }
         } else {
@@ -76,12 +64,26 @@ final class MoonflixSources
             ];
         }
 
+        $tryVix = getenv('MOONFLIX_TRY_VIXSRC');
+        if ($tryVix === '1' || $tryVix === 'true') {
+            $vix = self::viaWorkerVixsrc($type, $tmdbId, max(1, $season), max(1, $episode), $diagnostics);
+            if ($vix !== null) {
+                return [
+                    'ok' => true,
+                    'sources' => [$vix],
+                    'diagnostics' => $diagnostics,
+                    'error' => null,
+                    'meta' => ['backend' => 'vixsrc-worker'],
+                ];
+            }
+        }
+
         return [
             'ok' => false,
             'sources' => [],
             'diagnostics' => $diagnostics ?: [[
                 'code' => 'MOONFLIX_EMPTY',
-                'message' => 'Moonflix backends unavailable (VixSrc CF / HDGHAR down)',
+                'message' => 'No Moonflix streams',
                 'severity' => 'warning',
                 'provider' => self::PROVIDER_ID,
             ]],

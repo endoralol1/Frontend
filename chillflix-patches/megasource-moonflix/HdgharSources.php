@@ -125,15 +125,9 @@ final class HdgharSources
             'Accept' => '*/*',
         ];
 
-        // Prefer English audio when multi-audio masters are served (keep CDN Referer).
-        if (class_exists('StreamLangProxy')) {
-            foreach ($links as &$q) {
-                if (($q['type'] ?? '') === 'hls' && !empty($q['url'])) {
-                    $q['url'] = StreamLangProxy::mintHlsHeaders((string) $q['url'], $headers, 'eng');
-                }
-            }
-            unset($q);
-        }
+        // Return RAW CDN URLs — mint a-relay/lang-proxy in PlayerSources (web request)
+        // so ProxyGuard IP/session bind matches the viewer. Minting here breaks when
+        // fetch-local-provider.php runs as a CLI child (ip=0.0.0.0 → Proxy binding failed).
 
         $best = $links[0];
         $audioTracks = [
@@ -367,42 +361,49 @@ final class HdgharSources
         $queries = [];
         if ($title !== null && trim($title) !== '') {
             $queries[] = trim($title);
+            // Also try without subtitle / punctuation noise.
+            $simple = trim((string) preg_replace('/\s*[(:].*$/', '', $title));
+            if ($simple !== '' && strcasecmp($simple, trim($title)) !== 0) {
+                $queries[] = $simple;
+            }
         }
-        $queries[] = (string) $tmdbId;
 
         $bucket = $type === 'tv' ? 'series' : 'movies';
-        foreach ($queries as $q) {
-            $json = self::httpGetJson(self::SITE . '/api/search?q=' . rawurlencode($q));
-            if (!is_array($json)) {
-                continue;
-            }
-            foreach ($json[$bucket] ?? [] as $row) {
-                if (!is_array($row)) {
-                    continue;
-                }
-                if ((int) ($row['tmdbId'] ?? 0) === $tmdbId && !empty($row['_id'])) {
-                    return (string) $row['_id'];
-                }
-            }
-        }
-
-        // Fallback: scan public list pages for exact tmdbId (slower, limited first page).
         $listPath = $type === 'tv' ? '/api/series/public' : '/api/movies/public';
-        $json = self::httpGetJson(self::SITE . $listPath);
-        if (is_array($json)) {
-            foreach ($json['data'] ?? [] as $row) {
-                if (!is_array($row)) {
-                    continue;
+
+        foreach ($queries as $q) {
+            // Title search endpoint (more reliable than q=<tmdbId>).
+            $json = self::httpGetJson(self::SITE . '/api/search?q=' . rawurlencode($q));
+            if (is_array($json)) {
+                foreach ($json[$bucket] ?? [] as $row) {
+                    if (!is_array($row)) {
+                        continue;
+                    }
+                    if ((int) ($row['tmdbId'] ?? 0) === $tmdbId && !empty($row['_id'])) {
+                        return (string) $row['_id'];
+                    }
                 }
-                if ((int) ($row['tmdbId'] ?? 0) === $tmdbId && !empty($row['_id'])) {
-                    return (string) $row['_id'];
+            }
+            // Public list ?search= also matches by title.
+            $json = self::httpGetJson($listPath === '/api/movies/public'
+                ? self::SITE . '/api/movies/public?search=' . rawurlencode($q)
+                : self::SITE . '/api/series/public?search=' . rawurlencode($q));
+            if (is_array($json)) {
+                foreach ($json['data'] ?? [] as $row) {
+                    if (!is_array($row)) {
+                        continue;
+                    }
+                    if ((int) ($row['tmdbId'] ?? 0) === $tmdbId && !empty($row['_id'])) {
+                        return (string) $row['_id'];
+                    }
                 }
             }
         }
 
         $diagnostics[] = [
             'code' => 'HDGHAR_SEARCH_MISS',
-            'message' => 'HDGharTV search miss for TMDB ' . $tmdbId,
+            'message' => 'HDGharTV search miss for TMDB ' . $tmdbId
+                . ($title ? (' (“' . $title . '”)') : ' (no title)'),
             'severity' => 'info',
             'provider' => self::PROVIDER_ID,
         ];

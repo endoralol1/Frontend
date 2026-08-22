@@ -847,8 +847,11 @@ final class PlayerSources
                     if (!is_array($src) || empty($src['url'])) {
                         continue;
                     }
-                    $streamUrl = (string) $src['url'];
-                    $cdnHeaders = [];
+                    $cdnHeaders = [
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Referer' => 'https://hdghartv.cc/',
+                        'Origin' => 'https://hdghartv.cc',
+                    ];
                     if (is_array($src['headers'] ?? null)) {
                         foreach ($src['headers'] as $hk => $hv) {
                             $hk = trim((string) $hk);
@@ -858,13 +861,8 @@ final class PlayerSources
                             }
                         }
                     }
-                    $playUrl = $streamUrl;
-                    if ($cdnHeaders !== [] && class_exists('VidmolySources') && preg_match('#^https?://#i', $streamUrl)) {
-                        // Don't double-wrap lang-proxy masters.
-                        if (!str_contains($streamUrl, '/api/player/') && !str_contains($streamUrl, 'lang-proxy')) {
-                            $playUrl = VidmolySources::signedProxyUrl($streamUrl, $cdnHeaders, true);
-                        }
-                    }
+                    $streamUrl = (string) $src['url'];
+                    $playUrl = self::mintHdgharPlayUrl($streamUrl, $cdnHeaders);
                     $qualities = [];
                     foreach ($src['qualities'] ?? [] as $q) {
                         if (!is_array($q) || empty($q['url'])) {
@@ -872,7 +870,7 @@ final class PlayerSources
                         }
                         $qualities[] = [
                             'quality' => (string) ($q['quality'] ?? 'Auto'),
-                            'url' => (string) $q['url'],
+                            'url' => self::mintHdgharPlayUrl((string) $q['url'], $cdnHeaders),
                             'type' => (string) ($q['type'] ?? 'hls'),
                         ];
                     }
@@ -1074,7 +1072,22 @@ final class PlayerSources
                     if (!is_array($src) || empty($src['url'])) {
                         continue;
                     }
+                    $cdnHeaders = [
+                        'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Referer' => 'https://hdghartv.cc/',
+                        'Origin' => 'https://hdghartv.cc',
+                    ];
+                    if (is_array($src['headers'] ?? null)) {
+                        foreach ($src['headers'] as $hk => $hv) {
+                            $hk = trim((string) $hk);
+                            $hv = trim((string) $hv);
+                            if ($hk !== '' && $hv !== '') {
+                                $cdnHeaders[$hk] = $hv;
+                            }
+                        }
+                    }
                     $streamUrl = (string) $src['url'];
+                    $playUrl = self::mintHdgharPlayUrl($streamUrl, $cdnHeaders);
                     $qualities = [];
                     foreach ($src['qualities'] ?? [] as $q) {
                         if (!is_array($q) || empty($q['url'])) {
@@ -1082,7 +1095,7 @@ final class PlayerSources
                         }
                         $qualities[] = [
                             'quality' => (string) ($q['quality'] ?? 'Auto'),
-                            'url' => (string) $q['url'],
+                            'url' => self::mintHdgharPlayUrl((string) $q['url'], $cdnHeaders),
                             'type' => (string) ($q['type'] ?? 'hls'),
                         ];
                     }
@@ -1106,7 +1119,7 @@ final class PlayerSources
                     }
                     $merged[$key] = [
                         'id' => substr(sha1($key), 0, 12),
-                        'url' => $streamUrl,
+                        'url' => $playUrl,
                         'type' => (string) ($src['type'] ?? 'hls'),
                         'quality' => (string) ($src['quality'] ?? 'Auto'),
                         'provider' => 'hdghar',
@@ -2490,5 +2503,30 @@ final class PlayerSources
         }
         $data = json_decode(substr($stdout, $jsonStart), true);
         return is_array($data) ? $data : null;
+    }
+
+    /**
+     * Mint HDGharTV / streamraiwind play URL in the current web request so ProxyGuard
+     * binds the viewer's IP/session (not a CLI child).
+     *
+     * @param array<string,string> $headers
+     */
+    private static function mintHdgharPlayUrl(string $url, array $headers): string
+    {
+        $url = trim($url);
+        if ($url === '' || !preg_match('#^https?://#i', $url)) {
+            return $url;
+        }
+        // Already proxied.
+        if (str_contains($url, '/api/player/a-relay') || str_contains($url, '/api/player/v-relay') || str_contains($url, 'lang-proxy')) {
+            return $url;
+        }
+        if (class_exists('StreamLangProxy') && preg_match('/\.m3u8(\?|$)/i', $url)) {
+            return StreamLangProxy::mintHlsHeaders($url, $headers, 'eng');
+        }
+        if (class_exists('VidmolySources')) {
+            return VidmolySources::signedProxyUrl($url, $headers, true);
+        }
+        return $url;
     }
 }
