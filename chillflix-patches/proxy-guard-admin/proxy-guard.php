@@ -22,7 +22,7 @@ $events = $events ?? [];
     <div class="cf-admin-head">
       <h1>Proxy guard</h1>
       <p class="muted" style="margin:.35rem 0 0;color:rgba(255,255,255,.55);font-size:.88rem">
-        Track real scrapers (curl / no session / rate floods). Block IPs. Normal watchers with a player session are not listed here.
+        Shows scraper signals (curl / rate floods). <strong>Auto-ban is off</strong> — only you block IPs here, so normal viewers are not banned by mistake.
       </p>
     </div>
 

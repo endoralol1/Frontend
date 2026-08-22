@@ -13,9 +13,11 @@ final class ProxyGuard
     public const COOKIE = 'vf_ps';
     public const TTL_SEC = 900; // 15 min stream tokens
     public const SESSION_TTL = 21600; // 6h browser session
-    public const SOURCES_PER_MIN = 40;
-    public const RELAY_PER_MIN = 900;
-    public const AUTO_BLOCK_EVENTS = 50;
+    public const SOURCES_PER_MIN = 60;
+    public const RELAY_PER_MIN = 1200;
+    /** Auto-ban OFF by default — too easy to hit real viewers (parallel /sources). Manual admin block only. */
+    public const AUTO_BLOCK_ENABLED = false;
+    public const AUTO_BLOCK_EVENTS = 80;
     public const AUTO_BLOCK_WINDOW = 600; // 10 min
     public const AUTO_BLOCK_HOURS = 24;
 
@@ -219,6 +221,23 @@ final class ProxyGuard
         self::bootSchema();
         $ip = $ip ?? self::clientIp();
         $path = $path ?? self::requestPath();
+
+        // Dedupe noisy signals (one row per IP/event/minute) so admin stays readable
+        // and parallel player /sources calls don't look like a botnet.
+        if (in_array($event, ['no_session', 'blocked_ip', 'rate_limit'], true)) {
+            try {
+                $st = Database::pdo()->prepare(
+                    'SELECT id FROM proxy_events WHERE ip = ? AND event = ? AND created_at >= ? LIMIT 1'
+                );
+                $st->execute([$ip, $event, time() - 60]);
+                if ($st->fetch()) {
+                    return;
+                }
+            } catch (Throwable $e) {
+                // fall through and insert
+            }
+        }
+
         try {
             $st = Database::pdo()->prepare(
                 'INSERT INTO proxy_events (created_at, ip, event, path, detail) VALUES (?, ?, ?, ?, ?)'
@@ -233,20 +252,24 @@ final class ProxyGuard
         } catch (Throwable $e) {
             // ignore
         }
-        // Auto-block noisy scrapers only — never soft IP changes on valid sessions.
-        if (in_array($event, ['blocked_ua', 'no_session', 'rate_limit'], true)
-            || ($event === 'ip_mismatch' && !str_contains($detail, 'allowed via session'))) {
+        if (self::AUTO_BLOCK_ENABLED
+            && (in_array($event, ['blocked_ua', 'rate_limit'], true)
+                || ($event === 'ip_mismatch' && !str_contains($detail, 'allowed via session')))) {
             self::maybeAutoBlock($ip);
         }
     }
 
     private static function maybeAutoBlock(string $ip): void
     {
+        if (!self::AUTO_BLOCK_ENABLED) {
+            return;
+        }
         try {
             $since = time() - self::AUTO_BLOCK_WINDOW;
+            // no_session excluded — normal players can emit it during cookie race.
             $st = Database::pdo()->prepare(
                 "SELECT COUNT(*) FROM proxy_events
-                 WHERE ip = ? AND created_at >= ? AND event IN ('blocked_ua','no_session','rate_limit','ip_mismatch')"
+                 WHERE ip = ? AND created_at >= ? AND event IN ('blocked_ua','rate_limit')"
             );
             $st->execute([$ip, $since]);
             $n = (int) $st->fetchColumn();
@@ -311,16 +334,14 @@ final class ProxyGuard
 
         if (!self::isStaffBypass()) {
             $session = self::readSession();
-            if ($kind === 'sources') {
-                // Sources scrape is the main scrape entry — require an existing watch session.
-                if ($session === null) {
-                    self::logEvent('no_session', $kind, $ip);
-                    return ['ok' => false, 'error' => 'Player session required', 'code' => 403];
+            if ($session === null) {
+                // Mint session on first hit (sets cookie). Do NOT 403 normal browsers —
+                // parallel /sources during watch looked like scrapers and auto-banned people.
+                // Curl/scrapers still die on isScraperUa() above.
+                if ($kind === 'sources') {
+                    self::logEvent('no_session', 'minted on sources', $ip);
                 }
-            } else {
-                // Relays: signed token is the real auth. Mint a session cookie if missing so
-                // mid-play users (page loaded before guard) are not flooded with no_session.
-                $session = $session ?? self::ensureSession();
+                $session = self::ensureSession();
             }
         } else {
             $session = self::ensureSession();
