@@ -23,3 +23,8 @@ WHERE id='videasy';
 ## Notes
 - VPS datacenter IP is often `seed 429` / CF 1015 — Worker relay or `PROVIDER_FETCH_PROXY` required.
 - Proven working resolve from a clean egress IP with `node videasy-resolve.mjs --type movie --tmdb 157336`.
+
+## Do NOT use Cloudflare WARP on the VPS
+`warp-cli connect` breaks SSH/egress and takes the site offline (CF 522).
+WARP service should stay disabled. Use Worker relay or a real HTTP proxy env
+(`PROVIDER_FETCH_PROXY`) if seed is rate-limited — never WARP.
