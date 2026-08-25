@@ -1,0 +1,13 @@
+import "@/styles/globals.css"
+import { Metadata, Viewport } from "next"
+import Script from "next/script"
+import { siteConfig } from "@/config"
+import { GeistSans } from "geist/font/sans"
+        )}
+        suppressHydrationWarning
+      >
+        <Script src="/bot-shield.js" strategy="beforeInteractive" />
+        <HolyLoader color="#ccc" />
+        <I18nProvider locale={locale} messages={messages}>
+          <ThemeProvider>
+            <AuthProvider>
