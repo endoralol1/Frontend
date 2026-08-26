@@ -1,0 +1,29 @@
+    /**
+     * Cinemove-style race: scrape the first N auto sources in parallel and play
+     * whichever returns a usable stream first. Remaining sources stay sequential.
+     */
+    async function raceAutoSources({ play = true, background = false, packSize = 4 } = {}) {
+      const indices = autoLoadSourceIndices();
+      if (!indices.length) {
+        announceNoPlayableSources();
+        return false;
+      }
+      const n = Math.max(1, Math.min(6, Number(packSize) || 3));
+      const pack = indices.slice(0, n);
+      state.raceWinnerIndex = -1;
+      resetSlotsForBackgroundRescan();
+      refreshMenus();
+      try {
+        await raceAutoSources({ play: true, background: true, packSize: 4 });
+      } catch (_) {
+        /* announce path handles exhaustion */
+      } finally {
+          state.sourceIndex = 0;
+          refreshMenus();
+        }
+
+        // Automatic: race first 4 auto_load providers (Cinemove-style), then cascade.
+        state.autoPlayStarted = true;
+        await raceAutoSources({ play: true, background: false, packSize: 4 });
+      } catch (err) {
+        setStatus(err.message || t('player.sources_failed', 'Failed to load sources'));
