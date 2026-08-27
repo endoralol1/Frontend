@@ -1,0 +1,49 @@
+    async function raceAutoSources({ play = true, background = false, packSize = 4 } = {}) {
+      const indices = autoLoadSourceIndices();
+      if (!indices.length) {
+        announceNoPlayableSources();
+        return false;
+      }
+      const n = Math.max(1, Math.min(6, Number(packSize) || 3));
+      const pack = indices.slice(0, n);
+      state.raceWinnerIndex = -1;
+
+      const names = pack
+        .map((i) => state.sources[i]?.publicLabel || state.sources[i]?.providerName || state.sources[i]?.provider || "?")
+        .join(", ");
+      if (!background || !state.cascadeExhausted) {
+        setStatus(`Racing ${names}…`);
+      }
+      // Paint all race slots as loading so the Source tab shows the full pack (incl. 4th).
+      pack.forEach((idx) => {
+        const slot = state.sources[idx];
+        if (slot && slot.status === "pending") slot.status = "loading";
+      });
+      refreshMenus();
+
+      await Promise.all(
+        pack.map(async (idx) => {
+          let ok = false;
+          try {
+            ok = await ensureProviderLoaded(idx, {
+              play: false,
+              isAuto: false,
+              background,
+              claimIndex: false,
+              quietStatus: true,
+              raceLabel: names,
+            });
+          } catch (_) {
+            ok = false;
+          }
+          if (!ok) return;
+          const slot = state.sources[idx];
+          if (!slot) return;
+          if (slot.hasEnglish === false && !slot.autoloadNonEnglish) return;
+          if (!(slot.url || streamQualitiesFromSource(slot).length || candidateUrls(slot).length)) return;
+          // First usable hit wins (JS is single-threaded between awaits).
+          if (state.raceWinnerIndex >= 0) return;
+          state.raceWinnerIndex = idx;
+          if (background && state.cascadeExhausted) {
+            state.cascadeExhausted = false;
+            clearBackgroundSearchTimers(false);
