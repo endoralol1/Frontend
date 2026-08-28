@@ -1,0 +1,14 @@
+/* Desktop: tiny gap under floating menu before hero */
+@media (min-width: 768px) {
+  .home-hero-bleed {
+    margin-top: 0.4rem !important;
+  }
+}
+
+/* Desktop: 8 cards across home media rails */
+@media (min-width: 1024px) {
+  .home-carousel-item {
+    flex: 0 0 calc((100% - 7 * 0.5rem) / 8) !important;
+    max-width: calc((100% - 7 * 0.5rem) / 8) !important;
+  }
+}
