@@ -1,13 +1,14 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { X } from "lucide-react"
+import { X, ArrowLeft, ArrowRight } from "lucide-react"
 import { usePathname } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { HomeSectionHeader } from "@/components/home-section-header"
 import {
     Carousel,
+    CarouselApi,
     CarouselContent,
     CarouselItem,
 } from "@/components/ui/carousel"
@@ -52,6 +53,9 @@ export function ContinueWatching({
 }: ContinueWatchingProps = {}) {
     const [items, setItems] = useState<WatchProgressItem[]>([])
     const [activeItem, setActiveItem] = useState<WatchProgressItem | null>(null)
+    const [api, setApi] = useState<CarouselApi>()
+    const [total, setTotal] = useState(0)
+    const [current, setCurrent] = useState(0)
     const pathname = usePathname()
     const { user } = useAuth()
     const locale = useLocale()
@@ -68,6 +72,16 @@ export function ContinueWatching({
         setItems(await enrichWatchProgressTitles(stored))
     }, [user])
 
+    useEffect(() => {
+        if (!api) return
+
+        setTotal(api.scrollSnapList().length)
+        setCurrent(api.selectedScrollSnap() + 1)
+
+        api.on("select", () => {
+            setCurrent(api.selectedScrollSnap() + 1)
+        })
+    }, [api])
 
     useEffect(() => {
         refreshItems()
@@ -87,6 +101,13 @@ export function ContinueWatching({
         }
     }, [refreshItems, pathname, activeItem, locale])
 
+    function nextSlide() {
+        api?.scrollNext()
+    }
+
+    function previousSlide() {
+        api?.scrollPrev()
+    }
 
     const removeItem = (item: WatchProgressItem, event: React.MouseEvent) => {
         event.stopPropagation()
@@ -163,9 +184,55 @@ export function ContinueWatching({
                     title={t("home.continueWatching")}
                     description={t("home.continueWatchingDesc")}
                     variant="clock"
-                />
-                ) : null}
-                <Carousel opts={{ dragFree: true, align: "start" }}>
+                >
+                    <div className="flex shrink-0 items-center gap-2">
+<div className="flex gap-1">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="size-7"
+                                onClick={previousSlide}
+                            >
+                                <ArrowLeft className="size-3.5" />
+                                <span className="sr-only">{t("a11y.previous")}</span>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="size-7"
+                                onClick={nextSlide}
+                            >
+                                <ArrowRight className="size-3.5" />
+                                <span className="sr-only">{t("a11y.next")}</span>
+                            </Button>
+                        </div>
+                    </div>
+                </HomeSectionHeader>
+                ) : (
+                    <div className="flex items-center justify-end gap-2">
+<div className="flex gap-1">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="size-7"
+                                onClick={previousSlide}
+                            >
+                                <ArrowLeft className="size-3.5" />
+                                <span className="sr-only">{t("a11y.previous")}</span>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                className="size-7"
+                                onClick={nextSlide}
+                            >
+                                <ArrowRight className="size-3.5" />
+                                <span className="sr-only">{t("a11y.next")}</span>
+                            </Button>
+                        </div>
+                    </div>
+                )}
+                <Carousel opts={{ dragFree: true, align: "start" }} setApi={setApi}>
                     <CarouselContent className="home-carousel-content">
                         {items.map((item, index) => {
                             const progressLabel =

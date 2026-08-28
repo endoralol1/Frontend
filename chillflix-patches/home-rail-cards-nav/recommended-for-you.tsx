@@ -1,13 +1,15 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Film } from "lucide-react"
+import { Film, ArrowLeft, ArrowRight } from "lucide-react"
 import { Movie, TvShow } from "@/tmdb/models"
 
+import { Button } from "@/components/ui/button"
 import { HomeCarouselSkeleton } from "@/components/home-carousel-skeleton"
 import { HomeSectionHeader } from "@/components/home-section-header"
 import {
     Carousel,
+    CarouselApi,
     CarouselContent,
     CarouselItem,
 } from "@/components/ui/carousel"
@@ -27,11 +29,31 @@ export function RecommendedForYou() {
     const { t } = useTranslations()
     const [items, setItems] = useState<(Movie | TvShow)[]>([])
     const [initialLoading, setInitialLoading] = useState(true)
+    const [api, setApi] = useState<CarouselApi>()
+    const [total, setTotal] = useState(0)
+    const [current, setCurrent] = useState(0)
     const hasLoadedRef = useRef(false)
     const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const [playerOpen, setPlayerOpen] = useState(false)
 
+    useEffect(() => {
+        if (!api) return
 
+        setTotal(api.scrollSnapList().length)
+        setCurrent(api.selectedScrollSnap() + 1)
+
+        api.on("select", () => {
+            setCurrent(api.selectedScrollSnap() + 1)
+        })
+    }, [api])
+
+    function nextSlide() {
+        api?.scrollNext()
+    }
+
+    function previousSlide() {
+        api?.scrollPrev()
+    }
 
     const loadRecommendations = useCallback(async (background = false) => {
         if (!background) {
@@ -118,9 +140,32 @@ export function RecommendedForYou() {
                 title={t("home.recommendedForYou")}
                 description={t("home.recommendedForYouDesc")}
                 variant="accent"
-            ></HomeSectionHeader>
+            >
+                <div className="flex shrink-0 items-center gap-2">
+<div className="flex gap-1">
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="size-7"
+                            onClick={previousSlide}
+                        >
+                            <ArrowLeft className="size-3.5" />
+                            <span className="sr-only">{t("a11y.previous")}</span>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            className="size-7"
+                            onClick={nextSlide}
+                        >
+                            <ArrowRight className="size-3.5" />
+                            <span className="sr-only">{t("a11y.next")}</span>
+                        </Button>
+                    </div>
+                </div>
+            </HomeSectionHeader>
 
-            <Carousel opts={{ dragFree: true }}>
+            <Carousel opts={{ dragFree: true }} setApi={setApi}>
                 <CarouselContent className="home-carousel-content">
                     {items.map((item) => (
                         <CarouselItem
