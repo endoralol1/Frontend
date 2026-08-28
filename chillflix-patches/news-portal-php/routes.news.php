@@ -71,3 +71,62 @@ $router->get('/api/news/feed', function () {
         'articles' => NewsFeed::feed((string) $country, (string) $category, $limit),
     ]);
 });
+
+$router->get('/api/news/image', function () {
+    $raw = (string) ($_GET['u'] ?? '');
+    $url = filter_var($raw, FILTER_VALIDATE_URL);
+    if (!$url || !preg_match('#^https?://#i', $url)) {
+        http_response_code(400);
+        exit('bad url');
+    }
+    $host = strtolower((string) (parse_url($url, PHP_URL_HOST) ?: ''));
+    if ($host === '' || str_contains($host, 'localhost') || preg_match('/^(10\.|127\.|192\.168\.|169\.254\.)/', $host)) {
+        http_response_code(400);
+        exit('blocked host');
+    }
+
+    $cacheDir = dirname(__DIR__) . '/storage/cache/news/img';
+    // When this snippet lives in routes.php, dirname differs — use newsite storage:
+    $cacheDir = '/var/www/chillflix-newsite/storage/cache/news/img';
+    if (!is_dir($cacheDir)) {
+        @mkdir($cacheDir, 0775, true);
+    }
+    $file = $cacheDir . '/' . sha1($url) . '.bin';
+    $meta = $file . '.meta';
+
+    if (is_file($file) && is_file($meta) && filemtime($file) + 86400 > time()) {
+        $ctype = trim((string) file_get_contents($meta)) ?: 'image/jpeg';
+        header('Content-Type: ' . $ctype);
+        header('Cache-Control: public, max-age=86400');
+        readfile($file);
+        exit;
+    }
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT => 10,
+        CURLOPT_CONNECTTIMEOUT => 4,
+        CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; Daily24NewsBot/1.1)',
+        CURLOPT_HTTPHEADER => ['Accept: image/avif,image/webp,image/*,*/*;q=0.8'],
+    ]);
+    $body = curl_exec($ch);
+    $ctype = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($body === false || $code >= 400 || strlen($body) < 40) {
+        http_response_code(502);
+        exit('image fetch failed');
+    }
+    if ($ctype === '' || !str_starts_with(strtolower($ctype), 'image/')) {
+        $ctype = 'image/jpeg';
+    }
+    $ctype = strtok($ctype, ';') ?: 'image/jpeg';
+    @file_put_contents($file, $body);
+    @file_put_contents($meta, $ctype);
+    header('Content-Type: ' . $ctype);
+    header('Cache-Control: public, max-age=86400');
+    echo $body;
+    exit;
+});
