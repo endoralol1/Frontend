@@ -2,8 +2,8 @@
 declare(strict_types=1);
 
 /**
- * Fetches publisher HTML and extracts a readable full article:
- * hero image + ordered body blocks (paragraphs / images).
+ * Fetches publisher HTML and extracts a faithful article:
+ * formatted HTML (bold/links/lists), inline images in order, live updates.
  */
 final class NewsArticleReader
 {
@@ -18,7 +18,7 @@ final class NewsArticleReader
             return $article;
         }
 
-        $cacheKey = 'full_' . substr(sha1($url), 0, 24);
+        $cacheKey = 'fullv2_' . substr(sha1($url), 0, 24);
         $cached = self::cacheGet($cacheKey, 1800);
         if (!is_array($cached)) {
             try {
@@ -34,6 +34,7 @@ final class NewsArticleReader
 
         if (!empty($cached['finalUrl']) && str_contains($url, 'news.google.com')) {
             $article['url'] = $cached['finalUrl'];
+            $url = (string) $article['url'];
         }
         if (!empty($cached['title'])) {
             $article['title'] = $cached['title'];
@@ -47,11 +48,23 @@ final class NewsArticleReader
         if (!empty($cached['siteName']) && in_array((string) ($article['sourceName'] ?? ''), ['Google News', ''], true)) {
             $article['sourceName'] = $cached['siteName'];
         }
+        if (!empty($cached['isLive'])) {
+            $article['isLive'] = true;
+            $article['category'] = 'LIVE';
+        }
+        if (!empty($cached['sectionLabel'])) {
+            $article['category'] = $cached['sectionLabel'];
+        }
         if (!empty($cached['blocks']) && is_array($cached['blocks'])) {
             $article['blocks'] = $cached['blocks'];
             $texts = [];
             foreach ($cached['blocks'] as $block) {
-                if (($block['type'] ?? '') === 'p' && !empty($block['text'])) {
+                $type = (string) ($block['type'] ?? '');
+                if ($type === 'html' && !empty($block['html'])) {
+                    $texts[] = trim(strip_tags((string) $block['html']));
+                } elseif ($type === 'live' && !empty($block['html'])) {
+                    $texts[] = trim(strip_tags((string) $block['html']));
+                } elseif ($type === 'p' && !empty($block['text'])) {
                     $texts[] = (string) $block['text'];
                 }
             }
@@ -60,169 +73,306 @@ final class NewsArticleReader
             }
         }
 
+        // Infer section if still generic NEWS
+        if (empty($article['isLive'])) {
+            $inferred = self::inferSectionLabel($url, (string) ($article['category'] ?? ''));
+            if ($inferred !== '') {
+                $article['category'] = $inferred;
+            }
+        }
+
         return $article;
     }
 
+    public static function inferSectionLabel(string $url, string $current = ''): string
+    {
+        $cur = strtoupper(trim($current));
+        if ($cur !== '' && $cur !== 'NEWS' && $cur !== 'TOP') {
+            return $cur;
+        }
+        $path = strtolower((string) (parse_url($url, PHP_URL_PATH) ?: ''));
+        if (str_contains($path, '/live/')) {
+            return 'LIVE';
+        }
+        $map = [
+            '/sport' => 'SPORT',
+            '/football' => 'SPORT',
+            '/business' => 'BUSINESS',
+            '/technology' => 'SCI/TECH',
+            '/tech' => 'SCI/TECH',
+            '/science' => 'SCI/TECH',
+            '/health' => 'LIFE',
+            '/culture' => 'SHOW',
+            '/entertainment' => 'SHOW',
+            '/arts' => 'SHOW',
+            '/world' => 'WORLD',
+            '/asia' => 'WORLD',
+            '/europe' => 'WORLD',
+            '/us-canada' => 'WORLD',
+            '/uk' => 'WORLD',
+            '/politics' => 'POLITICS',
+        ];
+        foreach ($map as $needle => $label) {
+            if (str_contains($path, $needle)) {
+                return $label;
+            }
+        }
+        return $cur === 'NEWS' || $cur === 'TOP' || $cur === '' ? 'WORLD' : $cur;
+    }
+
     /**
-     * @return array{title?:string,description?:string,image?:string,siteName?:string,blocks?:list<array<string,mixed>>}
+     * @return array<string,mixed>
      */
     private static function extract(string $html, string $baseUrl): array
     {
-        $out = [];
-        $meta = self::meta($html, $baseUrl);
-        $out = array_merge($out, $meta);
-
+        $out = self::meta($html, $baseUrl);
         $host = strtolower((string) (parse_url($baseUrl, PHP_URL_HOST) ?: ''));
-        $blocks = [];
+        $path = strtolower((string) (parse_url($baseUrl, PHP_URL_PATH) ?: ''));
 
-        if (str_contains($host, 'bbc.')) {
-            $blocks = self::extractBbc($html, $baseUrl);
-        } elseif (str_contains($host, 'theguardian.')) {
-            $blocks = self::extractGuardian($html, $baseUrl);
-        } elseif (str_contains($host, 'cnn.')) {
-            $blocks = self::extractGeneric($html, $baseUrl, ['div.article__content', 'article', 'main']);
-        } else {
-            $blocks = self::extractGeneric($html, $baseUrl, ['article', 'main', '[itemprop=articleBody]', '.article-body', '.entry-content']);
+        $isLive = str_contains($path, '/live/') || str_contains($html, 'LiveBlogPosting');
+        if ($isLive) {
+            $out['isLive'] = true;
+            $out['sectionLabel'] = 'LIVE';
+            $liveBlocks = self::extractLiveBlog($html, $baseUrl);
+            if ($liveBlocks !== []) {
+                $out['blocks'] = $liveBlocks;
+                return $out;
+            }
         }
 
-        // JSON-LD articleBody fallback / supplement
-        if (count(array_filter($blocks, static fn ($b) => ($b['type'] ?? '') === 'p')) < 2) {
-            $ld = self::extractJsonLd($html);
+        if (str_contains($host, 'bbc.')) {
+            $blocks = self::extractBbcRich($html, $baseUrl);
+        } elseif (str_contains($host, 'theguardian.')) {
+            $blocks = self::extractHtmlRegion($html, $baseUrl, [
+                '//*[contains(@class,"article-body")]',
+                '//*[@itemprop="articleBody"]',
+                '//article',
+            ]);
+        } else {
+            $blocks = self::extractHtmlRegion($html, $baseUrl, [
+                '//*[@itemprop="articleBody"]',
+                '//article',
+                '//main',
+            ]);
+        }
+
+        if ($blocks === []) {
+            $ld = self::extractJsonLdArticle($html, $baseUrl);
             if (!empty($ld['blocks'])) {
-                $blocks = array_merge($blocks, $ld['blocks']);
+                $blocks = $ld['blocks'];
             }
             if (empty($out['image']) && !empty($ld['image'])) {
                 $out['image'] = $ld['image'];
             }
-            if (empty($out['description']) && !empty($ld['description'])) {
-                $out['description'] = $ld['description'];
-            }
         }
 
-        // Deduplicate consecutive identical paragraphs
-        $clean = [];
-        $seenText = [];
-        foreach ($blocks as $block) {
-            if (($block['type'] ?? '') === 'p') {
-                $t = trim((string) ($block['text'] ?? ''));
-                if ($t === '' || mb_strlen($t) < 25) {
-                    continue;
-                }
-                $key = mb_strtolower($t);
-                if (isset($seenText[$key])) {
-                    continue;
-                }
-                $seenText[$key] = true;
-                $clean[] = ['type' => 'p', 'text' => $t];
-            } elseif (($block['type'] ?? '') === 'img' && !empty($block['src'])) {
-                $clean[] = $block;
-            } elseif (($block['type'] ?? '') === 'h2' && !empty($block['text'])) {
-                $clean[] = $block;
-            }
+        if ($blocks !== []) {
+            $out['blocks'] = array_slice($blocks, 0, 120);
         }
-
-        if ($clean !== []) {
-            $out['blocks'] = array_slice($clean, 0, 80);
+        if (empty($out['sectionLabel'])) {
+            $out['sectionLabel'] = self::inferSectionLabel($baseUrl);
         }
-
         return $out;
     }
 
     /**
      * @return list<array<string,mixed>>
      */
-    private static function extractBbc(string $html, string $baseUrl): array
+    private static function extractLiveBlog(string $html, string $baseUrl): array
     {
         $blocks = [];
-        $dom = self::dom($html);
-        if (!$dom) {
-            return self::extractGeneric($html, $baseUrl, ['article', 'main']);
-        }
-        $xp = new DOMXPath($dom);
-
-        // Prefer main article region
-        $nodes = $xp->query('//*[@data-component="text-block" or @data-component="image-block" or @data-component="heading" or @data-component="subheadline-block"]');
-        if ($nodes !== false) {
-            foreach ($nodes as $node) {
-                /** @var DOMElement $node */
-                $comp = $node->getAttribute('data-component');
-                if ($comp === 'image-block') {
-                    $img = $xp->query('.//img', $node)->item(0);
-                    if ($img instanceof DOMElement) {
-                        $src = self::absUrl(self::imgSrc($img), $baseUrl);
-                        if ($src) {
-                            $blocks[] = ['type' => 'img', 'src' => $src, 'alt' => $img->getAttribute('alt')];
-                        }
-                    }
+        if (preg_match_all('#<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>#is', $html, $matches)) {
+            foreach ($matches[1] as $json) {
+                $data = json_decode(html_entity_decode(trim($json), ENT_QUOTES | ENT_HTML5, 'UTF-8'), true);
+                if (!is_array($data)) {
                     continue;
                 }
-                if ($comp === 'heading' || $comp === 'subheadline-block') {
-                    $text = self::nodeText($node);
-                    if ($text !== '') {
-                        $blocks[] = ['type' => 'h2', 'text' => $text];
-                    }
-                    continue;
-                }
-                $text = self::nodeText($node);
-                if ($text !== '') {
-                    $blocks[] = ['type' => 'p', 'text' => $text];
-                }
-            }
-        }
-
-        // Live blog posts
-        if (count($blocks) < 3) {
-            $posts = $xp->query('//*[@data-testid="live-post"]|//*[@data-component="posted-item"]|//article');
-            if ($posts !== false) {
-                foreach ($posts as $post) {
-                    $ps = $xp->query('.//p', $post);
-                    if ($ps === false) {
+                $items = isset($data['@graph']) && is_array($data['@graph']) ? $data['@graph'] : [$data];
+                foreach ($items as $item) {
+                    if (!is_array($item) || ($item['@type'] ?? '') !== 'LiveBlogPosting') {
                         continue;
                     }
-                    foreach ($ps as $p) {
-                        $text = self::nodeText($p);
-                        if (mb_strlen($text) >= 40) {
-                            $blocks[] = ['type' => 'p', 'text' => $text];
-                        }
+                    $updates = $item['liveBlogUpdate'] ?? [];
+                    if (!is_array($updates)) {
+                        continue;
                     }
-                    $imgs = $xp->query('.//img', $post);
-                    if ($imgs !== false) {
-                        foreach ($imgs as $img) {
-                            if (!$img instanceof DOMElement) {
-                                continue;
-                            }
-                            $src = self::absUrl(self::imgSrc($img), $baseUrl);
-                            if ($src && !str_contains($src, 'grey-placeholder') && !str_contains($src, 'spacer')) {
-                                $blocks[] = ['type' => 'img', 'src' => $src, 'alt' => $img->getAttribute('alt')];
+                    foreach ($updates as $update) {
+                        if (!is_array($update)) {
+                            continue;
+                        }
+                        $headline = trim((string) ($update['headline'] ?? ''));
+                        $body = trim((string) ($update['articleBody'] ?? ''));
+                        $time = (string) ($update['datePublished'] ?? $update['dateModified'] ?? '');
+                        $image = null;
+                        if (!empty($update['image'])) {
+                            $image = is_array($update['image'])
+                                ? (string) ($update['image']['url'] ?? $update['image'][0]['url'] ?? $update['image'][0] ?? '')
+                                : (string) $update['image'];
+                            $image = self::absUrl($image, $baseUrl);
+                        }
+                        if ($headline === '' && $body === '') {
+                            continue;
+                        }
+                        $htmlBody = '';
+                        if ($body !== '') {
+                            // Split long bodies into paragraphs when plain text
+                            $paras = preg_split('/\n+/', $body) ?: [$body];
+                            foreach ($paras as $para) {
+                                $para = trim($para);
+                                if ($para === '') {
+                                    continue;
+                                }
+                                $htmlBody .= '<p>' . self::escapeKeepBreaks($para) . '</p>';
                             }
                         }
+                        $blocks[] = [
+                            'type' => 'live',
+                            'headline' => $headline,
+                            'time' => $time,
+                            'html' => $htmlBody,
+                            'image' => $image,
+                        ];
                     }
-                    if (count($blocks) > 40) {
-                        break;
+                    if ($blocks !== []) {
+                        return array_slice($blocks, 0, 40);
                     }
                 }
             }
         }
 
+        // DOM fallback: content-post cards
         if ($blocks === []) {
-            return self::extractGeneric($html, $baseUrl, ['article', 'main']);
+            $dom = self::dom($html);
+            if ($dom) {
+                $xp = new DOMXPath($dom);
+                $posts = $xp->query('//*[@data-testid="content-post"]');
+                if ($posts !== false) {
+                    foreach ($posts as $post) {
+                        if (!$post instanceof DOMElement) {
+                            continue;
+                        }
+                        $headline = '';
+                        $h = $xp->query('.//h2|.//h3', $post)->item(0);
+                        if ($h) {
+                            $headline = trim(self::nodeText($h));
+                        }
+                        $time = '';
+                        $tNode = $xp->query('.//*[@data-testid="timestamp"]|.//time', $post)->item(0);
+                        if ($tNode instanceof DOMElement) {
+                            $time = $tNode->getAttribute('datetime') ?: trim(self::nodeText($tNode));
+                        }
+                        $htmlParts = '';
+                        foreach ($xp->query('.//*[contains(@class,"RichTextContainer")]|.//*[@data-testid="rich-text"]|.//p', $post) ?: [] as $node) {
+                            if (!$node instanceof DOMElement) {
+                                continue;
+                            }
+                            $htmlParts .= self::sanitizeHtml($node->C14N() ?: '');
+                        }
+                        $imgSrc = null;
+                        $img = $xp->query('.//img', $post)->item(0);
+                        if ($img instanceof DOMElement) {
+                            $imgSrc = self::absUrl(self::bestImgSrc($img), $baseUrl);
+                        }
+                        if ($headline === '' && $htmlParts === '') {
+                            continue;
+                        }
+                        $blocks[] = [
+                            'type' => 'live',
+                            'headline' => $headline,
+                            'time' => $time,
+                            'html' => $htmlParts,
+                            'image' => $imgSrc,
+                        ];
+                    }
+                }
+            }
         }
+
+        return array_slice($blocks, 0, 40);
+    }
+
+    /**
+     * @return list<array<string,mixed>>
+     */
+    private static function extractBbcRich(string $html, string $baseUrl): array
+    {
+        $dom = self::dom($html);
+        if (!$dom) {
+            return [];
+        }
+        $xp = new DOMXPath($dom);
+        $main = $xp->query('//*[@data-testid="main-content"]')->item(0) ?: $dom->documentElement;
+        $blocks = [];
+
+        // Walk significant nodes in document order inside main
+        $nodes = $xp->query('.//*[@data-testid="rich-text" or @data-testid="image" or contains(@class,"RichTextContainer")]', $main);
+        if ($nodes === false || $nodes->length === 0) {
+            return self::extractHtmlRegion($html, $baseUrl, ['//*[@data-testid="main-content"]', '//article', '//main']);
+        }
+
+        $seen = [];
+        foreach ($nodes as $node) {
+            if (!$node instanceof DOMElement) {
+                continue;
+            }
+            // Skip nested duplicates (rich-text wraps RichTextContainer)
+            $testid = $node->getAttribute('data-testid');
+            $class = $node->getAttribute('class');
+
+            if ($testid === 'image' || (str_contains($class, 'Figure') && $node->getElementsByTagName('img')->length)) {
+                $img = $node->getElementsByTagName('img')->item(0);
+                if ($img instanceof DOMElement) {
+                    $src = self::absUrl(self::bestImgSrc($img), $baseUrl);
+                    if ($src && !isset($seen['img:' . $src])) {
+                        $seen['img:' . $src] = true;
+                        $caption = '';
+                        $fig = $node->getElementsByTagName('figcaption')->item(0);
+                        if ($fig) {
+                            $caption = self::cleanCaption(trim(self::nodeText($fig)));
+                        }
+                        if ($caption === '') {
+                            $caption = self::cleanCaption(trim($img->getAttribute('alt')));
+                        }
+                        $blocks[] = [
+                            'type' => 'img',
+                            'src' => $src,
+                            'alt' => $img->getAttribute('alt'),
+                            'caption' => $caption,
+                        ];
+                    }
+                }
+                continue;
+            }
+
+            if ($testid === 'rich-text' || str_contains($class, 'RichTextContainer')) {
+                // Prefer inner RichTextContainer when on rich-text wrapper
+                $target = $node;
+                if ($testid === 'rich-text') {
+                    foreach ($node->getElementsByTagName('div') as $div) {
+                        if ($div instanceof DOMElement && str_contains($div->getAttribute('class'), 'RichTextContainer')) {
+                            $target = $div;
+                            break;
+                        }
+                    }
+                }
+                $safe = self::sanitizeHtml($target->C14N() ?: '');
+                $plain = trim(strip_tags($safe));
+                if ($plain === '' || isset($seen['html:' . md5($plain)])) {
+                    continue;
+                }
+                $seen['html:' . md5($plain)] = true;
+                $blocks[] = ['type' => 'html', 'html' => $safe];
+            }
+        }
+
         return $blocks;
     }
 
     /**
+     * @param list<string> $xpaths
      * @return list<array<string,mixed>>
      */
-    private static function extractGuardian(string $html, string $baseUrl): array
-    {
-        return self::extractGeneric($html, $baseUrl, ['div.article-body-commercial-selector', 'div[itemprop=articleBody]', 'article']);
-    }
-
-    /**
-     * @param list<string> $selectors
-     * @return list<array<string,mixed>>
-     */
-    private static function extractGeneric(string $html, string $baseUrl, array $selectors): array
+    private static function extractHtmlRegion(string $html, string $baseUrl, array $xpaths): array
     {
         $dom = self::dom($html);
         if (!$dom) {
@@ -230,20 +380,20 @@ final class NewsArticleReader
         }
         $xp = new DOMXPath($dom);
         $root = null;
-        foreach ($selectors as $css) {
-            $xpath = self::cssToXPath($css);
-            $nodes = $xp->query($xpath);
+        foreach ($xpaths as $path) {
+            $nodes = $xp->query($path);
             if ($nodes !== false && $nodes->length > 0) {
                 $root = $nodes->item(0);
                 break;
             }
         }
         if (!$root) {
-            $root = $dom->documentElement;
+            return [];
         }
 
         $blocks = [];
-        $walk = $xp->query('.//p|.//h2|.//img', $root);
+        $seen = [];
+        $walk = $xp->query('.//p|.//h2|.//h3|.//ul|.//ol|.//blockquote|.//img|.//figure', $root);
         if ($walk === false) {
             return [];
         }
@@ -252,22 +402,46 @@ final class NewsArticleReader
                 continue;
             }
             $tag = strtolower($node->tagName);
-            if ($tag === 'img') {
-                $src = self::absUrl(self::imgSrc($node), $baseUrl);
-                if ($src && self::looksLikeContentImage($src, $node)) {
-                    $blocks[] = ['type' => 'img', 'src' => $src, 'alt' => $node->getAttribute('alt')];
+            if ($tag === 'img' || $tag === 'figure') {
+                $img = $tag === 'img' ? $node : $node->getElementsByTagName('img')->item(0);
+                if ($img instanceof DOMElement) {
+                    $src = self::absUrl(self::bestImgSrc($img), $baseUrl);
+                    if ($src && self::looksLikeContentImage($src, $img) && !isset($seen['img:' . $src])) {
+                        $seen['img:' . $src] = true;
+                        $caption = '';
+                        if ($tag === 'figure') {
+                            $fig = $node->getElementsByTagName('figcaption')->item(0);
+                            if ($fig) {
+                                $caption = self::cleanCaption(trim(self::nodeText($fig)));
+                            }
+                        }
+                        if ($caption === '') {
+                            $caption = self::cleanCaption(trim($img->getAttribute('alt')));
+                        }
+                        $blocks[] = [
+                            'type' => 'img',
+                            'src' => $src,
+                            'alt' => $img->getAttribute('alt'),
+                            'caption' => $caption,
+                        ];
+                    }
                 }
                 continue;
             }
-            $text = self::nodeText($node);
-            if ($text === '' || mb_strlen($text) < 30) {
+            $safe = self::sanitizeHtml($node->C14N() ?: '');
+            $plain = trim(strip_tags($safe));
+            if ($plain === '' || mb_strlen($plain) < 20) {
                 continue;
             }
-            // Skip nav/footer junk
-            if (preg_match('/cookie|subscribe|newsletter|sign in|advertisement/i', $text)) {
+            if (preg_match('/cookie|subscribe|newsletter|sign in|advertisement/i', $plain)) {
                 continue;
             }
-            $blocks[] = ['type' => $tag === 'h2' ? 'h2' : 'p', 'text' => $text];
+            $key = 'html:' . md5($plain);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $blocks[] = ['type' => 'html', 'html' => $safe];
         }
         return $blocks;
     }
@@ -275,7 +449,7 @@ final class NewsArticleReader
     /**
      * @return array{blocks?:list<array<string,mixed>>,image?:string,description?:string}
      */
-    private static function extractJsonLd(string $html): array
+    private static function extractJsonLdArticle(string $html, string $baseUrl): array
     {
         $out = ['blocks' => []];
         if (!preg_match_all('#<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>#is', $html, $matches)) {
@@ -293,7 +467,7 @@ final class NewsArticleReader
                 }
                 $type = $item['@type'] ?? '';
                 $types = is_array($type) ? $type : [$type];
-                if (!array_intersect($types, ['NewsArticle', 'Article', 'ReportageNewsArticle', 'LiveBlogPosting', 'BlogPosting'])) {
+                if (!array_intersect($types, ['NewsArticle', 'Article', 'ReportageNewsArticle', 'BlogPosting'])) {
                     continue;
                 }
                 if (!empty($item['image'])) {
@@ -302,7 +476,7 @@ final class NewsArticleReader
                         $img = $img['url'] ?? ($img[0]['url'] ?? ($img[0] ?? null));
                     }
                     if (is_string($img) && $img !== '') {
-                        $out['image'] = $img;
+                        $out['image'] = self::absUrl($img, $baseUrl);
                     }
                 }
                 if (!empty($item['description']) && is_string($item['description'])) {
@@ -312,13 +486,96 @@ final class NewsArticleReader
                     foreach (preg_split('/\n+/', trim($item['articleBody'])) ?: [] as $para) {
                         $para = trim($para);
                         if (mb_strlen($para) >= 40) {
-                            $out['blocks'][] = ['type' => 'p', 'text' => $para];
+                            $out['blocks'][] = ['type' => 'html', 'html' => '<p>' . self::escapeKeepBreaks($para) . '</p>'];
                         }
                     }
                 }
             }
         }
         return $out;
+    }
+
+    private static function cleanCaption(string $caption): string
+    {
+        $caption = preg_replace('/^(Image caption|Figure caption|Photo caption|Caption)\s*[,:\-–—]?\s*/i', '', $caption) ?? $caption;
+        $caption = preg_replace('/\s+/u', ' ', $caption) ?? $caption;
+        return trim($caption);
+    }
+
+    public static function sanitizeHtml(string $html): string
+    {
+        $html = preg_replace('#<(script|style|iframe|object|embed|form|input|button)[^>]*>.*?</\1>#is', '', $html) ?? $html;
+        $html = preg_replace('#</?(script|style|iframe|object|embed|form|input|button|svg|path|use)[^>]*>#is', '', $html) ?? $html;
+
+        $allowed = ['p', 'br', 'b', 'strong', 'i', 'em', 'u', 'a', 'ul', 'ol', 'li', 'h2', 'h3', 'h4', 'blockquote', 'span'];
+        $dom = new DOMDocument();
+        $prev = libxml_use_internal_errors(true);
+        $wrapped = '<?xml encoding="utf-8" ?><div id="n24root">' . $html . '</div>';
+        $dom->loadHTML($wrapped, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($prev);
+
+        $root = $dom->getElementById('n24root');
+        if (!$root) {
+            return '';
+        }
+        self::scrubNode($root, $allowed);
+        $out = '';
+        foreach ($root->childNodes as $child) {
+            $out .= $dom->saveHTML($child);
+        }
+        return trim($out);
+    }
+
+    /**
+     * @param list<string> $allowed
+     */
+    private static function scrubNode(DOMNode $node, array $allowed): void
+    {
+        $remove = [];
+        foreach (iterator_to_array($node->childNodes) as $child) {
+            if ($child instanceof DOMElement) {
+                $tag = strtolower($child->tagName);
+                if (!in_array($tag, $allowed, true)) {
+                    // unwrap: keep children
+                    while ($child->firstChild) {
+                        $node->insertBefore($child->firstChild, $child);
+                    }
+                    $remove[] = $child;
+                    continue;
+                }
+                // scrub attributes
+                $keepAttrs = [];
+                if ($tag === 'a') {
+                    $href = $child->getAttribute('href');
+                    if (preg_match('#^https?://#i', $href)) {
+                        $keepAttrs['href'] = $href;
+                        $keepAttrs['target'] = '_blank';
+                        $keepAttrs['rel'] = 'noopener noreferrer';
+                    }
+                }
+                while ($child->hasAttributes()) {
+                    $child->removeAttributeNode($child->attributes->item(0));
+                }
+                foreach ($keepAttrs as $k => $v) {
+                    $child->setAttribute($k, $v);
+                }
+                // Convert BBC <b class=BoldText> stays as b
+                self::scrubNode($child, $allowed);
+            } elseif ($child->hasChildNodes()) {
+                self::scrubNode($child, $allowed);
+            }
+        }
+        foreach ($remove as $el) {
+            if ($el->parentNode) {
+                $el->parentNode->removeChild($el);
+            }
+        }
+    }
+
+    private static function escapeKeepBreaks(string $text): string
+    {
+        return nl2br(htmlspecialchars($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'), false);
     }
 
     /**
@@ -353,13 +610,17 @@ final class NewsArticleReader
         if ($desc) {
             $out['description'] = trim(html_entity_decode(strip_tags($desc), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
         }
-        $image = $get('og:image') ?? $get('og:image:secure_url') ?? $get('twitter:image') ?? $get('twitter:image:src');
+        $image = $get('og:image') ?? $get('og:image:secure_url') ?? $get('twitter:image');
         if ($image) {
             $out['image'] = self::absUrl($image, $baseUrl);
         }
         $site = $get('og:site_name');
         if ($site) {
             $out['siteName'] = trim($site);
+        }
+        $section = $get('article:section');
+        if ($section) {
+            $out['sectionLabel'] = strtoupper(trim($section));
         }
         return $out;
     }
@@ -382,24 +643,70 @@ final class NewsArticleReader
         return trim($text);
     }
 
-    private static function imgSrc(DOMElement $img): string
+    private static function bestImgSrc(DOMElement $img): string
     {
+        $candidates = [];
         foreach (['src', 'data-src', 'data-original', 'data-lazy-src'] as $attr) {
             $v = trim($img->getAttribute($attr));
             if ($v !== '' && !str_starts_with($v, 'data:')) {
-                return $v;
+                $candidates[] = $v;
             }
         }
-        $srcset = $img->getAttribute('srcset') ?: $img->getAttribute('data-srcset');
-        if ($srcset !== '') {
-            $parts = array_map('trim', explode(',', $srcset));
-            $last = trim((string) end($parts));
-            $url = strtok($last, ' ') ?: '';
-            if ($url !== '') {
-                return $url;
+        foreach (['srcset', 'data-srcset'] as $attr) {
+            $srcset = $img->getAttribute($attr);
+            if ($srcset === '' && $img->parentNode instanceof DOMElement) {
+                // <source srcset> inside picture
+                continue;
+            }
+            if ($srcset !== '') {
+                foreach (explode(',', $srcset) as $part) {
+                    $part = trim($part);
+                    if ($part === '') {
+                        continue;
+                    }
+                    $url = strtok($part, ' ') ?: '';
+                    if ($url !== '') {
+                        $candidates[] = $url;
+                    }
+                }
             }
         }
-        return '';
+        // picture > source
+        $parent = $img->parentNode;
+        if ($parent instanceof DOMElement && strtolower($parent->tagName) === 'picture') {
+            foreach ($parent->getElementsByTagName('source') as $source) {
+                if (!$source instanceof DOMElement) {
+                    continue;
+                }
+                $srcset = $source->getAttribute('srcset');
+                foreach (explode(',', $srcset) as $part) {
+                    $url = trim(strtok(trim($part), ' ') ?: '');
+                    if ($url !== '') {
+                        $candidates[] = $url;
+                    }
+                }
+            }
+        }
+
+        $best = '';
+        $bestScore = -1;
+        foreach ($candidates as $c) {
+            $score = 0;
+            if (preg_match('#/(\d{3,4})/#', $c, $m)) {
+                $score = (int) $m[1];
+            } elseif (str_contains($c, '1024') || str_contains($c, '1200') || str_contains($c, '976')) {
+                $score = 1000;
+            } elseif (str_contains($c, '640') || str_contains($c, '800')) {
+                $score = 700;
+            } else {
+                $score = 100;
+            }
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $c;
+            }
+        }
+        return $best;
     }
 
     private static function absUrl(?string $url, string $baseUrl): ?string
@@ -427,7 +734,7 @@ final class NewsArticleReader
 
     private static function looksLikeContentImage(string $src, DOMElement $img): bool
     {
-        $bad = ['sprite', 'pixel', 'spacer', 'logo', 'icon', 'avatar', 'emoji', '1x1', 'blank'];
+        $bad = ['sprite', 'pixel', 'spacer', 'logo', 'icon', 'avatar', 'emoji', '1x1', 'blank', 'placeholder'];
         $low = strtolower($src);
         foreach ($bad as $b) {
             if (str_contains($low, $b)) {
@@ -436,35 +743,10 @@ final class NewsArticleReader
         }
         $w = (int) $img->getAttribute('width');
         $h = (int) $img->getAttribute('height');
-        if ($w > 0 && $w < 80) {
-            return false;
-        }
-        if ($h > 0 && $h < 80) {
+        if (($w > 0 && $w < 80) || ($h > 0 && $h < 80)) {
             return false;
         }
         return true;
-    }
-
-    private static function cssToXPath(string $css): string
-    {
-        // Minimal CSS->XPath for our selectors
-        $css = trim($css);
-        if ($css === 'article' || $css === 'main') {
-            return '//' . $css;
-        }
-        if (preg_match('/^([a-z0-9]+)\.([a-z0-9_-]+)$/i', $css, $m)) {
-            return '//' . $m[1] . '[contains(concat(" ", normalize-space(@class), " "), " ' . $m[2] . ' ")]';
-        }
-        if (preg_match('/^\\.([a-z0-9_-]+)$/i', $css, $m)) {
-            return '//*[contains(concat(" ", normalize-space(@class), " "), " ' . $m[1] . ' ")]';
-        }
-        if (preg_match('/^\\[itemprop=([a-z0-9_-]+)\\]$/i', $css, $m)) {
-            return '//*[@itemprop="' . $m[1] . '"]';
-        }
-        if (preg_match('/^([a-z0-9]+)\\[itemprop=([a-z0-9_-]+)\\]$/i', $css, $m)) {
-            return '//' . $m[1] . '[@itemprop="' . $m[2] . '"]';
-        }
-        return '//article';
     }
 
     /**
@@ -497,8 +779,8 @@ final class NewsArticleReader
         if ($body === false || $code >= 400) {
             throw new RuntimeException('fetch failed ' . $code . ' ' . $err);
         }
-        if (strlen($body) > 1_500_000) {
-            $body = substr($body, 0, 1_500_000);
+        if (strlen($body) > 1_800_000) {
+            $body = substr($body, 0, 1_800_000);
         }
         return ['body' => $body, 'finalUrl' => $final !== '' ? $final : $url];
     }

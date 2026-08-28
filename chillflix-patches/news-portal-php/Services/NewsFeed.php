@@ -113,14 +113,96 @@ final class NewsFeed
                 $enrichBudget--;
             }
             $article['image'] = self::upgradeImageUrl($article['image'] ?? null);
+            if (class_exists('NewsArticleReader')) {
+                $article['category'] = NewsArticleReader::inferSectionLabel(
+                    (string) ($article['url'] ?? ''),
+                    (string) ($article['category'] ?? '')
+                );
+                if (!empty($article['isLive']) || str_contains(strtolower((string) ($article['url'] ?? '')), '/live/')) {
+                    $article['isLive'] = true;
+                    $article['category'] = 'LIVE';
+                }
+            }
             $enriched[] = $article;
             if (count($enriched) >= $limit) {
                 break;
             }
         }
 
+        // Prefer at least one LIVE story near the top for global homepage.
+        if ($country['code'] === 'GLOBAL' && $category['id'] === 'top') {
+            $enriched = self::ensureLiveStory($enriched);
+        }
+
         self::cacheSet($cacheKey, $enriched);
         return $enriched;
+    }
+
+    /**
+     * @param list<array<string,mixed>> $items
+     * @return list<array<string,mixed>>
+     */
+    private static function ensureLiveStory(array $items): array
+    {
+        foreach ($items as $item) {
+            if (!empty($item['isLive']) || ($item['category'] ?? '') === 'LIVE') {
+                return $items;
+            }
+        }
+        $live = self::discoverBbcLiveCard();
+        if ($live === null) {
+            return $items;
+        }
+        array_unshift($items, $live);
+        return array_slice($items, 0, max(count($items), 1));
+    }
+
+    /**
+     * @return array<string,mixed>|null
+     */
+    private static function discoverBbcLiveCard(): ?array
+    {
+        $cacheKey = 'bbc_live_card';
+        $cached = self::cacheGet($cacheKey, 300);
+        if (is_array($cached) && isset($cached['url'])) {
+            return $cached;
+        }
+        try {
+            $html = self::httpGet('https://www.bbc.com/news');
+            if (!preg_match('#https?://www\.bbc\.(?:com|co\.uk)/news/live/[a-z0-9-]+#i', $html, $m)) {
+                if (!preg_match('#/news/live/([a-z0-9-]+)#i', $html, $m2)) {
+                    return null;
+                }
+                $url = 'https://www.bbc.com/news/live/' . $m2[1];
+            } else {
+                $url = $m[0];
+            }
+            $seed = [
+                'id' => substr(sha1($url), 0, 16),
+                'title' => 'Live updates',
+                'summary' => '',
+                'body' => '',
+                'url' => $url,
+                'image' => null,
+                'publishedAt' => gmdate('c'),
+                'sourceName' => 'BBC News',
+                'sourceUrl' => 'https://www.bbc.com/news',
+                'category' => 'LIVE',
+                'isLive' => true,
+                'country' => 'GLOBAL',
+                'lang' => 'en',
+            ];
+            if (class_exists('NewsArticleReader')) {
+                $seed = NewsArticleReader::hydrate($seed);
+                $seed['isLive'] = true;
+                $seed['category'] = 'LIVE';
+            }
+            self::cacheSet($cacheKey, $seed);
+            return $seed;
+        } catch (Throwable $e) {
+            error_log('[NewsFeed live] ' . $e->getMessage());
+            return null;
+        }
     }
 
     /**
@@ -258,7 +340,6 @@ final class NewsFeed
                 ['url' => 'https://feeds.bbci.co.uk/news/rss.xml', 'source' => 'BBC News'],
                 ['url' => 'https://www.theguardian.com/world/rss', 'source' => 'The Guardian'],
                 ['url' => 'https://feeds.npr.org/1001/rss.xml', 'source' => 'NPR'],
-                ['url' => 'https://rss.cnn.com/rss/edition.rss', 'source' => 'CNN'],
             ],
         };
     }
@@ -350,6 +431,15 @@ final class NewsFeed
 
             $bodyHtml = $contentEncoded !== '' ? $contentEncoded : '';
             $bodyText = $bodyHtml !== '' ? self::plain($bodyHtml) : $summary;
+            $isLive = str_contains(strtolower($link), '/live/');
+            $section = $isLive
+                ? 'LIVE'
+                : (class_exists('NewsArticleReader')
+                    ? NewsArticleReader::inferSectionLabel($link, $categoryLabel)
+                    : mb_strtoupper(mb_substr($categoryLabel, 0, 42)));
+            if ($section === 'NEWS' || $section === 'TOP') {
+                $section = mb_strtoupper($categoryLabel === 'News' ? 'WORLD' : $categoryLabel);
+            }
 
             $items[] = [
                 'id' => substr(sha1($link), 0, 16),
@@ -361,7 +451,8 @@ final class NewsFeed
                 'publishedAt' => $published,
                 'sourceName' => $sourceName,
                 'sourceUrl' => $sourceUrl,
-                'category' => mb_strtoupper(mb_substr($categoryLabel, 0, 42)),
+                'category' => $section,
+                'isLive' => $isLive,
                 'country' => $country['code'],
                 'lang' => $country['lang'],
             ];
