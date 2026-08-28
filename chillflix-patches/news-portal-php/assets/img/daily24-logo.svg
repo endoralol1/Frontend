@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="53" height="43" viewBox="0 0 53 43">
+  <g fill="none" fill-rule="evenodd">
+    <path fill="#F5A528" d="M0 43h53v-8H0z"/>
+    <path fill="#D22328" d="M0 35h53V0H0z"/>
+    <text x="26.5" y="26" text-anchor="middle" fill="#FFF" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="26">24</text>
+    <text x="26.5" y="41" text-anchor="middle" fill="#FFF" font-family="Arial Black, Arial, sans-serif" font-weight="800" font-size="7" letter-spacing="1.5">DAILY</text>
+  </g>
+</svg>

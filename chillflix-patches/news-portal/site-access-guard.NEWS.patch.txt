@@ -1,0 +1,14 @@
+--- site-access-guard news shell patch ---
+Add near other path checks (after isAdminPath):
+
+    const isNewsPath = pathname === "/news" || pathname.startsWith("/news/")
+
+And before the default return, add:
+
+    if (isNewsPath) {
+        return (
+            <SiteFeaturesProvider initialFeatures={clientFeatures}>
+                {children}
+            </SiteFeaturesProvider>
+        )
+    }
