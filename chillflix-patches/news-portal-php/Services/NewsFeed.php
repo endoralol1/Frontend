@@ -135,7 +135,11 @@ final class NewsFeed
         foreach (self::CATEGORIES as $cat) {
             foreach (self::feed($countryCode, $cat['id'], 48) as $article) {
                 if (($article['id'] ?? '') === $id) {
-                    return self::enrichFromPage($article, true);
+                    $article = self::enrichFromPage($article, true);
+                    if (class_exists('NewsArticleReader')) {
+                        $article = NewsArticleReader::hydrate($article);
+                    }
+                    return $article;
                 }
             }
         }

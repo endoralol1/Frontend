@@ -22,7 +22,7 @@ $qs = 'country=' . rawurlencode((string) $countryCode);
     <meta name="robots" content="<?= e($robots) ?>">
     <link rel="canonical" href="<?= e($canonical) ?>">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap">
-    <link rel="stylesheet" href="<?= e(asset('css/news-portal.css')) ?>?v=20260828-n24php3">
+    <link rel="stylesheet" href="<?= e(asset('css/news-portal.css')) ?>?v=20260828-n24full1">
     <?php foreach ($extraCss as $href): ?>
         <link rel="stylesheet" href="<?= e($href) ?>">
     <?php endforeach; ?>
