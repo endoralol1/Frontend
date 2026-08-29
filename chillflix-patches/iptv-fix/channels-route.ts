@@ -66,7 +66,7 @@ async function loadLiveFromFallbackPlaylist(args: {
     countryCounts: getCountryCounts(forCountryCounts),
     total: filtered.length,
     totalAll: channels.length,
-    source: "iptv-org",
+    source: "iptv-org-curated",
     provider: "Live TV",
   }
 }

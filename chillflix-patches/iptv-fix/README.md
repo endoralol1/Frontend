@@ -2,7 +2,8 @@
 
 ## IPTV
 - Live TV (`kool.to` mediahub) returns Cloudflare 403 from the VPS IP.
-- Channels API now falls through: mediahub → iptv-org playlist → local cache.
+- Channels API falls through: mediahub → curated iptv-org categories (capped ~2800) → local cache.
+- Avoids dumping the full ~14k country index (looked buggy next to Free-TV).
 - Live channels with a direct `url` play via the same proxy path as Free-TV.
 - Mediahub requests time out after 8s so fallback is fast.
 - IPTV search debounce 250ms → 80ms.

@@ -5,10 +5,27 @@ import {
   type FreeTvChannel,
 } from "@/lib/iptv/free-tv"
 
-/** Public country playlist — used when kool.to / mediahub is blocked from this network. */
-const LIVE_FALLBACK_PLAYLIST_URL =
-  process.env.IPTV_LIVE_FALLBACK_URL?.trim() ||
-  "https://iptv-org.github.io/iptv/index.country.m3u"
+/**
+ * Curated category playlists (not the full 14k country index).
+ * Used only when kool.to / mediahub is blocked from this network.
+ */
+const LIVE_FALLBACK_PLAYLISTS = (
+  process.env.IPTV_LIVE_FALLBACK_URLS?.trim() ||
+  [
+    "https://iptv-org.github.io/iptv/categories/general.m3u",
+    "https://iptv-org.github.io/iptv/categories/news.m3u",
+    "https://iptv-org.github.io/iptv/categories/sports.m3u",
+    "https://iptv-org.github.io/iptv/categories/entertainment.m3u",
+  ].join(",")
+)
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean)
+
+/** Keep Live TV in the same ballpark as before (mediahub pages / Free-TV). */
+const LIVE_FALLBACK_MAX_CHANNELS = Number(
+  process.env.IPTV_LIVE_FALLBACK_MAX?.trim() || 2800
+)
 
 const CACHE_TTL_MS = 30 * 60 * 1000
 
@@ -19,15 +36,11 @@ export type LiveFallbackChannel = FreeTvChannel & {
 let playlistCache: { expiresAt: number; channels: LiveFallbackChannel[] } | null =
   null
 
-export async function fetchLiveFallbackChannels(): Promise<LiveFallbackChannel[]> {
-  if (playlistCache && playlistCache.expiresAt > Date.now()) {
-    return playlistCache.channels
-  }
-
-  const response = await fetch(LIVE_FALLBACK_PLAYLIST_URL, {
+async function fetchPlaylistText(url: string) {
+  const response = await fetch(url, {
     headers: IPTV_HEADERS,
     cache: "no-store",
-    signal: AbortSignal.timeout(25_000),
+    signal: AbortSignal.timeout(20_000),
   })
 
   if (!response.ok) {
@@ -39,22 +52,53 @@ export async function fetchLiveFallbackChannels(): Promise<LiveFallbackChannel[]
     throw new Error("Live fallback playlist returned HTML instead of M3U")
   }
 
-  const channels = parseFreeTvPlaylist(text).map((channel, index) => ({
-    ...channel,
-    id: `live-${index + 1}`,
-    source: "live-fallback" as const,
-  }))
+  return text
+}
 
-  if (!channels.length) {
+export async function fetchLiveFallbackChannels(): Promise<LiveFallbackChannel[]> {
+  if (playlistCache && playlistCache.expiresAt > Date.now()) {
+    return playlistCache.channels
+  }
+
+  const seenUrls = new Set<string>()
+  const merged: LiveFallbackChannel[] = []
+
+  for (const playlistUrl of LIVE_FALLBACK_PLAYLISTS) {
+    try {
+      const text = await fetchPlaylistText(playlistUrl)
+      for (const channel of parseFreeTvPlaylist(text)) {
+        const key = channel.url.trim()
+        if (!key || seenUrls.has(key)) continue
+        seenUrls.add(key)
+        merged.push({
+          ...channel,
+          id: `live-${merged.length + 1}`,
+          source: "live-fallback",
+        })
+
+        if (merged.length >= LIVE_FALLBACK_MAX_CHANNELS) {
+          break
+        }
+      }
+    } catch {
+      // Try remaining playlists; one failure should not wipe Live TV.
+    }
+
+    if (merged.length >= LIVE_FALLBACK_MAX_CHANNELS) {
+      break
+    }
+  }
+
+  if (!merged.length) {
     throw new Error("Live fallback playlist is empty")
   }
 
   playlistCache = {
     expiresAt: Date.now() + CACHE_TTL_MS,
-    channels,
+    channels: merged,
   }
 
-  return channels
+  return merged
 }
 
 export function filterLiveFallbackChannels(
