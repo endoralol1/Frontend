@@ -22,8 +22,17 @@ final class FzMoviesSources
     private const UA =
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
-    /** Max quality variants exposed to the player. */
-    private const MAX_QUALITIES = 4;
+    /**
+     * Resolve only the best quality for speed (each quality needs 2 site hops + CDN probe).
+     * Player still gets a working stream; secondary qualities can be added later if needed.
+     */
+    private const MAX_QUALITIES = 1;
+
+    /** Cache TMDB→page URL (page year verified) to skip slug/search on repeat plays. */
+    private const PAGE_CACHE_TTL = 21600; // 6h
+
+    /** Cache resolved CDN file URL (mirrors expire ~12h; keep shorter). */
+    private const CDN_CACHE_TTL = 1800; // 30m
 
     /**
      * Internal proxy hint — stripped by VidmolySources before upstream fetch.
@@ -93,6 +102,60 @@ final class FzMoviesSources
         }
 
         $cookie = '';
+        $titlePlain = self::titleForSlug($meta['title']);
+        $year = $meta['year'];
+
+        // Repeat-play fast path: cached page + CDN → probe only (skip scrape chain).
+        $cached = self::pageCacheGet($titlePlain, $year);
+        if ($cached !== null) {
+            $cachedCdn = trim((string) ($cached['cdn'] ?? ''));
+            $cachedQ = trim((string) ($cached['quality'] ?? 'Auto')) ?: 'Auto';
+            if ($cachedCdn !== '' && preg_match('#^https?://#i', $cachedCdn)) {
+                $probe = self::probeCdn($cachedCdn);
+                if ($probe !== null) {
+                    $playUrl = self::mint($cachedCdn, [
+                        'Referer' => self::SITE . '/',
+                        'Origin' => self::SITE,
+                        'Accept' => '*/*',
+                        'User-Agent' => self::UA,
+                        self::HEADER_INSECURE_TLS => 'insecure',
+                    ]);
+                    $diagnostics[] = [
+                        'code' => 'FZMOVIES_FAST',
+                        'message' => 'Warm CDN path ' . $cachedQ,
+                        'severity' => 'info',
+                        'provider' => self::PROVIDER_ID,
+                    ];
+                    return [
+                        'ok' => true,
+                        'sources' => [[
+                            'url' => $playUrl,
+                            'type' => 'file',
+                            'quality' => $cachedQ,
+                            'provider' => self::PROVIDER_ID,
+                            'providerName' => self::PROVIDER_NAME,
+                            'label' => self::PROVIDER_NAME . ' · ' . $cachedQ,
+                            'language' => 'en',
+                            'hasEnglish' => true,
+                            'qualities' => [['quality' => $cachedQ, 'url' => $playUrl, 'type' => 'file']],
+                            'meta' => [
+                                'backend' => 'fzmovies-host',
+                                'page' => (string) ($cached['url'] ?? ''),
+                                'pageYear' => $year,
+                                'title' => $meta['title'],
+                                'year' => $meta['year'],
+                                'direct' => $cachedCdn,
+                                'mirror' => (string) (parse_url($cachedCdn, PHP_URL_HOST) ?: ''),
+                                'variants' => [$cachedQ],
+                                'fast' => true,
+                            ],
+                        ]],
+                        'diagnostics' => $diagnostics,
+                    ];
+                }
+            }
+        }
+
         $page = self::findMoviePage($meta, $cookie, $diagnostics);
         if ($page === null) {
             return [
@@ -119,14 +182,39 @@ final class FzMoviesSources
             ];
         }
 
-        // Prefer higher quality first.
+        // Prefer higher quality first; try a couple if the best mirrors are dead.
         usort($qualities, static fn($a, $b) => self::qualityRank($b['quality']) <=> self::qualityRank($a['quality']));
-        $qualities = array_slice($qualities, 0, self::MAX_QUALITIES);
+        $qualities = array_slice($qualities, 0, max(self::MAX_QUALITIES, 3));
 
         $resolved = [];
         foreach ($qualities as $q) {
-            $cdn = self::resolveQuality($q['href'], $page['url'], $cookie, $diagnostics);
+            $cdn = null;
+            $cacheKey = $page['url'] . '|' . $q['quality'];
+            $cachedCdn = self::cdnCacheGet($cacheKey);
+            if ($cachedCdn !== null) {
+                $probe = self::probeCdn($cachedCdn);
+                if ($probe !== null) {
+                    $cdn = [
+                        'url' => $cachedCdn,
+                        'mirror' => (string) (parse_url($cachedCdn, PHP_URL_HOST) ?: ''),
+                        'size' => $probe['size'],
+                    ];
+                    $diagnostics[] = [
+                        'code' => 'FZMOVIES_CDN_CACHE',
+                        'message' => 'CDN cache hit ' . $q['quality'],
+                        'severity' => 'info',
+                        'provider' => self::PROVIDER_ID,
+                    ];
+                }
+            }
             if ($cdn === null) {
+                $cdn = self::resolveQuality($q['href'], $page['url'], $cookie, $diagnostics);
+                if ($cdn !== null) {
+                    self::cdnCachePut($cacheKey, $cdn['url']);
+                }
+            }
+            if ($cdn === null) {
+                // Fall through to next listed quality if best mirror pack is dead.
                 continue;
             }
             $playUrl = self::mint($cdn['url'], [
@@ -145,6 +233,9 @@ final class FzMoviesSources
                 'mirror' => $cdn['mirror'],
                 'size' => $cdn['size'] ?? null,
             ];
+            // First success is enough for playback latency.
+            self::pageCachePut($titlePlain, $year, $page['url'], $cdn['url'], $q['quality']);
+            break;
         }
 
         if ($resolved === []) {
@@ -207,21 +298,35 @@ final class FzMoviesSources
      */
     private static function findMoviePage(array $meta, string &$cookie, array &$diagnostics): ?array
     {
-        // Warm session cookie.
-        self::httpGet(self::SITE . '/', $cookie, self::SITE . '/');
-
         $title = $meta['title'];
         $year = $meta['year'];
         $titlePlain = self::titleForSlug($title);
 
-        // Candidate slugs — year-qualified first so remakes don't collide
-        // (e.g. Superman 2025 must not hit movie-Superman--hmp4.htm = 1978).
-        $candidates = [];
-        if ($year !== null) {
-            $candidates[] = 'movie-' . $titlePlain . ' ' . $year . '--hmp4.htm';
-            // Colon/subtitle variants already flattened by titleForSlug.
+        // Repeat-play cache (verified page URL).
+        $cached = self::pageCacheGet($titlePlain, $year);
+        $cachedUrl = is_array($cached) ? trim((string) ($cached['url'] ?? '')) : '';
+        if ($cachedUrl !== '' && preg_match('#^https?://#i', $cachedUrl)) {
+            $res = self::httpGet($cachedUrl, $cookie, self::SITE . '/');
+            if ($res !== null && $res['status'] >= 200 && $res['status'] < 300
+                && str_contains($res['body'], 'download1.php')
+                && self::pageYearMatches($res['body'], $year)) {
+                $diagnostics[] = [
+                    'code' => 'FZMOVIES_CACHE',
+                    'message' => 'Cache hit ' . $cachedUrl,
+                    'severity' => 'info',
+                    'provider' => self::PROVIDER_ID,
+                ];
+                return ['url' => $res['url'], 'html' => $res['body']];
+            }
         }
+
+        // Bare slug first (common case = 1 hop). Year check prevents remake collisions;
+        // on mismatch try Title+Year next.
+        $candidates = [];
         $candidates[] = 'movie-' . $titlePlain . '--hmp4.htm';
+        if ($year !== null && !preg_match('/\b' . preg_quote((string) $year, '/') . '\b/', $titlePlain)) {
+            $candidates[] = 'movie-' . $titlePlain . ' ' . $year . '--hmp4.htm';
+        }
 
         foreach ($candidates as $directPath) {
             $directUrl = self::SITE . '/' . str_replace(' ', '%20', $directPath);
@@ -248,6 +353,7 @@ final class FzMoviesSources
                 'severity' => 'info',
                 'provider' => self::PROVIDER_ID,
             ];
+            self::pageCachePut($titlePlain, $year, $res['url']);
             return ['url' => $res['url'], 'html' => $res['body']];
         }
 
@@ -332,6 +438,7 @@ final class FzMoviesSources
                 'severity' => 'info',
                 'provider' => self::PROVIDER_ID,
             ];
+            self::pageCachePut($titlePlain, $year, $res['url']);
             return ['url' => $res['url'], 'html' => $res['body']];
         }
 
@@ -471,15 +578,12 @@ final class FzMoviesSources
             return null;
         }
 
-        foreach ($mirrors as $mirror) {
-            $probe = self::probeCdn($mirror);
-            if ($probe === null) {
-                continue;
-            }
+        $hit = self::probeCdnFirst($mirrors);
+        if ($hit !== null) {
             return [
-                'url' => $mirror,
-                'mirror' => (string) (parse_url($mirror, PHP_URL_HOST) ?: ''),
-                'size' => $probe['size'],
+                'url' => $hit['url'],
+                'mirror' => (string) (parse_url($hit['url'], PHP_URL_HOST) ?: ''),
+                'size' => $hit['size'],
             ];
         }
 
@@ -532,6 +636,97 @@ final class FzMoviesSources
         return $out;
     }
 
+    /**
+     * Probe CDN mirrors in parallel; return the first that serves media bytes.
+     *
+     * @param list<string> $urls
+     * @return array{url:string,size:?int}|null
+     */
+    private static function probeCdnFirst(array $urls): ?array
+    {
+        $urls = array_values(array_slice($urls, 0, 4));
+        if ($urls === []) {
+            return null;
+        }
+        if (count($urls) === 1 || !function_exists('curl_multi_init')) {
+            foreach ($urls as $u) {
+                $p = self::probeCdn($u);
+                if ($p !== null) {
+                    return ['url' => $u, 'size' => $p['size']];
+                }
+            }
+            return null;
+        }
+
+        $mh = curl_multi_init();
+        $map = [];
+        foreach ($urls as $u) {
+            $ch = curl_init($u);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => true,
+                CURLOPT_CONNECTTIMEOUT => 4,
+                CURLOPT_TIMEOUT => 6,
+                CURLOPT_HTTPHEADER => [
+                    'User-Agent: ' . self::UA,
+                    'Referer: ' . self::SITE . '/',
+                    'Range: bytes=0-1023',
+                    'Accept: */*',
+                ],
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+            ]);
+            curl_multi_add_handle($mh, $ch);
+            $map[(int) $ch] = [$ch, $u];
+        }
+
+        $winner = null;
+        $running = null;
+        do {
+            $status = curl_multi_exec($mh, $running);
+            while ($info = curl_multi_info_read($mh)) {
+                if ($winner !== null) {
+                    continue;
+                }
+                $ch = $info['handle'];
+                $id = (int) $ch;
+                if (!isset($map[$id])) {
+                    continue;
+                }
+                $u = $map[$id][1];
+                $body = curl_multi_getcontent($ch);
+                $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                if (is_string($body) && self::looksLikeMedia($body, $code)) {
+                    $winner = ['url' => $u, 'size' => null];
+                }
+            }
+            if ($running && $winner === null) {
+                curl_multi_select($mh, 0.2);
+            }
+        } while ($running > 0 && $status === CURLM_OK && $winner === null);
+
+        foreach ($map as [$ch]) {
+            curl_multi_remove_handle($mh, $ch);
+            curl_close($ch);
+        }
+        curl_multi_close($mh);
+        return $winner;
+    }
+
+    private static function looksLikeMedia(string $body, int $code): bool
+    {
+        if ($body === '' || ($code !== 200 && $code !== 206)) {
+            return false;
+        }
+        if (str_contains($body, 'ftyp')
+            || str_starts_with($body, "\x1A\x45\xDF\xA3")
+            || (strlen($body) >= 8 && $body[4] === 'f' && str_contains(substr($body, 4, 8), 'ftyp'))) {
+            return true;
+        }
+        return $code === 206 && strlen($body) >= 512;
+    }
+
     /** @return array{size:?int}|null */
     private static function probeCdn(string $url): ?array
     {
@@ -542,8 +737,8 @@ final class FzMoviesSources
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_CONNECTTIMEOUT => 8,
-            CURLOPT_TIMEOUT => 15,
+            CURLOPT_CONNECTTIMEOUT => 4,
+            CURLOPT_TIMEOUT => 6,
             CURLOPT_HTTPHEADER => [
                 'User-Agent: ' . self::UA,
                 'Referer: ' . self::SITE . '/',
@@ -557,26 +752,104 @@ final class FzMoviesSources
         $body = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        if (!is_string($body) || $body === '') {
+        if (!is_string($body) || !self::looksLikeMedia($body, $code)) {
             return null;
         }
-        if ($code !== 200 && $code !== 206) {
+        return ['size' => null];
+    }
+
+    private static function cacheDir(): string
+    {
+        $dir = sys_get_temp_dir() . '/vuflix-fzmovies';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        return $dir;
+    }
+
+    private static function pageCacheKey(string $titlePlain, ?int $year): string
+    {
+        return self::cacheDir() . '/page-' . sha1(strtolower($titlePlain) . '|' . ($year ?? 0)) . '.json';
+    }
+
+    /** @return array{url:string,cdn?:string,quality?:string}|null */
+    private static function pageCacheGet(string $titlePlain, ?int $year): ?array
+    {
+        $path = self::pageCacheKey($titlePlain, $year);
+        if (!is_file($path)) {
             return null;
         }
-        // MP4/ISOBMFF or Matroska magic
-        $ok = str_contains($body, 'ftyp')
-            || str_starts_with($body, "\x1A\x45\xDF\xA3")
-            || (strlen($body) >= 8 && $body[4] === 'f' && str_contains(substr($body, 4, 8), 'ftyp'));
-        if (!$ok && strlen($body) >= 12) {
-            // Some servers wrap; accept octet-stream with enough bytes on 206.
-            $ok = $code === 206 && strlen($body) >= 512;
-        }
-        if (!$ok) {
+        $mtime = (int) @filemtime($path);
+        if ($mtime < 1 || (time() - $mtime) > self::PAGE_CACHE_TTL) {
             return null;
         }
-        $size = null;
-        // Content-Range not easily available without HEADERFUNCTION; skip size.
-        return ['size' => $size];
+        $raw = @file_get_contents($path);
+        $json = is_string($raw) ? json_decode($raw, true) : null;
+        if (!is_array($json)) {
+            return null;
+        }
+        $url = trim((string) ($json['url'] ?? ''));
+        if (!preg_match('#^https?://#i', $url)) {
+            return null;
+        }
+        return $json;
+    }
+
+    private static function pageCachePut(
+        string $titlePlain,
+        ?int $year,
+        string $url,
+        ?string $cdn = null,
+        ?string $quality = null
+    ): void {
+        if (!preg_match('#^https?://#i', $url)) {
+            return;
+        }
+        $prev = self::pageCacheGet($titlePlain, $year) ?? [];
+        $payload = [
+            'url' => $url,
+            't' => time(),
+            'cdn' => $cdn ?? ($prev['cdn'] ?? null),
+            'quality' => $quality ?? ($prev['quality'] ?? null),
+        ];
+        @file_put_contents(
+            self::pageCacheKey($titlePlain, $year),
+            json_encode($payload, JSON_UNESCAPED_SLASHES),
+            LOCK_EX
+        );
+    }
+
+    private static function cdnCacheKey(string $key): string
+    {
+        return self::cacheDir() . '/cdn-' . sha1($key) . '.json';
+    }
+
+    private static function cdnCacheGet(string $key): ?string
+    {
+        $path = self::cdnCacheKey($key);
+        if (!is_file($path)) {
+            return null;
+        }
+        $mtime = (int) @filemtime($path);
+        if ($mtime < 1 || (time() - $mtime) > self::CDN_CACHE_TTL) {
+            return null;
+        }
+        $raw = @file_get_contents($path);
+        $json = is_string($raw) ? json_decode($raw, true) : null;
+        $url = is_array($json) ? trim((string) ($json['url'] ?? '')) : '';
+        return preg_match('#^https?://#i', $url) ? $url : null;
+    }
+
+    private static function cdnCachePut(string $key, string $url): void
+    {
+        if (!preg_match('#^https?://#i', $url)) {
+            return;
+        }
+        @file_put_contents(
+            self::cdnCacheKey($key),
+            json_encode(['url' => $url, 't' => time()], JSON_UNESCAPED_SLASHES),
+            LOCK_EX
+        );
     }
 
     private static function qualityFromLabel(string $label): string
@@ -802,8 +1075,8 @@ final class FzMoviesSources
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 5,
-            CURLOPT_CONNECTTIMEOUT => 12,
-            CURLOPT_TIMEOUT => 35,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 18,
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_HEADERFUNCTION => static function ($ch, $line) use (&$responseHeaders) {
                 $responseHeaders .= $line;
