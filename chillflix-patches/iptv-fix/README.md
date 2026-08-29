@@ -1,12 +1,13 @@
 # chillflix IPTV + page speed
 
-## IPTV live playback (vuflix / chillflix)
-- vuflix Live TV uses huhu MediaURL IDs and proxies through
-  `/api/iptv/live/{id}/index.m3u8` on chillflix.
-- Fix: resolve via **huhu.to/mediaurl-resolve.json** + `huhu-iptv/play/{id}`
-  (kool mediahub is Cloudflare-blocked from the VPS).
-- Also allows `vuflix.co` as a playback referer host.
+## Live playback (chillflix.lol + vuflix.co)
+Both sites proxy through `/api/iptv/live/{id}/index.m3u8`.
 
-## Catalog
-- chillflix Live tab: mediahub → local kool scrape fallback.
-- Free-TV unchanged.
+- Resolve via **huhu.to/mediaurl-resolve.json** + `huhu-iptv/play/{id}`
+  (kool mediahub is Cloudflare-blocked from the VPS).
+- chillflix Live catalog now uses **huhu MediaURL** (same as vuflix), so
+  channel IDs match what playback can resolve.
+- Falls back: kool mediahub → huhu catalog → local kool scrape.
+
+## Free-TV
+Unchanged (GitHub Free-TV playlist).

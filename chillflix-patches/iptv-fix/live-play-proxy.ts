@@ -261,9 +261,28 @@ export async function resolveLivePlayManifest(
   requestOrigin: string,
   playPageUrl?: string
 ) {
+  let resolvedId = channelId
+
+  // chillflix local scrape used numeric IDs; huhu MediaURL ids are longer hex strings.
+  if (/^\d+$/.test(channelId)) {
+    try {
+      const { resolveHuhuPlayIdFromLegacyId } = await import(
+        "@/lib/iptv/huhu-iptv-catalog"
+      )
+      const mapped = await resolveHuhuPlayIdFromLegacyId(channelId)
+      if (mapped) {
+        resolvedId = mapped
+      }
+    } catch {
+      // keep original id
+    }
+  }
+
   const playPageCandidates = [
     playPageUrl,
+    buildHuhuIptvPlayPageUrl(resolvedId),
     buildHuhuIptvPlayPageUrl(channelId),
+    buildMediahubPlayPageUrl(resolvedId),
     buildMediahubPlayPageUrl(channelId),
   ].filter((value, index, list): value is string =>
     Boolean(value && list.indexOf(value) === index)
@@ -284,7 +303,7 @@ export async function resolveLivePlayManifest(
     }
   }
 
-  const result = await fetchProviderPlayManifest(channelId, {
+  const result = await fetchProviderPlayManifest(resolvedId, {
     allowFlaresolverr: isFlaresolverrEnabled(),
   })
 

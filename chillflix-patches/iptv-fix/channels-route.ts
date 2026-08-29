@@ -5,6 +5,7 @@ import {
   fetchFreeTvChannels,
   filterFreeTvChannels,
 } from "@/lib/iptv/free-tv"
+import { fetchHuhuIptvChannels } from "@/lib/iptv/huhu-iptv-catalog"
 import {
   buildMediahubPlayPageUrl,
   fetchMediahubChannels,
@@ -83,7 +84,7 @@ export async function GET(request: Request) {
       const { channels, groups } = await fetchMediahubChannels({
         search,
         country,
-        maxPages: search || country ? 20 : 12,
+        maxPages: search || country ? 8 : 4,
       })
 
       if (channels.length) {
@@ -95,10 +96,33 @@ export async function GET(request: Request) {
         )
       }
     } catch {
-      // Server IP is Cloudflare-blocked on kool.to — use the local kool scrape.
+      // kool.to mediahub is often Cloudflare-blocked from this VPS.
     }
 
-    // Same Live TV channel universe as before (kool network scrape), not a public IPTV dump.
+    // Same Live TV source vuflix uses (huhu MediaURL) — IDs resolve for playback.
+    try {
+      const { channels, groups } = await fetchHuhuIptvChannels({
+        search,
+        country,
+      })
+
+      if (channels.length) {
+        const all = search || country
+          ? (await fetchHuhuIptvChannels({})).channels.length
+          : channels.length
+
+        return NextResponse.json(
+          livePayload(channels, groups, {
+            search,
+            totalAll: all,
+            source: "https://huhu.to/mediaurl-catalog.json",
+          })
+        )
+      }
+    } catch {
+      // Fall through to local scrape.
+    }
+
     const local = withPlayPageUrls(loadLocalIptvChannels())
     const forCountryCounts = filterIptvChannels(local, { search })
     const filtered = filterIptvChannels(local, { search, country })
