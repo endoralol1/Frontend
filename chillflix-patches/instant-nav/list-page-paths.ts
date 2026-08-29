@@ -1,4 +1,4 @@
-/** Movie/TV/people list slugs — soft-navigated via Next Link (modal bypass routes exist). */
+/** Movie/TV/people list slugs intercepted as `[id]` by `@modal/(.)…/[id]` — need full navigation. */
 const MOVIE_LIST_SLUGS = new Set([
   "discover",
   "popular",
@@ -24,33 +24,27 @@ function pathOnly(href: string) {
   return raw.replace(/\/$/, "") || "/"
 }
 
-/** Browse/list routes (discover, popular, search, trending, etc.). */
+/** Paginated browse routes where ?page= must use a full document navigation. */
 export function isBrowseListPath(pathname: string) {
   const path = pathOnly(pathname)
   if (path === "/search") return true
   if (path === "/trending") return true
   if (path.startsWith("/trending/")) return true
-
-  const movieMatch = path.match(/^\/movie\/([^/]+)$/)
-  if (movieMatch && MOVIE_LIST_SLUGS.has(movieMatch[1])) return true
-
-  const tvMatch = path.match(/^\/tv\/([^/]+)$/)
-  if (tvMatch && TV_LIST_SLUGS.has(tvMatch[1])) return true
-
-  const peopleMatch = path.match(/^\/people\/([^/]+)$/)
-  if (peopleMatch && PEOPLE_LIST_SLUGS.has(peopleMatch[1])) return true
-
-  return false
+  return requiresFullPageNavigation(pathname)
 }
 
 /**
- * Only title/person/collection detail URLs need a full document load so the
- * `@modal/(.)[id]` intercept overlay does not open. List/browse routes use
- * soft Next.js Link + prefetch for instant clicks.
+ * Soft Next Link breaks these routes (URL can change / click no-ops while the
+ * @modal intercept keeps the underlay). Use a real document navigation instead.
  */
 export function requiresFullPageNavigation(href: string) {
   const path = pathOnly(href)
 
+  if (path === "/search") return true
+  if (path === "/trending") return true
+  if (path.startsWith("/trending/")) return true
+
+  // Title details: avoid Netflix-style @modal intercept overlay
   if (/^\/(?:movie|tv)\/\d+(?:\/|$)/.test(path)) {
     return true
   }
@@ -60,6 +54,21 @@ export function requiresFullPageNavigation(href: string) {
   }
 
   if (/^\/collection\/\d+(?:\/|$)/.test(path)) {
+    return true
+  }
+
+  const movieMatch = path.match(/^\/movie\/([^/]+)$/)
+  if (movieMatch && MOVIE_LIST_SLUGS.has(movieMatch[1])) {
+    return true
+  }
+
+  const tvMatch = path.match(/^\/tv\/([^/]+)$/)
+  if (tvMatch && TV_LIST_SLUGS.has(tvMatch[1])) {
+    return true
+  }
+
+  const peopleMatch = path.match(/^\/people\/([^/]+)$/)
+  if (peopleMatch && PEOPLE_LIST_SLUGS.has(peopleMatch[1])) {
     return true
   }
 

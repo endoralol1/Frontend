@@ -1,43 +1,26 @@
 "use client"
 
 import Link from "next/link"
-import {
-  forwardRef,
-  startTransition,
-  useCallback,
-  type ComponentProps,
-  type MouseEvent,
-} from "react"
-import { useRouter } from "next/navigation"
+import { forwardRef, type ComponentProps, type MouseEvent } from "react"
 
 import { requiresFullPageNavigation } from "@/lib/list-page-paths"
 
 type ListPageLinkProps = ComponentProps<typeof Link>
 
-function pathOf(href: ListPageLinkProps["href"]) {
-  if (typeof href === "string") return href
-  if (href && typeof href === "object" && "pathname" in href) {
-    return String(href.pathname ?? "")
+function markNavigating() {
+  try {
+    document.documentElement.dataset.cfNav = "1"
+  } catch {
+    // ignore
   }
-  return ""
 }
 
 export const ListPageLink = forwardRef<HTMLAnchorElement, ListPageLinkProps>(
   function ListPageLink(
-    { href, prefetch = true, replace, scroll = true, onClick, onMouseEnter, onTouchStart, ...props },
+    { href, prefetch = true, replace, scroll, onClick, ...props },
     ref
   ) {
-    const router = useRouter()
-    const hrefString = pathOf(href)
-
-    const warm = useCallback(() => {
-      if (!hrefString || requiresFullPageNavigation(hrefString)) return
-      try {
-        router.prefetch(hrefString)
-      } catch {
-        // ignore
-      }
-    }, [hrefString, router])
+    const hrefString = typeof href === "string" ? href : href.pathname ?? ""
 
     if (requiresFullPageNavigation(hrefString)) {
       return (
@@ -45,39 +28,15 @@ export const ListPageLink = forwardRef<HTMLAnchorElement, ListPageLinkProps>(
           href={hrefString}
           ref={ref}
           {...(props as ComponentProps<"a">)}
-          onClick={onClick as never}
+          onClick={(event: MouseEvent<HTMLAnchorElement>) => {
+            onClick?.(event as never)
+            if (event.defaultPrevented) return
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+            if (event.button !== 0) return
+            markNavigating()
+          }}
         />
       )
-    }
-
-    const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
-      onClick?.(event)
-      if (event.defaultPrevented) return
-      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-      if (event.button !== 0) return
-
-      // Soft navigate with View Transitions when available for a smooth crossfade.
-      const supportsVT =
-        typeof document !== "undefined" &&
-        "startViewTransition" in document &&
-        !window.matchMedia("(prefers-reduced-motion: reduce)").matches
-
-      if (!supportsVT) return // let Next <Link> handle it
-
-      event.preventDefault()
-      const navigate = () => {
-        startTransition(() => {
-          if (replace) router.replace(hrefString, { scroll })
-          else router.push(hrefString, { scroll })
-        })
-      }
-
-      try {
-        // @ts-expect-error View Transitions API
-        document.startViewTransition(navigate)
-      } catch {
-        navigate()
-      }
     }
 
     return (
@@ -88,15 +47,11 @@ export const ListPageLink = forwardRef<HTMLAnchorElement, ListPageLinkProps>(
         scroll={scroll}
         ref={ref}
         {...props}
-        onMouseEnter={(e) => {
-          warm()
-          onMouseEnter?.(e)
+        onClick={(event) => {
+          onClick?.(event)
+          if (event.defaultPrevented) return
+          markNavigating()
         }}
-        onTouchStart={(e) => {
-          warm()
-          onTouchStart?.(e)
-        }}
-        onClick={handleClick}
       />
     )
   }
