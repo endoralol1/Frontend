@@ -5,7 +5,9 @@ Deployed on VPS under `/var/www/chillflix-newsite`.
 ## What
 - New `FzMoviesSources.php` — scrapes `fzmovies.host` movies (multi-quality + multi-mirror).
 - Progressive MP4/MKV via `/api/player/v-relay` (Range streaming).
-- TV skipped: `mobiletvshows.site` downloads currently offline upstream.
+- TV wired via `mobiletvshows.site` (same family), but **upstream downloads are still offline**
+  (site banner since 14 Jun: “Downloads are not working… 15 days”). Sister mirrors
+  (`tvseries.in`, `fztvseries.live`) show the same outage. Movies work; TV cannot until CDN is restored.
 - Vuflix-only (`hostAllowed`), enabled in Admin → Sources as `fzmovies`.
 
 ## Files touched on VPS
