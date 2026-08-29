@@ -188,6 +188,7 @@ final class FzMoviesSources
                 'meta' => [
                     'backend' => 'fzmovies-host',
                     'page' => $page['url'],
+                    'pageYear' => self::pageYear($page['html']),
                     'title' => $meta['title'],
                     'year' => $meta['year'],
                     'direct' => $best['direct'],
@@ -211,15 +212,39 @@ final class FzMoviesSources
 
         $title = $meta['title'];
         $year = $meta['year'];
+        $titlePlain = self::titleForSlug($title);
 
-        // Fast path: exact slug movie-{Title}--hmp4.htm (spaces allowed in path).
-        $directPath = 'movie-' . $title . '--hmp4.htm';
-        $directUrl = self::SITE . '/' . str_replace(' ', '%20', $directPath);
-        $res = self::httpGet($directUrl, $cookie, self::SITE . '/');
-        if ($res !== null && $res['status'] >= 200 && $res['status'] < 300 && str_contains($res['body'], 'download1.php')) {
+        // Candidate slugs — year-qualified first so remakes don't collide
+        // (e.g. Superman 2025 must not hit movie-Superman--hmp4.htm = 1978).
+        $candidates = [];
+        if ($year !== null) {
+            $candidates[] = 'movie-' . $titlePlain . ' ' . $year . '--hmp4.htm';
+            // Colon/subtitle variants already flattened by titleForSlug.
+        }
+        $candidates[] = 'movie-' . $titlePlain . '--hmp4.htm';
+
+        foreach ($candidates as $directPath) {
+            $directUrl = self::SITE . '/' . str_replace(' ', '%20', $directPath);
+            $res = self::httpGet($directUrl, $cookie, self::SITE . '/');
+            if ($res === null || $res['status'] < 200 || $res['status'] >= 300) {
+                continue;
+            }
+            if (!str_contains($res['body'], 'download1.php')) {
+                continue;
+            }
+            if (!self::pageYearMatches($res['body'], $year)) {
+                $got = self::pageYear($res['body']);
+                $diagnostics[] = [
+                    'code' => 'FZMOVIES_YEAR_SKIP',
+                    'message' => $directPath . ' year=' . ($got ?? 'null') . ' want=' . ($year ?? 'null'),
+                    'severity' => 'info',
+                    'provider' => self::PROVIDER_ID,
+                ];
+                continue;
+            }
             $diagnostics[] = [
                 'code' => 'FZMOVIES_DIRECT',
-                'message' => 'Hit direct page ' . $directPath,
+                'message' => 'Hit ' . $directPath . ' year=' . (self::pageYear($res['body']) ?? '?'),
                 'severity' => 'info',
                 'provider' => self::PROVIDER_ID,
             ];
@@ -228,7 +253,7 @@ final class FzMoviesSources
 
         // Search fallback.
         $post = http_build_query([
-            'searchname' => $title,
+            'searchname' => $titlePlain,
             'searchby' => 'Name',
             'category' => 'All',
             'Search' => 'Search',
@@ -266,43 +291,98 @@ final class FzMoviesSources
             return null;
         }
 
-        $best = null;
-        $bestScore = -1;
+        $ranked = [];
         foreach ($hits as $href) {
-            $score = self::slugScore($href, $title, $year);
-            if ($score > $bestScore) {
-                $bestScore = $score;
-                $best = $href;
+            $score = self::slugScore($href, $titlePlain, $year);
+            if ($score >= 70) {
+                $ranked[] = [$score, $href];
             }
         }
-        if ($best === null || $bestScore < 70) {
+        usort($ranked, static fn($a, $b) => $b[0] <=> $a[0]);
+        if ($ranked === []) {
             $diagnostics[] = [
                 'code' => 'FZMOVIES_NO_MATCH',
-                'message' => 'Best search score ' . $bestScore . ' for ' . $title,
+                'message' => 'No strong search match for ' . $title . ($year ? " ($year)" : ''),
                 'severity' => 'warning',
                 'provider' => self::PROVIDER_ID,
             ];
             return null;
         }
 
-        $pageUrl = self::SITE . '/' . str_replace(' ', '%20', ltrim($best, '/'));
-        $res = self::httpGet($pageUrl, $cookie, self::SITE . '/');
-        if ($res === null || $res['status'] < 200 || $res['status'] >= 300 || !str_contains($res['body'], 'download1.php')) {
+        // Fetch top candidates and require page year to match TMDB year.
+        foreach (array_slice($ranked, 0, 6) as [$bestScore, $best]) {
+            $pageUrl = self::SITE . '/' . str_replace(' ', '%20', ltrim($best, '/'));
+            $res = self::httpGet($pageUrl, $cookie, self::SITE . '/');
+            if ($res === null || $res['status'] < 200 || $res['status'] >= 300 || !str_contains($res['body'], 'download1.php')) {
+                continue;
+            }
+            if (!self::pageYearMatches($res['body'], $year)) {
+                $got = self::pageYear($res['body']);
+                $diagnostics[] = [
+                    'code' => 'FZMOVIES_YEAR_SKIP',
+                    'message' => $best . ' year=' . ($got ?? 'null') . ' want=' . ($year ?? 'null') . ' score=' . $bestScore,
+                    'severity' => 'info',
+                    'provider' => self::PROVIDER_ID,
+                ];
+                continue;
+            }
             $diagnostics[] = [
-                'code' => 'FZMOVIES_PAGE',
-                'message' => 'Movie page fetch failed for ' . $best,
-                'severity' => 'warning',
+                'code' => 'FZMOVIES_MATCH',
+                'message' => 'Matched ' . $best . ' score=' . $bestScore . ' year=' . (self::pageYear($res['body']) ?? '?'),
+                'severity' => 'info',
                 'provider' => self::PROVIDER_ID,
             ];
-            return null;
+            return ['url' => $res['url'], 'html' => $res['body']];
         }
+
         $diagnostics[] = [
-            'code' => 'FZMOVIES_MATCH',
-            'message' => 'Matched ' . $best . ' score=' . $bestScore,
-            'severity' => 'info',
+            'code' => 'FZMOVIES_YEAR_MISS',
+            'message' => 'No FzMovies page with matching year for ' . $title . ($year ? " ($year)" : ''),
+            'severity' => 'warning',
             'provider' => self::PROVIDER_ID,
         ];
-        return ['url' => $res['url'], 'html' => $res['body']];
+        return null;
+    }
+
+    /** Normalize TMDB title into fzmovies slug form (spaces, no colon). */
+    private static function titleForSlug(string $title): string
+    {
+        $t = html_entity_decode($title, ENT_QUOTES | ENT_HTML5);
+        $t = str_replace([':', '–', '—', '/', '\\'], ' ', $t);
+        $t = preg_replace('/\s+/', ' ', $t) ?: $t;
+        return trim($t);
+    }
+
+    /** Extract release year from an fzmovies movie page. */
+    private static function pageYear(string $html): ?int
+    {
+        if (preg_match('/itemprop=[\'"]datePublished[\'"][^>]*content=[\'"](\d{4})/i', $html, $m)) {
+            return (int) $m[1];
+        }
+        if (preg_match('/year\.php\?[^\'"]*year=(\d{4})/i', $html, $m)) {
+            return (int) $m[1];
+        }
+        if (preg_match('/<title>\s*[^<(]+\((\d{4})\)\s*</i', $html, $m)) {
+            return (int) $m[1];
+        }
+        return null;
+    }
+
+    /**
+     * When TMDB year is known, require exact page year match.
+     * If TMDB year unknown, accept any page.
+     */
+    private static function pageYearMatches(string $html, ?int $wantYear): bool
+    {
+        if ($wantYear === null || $wantYear < 1900) {
+            return true;
+        }
+        $got = self::pageYear($html);
+        if ($got === null) {
+            // No year on page — reject when we have a TMDB year (avoid remake collisions).
+            return false;
+        }
+        return $got === $wantYear;
     }
 
     /**
@@ -597,8 +677,16 @@ final class FzMoviesSources
         }
 
         if ($year !== null) {
-            if (str_contains($slugNorm, (string) $year) || str_contains($slug, (string) $year)) {
-                $score += 15;
+            $yearStr = (string) $year;
+            if (str_contains($slugNorm, $yearStr) || str_contains($slug, $yearStr)) {
+                $score += 40;
+            } elseif (preg_match('/\b(19\d{2}|20\d{2})\b/', $slugNorm, $ym) && $ym[1] !== $yearStr) {
+                // Wrong year in slug (e.g. Superman 2025 vs want 1978).
+                $score -= 80;
+            } else {
+                // Bare slug with no year — weaker when TMDB year is known
+                // (pageYearMatches will still gate the final pick).
+                $score -= 10;
             }
         }
 
