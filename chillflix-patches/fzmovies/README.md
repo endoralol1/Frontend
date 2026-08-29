@@ -22,3 +22,9 @@ curl -k -H 'Host: vuflix.co' -H 'User-Agent: Mozilla/5.0' \
   'https://vuflix.co/api/player/sources?type=movie&tmdbId=1924&provider=fzmovies'
 ```
 Expect `provider: fzmovies`, qualities `720p`/`480p`, v-relay URL returning HTTP 206 on Range.
+
+
+## Quality menu fix
+Progressive MP4/file playback was wiping `state.qualityOptions`, so the Quality
+panel showed **Nothing available yet**. `player.js` now keeps per-URL quality
+packs for file sources. Cache-bust: `player.js?v=20260829-fzmovies-q1`.

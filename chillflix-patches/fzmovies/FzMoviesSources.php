@@ -23,10 +23,10 @@ final class FzMoviesSources
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
     /**
-     * Resolve only the best quality for speed (each quality needs 2 site hops + CDN probe).
-     * Player still gets a working stream; secondary qualities can be added later if needed.
+     * Resolve up to this many quality variants (each needs download1 → download.php → CDN).
+     * Keep small for latency; player Quality menu uses these URLs.
      */
-    private const MAX_QUALITIES = 1;
+    private const MAX_QUALITIES = 2;
 
     /** Cache TMDB→page URL (page year verified) to skip slug/search on repeat plays. */
     private const PAGE_CACHE_TTL = 21600; // 6h
@@ -233,9 +233,13 @@ final class FzMoviesSources
                 'mirror' => $cdn['mirror'],
                 'size' => $cdn['size'] ?? null,
             ];
-            // First success is enough for playback latency.
-            self::pageCachePut($titlePlain, $year, $page['url'], $cdn['url'], $q['quality']);
-            break;
+            // Cache best (first) for warm fast path; keep resolving until MAX_QUALITIES.
+            if (count($resolved) === 1) {
+                self::pageCachePut($titlePlain, $year, $page['url'], $cdn['url'], $q['quality']);
+            }
+            if (count($resolved) >= self::MAX_QUALITIES) {
+                break;
+            }
         }
 
         if ($resolved === []) {
