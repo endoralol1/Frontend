@@ -722,6 +722,29 @@ final class FzMoviesSources
             ];
         }
         $mirrors = self::extractMirrors($html2);
+        // TV interstitial: filelink.php → JS location.href CDN URL
+        if (preg_match_all("#href=['\"](filelink\\.php\\?[^'\"]+)['\"]#i", $html2, $flm)) {
+            foreach ($flm[1] as $fl) {
+                $flUrl = self::TV_SITE . '/' . ltrim(html_entity_decode($fl, ENT_QUOTES | ENT_HTML5), '/');
+                $flRes = self::httpGet($flUrl, $cookie, $durl);
+                if ($flRes === null || $flRes['status'] < 200 || $flRes['status'] >= 300) {
+                    continue;
+                }
+                if (preg_match("#location\\.href\\s*=\\s*['\"](https?://[^'\"]+\\.(?:mp4|mkv|webm)[^'\"]*)['\"]#i", $flRes['body'], $lm)) {
+                    $mirrors[] = html_entity_decode($lm[1], ENT_QUOTES | ENT_HTML5);
+                }
+            }
+        }
+        $seenM = [];
+        $uniqM = [];
+        foreach ($mirrors as $u) {
+            if (!preg_match('#^https?://#i', $u) || isset($seenM[$u])) {
+                continue;
+            }
+            $seenM[$u] = true;
+            $uniqM[] = $u;
+        }
+        $mirrors = $uniqM;
         if ($mirrors === []) {
             return null;
         }
@@ -1047,13 +1070,19 @@ final class FzMoviesSources
     private static function extractMirrors(string $html): array
     {
         $urls = [];
-        // Prefer explicit value= CDN fields (direct file URLs).
-        if (preg_match_all("#value='(https://[^']+\.(?:mp4|mkv)[^']*)'#i", $html, $m)) {
+        // Movies: value='https://…mp4'
+        if (preg_match_all("#value='(https://[^']+\.(?:mp4|mkv|webm)[^']*)'#i", $html, $m)) {
             foreach ($m[1] as $u) {
                 $urls[] = html_entity_decode($u, ENT_QUOTES | ENT_HTML5);
             }
         }
-        // Also rebuild from dlink.php?id=res/...&sn=HOST
+        // TV: name='filelink' value='http(s)://…/rlink_t/….mp4'
+        if (preg_match_all("#name='filelink' value='(https?://[^']+\.(?:mp4|mkv|webm)[^']*)'#i", $html, $m)) {
+            foreach ($m[1] as $u) {
+                $urls[] = html_entity_decode($u, ENT_QUOTES | ENT_HTML5);
+            }
+        }
+        // Movies: dlink.php?id=res/…&sn=HOST
         if (preg_match_all("#href=['\"]dlink\.php\?id=([^'\"]+)['\"]#i", $html, $m)) {
             foreach ($m[1] as $q) {
                 $q = html_entity_decode($q, ENT_QUOTES | ENT_HTML5);
@@ -1066,6 +1095,22 @@ final class FzMoviesSources
                     continue;
                 }
                 $urls[] = 'https://' . $sn . '/' . $path;
+            }
+        }
+        // TV: filelink.php?sn=HOST&id=/rlink_t/….mp4
+        if (preg_match_all("#href=['\"]filelink\.php\?([^'\"]+)['\"]#i", $html, $m)) {
+            foreach ($m[1] as $q) {
+                $q = html_entity_decode($q, ENT_QUOTES | ENT_HTML5);
+                if (!preg_match('#sn=([^&]+)&id=([^&]+)#i', $q, $mm)) {
+                    continue;
+                }
+                $sn = $mm[1];
+                $id = ltrim($mm[2], '/');
+                if ($sn === '' || $id === '') {
+                    continue;
+                }
+                $urls[] = 'https://' . $sn . '/' . $id;
+                $urls[] = 'http://' . $sn . '/' . $id;
             }
         }
         // Unique preserve order
@@ -1162,6 +1207,11 @@ final class FzMoviesSources
     private static function looksLikeMedia(string $body, int $code): bool
     {
         if ($body === '' || ($code !== 200 && $code !== 206)) {
+            return false;
+        }
+        // TV CDN currently serves an HTML "404 Not Found" video page — reject it.
+        $trim = ltrim($body);
+        if (str_starts_with($trim, '<!') || str_starts_with($trim, '<html') || str_starts_with($trim, '<HTML')) {
             return false;
         }
         if (str_contains($body, 'ftyp')
