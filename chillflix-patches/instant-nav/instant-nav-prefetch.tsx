@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 import { pages } from "@/config"
 
@@ -12,17 +12,18 @@ const PRIMARY_ROUTES = [
 ] as const
 
 /**
- * Warm the Next.js router cache for primary nav targets so Movies/TV/Home
- * clicks feel instant after the first paint.
+ * Warm router cache for primary tabs and keep them fresh while browsing.
  */
 export function InstantNavPrefetch() {
   const router = useRouter()
+  const pathname = usePathname()
 
   useEffect(() => {
     let cancelled = false
     const run = () => {
       if (cancelled) return
       for (const href of PRIMARY_ROUTES) {
+        if (href === pathname) continue
         try {
           router.prefetch(href)
         } catch {
@@ -31,20 +32,35 @@ export function InstantNavPrefetch() {
       }
     }
 
-    // Prefer idle time so we don't contend with first paint / hero images.
     if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      const id = window.requestIdleCallback(run, { timeout: 1800 })
+      const id = window.requestIdleCallback(run, { timeout: 900 })
       return () => {
         cancelled = true
         window.cancelIdleCallback(id)
       }
     }
 
-    const timer = window.setTimeout(run, 400)
+    const timer = window.setTimeout(run, 200)
     return () => {
       cancelled = true
       window.clearTimeout(timer)
     }
+  }, [router, pathname])
+
+  // Re-warm on visibility so returning tabs stay hot
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return
+      for (const href of PRIMARY_ROUTES) {
+        try {
+          router.prefetch(href)
+        } catch {
+          // ignore
+        }
+      }
+    }
+    document.addEventListener("visibilitychange", onVis)
+    return () => document.removeEventListener("visibilitychange", onVis)
   }, [router])
 
   return null
