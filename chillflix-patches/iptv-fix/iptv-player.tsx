@@ -98,9 +98,8 @@ export function IptvPlayer({
   const [playerError, setPlayerError] = useState<string>()
 
   const isLive = sourceType === "live"
-  const hasDirectStreamUrl = Boolean(freeTvUrl)
-  const useLocalLiveApi = isLive && !hasDirectStreamUrl
-  const useBrowserLiveProxy = useLocalLiveApi && !isLocalIptvDevHost()
+  const useLocalLiveApi = isLive
+  const useBrowserLiveProxy = isLive && !isLocalIptvDevHost()
 
   useEffect(() => {
     setChannelName(initialName ?? t("iptvExtra.liveChannel"))
@@ -218,47 +217,14 @@ export function IptvPlayer({
           }
         }
 
-        // Direct playlist URL (Free-TV, or Live TV fallback when mediahub is blocked).
-        if (!isLive || freeTvUrl) {
-          let streamUrl = freeTvUrl
-
-          if (!streamUrl) {
-            const channelsResponse = await fetch(
-              `/api/iptv/channels?source=${isLive ? "live" : "free-tv"}`
-            )
-            const channelsData = await channelsResponse.json()
-            const channel = (channelsData.channels ?? []).find(
-              (item: {
-                id: string
-                url?: string
-                name?: string
-                country?: string
-              }) => String(item.id) === channelId
-            )
-
-            if (!channel?.url) {
-              setPlayerError(t("iptvExtra.channelNotFound"))
-              return
-            }
-
-            streamUrl = channel.url
-            if (channel.name) setChannelName(channel.name)
-            if (channel.country) setChannelCountry(channel.country)
-          }
-
-          const playbackToken = await mintIptvPlaybackSession(
-            channelId,
-            isLive ? "live" : "free-tv",
-            streamUrl,
-            t("iptvExtra.playbackFailed")
-          )
-
+        if (isLive) {
+          const liveUrl = buildLocalLiveApiUrl(channelId, livePlayPageUrl)
           await trySources(
             [
               {
-                label: "playlist",
-                kind: "playlist",
-                proxyUrl: buildProxyPath(streamUrl, playbackToken),
+                label: "live-api",
+                kind: "live",
+                proxyUrl: liveUrl,
               },
             ],
             t("iptvExtra.loadFailed")
@@ -266,13 +232,39 @@ export function IptvPlayer({
           return
         }
 
-        const liveUrl = buildLocalLiveApiUrl(channelId, livePlayPageUrl)
+        let streamUrl = freeTvUrl
+
+        if (!streamUrl) {
+          const channelsResponse = await fetch("/api/iptv/channels?source=free-tv")
+          const channelsData = await channelsResponse.json()
+          const channel = (channelsData.channels ?? []).find(
+            (item: { id: string; url?: string; name?: string; country?: string }) =>
+              String(item.id) === channelId
+          )
+
+          if (!channel?.url) {
+            setPlayerError(t("iptvExtra.channelNotFound"))
+            return
+          }
+
+          streamUrl = channel.url
+          if (channel.name) setChannelName(channel.name)
+          if (channel.country) setChannelCountry(channel.country)
+        }
+
+        const playbackToken = await mintIptvPlaybackSession(
+          channelId,
+          "free-tv",
+          streamUrl,
+          t("iptvExtra.playbackFailed")
+        )
+
         await trySources(
           [
             {
-              label: "live-api",
-              kind: "live",
-              proxyUrl: liveUrl,
+              label: "playlist",
+              kind: "playlist",
+              proxyUrl: buildProxyPath(streamUrl, playbackToken),
             },
           ],
           t("iptvExtra.loadFailed")

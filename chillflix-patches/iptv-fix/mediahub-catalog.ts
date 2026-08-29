@@ -44,7 +44,6 @@ async function postMediahub<T>(action: string, body: Record<string, unknown>): P
     method: "POST",
     headers: mediahubHeaders(),
     cache: "no-store",
-    signal: AbortSignal.timeout(8_000),
     body: JSON.stringify({
       language: "en",
       region: "US",

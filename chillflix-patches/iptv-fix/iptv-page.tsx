@@ -102,7 +102,7 @@ export function IptvPage() {
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       void loadChannels()
-    }, 80)
+    }, 250)
 
     return () => window.clearTimeout(timeout)
   }, [loadChannels])

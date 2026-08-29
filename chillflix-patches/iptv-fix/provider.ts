@@ -82,7 +82,7 @@ async function fetchRemoteIptvChannels(): Promise<IptvChannel[] | null> {
   return null
 }
 
-export function loadLocalIptvChannels(): IptvChannel[] {
+function loadLocalIptvChannels(): IptvChannel[] {
   const filePath = path.join(process.cwd(), LOCAL_CHANNELS_PATH)
 
   if (!fs.existsSync(filePath)) {
