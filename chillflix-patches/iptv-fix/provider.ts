@@ -35,6 +35,7 @@ const LOCAL_CHANNELS_PATH = "television/network_scrape/channels.json"
 const M3U8_URL_RE = /https?:\/\/[^\s"'<>]+\.m3u8[^\s"'<>]*/i
 
 let channelCache: { expiresAt: number; channels: IptvChannel[] } | null = null
+let localChannelCache: { expiresAt: number; channels: IptvChannel[] } | null = null
 
 function headersForOrigin(origin: string): Record<string, string> {
   return {
@@ -83,6 +84,10 @@ async function fetchRemoteIptvChannels(): Promise<IptvChannel[] | null> {
 }
 
 function loadLocalIptvChannels(): IptvChannel[] {
+  if (localChannelCache && localChannelCache.expiresAt > Date.now()) {
+    return localChannelCache.channels
+  }
+
   const filePath = path.join(process.cwd(), LOCAL_CHANNELS_PATH)
 
   if (!fs.existsSync(filePath)) {
@@ -94,8 +99,15 @@ function loadLocalIptvChannels(): IptvChannel[] {
     throw new Error("Local IPTV channel cache is empty or invalid")
   }
 
+  localChannelCache = {
+    expiresAt: Date.now() + CHANNEL_CACHE_TTL_MS,
+    channels,
+  }
+
   return channels
 }
+
+export { loadLocalIptvChannels }
 
 export function getIptvPlayPath(channelId: number | string, kind: "m3u8" | "html" = "m3u8") {
   return `/play/${channelId}/index.${kind === "html" ? "html" : "m3u8"}`
