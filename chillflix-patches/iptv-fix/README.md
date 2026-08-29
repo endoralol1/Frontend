@@ -1,11 +1,12 @@
 # chillflix IPTV + page speed
 
-## IPTV (restored Live TV)
-- Mediahub / kool.to is Cloudflare-blocked from the VPS IP.
-- Live TV tries Mediahub first, then falls back to the **local kool scrape**
-  (`television/network_scrape/channels.json`) — same Live TV channel IDs/names/countries as before.
-- Playback still uses `/play/{id}` + IPTV service worker (browser talks to huhu/kool).
-- No public iptv-org dump.
+## IPTV live playback (vuflix / chillflix)
+- vuflix Live TV uses huhu MediaURL IDs and proxies through
+  `/api/iptv/live/{id}/index.m3u8` on chillflix.
+- Fix: resolve via **huhu.to/mediaurl-resolve.json** + `huhu-iptv/play/{id}`
+  (kool mediahub is Cloudflare-blocked from the VPS).
+- Also allows `vuflix.co` as a playback referer host.
 
-## Speed (kept)
-- Eager first home trend rows / faster scroll-reveal & page-enter
+## Catalog
+- chillflix Live tab: mediahub → local kool scrape fallback.
+- Free-TV unchanged.
