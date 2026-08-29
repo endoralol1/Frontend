@@ -2,16 +2,15 @@
 declare(strict_types=1);
 
 /**
- * FzMovies (fzmovies.host) — progressive MP4/MKV download mirrors.
+ * FzMovies family — progressive MP4/MKV download mirrors.
  *
- * Movies only for now: MobileTVshows sister site currently serves a
- * "downloads are not working" banner (no CDN URLs).
+ * Movies: fzmovies.host
+ * TV:     mobiletvshows.site (same CDN/mirror pattern when upstream is healthy)
  *
- * Flow:
- *   1) TMDB title/year → search / direct movie-{Title}--hmp4.htm
- *   2) Pick quality rows (download1.php?downloadoptionskey=&pt=)
- *   3) download1 → download.php → mirror CDN URLs (try until Range works)
- *   4) Mint through v-relay (binary Range) with insecure TLS for CDN certs
+ * Movie flow:
+ *   TMDB → movie-{Title}--hmp4.htm → download1 → download.php → CDN mirrors → v-relay
+ * TV flow:
+ *   TMDB → subfolder-{Title}.htm → files-… season → episode.php → downloadmp4 → CDN → v-relay
  */
 final class FzMoviesSources
 {
@@ -19,6 +18,7 @@ final class FzMoviesSources
     public const PROVIDER_NAME = 'FzMovies';
 
     private const SITE = 'https://fzmovies.host';
+    private const TV_SITE = 'https://mobiletvshows.site';
     private const UA =
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
@@ -72,20 +72,6 @@ final class FzMoviesSources
         }
 
         $type = $type === 'tv' ? 'tv' : 'movie';
-        if ($type === 'tv') {
-            return [
-                'ok' => false,
-                'error' => 'FzMovies TV downloads are currently offline upstream',
-                'sources' => [],
-                'diagnostics' => [[
-                    'code' => 'FZMOVIES_TV_DISABLED',
-                    'message' => 'mobiletvshows.site downloads unavailable',
-                    'severity' => 'info',
-                    'provider' => self::PROVIDER_ID,
-                ]],
-            ];
-        }
-
         $meta = self::tmdbMeta($type, $tmdbId);
         if ($meta === null) {
             return [
@@ -101,12 +87,26 @@ final class FzMoviesSources
             ];
         }
 
+        if ($type === 'tv') {
+            return self::fetchTv($meta, max(1, $season), max(1, $episode), $diagnostics);
+        }
+
+        return self::fetchMovie($meta, $diagnostics);
+    }
+
+    /**
+     * @param array{title:string,year:?int,imdb:?string} $meta
+     * @param list<array<string,mixed>> $diagnostics
+     * @return array{ok:bool,sources?:list<array<string,mixed>>,diagnostics?:list<array<string,mixed>>,error?:string}
+     */
+    private static function fetchMovie(array $meta, array $diagnostics): array
+    {
         $cookie = '';
         $titlePlain = self::titleForSlug($meta['title']);
         $year = $meta['year'];
 
         // Repeat-play fast path: cached page + CDN → probe only (skip scrape chain).
-        $cached = self::pageCacheGet($titlePlain, $year);
+        $cached = self::pageCacheGet('movie|' . $titlePlain, $year);
         if ($cached !== null) {
             $cachedCdn = trim((string) ($cached['cdn'] ?? ''));
             $cachedQ = trim((string) ($cached['quality'] ?? 'Auto')) ?: 'Auto';
@@ -214,7 +214,6 @@ final class FzMoviesSources
                 }
             }
             if ($cdn === null) {
-                // Fall through to next listed quality if best mirror pack is dead.
                 continue;
             }
             $playUrl = self::mint($cdn['url'], [
@@ -233,9 +232,8 @@ final class FzMoviesSources
                 'mirror' => $cdn['mirror'],
                 'size' => $cdn['size'] ?? null,
             ];
-            // Cache best (first) for warm fast path; keep resolving until MAX_QUALITIES.
             if (count($resolved) === 1) {
-                self::pageCachePut($titlePlain, $year, $page['url'], $cdn['url'], $q['quality']);
+                self::pageCachePut('movie|' . $titlePlain, $year, $page['url'], $cdn['url'], $q['quality']);
             }
             if (count($resolved) >= self::MAX_QUALITIES) {
                 break;
@@ -298,6 +296,449 @@ final class FzMoviesSources
     /**
      * @param array{title:string,year:?int,imdb:?string} $meta
      * @param list<array<string,mixed>> $diagnostics
+     * @return array{ok:bool,sources?:list<array<string,mixed>>,diagnostics?:list<array<string,mixed>>,error?:string}
+     */
+    private static function fetchTv(array $meta, int $season, int $episode, array $diagnostics): array
+    {
+        $cookie = '';
+        $titlePlain = self::titleForSlug($meta['title']);
+        $year = $meta['year'];
+        $cacheId = 'tv|' . $titlePlain . '|s' . $season . 'e' . $episode;
+
+        $cached = self::pageCacheGet($cacheId, $year);
+        if ($cached !== null) {
+            $cachedCdn = trim((string) ($cached['cdn'] ?? ''));
+            $cachedQ = trim((string) ($cached['quality'] ?? 'Auto')) ?: 'Auto';
+            if ($cachedCdn !== '' && preg_match('#^https?://#i', $cachedCdn)) {
+                $probe = self::probeCdn($cachedCdn);
+                if ($probe !== null) {
+                    $playUrl = self::mint($cachedCdn, [
+                        'Referer' => self::TV_SITE . '/',
+                        'Origin' => self::TV_SITE,
+                        'Accept' => '*/*',
+                        'User-Agent' => self::UA,
+                        self::HEADER_INSECURE_TLS => 'insecure',
+                    ]);
+                    $diagnostics[] = [
+                        'code' => 'FZMOVIES_TV_FAST',
+                        'message' => 'Warm TV CDN S' . $season . 'E' . $episode,
+                        'severity' => 'info',
+                        'provider' => self::PROVIDER_ID,
+                    ];
+                    return [
+                        'ok' => true,
+                        'sources' => [[
+                            'url' => $playUrl,
+                            'type' => 'file',
+                            'quality' => $cachedQ,
+                            'provider' => self::PROVIDER_ID,
+                            'providerName' => self::PROVIDER_NAME,
+                            'label' => self::PROVIDER_NAME . ' · ' . $cachedQ,
+                            'language' => 'en',
+                            'hasEnglish' => true,
+                            'qualities' => [['quality' => $cachedQ, 'url' => $playUrl, 'type' => 'file']],
+                            'meta' => [
+                                'backend' => 'mobiletvshows',
+                                'page' => (string) ($cached['url'] ?? ''),
+                                'title' => $meta['title'],
+                                'year' => $meta['year'],
+                                'season' => $season,
+                                'episode' => $episode,
+                                'direct' => $cachedCdn,
+                                'fast' => true,
+                            ],
+                        ]],
+                        'diagnostics' => $diagnostics,
+                    ];
+                }
+            }
+        }
+
+        $series = self::findSeriesPage($meta, $cookie, $diagnostics);
+        if ($series === null) {
+            return [
+                'ok' => false,
+                'error' => 'Show not found on MobileTVshows',
+                'sources' => [],
+                'diagnostics' => $diagnostics,
+            ];
+        }
+
+        $seasonPage = self::findSeasonPage($series, $season, $cookie, $diagnostics);
+        if ($seasonPage === null) {
+            return [
+                'ok' => false,
+                'error' => 'Season ' . $season . ' not on MobileTVshows',
+                'sources' => [],
+                'diagnostics' => $diagnostics,
+            ];
+        }
+
+        $ep = self::findEpisodeOnSeason($seasonPage['html'], $season, $episode, $diagnostics);
+        if ($ep === null) {
+            return [
+                'ok' => false,
+                'error' => 'Episode S' . $season . 'E' . $episode . ' not listed',
+                'sources' => [],
+                'diagnostics' => $diagnostics,
+            ];
+        }
+
+        // Prefer High MP4 (ftype=2) over WEBM (ftype=3).
+        $ftypes = $ep['ftypes'];
+        usort($ftypes, static function ($a, $b) {
+            $rank = static fn($f) => ((int) $f === 2 ? 100 : ((int) $f === 3 ? 50 : 10));
+            return $rank($b) <=> $rank($a);
+        });
+
+        $resolved = [];
+        foreach ($ftypes as $ftype) {
+            $cdn = self::resolveTvEpisode((string) $ep['fileid'], (string) $ftype, $cookie, $diagnostics);
+            if ($cdn === null) {
+                continue;
+            }
+            $quality = ((int) $ftype === 2) ? '720p' : (((int) $ftype === 3) ? 'WEBM' : ('ftype' . $ftype));
+            $playUrl = self::mint($cdn['url'], [
+                'Referer' => self::TV_SITE . '/',
+                'Origin' => self::TV_SITE,
+                'Accept' => '*/*',
+                'User-Agent' => self::UA,
+                self::HEADER_INSECURE_TLS => 'insecure',
+            ]);
+            $resolved[] = [
+                'quality' => $quality,
+                'url' => $playUrl,
+                'type' => 'file',
+                'direct' => $cdn['url'],
+                'mirror' => $cdn['mirror'],
+            ];
+            if (count($resolved) === 1) {
+                self::pageCachePut($cacheId, $year, $seasonPage['url'], $cdn['url'], $quality);
+            }
+            if (count($resolved) >= self::MAX_QUALITIES) {
+                break;
+            }
+        }
+
+        if ($resolved === []) {
+            $diagnostics[] = [
+                'code' => 'FZMOVIES_TV_MIRRORS_DOWN',
+                'message' => 'Episode found but MobileTVshows CDN mirrors unavailable (upstream download outage)',
+                'severity' => 'warning',
+                'provider' => self::PROVIDER_ID,
+            ];
+            return [
+                'ok' => false,
+                'error' => 'MobileTVshows downloads are down upstream',
+                'sources' => [],
+                'diagnostics' => $diagnostics,
+            ];
+        }
+
+        $best = $resolved[0];
+        $diagnostics[] = [
+            'code' => 'FZMOVIES_TV_OK',
+            'message' => 'S' . $season . 'E' . $episode . ' ' . count($resolved) . ' packs for ' . $meta['title'],
+            'severity' => 'info',
+            'provider' => self::PROVIDER_ID,
+        ];
+
+        return [
+            'ok' => true,
+            'sources' => [[
+                'url' => $best['url'],
+                'type' => 'file',
+                'quality' => $best['quality'],
+                'provider' => self::PROVIDER_ID,
+                'providerName' => self::PROVIDER_NAME,
+                'label' => self::PROVIDER_NAME . ' · ' . $best['quality'],
+                'language' => 'en',
+                'hasEnglish' => true,
+                'qualities' => array_map(static fn($r) => [
+                    'quality' => $r['quality'],
+                    'url' => $r['url'],
+                    'type' => 'file',
+                ], $resolved),
+                'meta' => [
+                    'backend' => 'mobiletvshows',
+                    'series' => $series['url'],
+                    'page' => $seasonPage['url'],
+                    'fileid' => $ep['fileid'],
+                    'title' => $meta['title'],
+                    'year' => $meta['year'],
+                    'season' => $season,
+                    'episode' => $episode,
+                    'direct' => $best['direct'],
+                    'mirror' => $best['mirror'],
+                    'variants' => array_map(static fn($r) => $r['quality'], $resolved),
+                ],
+            ]],
+            'diagnostics' => $diagnostics,
+        ];
+    }
+
+    /**
+     * @param array{title:string,year:?int,imdb:?string} $meta
+     * @param list<array<string,mixed>> $diagnostics
+     * @return array{url:string,html:string}|null
+     */
+    private static function findSeriesPage(array $meta, string &$cookie, array &$diagnostics): ?array
+    {
+        $titlePlain = self::titleForSlug($meta['title']);
+        $year = $meta['year'];
+
+        $candidates = [];
+        if ($year !== null) {
+            $candidates[] = 'subfolder-' . $titlePlain . ' ' . $year . '.htm';
+        }
+        $candidates[] = 'subfolder-' . $titlePlain . '.htm';
+
+        foreach ($candidates as $path) {
+            $url = self::TV_SITE . '/' . str_replace(' ', '%20', $path);
+            $res = self::httpGet($url, $cookie, self::TV_SITE . '/');
+            if ($res === null || $res['status'] < 200 || $res['status'] >= 300) {
+                continue;
+            }
+            if (!str_contains($res['body'], 'files-') && !str_contains($res['body'], 'Season')) {
+                continue;
+            }
+            // Soft year check from title tag when year-qualified slug was used.
+            $diagnostics[] = [
+                'code' => 'FZMOVIES_TV_SERIES',
+                'message' => 'Hit ' . $path,
+                'severity' => 'info',
+                'provider' => self::PROVIDER_ID,
+            ];
+            return ['url' => $res['url'], 'html' => $res['body']];
+        }
+
+        $searchUrl = self::TV_SITE . '/search.php?search=' . rawurlencode($titlePlain) . '&by=series';
+        $search = self::httpGet($searchUrl, $cookie, self::TV_SITE . '/');
+        if ($search === null || $search['status'] < 200 || $search['status'] >= 400) {
+            $diagnostics[] = [
+                'code' => 'FZMOVIES_TV_SEARCH',
+                'message' => 'TV search failed',
+                'severity' => 'warning',
+                'provider' => self::PROVIDER_ID,
+            ];
+            return null;
+        }
+
+        $hits = [];
+        if (preg_match_all('#href=["\'](subfolder-[^"\']+\.htm)["\']#i', $search['body'], $m)) {
+            $seen = [];
+            foreach ($m[1] as $href) {
+                $href = html_entity_decode($href, ENT_QUOTES | ENT_HTML5);
+                if (isset($seen[$href])) {
+                    continue;
+                }
+                $seen[$href] = true;
+                $hits[] = $href;
+            }
+        }
+        if ($hits === []) {
+            $diagnostics[] = [
+                'code' => 'FZMOVIES_TV_NO_HITS',
+                'message' => 'No series hits for ' . $titlePlain,
+                'severity' => 'warning',
+                'provider' => self::PROVIDER_ID,
+            ];
+            return null;
+        }
+
+        $ranked = [];
+        foreach ($hits as $href) {
+            // Reuse movie slug scorer on subfolder-{Title}.htm
+            $slug = preg_replace('#^subfolder-#i', '', $href) ?: $href;
+            $slug = preg_replace('#\.htm$#i', '', $slug) ?: $slug;
+            $fake = 'movie-' . $slug . '--hmp4.htm';
+            $score = self::slugScore($fake, $titlePlain, $year);
+            if ($score >= 70) {
+                $ranked[] = [$score, $href];
+            }
+        }
+        usort($ranked, static fn($a, $b) => $b[0] <=> $a[0]);
+        foreach (array_slice($ranked, 0, 5) as [$score, $href]) {
+            $url = self::TV_SITE . '/' . str_replace(' ', '%20', ltrim($href, '/'));
+            $res = self::httpGet($url, $cookie, self::TV_SITE . '/');
+            if ($res === null || $res['status'] < 200 || $res['status'] >= 300) {
+                continue;
+            }
+            if (!str_contains($res['body'], 'Season') && !str_contains($res['body'], 'files-')) {
+                continue;
+            }
+            $diagnostics[] = [
+                'code' => 'FZMOVIES_TV_MATCH',
+                'message' => 'Matched ' . $href . ' score=' . $score,
+                'severity' => 'info',
+                'provider' => self::PROVIDER_ID,
+            ];
+            return ['url' => $res['url'], 'html' => $res['body']];
+        }
+
+        $diagnostics[] = [
+            'code' => 'FZMOVIES_TV_NO_MATCH',
+            'message' => 'No series match for ' . $titlePlain,
+            'severity' => 'warning',
+            'provider' => self::PROVIDER_ID,
+        ];
+        return null;
+    }
+
+    /**
+     * @param array{url:string,html:string} $series
+     * @param list<array<string,mixed>> $diagnostics
+     * @return array{url:string,html:string}|null
+     */
+    private static function findSeasonPage(array $series, int $season, string &$cookie, array &$diagnostics): ?array
+    {
+        $want = 'season ' . $season;
+        $best = null;
+        if (preg_match_all('#href=["\'](files-[^"\']+\.htm)["\'][^>]*>(.*?)</a>#is', $series['html'], $m, PREG_SET_ORDER)) {
+            foreach ($m as $row) {
+                $href = html_entity_decode($row[1], ENT_QUOTES | ENT_HTML5);
+                $label = strtolower(trim(html_entity_decode(strip_tags($row[2]), ENT_QUOTES | ENT_HTML5)));
+                $label = preg_replace('/\s+/', ' ', $label) ?: $label;
+                if ($label === $want || preg_match('/^season\s*' . $season . '\b/', $label)) {
+                    $best = $href;
+                    break;
+                }
+            }
+        }
+        if ($best === null) {
+            $diagnostics[] = [
+                'code' => 'FZMOVIES_TV_NO_SEASON',
+                'message' => 'Season ' . $season . ' link missing on series page',
+                'severity' => 'warning',
+                'provider' => self::PROVIDER_ID,
+            ];
+            return null;
+        }
+        $url = self::TV_SITE . '/' . str_replace(' ', '%20', ltrim($best, '/'));
+        $res = self::httpGet($url, $cookie, $series['url']);
+        if ($res === null || $res['status'] < 200 || $res['status'] >= 300) {
+            $diagnostics[] = [
+                'code' => 'FZMOVIES_TV_SEASON_PAGE',
+                'message' => 'Season page fetch failed',
+                'severity' => 'warning',
+                'provider' => self::PROVIDER_ID,
+            ];
+            return null;
+        }
+        return ['url' => $res['url'], 'html' => $res['body']];
+    }
+
+    /**
+     * @param list<array<string,mixed>> $diagnostics
+     * @return array{fileid:string,ftypes:list<int>}|null
+     */
+    private static function findEpisodeOnSeason(string $html, int $season, int $episode, array &$diagnostics): ?array
+    {
+        $se = sprintf('S%02dE%02d', $season, $episode);
+        $seAlt = sprintf('S%dE%d', $season, $episode);
+        // "Show - S01E02 - Title" … episode.php?fileid=N&ftype=2
+        $fileid = null;
+        if (preg_match(
+            '#' . preg_quote($se, '#') . '[^<]{0,120}.{0,400}?episode\.php\?fileid=(\d+)&ftype=(\d+)#is',
+            $html,
+            $m
+        )) {
+            $fileid = $m[1];
+        } elseif (preg_match(
+            '#' . preg_quote($seAlt, '#') . '[^<]{0,120}.{0,400}?episode\.php\?fileid=(\d+)&ftype=(\d+)#is',
+            $html,
+            $m
+        )) {
+            $fileid = $m[1];
+        }
+        if ($fileid === null) {
+            $diagnostics[] = [
+                'code' => 'FZMOVIES_TV_NO_EP',
+                'message' => $se . ' not on season page',
+                'severity' => 'warning',
+                'provider' => self::PROVIDER_ID,
+            ];
+            return null;
+        }
+
+        $ftypes = [];
+        if (preg_match_all('#episode\.php\?fileid=' . preg_quote($fileid, '#') . '&ftype=(\d+)#i', $html, $mm)) {
+            foreach ($mm[1] as $ft) {
+                $ftypes[] = (int) $ft;
+            }
+        }
+        $ftypes = array_values(array_unique($ftypes));
+        if ($ftypes === []) {
+            $ftypes = [2];
+        }
+        return ['fileid' => $fileid, 'ftypes' => $ftypes];
+    }
+
+    /**
+     * @param list<array<string,mixed>> $diagnostics
+     * @return array{url:string,mirror:string,size:?int}|null
+     */
+    private static function resolveTvEpisode(string $fileid, string $ftype, string &$cookie, array &$diagnostics): ?array
+    {
+        $eurl = self::TV_SITE . '/episode.php?fileid=' . rawurlencode($fileid) . '&ftype=' . rawurlencode($ftype);
+        $res = self::httpGet($eurl, $cookie, self::TV_SITE . '/');
+        if ($res === null || $res['status'] < 200 || $res['status'] >= 300) {
+            $diagnostics[] = [
+                'code' => 'FZMOVIES_TV_EP_PAGE',
+                'message' => 'episode.php failed fileid=' . $fileid,
+                'severity' => 'warning',
+                'provider' => self::PROVIDER_ID,
+            ];
+            return null;
+        }
+        $html = $res['body'];
+        if (!preg_match('#downloadmp4\.php\?fileid=\d+&dkey=[a-f0-9]+#i', $html, $m)) {
+            $diagnostics[] = [
+                'code' => 'FZMOVIES_TV_DKEY',
+                'message' => 'No downloadmp4 dkey on episode page',
+                'severity' => 'warning',
+                'provider' => self::PROVIDER_ID,
+            ];
+            return null;
+        }
+        $durl = self::TV_SITE . '/' . $m[0];
+        $res2 = self::httpGet($durl, $cookie, $eurl);
+        if ($res2 === null || $res2['status'] < 200 || $res2['status'] >= 300) {
+            $diagnostics[] = [
+                'code' => 'FZMOVIES_TV_DMP4',
+                'message' => 'downloadmp4.php failed',
+                'severity' => 'warning',
+                'provider' => self::PROVIDER_ID,
+            ];
+            return null;
+        }
+        $html2 = $res2['body'];
+        if (stripos($html2, 'downloads are not working') !== false || stripos($html2, 'server issue') !== false) {
+            $diagnostics[] = [
+                'code' => 'FZMOVIES_TV_UPSTREAM_OUTAGE',
+                'message' => 'MobileTVshows reports downloads not working',
+                'severity' => 'warning',
+                'provider' => self::PROVIDER_ID,
+            ];
+        }
+        $mirrors = self::extractMirrors($html2);
+        if ($mirrors === []) {
+            return null;
+        }
+        $hit = self::probeCdnFirst($mirrors);
+        if ($hit === null) {
+            return null;
+        }
+        return [
+            'url' => $hit['url'],
+            'mirror' => (string) (parse_url($hit['url'], PHP_URL_HOST) ?: ''),
+            'size' => $hit['size'],
+        ];
+    }
+
+    /**
+     * @param array{title:string,year:?int,imdb:?string} $meta
+     * @param list<array<string,mixed>> $diagnostics
      * @return array{url:string,html:string}|null
      */
     private static function findMoviePage(array $meta, string &$cookie, array &$diagnostics): ?array
@@ -307,7 +748,7 @@ final class FzMoviesSources
         $titlePlain = self::titleForSlug($title);
 
         // Repeat-play cache (verified page URL).
-        $cached = self::pageCacheGet($titlePlain, $year);
+        $cached = self::pageCacheGet('movie|' . $titlePlain, $year);
         $cachedUrl = is_array($cached) ? trim((string) ($cached['url'] ?? '')) : '';
         if ($cachedUrl !== '' && preg_match('#^https?://#i', $cachedUrl)) {
             $res = self::httpGet($cachedUrl, $cookie, self::SITE . '/');
@@ -357,7 +798,7 @@ final class FzMoviesSources
                 'severity' => 'info',
                 'provider' => self::PROVIDER_ID,
             ];
-            self::pageCachePut($titlePlain, $year, $res['url']);
+            self::pageCachePut('movie|' . $titlePlain, $year, $res['url']);
             return ['url' => $res['url'], 'html' => $res['body']];
         }
 
@@ -442,7 +883,7 @@ final class FzMoviesSources
                 'severity' => 'info',
                 'provider' => self::PROVIDER_ID,
             ];
-            self::pageCachePut($titlePlain, $year, $res['url']);
+            self::pageCachePut('movie|' . $titlePlain, $year, $res['url']);
             return ['url' => $res['url'], 'html' => $res['body']];
         }
 
