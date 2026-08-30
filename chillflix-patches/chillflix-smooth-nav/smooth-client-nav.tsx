@@ -19,7 +19,8 @@ function isModifiedClick(event: MouseEvent) {
 
 /**
  * Same-document navigations: wrap router.push in View Transitions.
- * Hard-nav routes (Movies/TV lists, details) use cross-document @view-transition instead.
+ * Detail pages still hard-navigate (requiresFullPageNavigation).
+ * Primary tabs (Home / Movies / TV lists) soft-navigate — instant like vuflix.
  */
 export function SmoothClientNav() {
   const router = useRouter()
@@ -36,8 +37,6 @@ export function SmoothClientNav() {
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
       if (isModifiedClick(event)) return
-      if (prefersReducedMotion()) return
-      if (typeof document.startViewTransition !== "function") return
 
       const target = event.target
       if (!(target instanceof Element)) return
@@ -60,21 +59,26 @@ export function SmoothClientNav() {
         return
       }
 
-      // Let the browser handle full document navigations (cross-doc VT CSS applies).
+      // Title details stay full document loads.
       if (requiresFullPageNavigation(url.pathname + url.search)) return
 
-      // Next <Link> soft routes
-      if (!anchor.hasAttribute("href")) return
       event.preventDefault()
       try {
         document.documentElement.dataset.cfNav = "1"
       } catch {
         // ignore
       }
+
       const next = url.pathname + url.search + url.hash
-      document.startViewTransition(() => {
-        router.push(next)
-      })
+      const go = () => {
+        router.push(next, { scroll: true })
+      }
+
+      if (!prefersReducedMotion() && typeof document.startViewTransition === "function") {
+        document.startViewTransition(go)
+        return
+      }
+      go()
     }
 
     document.addEventListener("click", onClick, true)
