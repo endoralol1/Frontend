@@ -1,4 +1,4 @@
-/** Movie/TV/people list slugs (not numeric ids). Used for browse detection. */
+/** Movie/TV/people list slugs intercepted as `[id]` by `@modal/(.)…/[id]` — need full navigation. */
 const MOVIE_LIST_SLUGS = new Set([
   "discover",
   "popular",
@@ -24,36 +24,45 @@ function pathOnly(href: string) {
   return raw.replace(/\/$/, "") || "/"
 }
 
-/** Paginated browse routes (lists / search / trending). */
+/** Paginated browse routes where ?page= must use a full document navigation. */
 export function isBrowseListPath(pathname: string) {
   const path = pathOnly(pathname)
   if (path === "/search") return true
   if (path === "/trending") return true
   if (path.startsWith("/trending/")) return true
-
-  const movieMatch = path.match(/^\/movie\/([^/]+)$/)
-  if (movieMatch && MOVIE_LIST_SLUGS.has(movieMatch[1])) return true
-
-  const tvMatch = path.match(/^\/tv\/([^/]+)$/)
-  if (tvMatch && TV_LIST_SLUGS.has(tvMatch[1])) return true
-
-  const peopleMatch = path.match(/^\/people\/([^/]+)$/)
-  if (peopleMatch && PEOPLE_LIST_SLUGS.has(peopleMatch[1])) return true
-
-  return false
+  return requiresFullPageNavigation(pathname)
 }
 
 /**
  * Routes that must use a real document navigation.
  *
- * List routes (`/movie/discover`, `/tv/popular`, …) soft-navigate — `@modal/(.)…`
- * already exports a null bypass for those slugs so the underlay updates correctly.
+ * List / search / trending routes hard-navigate so `@modal` intercept underlays
+ * cannot swallow the click (soft client push left the URL/UI stuck).
  *
- * Keep hard-nav only for title/person/collection detail URLs so we don't open the
+ * Title/person/collection detail URLs also hard-navigate so we don't open the
  * Netflix-style intercept overlay when the product wants a full detail page.
  */
 export function requiresFullPageNavigation(href: string) {
   const path = pathOnly(href)
+
+  if (path === "/search") return true
+  if (path === "/trending") return true
+  if (path.startsWith("/trending/")) return true
+
+  const movieMatch = path.match(/^\/movie\/([^/]+)$/)
+  if (movieMatch && MOVIE_LIST_SLUGS.has(movieMatch[1])) {
+    return true
+  }
+
+  const tvMatch = path.match(/^\/tv\/([^/]+)$/)
+  if (tvMatch && TV_LIST_SLUGS.has(tvMatch[1])) {
+    return true
+  }
+
+  const peopleMatch = path.match(/^\/people\/([^/]+)$/)
+  if (peopleMatch && PEOPLE_LIST_SLUGS.has(peopleMatch[1])) {
+    return true
+  }
 
   if (/^\/(?:movie|tv)\/\d+(?:\/|$)/.test(path)) {
     return true
