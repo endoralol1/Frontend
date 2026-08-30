@@ -1,0 +1,130 @@
+/* Smooth page transitions (vuflix soft-nav + full loads) */
+
+#cf-softnav-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  width: 0;
+  z-index: 10050;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--cf-orange, #14b8a6) 85%, white),
+    var(--cf-orange, #14b8a6)
+  );
+  box-shadow: 0 0 12px color-mix(in srgb, var(--cf-orange, #14b8a6) 55%, transparent);
+  transition: opacity 0.15s ease;
+}
+
+html.cf-softnav-loading #cf-softnav-progress {
+  opacity: 1;
+  animation: cfSoftNavProgress 0.9s ease-in-out infinite;
+}
+
+@keyframes cfSoftNavProgress {
+  0% { width: 0; margin-left: 0; }
+  50% { width: 68%; margin-left: 8%; }
+  100% { width: 0; margin-left: 100%; }
+}
+
+/* Keep dock / header stable during View Transitions */
+.bottom-nav {
+  view-transition-name: cf-dock;
+}
+
+header.absolute,
+header {
+  view-transition-name: cf-header;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.28s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-old(root) {
+  animation-name: cfVtFadeOut;
+}
+
+::view-transition-new(root) {
+  animation-name: cfVtFadeIn;
+}
+
+::view-transition-old(cf-dock),
+::view-transition-new(cf-dock),
+::view-transition-old(cf-header),
+::view-transition-new(cf-header) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+@keyframes cfVtFadeOut {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.992);
+    filter: blur(2px);
+  }
+}
+
+@keyframes cfVtFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.992);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* Fallback when View Transitions API is unavailable */
+html.cf-softnav-leave .wrapper > *:not(.bottom-nav):not(#search-sheet):not(#search-filters-sheet):not(#search-dock-recent):not(#browse-sheet),
+html.cf-softnav-leave .wrapper > header,
+html.cf-softnav-leave .wrapper > section,
+html.cf-softnav-leave .wrapper > main,
+html.cf-softnav-leave .wrapper > div:not(.bottom-nav):not(#search-sheet):not(#browse-sheet):not(#search-filters-sheet):not(#search-dock-recent) {
+  opacity: 0.18;
+  transform: translateY(8px);
+  filter: blur(1.5px);
+  transition:
+    opacity 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.18s ease;
+  pointer-events: none;
+}
+
+html.cf-softnav-enter .wrapper > *:not(.bottom-nav):not(#search-sheet):not(#search-filters-sheet):not(#search-dock-recent):not(#browse-sheet) {
+  animation: cfSoftNavIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes cfSoftNavIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #cf-softnav-progress,
+  html.cf-softnav-leave .wrapper > *,
+  html.cf-softnav-enter .wrapper > *,
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+    transition: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
