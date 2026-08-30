@@ -1,14 +1,16 @@
-# Fix: region/language reset on refresh (Spain snap-back)
+# Fix: region stuck on Spain + content not changing
 
-## Cause
-Optimistic UI kept the new country until reload, but the `region` cookie often
-never stuck — Server Action `Set-Cookie` alone was unreliable. After refresh the
-header still read the old cookie (e.g. `ES` / Spain).
+## Root causes
+1. **Nginx stripped `Set-Cookie`** on HTML/`location /` (`proxy_hide_header Set-Cookie`), so the
+   Server Action that wrote `region` never reached the browser.
+2. **HTML cache key ignored `$cookie_region`**, so even with a new cookie Cloudflare/nginx kept
+   serving the Spain page for `CF-IPCountry: ES`.
+3. Chillflix runs **`next start`** — source-only deploys do nothing until **`next build`**.
 
-## Fix
-- Write `region` / `locale` via `document.cookie` immediately on change
-- Keep Server Action write with `secure: true`, `path=/`, `sameSite=lax`
-- Ignore stale server props while a local change is pending
+## Fix (deployed)
+- Stop hiding `Set-Cookie`; include `$cookie_region` in `proxy_cache_key`
+- Client writes `region` cookie immediately + POST `/api/preferences/region` (API path does not strip cookies)
+- Rebuild + restart `chillflix`
 
 ## Apply
 ```bash

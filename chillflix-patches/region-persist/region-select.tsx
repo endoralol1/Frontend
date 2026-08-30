@@ -22,13 +22,29 @@ const REGION_CODES = new Set(regions.map((region) => region.iso_3166_1))
 const REGION_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
 
 function writeRegionCookie(code: string) {
-  // Client write so a full refresh keeps the choice even if the server
-  // action Set-Cookie is dropped (CF challenge / action POST quirks).
+  // Client write so refresh keeps the choice even if a proxy strips Set-Cookie.
   const secure =
     typeof window !== "undefined" && window.location.protocol === "https:"
       ? "; Secure"
       : ""
   document.cookie = `region=${encodeURIComponent(code)}; Path=/; Max-Age=${REGION_COOKIE_MAX_AGE}; SameSite=Lax${secure}`
+}
+
+async function persistRegion(code: string) {
+  // Prefer /api (nginx does not strip Set-Cookie there). Fall back to server action.
+  try {
+    const res = await fetch("/api/preferences/region", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ region: code }),
+      credentials: "same-origin",
+      cache: "no-store",
+    })
+    if (res.ok) return
+  } catch {
+    // fall through
+  }
+  await setRegion(code)
 }
 
 export const RegionSelect: React.FC<SelectProps> = ({
@@ -47,11 +63,9 @@ export const RegionSelect: React.FC<SelectProps> = ({
   const [current, setCurrent] = useState(initial)
   const pendingRef = useRef<string | null>(null)
 
-  // Sync when the server cookie prop catches up after refresh.
   useEffect(() => {
     if (typeof value !== "string" || !value) return
     if (pendingRef.current && value !== pendingRef.current) {
-      // Server still has the old region — keep optimistic selection.
       return
     }
     pendingRef.current = null
@@ -66,7 +80,7 @@ export const RegionSelect: React.FC<SelectProps> = ({
     setCurrent(next)
     writeRegionCookie(next)
 
-    void setRegion(next)
+    void persistRegion(next)
       .then(() => {
         onValueChange?.(next)
         router.refresh()
@@ -81,7 +95,6 @@ export const RegionSelect: React.FC<SelectProps> = ({
         }, 500)
       })
       .catch(() => {
-        // Client cookie already written — still refresh so RSC reads it.
         router.refresh()
       })
   }

@@ -37,6 +37,22 @@ function writeLocaleCookie(locale: Locale) {
   document.cookie = `${LOCALE_COOKIE}=${encodeURIComponent(locale)}; Path=/; Max-Age=${LOCALE_COOKIE_MAX_AGE}; SameSite=Lax${secure}`
 }
 
+async function persistLocale(locale: Locale) {
+  try {
+    const res = await fetch("/api/preferences/locale", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ locale }),
+      credentials: "same-origin",
+      cache: "no-store",
+    })
+    if (res.ok) return
+  } catch {
+    // fall through
+  }
+  await setLocale(locale)
+}
+
 function LocaleOption({ locale }: { locale: Locale }) {
   return (
     <div className="flex items-center gap-2">
@@ -72,7 +88,7 @@ export const LanguageSelect: React.FC<SelectProps> = ({
     setCurrent(nextValue)
     writeLocaleCookie(nextValue)
 
-    void setLocale(nextValue)
+    void persistLocale(nextValue)
       .then(() => {
         invalidateContinueWatchingRemoteCache()
         notifyLibraryUpdated()
