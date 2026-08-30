@@ -1,0 +1,139 @@
+# <<< chillflix.lol apex → www redirect <<<
+include /etc/nginx/snippets/chillflix.lol-apex-redirect.conf;
+
+server {
+    # <<< cloudflare-only origin lockdown <<<
+    include /etc/nginx/snippets/cloudflare-only.conf;
+
+    server_name www.chillflix.lol;
+
+    access_log /var/log/nginx/chillflix.cf.log chillflix_cf;
+
+# Plausible → https://analytics.chillflix.lol
+# Redirect old /analytics bookmarks to the subdomain (strip /analytics prefix).
+
+location ~ ^/analytics/?(.*)$ {
+    return 301 https://analytics.chillflix.lol/$1$is_args$args;
+}
+# <<< plausible /analytics <<<
+
+
+
+
+# <<< chillflix.lol embed proxy <<<
+    include /etc/nginx/snippets/chillflix.lol-embed-proxy.conf;
+    include /etc/nginx/snippets/chillflix.lol-cinepro-proxy.conf;
+    include /etc/nginx/snippets/chillflix.lol-scamguard.conf;
+    include /etc/nginx/snippets/chillflix.lol-chat-sse.conf;
+
+    location = /site-status.json {
+        alias /var/www/chillflix.lol/public/site-status.json;
+        default_type application/json;
+        add_header Cache-Control "public, max-age=60";
+    }
+
+    location = /api/rum {
+        default_type application/javascript;
+        add_header Cache-Control "public, max-age=600";
+        add_header X-Content-Type-Options nosniff;
+        alias /var/www/chillflix.lol/public/cdn/rum.js;
+    }
+
+    include /etc/nginx/snippets/chillflix.lol-img-cache.conf;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_read_timeout 86400;
+        proxy_cache off;
+    }
+
+    location /_next/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_cache off;
+    }
+
+    include /etc/nginx/snippets/chillflix.lol-newsite.conf;
+
+    include /etc/nginx/snippets/chillflix.lol-iptv.conf;
+
+    # Soft bot defense (scrape paths) — before location /
+    include /etc/nginx/snippets/chillflix.lol-bot-soft.conf;
+
+    location = /api/q7vm2x {
+        rewrite ^ /api/rum last;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_read_timeout 60;
+
+        proxy_cache chillflix_html;
+        proxy_cache_methods GET HEAD;
+        proxy_cache_key "$scheme$request_method$host$request_uri$cookie_locale$cookie_region$http_cf_ipcountry";
+        proxy_cache_valid 200 30s;
+        proxy_cache_bypass $chillflix_skip_html_cache $http_upgrade;
+        proxy_no_cache $chillflix_skip_html_cache $http_upgrade;
+        proxy_ignore_headers Cache-Control Expires Set-Cookie;
+        proxy_hide_header Cache-Control;
+        add_header Cache-Control "private, max-age=0, must-revalidate" always;
+        add_header CDN-Cache-Control "no-store" always;
+        add_header Cloudflare-CDN-Cache-Control "no-store" always;
+        add_header X-Chillflix-Cache $upstream_cache_status always;
+    }
+
+    listen [::]:443 ssl ipv6only=on; # managed by Certbot
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/chillflix.lol/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/chillflix.lol/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+
+}
+server {
+    # <<< cloudflare-only origin lockdown <<<
+    include /etc/nginx/snippets/cloudflare-only.conf;
+
+    listen 80;
+    listen [::]:80;
+    server_name chillflix.lol;
+    return 301 https://www.chillflix.lol$request_uri;
+}
+
+server {
+    # <<< cloudflare-only origin lockdown <<<
+    include /etc/nginx/snippets/cloudflare-only.conf;
+
+    listen 80;
+    listen [::]:80;
+    server_name www.chillflix.lol;
+
+    access_log /var/log/nginx/chillflix.cf.log chillflix_cf;
+    return 301 https://www.chillflix.lol$request_uri;
+
+
+
+
+}
