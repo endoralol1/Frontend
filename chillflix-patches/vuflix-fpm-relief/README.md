@@ -14,3 +14,7 @@ PHP-FPM was pegged at max children (50/50 busy):
 
 ## Apply
 Copy nginx files + PHP files from this folder, `nginx -t && reload`, restart php8.1-fpm.
+
+## Playback smoothness tune
+Sources rate was raised to **20r/s burst 40** (player opens many providers at once).
+Unauth `/api/user/*` edge 401 stays — that does not affect watching.

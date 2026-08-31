@@ -128,7 +128,7 @@ server {
 
     # Provider scrapes: hard-cap so one cold provider cannot pin a worker for 5 minutes.
     location ^~ /api/player/sources {
-        limit_req zone=vuflix_sources burst=12 nodelay;
+        limit_req zone=vuflix_sources burst=40 nodelay;
         limit_req_status 429;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root/index.php;
@@ -137,13 +137,13 @@ server {
         fastcgi_param HTTP_X_FORWARDED_PROTO https;
         fastcgi_param HTTP_X_FORWARDED_HOST $host;
         fastcgi_pass unix:/run/php/php8.1-fpm.sock;
-        fastcgi_read_timeout 45s;
-        fastcgi_send_timeout 45s;
+        fastcgi_read_timeout 70s;
+        fastcgi_send_timeout 70s;
     }
 
     # Streaming relays: limit concurrent connections per visitor.
     location ^~ /api/player/v-relay {
-        limit_conn vuflix_relay_conn 6;
+        limit_conn vuflix_relay_conn 12;
         limit_conn_status 429;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root/index.php;
@@ -157,7 +157,7 @@ server {
     }
 
     location ^~ /api/player/a-relay {
-        limit_conn vuflix_relay_conn 6;
+        limit_conn vuflix_relay_conn 12;
         limit_conn_status 429;
         include fastcgi_params;
         fastcgi_param SCRIPT_FILENAME $document_root/index.php;

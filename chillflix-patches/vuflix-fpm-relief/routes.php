@@ -545,9 +545,9 @@ $router->get('/api/player/sources', function () {
     }
     // VSEmbed / remote scrapers can take 15–40s cold; default max_execution_time=30 cuts them off.
     if (function_exists('set_time_limit')) {
-        @set_time_limit(40);
+        @set_time_limit(60);
     }
-    @ini_set('max_execution_time', '40');
+    @ini_set('max_execution_time', '60');
     $type = ($_GET['type'] ?? '') === 'tv' ? 'tv' : 'movie';
     $tmdbId = (int) ($_GET['tmdbId'] ?? 0);
     $season = max(1, (int) ($_GET['season'] ?? $_GET['s'] ?? 1));

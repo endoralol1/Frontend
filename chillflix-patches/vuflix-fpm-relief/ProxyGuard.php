@@ -13,7 +13,7 @@ final class ProxyGuard
     public const COOKIE = 'vf_ps';
     public const TTL_SEC = 900; // 15 min stream tokens
     public const SESSION_TTL = 21600; // 6h browser session
-    public const SOURCES_PER_MIN = 24;
+    public const SOURCES_PER_MIN = 48;
     public const RELAY_PER_MIN = 1200;
     /** Auto-ban OFF by default — too easy to hit real viewers (parallel /sources). Manual admin block only. */
     public const AUTO_BLOCK_ENABLED = false;
