@@ -1,0 +1,6 @@
+pm.max_children = 90
+pm.start_servers = 15
+pm.min_spare_servers = 10
+pm.max_spare_servers = 30
+pm.max_requests = 500
+request_terminate_timeout = 90

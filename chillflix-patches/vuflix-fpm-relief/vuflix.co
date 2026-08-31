@@ -1,0 +1,188 @@
+# Vuflix — dedicated newsite frontend (separate from chillflix.lol player/proxies)
+
+server {
+    include /etc/nginx/snippets/cloudflare-only.conf;
+    listen 80;
+    listen [::]:80;
+    server_name vuflix.co www.vuflix.co;
+
+    # ACME / health
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/chillflix-newsite/public;
+        default_type text/plain;
+    }
+
+    location / {
+        return 301 https://vuflix.co$request_uri;
+    }
+}
+
+server {
+    include /etc/nginx/snippets/cloudflare-only.conf;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name www.vuflix.co;
+
+    ssl_certificate     /etc/ssl/vuflix/vuflix.co.crt;
+    ssl_certificate_key /etc/ssl/vuflix/vuflix.co.key;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    return 301 https://vuflix.co$request_uri;
+}
+
+server {
+    include /etc/nginx/snippets/cloudflare-only.conf;
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name vuflix.co;
+
+    ssl_certificate     /etc/ssl/vuflix/vuflix.co.crt;
+    ssl_certificate_key /etc/ssl/vuflix/vuflix.co.key;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    root /var/www/chillflix-newsite/public;
+    index index.php;
+    access_log /var/log/nginx/vuflix.access.log;
+    include /etc/nginx/snippets/vuflix-sg-block.conf;
+    error_log  /var/log/nginx/vuflix.error.log;
+
+    # Security headers (light)
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    include /etc/nginx/snippets/cdn-antiadblock-nocache.conf;
+
+    include /etc/nginx/snippets/assets-antiadblock-nocache.conf;
+
+    location /assets/ {
+        try_files $uri =404;
+        expires 7d;
+        access_log off;
+        add_header Cache-Control "public, max-age=604800, immutable";
+    }
+
+    location / {
+        try_files $uri /index.php?$query_string;
+    }
+
+    # Ensure / always boots PHP (HEAD + directory edge cases)
+    location = / {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param DOCUMENT_ROOT $document_root;
+        fastcgi_param SCRIPT_NAME /index.php;
+        fastcgi_param HTTPS on;
+        fastcgi_param HTTP_X_FORWARDED_PROTO https;
+        fastcgi_param HTTP_X_FORWARDED_HOST $host;
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+    }
+
+    # Slow provider scrapes (VSEmbed cold ~10–40s)
+    location ^~ /api/admin/storage {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param DOCUMENT_ROOT $document_root;
+        fastcgi_param HTTPS on;
+        fastcgi_param HTTP_X_FORWARDED_PROTO https;
+        fastcgi_param HTTP_X_FORWARDED_HOST $host;
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+        fastcgi_read_timeout 600s;
+        fastcgi_send_timeout 600s;
+    }
+
+    include /etc/nginx/snippets/vuflix-huhu-proxy.conf;
+
+    # Unauthenticated library/continue spam was saturating PHP-FPM (mostly 401s).
+    location ^~ /api/user/ {
+        limit_req zone=vuflix_user_api burst=10 nodelay;
+        limit_req_status 429;
+        if ($vuflix_has_session = 0) {
+            add_header Content-Type application/json always;
+            return 401 '{"ok":false,"error":"unauthorized"}';
+        }
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param DOCUMENT_ROOT $document_root;
+        fastcgi_param HTTPS on;
+        fastcgi_param HTTP_X_FORWARDED_PROTO https;
+        fastcgi_param HTTP_X_FORWARDED_HOST $host;
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+        fastcgi_read_timeout 30s;
+        fastcgi_send_timeout 30s;
+    }
+
+    location ^~ /api/inbox {
+        limit_req zone=vuflix_inbox burst=8 nodelay;
+        limit_req_status 429;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param DOCUMENT_ROOT $document_root;
+        fastcgi_param HTTPS on;
+        fastcgi_param HTTP_X_FORWARDED_PROTO https;
+        fastcgi_param HTTP_X_FORWARDED_HOST $host;
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+        fastcgi_read_timeout 20s;
+    }
+
+    # Provider scrapes: hard-cap so one cold provider cannot pin a worker for 5 minutes.
+    location ^~ /api/player/sources {
+        limit_req zone=vuflix_sources burst=40 nodelay;
+        limit_req_status 429;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param DOCUMENT_ROOT $document_root;
+        fastcgi_param HTTPS on;
+        fastcgi_param HTTP_X_FORWARDED_PROTO https;
+        fastcgi_param HTTP_X_FORWARDED_HOST $host;
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+        fastcgi_read_timeout 70s;
+        fastcgi_send_timeout 70s;
+    }
+
+    # Streaming relays: limit concurrent connections per visitor.
+    location ^~ /api/player/v-relay {
+        limit_conn vuflix_relay_conn 12;
+        limit_conn_status 429;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param DOCUMENT_ROOT $document_root;
+        fastcgi_param HTTPS on;
+        fastcgi_param HTTP_X_FORWARDED_PROTO https;
+        fastcgi_param HTTP_X_FORWARDED_HOST $host;
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+        fastcgi_read_timeout 120s;
+        fastcgi_send_timeout 120s;
+    }
+
+    location ^~ /api/player/a-relay {
+        limit_conn vuflix_relay_conn 12;
+        limit_conn_status 429;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+        fastcgi_param DOCUMENT_ROOT $document_root;
+        fastcgi_param HTTPS on;
+        fastcgi_param HTTP_X_FORWARDED_PROTO https;
+        fastcgi_param HTTP_X_FORWARDED_HOST $host;
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+        fastcgi_read_timeout 120s;
+        fastcgi_send_timeout 120s;
+    }
+
+    location ~ \.php$ {
+        try_files $uri =404;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $document_root;
+        fastcgi_param HTTPS on;
+        fastcgi_param HTTP_X_FORWARDED_PROTO https;
+        fastcgi_param HTTP_X_FORWARDED_HOST $host;
+        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+        fastcgi_read_timeout 300s;
+    }
+
+    location ~ /\. {
+        deny all;
+    }
+}
